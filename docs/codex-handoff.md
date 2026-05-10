@@ -12,6 +12,7 @@
 - `docs/deep-dive.html` 是模块级深挖。
 - `docs/equations-digest.html` 是 35 个方程的逐条拆解。
 - `docs/sre-adaptation.html` 是迁移到 SRE 的模式映射。
+- `docs/trace-schema.md` 是 JSONL trace 的字段契约。
 - `docs/architecture.html` 是这轮新增的详细架构文档，按 architecture / requirements / task breakdown / refine 组织。
 
 ## 9 个核心模块
@@ -113,7 +114,7 @@
 
 ## 下一步建议
 
-1. 先把 `trace schema` 固化成正式契约。
+1. 先把 `trace schema` 固化成正式契约，已落到 `docs/trace-schema.md` 和 `auto_decide/trace.py`。
 2. 再补 `CBF` 的相对阶和 braking-distance 语义。
 3. 接着做结构化回归：结构版 vs e2e 版。
 4. 然后才开始更大范围的 SRE 控制平面抽象。
@@ -125,6 +126,7 @@
 
 - [README.md](../README.md)
 - [knowledge-base.html](./knowledge-base.html)
+- [trace-schema.md](./trace-schema.md)
 - [architecture.html](./architecture.html)
 
 再按需下钻：

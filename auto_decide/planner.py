@@ -23,6 +23,7 @@ from .graph import InteractionIntentGraph, Node
 from .invariant import ControlInvariantOperator
 from .lyapunov import QuadraticLyapunov, StabilityMonitor
 from .potential import PotentialField
+from .trace import build_trace_record
 from .types import DEFAULT_VEHICLE, Control, State, VehicleParams
 
 
@@ -112,25 +113,24 @@ class StructuralPlanner:
 
     # ------------------------------------------------------------------
     def step(self, state: State, graph: InteractionIntentGraph,
-             dt: float = 0.1) -> Tuple[State, Control, dict]:
+             dt: float = 0.1,
+             step_index: Optional[int] = None) -> Tuple[State, Control, dict]:
         """Advance the ego vehicle by one control cycle."""
         assert self.nominal is not None
         u_nn = self.nominal(state, graph)
         u_safe, info = self.t_inv.apply(state, u_nn)
         next_state = self.dynamics.step(state, u_safe, dt)
 
-        trace = {
-            "t": None,
-            "u_nn": [u_nn.steer, u_nn.jerk],
-            "u_safe": [u_safe.steer, u_safe.jerk],
-            "state": state.to_vec().tolist(),
-            "next_state": next_state.to_vec().tolist(),
-            "min_dist": self.manifold.min_distance(state),
-            "V": info.get("V"),
-            "dV_dt": info.get("dV_dt"),
-            "status": info.get("status"),
-            "cbf_status": info.get("cbf", {}).get("status"),
-        }
+        trace = build_trace_record(
+            step_index=step_index,
+            dt=dt,
+            state=state,
+            next_state=next_state,
+            u_nn=u_nn,
+            u_safe=u_safe,
+            info=info,
+            min_dist=self.manifold.min_distance(state),
+        )
         return next_state, u_safe, trace
 
     # ------------------------------------------------------------------
@@ -143,12 +143,12 @@ class StructuralPlanner:
         traces: List[dict] = []
         cur = initial
         for k in range(horizon_steps):
-            cur, u, tr = self.step(cur, graph, dt)
-            tr["t"] = k * dt
+            cur, u, tr = self.step(cur, graph, dt, step_index=k)
             states.append(cur)
             controls.append(u)
             traces.append(tr)
             if trace_path:
                 with open(trace_path, "a", encoding="utf-8") as f:
-                    f.write(json.dumps(tr) + "\n")
+                    f.write(json.dumps(tr, ensure_ascii=False,
+                                       allow_nan=False) + "\n")
         return states, controls, traces
