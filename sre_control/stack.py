@@ -44,8 +44,8 @@ class SREControlStack:
 
     The concrete use-case is "run a service fleet with a canary, a
     predictive autoscaler, and a guardrail on every tick". Tests in
-    ``tests/test_stack.py`` exercise 60 s of simulated traffic and
-    assert the invariants hold throughout.
+    ``tests/test_sre_control.py`` and ``tests/test_contracts.py``
+    exercise the module contracts and the end-to-end trace shape.
     """
 
     fusion: SignalFusion

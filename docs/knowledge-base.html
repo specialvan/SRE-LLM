@@ -153,6 +153,7 @@
     <li><a href="#sre"><span class="n">★</span>SRE 迁移总表</a></li>
     <li><a href="#stack"><span class="n">⊚</span>SRE 端到端栈（复利）</a></li>
     <li><a href="#deep"><span class="n">∇</span>方程逐项拆解</a></li>
+    <li><a href="#contracts"><span class="n">◎</span>API Contracts / Runtime States</a></li>
     <li><a href="#codex"><span class="n">⎈</span>Codex Review 指引</a></li>
   </ol>
 </aside>
@@ -1027,6 +1028,27 @@ second-order cone 标准形 : ‖x‖ ≤ a·t
 
   <h3>完整 8 节 × 每节 ~20 项的字典</h3>
   <p>见 <a href="EQUATION_DEEP_DIVE.md"><code>docs/EQUATION_DEEP_DIVE.md</code></a>。用于 Codex 审查时的"定义查询"参考。</p>
+</section>
+
+
+<!-- ===================== API Contracts & Runtime States ===================== -->
+<section id="contracts">
+  <h2><span class="tag">审查</span>API Contracts &amp; Runtime States</h2>
+  <p class="lead">`docs/API_CONTRACTS.md` 负责回答“每个公开方法必须守住什么”；`docs/RUNTIME_STATES.md` 负责回答“运行时会掉进什么状态、什么时候要降级或切换”。这两个文档是给 Codex 审查时最省时间的入口。</p>
+
+  <table>
+    <thead><tr><th>Document</th><th>What it pins down</th><th>How to use it</th></tr></thead>
+    <tbody>
+      <tr><td><code><a href="API_CONTRACTS.md">API_CONTRACTS.md</a></code></td><td>public surface, invariants, counter-examples, test map</td><td>read before changing any adapter signature or trace shape</td></tr>
+      <tr><td><code><a href="RUNTIME_STATES.md">RUNTIME_STATES.md</a></code></td><td>normal / degraded / emergency state transitions</td><td>read before changing any fallback, retry, or cut-over path</td></tr>
+      <tr><td><code><a href="CODEX_HANDOFF.md">CODEX_HANDOFF.md</a></code></td><td>current thread status and next move</td><td>use as the live handoff, not as the system spec</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <b>审查顺序</b>：先看这两个入口，再看 <code>ARCHITECTURE.md</code> 和 <code>knowledge-base.html</code> 本体。
+    这样能先锁定“契约”和“运行态”，再去看图和实现。
+  </div>
 </section>
 
 

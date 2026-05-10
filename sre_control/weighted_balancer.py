@@ -68,8 +68,8 @@ class WeightedLoadBalancer:
         info = {
             "rps_residual":   float(abs(realised[0] - rps_demand)),
             "zone_residual":  np.abs(realised[1:] - zone_target).tolist(),
-            "saturation":     [(shares[i] >= ub[i] - 1e-6)
-                                or (shares[i] <= lb[i] + 1e-6)
+            "saturation":     [bool((shares[i] >= ub[i] - 1e-6)
+                                    or (shares[i] <= lb[i] + 1e-6))
                                 for i in range(len(self.instances))],
             "cost":           float(res.cost),
         }

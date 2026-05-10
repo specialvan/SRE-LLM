@@ -154,6 +154,8 @@ Every requirement needs a concrete place where it can be checked:
 - behaviour requirement -> unit test in `tests/`
 - benefit requirement -> `analysis/sXX_*.py`
 - packaging requirement -> `docs/knowledge-base.html`
+- contract requirement -> `docs/API_CONTRACTS.md`
+- runtime-state requirement -> `docs/RUNTIME_STATES.md`
 - architecture requirement -> this file
 
 If a requirement cannot be traced to one of the above, it is probably too vague.
@@ -303,7 +305,12 @@ The next useful refinements are:
 
 ## 5. Recommended Next Tasks
 
+The next review surfaces are:
+
+- `docs/API_CONTRACTS.md`
+- `docs/RUNTIME_STATES.md`
+
 1. 为每个 SRE 原语补一个 counter-example。
-2. 在 `knowledge-base.html` 里把架构图和任务分解索引化。
-3. 给 `stack.py` 增加更清晰的降级路径说明。
+2. 在 `knowledge-base.html` 里把架构图、任务分解、契约和运行态索引化。
+3. 给 `stack.py` 增加更清晰的降级路径说明，并对齐 `RUNTIME_STATES.md`。
 4. 如果要继续做工程化，下一步应该补“接口契约”而不是再加更多图。
