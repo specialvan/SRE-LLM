@@ -1,0 +1,1240 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>auto-decide · 算法级深度拆解</title>
+<script>
+window.MathJax = { tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] }, svg: { fontCache: 'global' } };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --fg:#1b1d22; --fg-soft:#4a4e57; --fg-mute:#767a82;
+  --bg:#fbfbfa; --bg-card:#fff; --bg-code:#272b33; --bg-note:#fff9e6;
+  --bg-warn:#ffefe6; --bg-ok:#eaf7ec; --bg-sre:#eef2ff; --bg-contract:#f3eef9;
+  --accent:#0b6b58; --accent-weak:#d8ece6;
+  --rule:#e5e2dc; --link:#1249a7;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.72}
+body{display:grid;grid-template-columns:300px minmax(0,1fr);min-height:100vh}
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;border-right:1px solid var(--rule);padding:20px 18px;background:var(--bg-card);font-size:13.5px}
+nav.toc h1{font-size:15px;margin:0 0 4px}
+nav.toc .sub{color:var(--fg-mute);font-size:11.5px;margin-bottom:14px}
+nav.toc ol{list-style:none;padding:0;margin:0;counter-reset:toc}
+nav.toc ol li{counter-increment:toc;margin:2px 0}
+nav.toc ol>li>a::before{content:counters(toc,".") "  ";color:var(--fg-mute);font-variant-numeric:tabular-nums}
+nav.toc ol ol{padding-left:14px;border-left:1px dashed var(--rule);margin:2px 0 6px}
+nav.toc a{color:var(--fg-soft);text-decoration:none;display:block;padding:2px 6px;border-radius:4px}
+nav.toc a:hover{background:var(--accent-weak);color:var(--accent)}
+main{padding:44px clamp(24px,5vw,56px);max-width:1120px}
+h1.title{font-size:32px;line-height:1.2;margin:0 0 4px;letter-spacing:-0.01em}
+h1.title small{display:block;font-weight:normal;color:var(--fg-mute);font-size:14px;margin-top:4px}
+.meta{color:var(--fg-mute);font-size:13px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:10px 0;margin:20px 0 32px;display:flex;flex-wrap:wrap;gap:14px}
+h2{font-size:24px;margin-top:52px;padding-top:14px;border-top:2px solid var(--fg);letter-spacing:-0.01em}
+h3{font-size:19px;margin-top:40px;color:var(--accent)}
+h4{font-size:15.5px;margin-top:24px;color:var(--fg);letter-spacing:0.02em}
+h5{font-size:14px;margin-top:18px;color:var(--fg-soft);text-transform:uppercase;letter-spacing:0.06em;font-weight:700}
+p,li{color:var(--fg-soft)}
+code{font-family:var(--mono);background:#f4f1ec;padding:1px 6px;border-radius:4px;font-size:0.9em}
+pre{background:var(--bg-code);color:#e3e7ee;padding:14px 16px;border-radius:8px;overflow-x:auto;line-height:1.5;font-size:12.5px;margin:14px 0}
+pre code{background:transparent;color:inherit;padding:0}
+pre .kw{color:#e688a8}
+pre .fn{color:#9fd3ff}
+pre .str{color:#c3e88d}
+pre .cmt{color:#777e8a;font-style:italic}
+pre .num{color:#ffcb6b}
+.callout{border-left:4px solid var(--accent);background:var(--bg-ok);padding:11px 16px;margin:14px 0;border-radius:0 8px 8px 0}
+.callout.warn{border-color:#d07000;background:var(--bg-warn)}
+.callout.note{border-color:#b08800;background:var(--bg-note)}
+.callout.sre{border-color:#2a4ab0;background:var(--bg-sre)}
+.callout.contract{border-color:#5a2a9d;background:var(--bg-contract)}
+.callout .tag{font-size:10.5px;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;color:var(--fg);display:block;margin-bottom:3px}
+figure{margin:24px 0}
+figure figcaption{font-size:12.5px;color:var(--fg-mute);text-align:center;margin-top:6px}
+figure svg{display:block;margin:0 auto;max-width:100%;height:auto;background:var(--bg-card);border:1px solid var(--rule);border-radius:8px}
+table{border-collapse:collapse;margin:14px 0;width:100%;font-size:13.5px}
+table th,table td{border-bottom:1px solid var(--rule);padding:7px 10px;text-align:left;vertical-align:top}
+table th{background:#f4ece0;font-weight:600}
+table tr:last-child td{border-bottom:1px solid var(--fg)}
+a{color:var(--link)}
+hr{border:none;border-top:1px solid var(--rule);margin:24px 0}
+.kbd{font-family:var(--mono);background:#fff;border:1px solid var(--rule);border-bottom-width:2px;border-radius:4px;padding:1px 5px;font-size:0.85em}
+.module-card{border:1px solid var(--rule);border-radius:10px;padding:16px 18px;margin:16px 0;background:var(--bg-card)}
+.module-card h4{margin-top:0}
+.contract-grid{display:grid;grid-template-columns:120px 1fr;gap:4px 14px;margin:10px 0;font-size:13.5px;background:var(--bg-contract);padding:12px 14px;border-radius:8px;border-left:3px solid #5a2a9d}
+.contract-grid dt{font-weight:700;color:#5a2a9d}
+.contract-grid dd{margin:0;color:var(--fg-soft)}
+.step-list{counter-reset:step;padding-left:0;list-style:none}
+.step-list li{counter-increment:step;position:relative;padding-left:38px;margin:8px 0}
+.step-list li::before{content:counter(step);position:absolute;left:0;top:2px;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+.mini-table{font-size:12px}
+.mini-table th,.mini-table td{padding:4px 8px}
+.inline-mono{font-family:var(--mono);background:#f4f1ec;padding:0 4px;border-radius:3px}
+.badge{display:inline-block;padding:1px 7px;border-radius:3px;font-size:11px;font-weight:700;letter-spacing:0.03em;margin-right:4px}
+.badge-in{background:#eaf7ec;color:#0b6b58}
+.badge-out{background:#eef2ff;color:#2a4ab0}
+.badge-inv{background:#fff9e6;color:#b08800}
+.badge-fail{background:#ffefe6;color:#b0361e}
+.badge-sre{background:#f3eef9;color:#5a2a9d}
+@media(max-width:900px){body{grid-template-columns:1fr}nav.toc{position:relative;height:auto;border-right:none;border-bottom:1px solid var(--rule)}}
+</style>
+</head>
+<body>
+<nav class="toc">
+  <h1>auto-decide / 深度拆解</h1>
+  <div class="sub">算法步骤 · 数据结构 · 失败矩阵 · SRE 挂钩点</div>
+  <ol>
+    <li><a href="#intro">使用方式</a></li>
+    <li><a href="#template">模块拆解模板</a></li>
+    <li><a href="#m1">模块 1 · 交互意图图</a>
+      <ol>
+        <li><a href="#m1-ds">数据结构内部视图</a></li>
+        <li><a href="#m1-algo">算法步骤</a></li>
+        <li><a href="#m1-num">数值与时延</a></li>
+        <li><a href="#m1-fail">失败矩阵</a></li>
+      </ol>
+    </li>
+    <li><a href="#m2">模块 2 · 动力学</a>
+      <ol>
+        <li><a href="#m2-ds">RK4 与 clamp</a></li>
+        <li><a href="#m2-algo">单步积分</a></li>
+        <li><a href="#m2-manifold">非欧流形判定</a></li>
+        <li><a href="#m2-fail">失败矩阵</a></li>
+      </ol>
+    </li>
+    <li><a href="#m3">模块 3 · 势能场</a></li>
+    <li><a href="#m4">模块 4 · Lyapunov</a></li>
+    <li><a href="#m5">模块 5 · 可达集</a></li>
+    <li><a href="#m6">模块 6 · CBF-QP</a>
+      <ol>
+        <li><a href="#m6-braking">刹车距离 barrier 推导</a></li>
+        <li><a href="#m6-grid">网格搜索 vs 真 QP</a></li>
+        <li><a href="#m6-relative">相对度分析</a></li>
+      </ol>
+    </li>
+    <li><a href="#m7">模块 7 · T_inv 算子</a>
+      <ol>
+        <li><a href="#m7-state">状态机</a></li>
+        <li><a href="#m7-invariants">正确性不变式</a></li>
+      </ol>
+    </li>
+    <li><a href="#m8">模块 8 · 博弈 / 安全冗余</a></li>
+    <li><a href="#m9">模块 9 · Planner 装配</a></li>
+    <li><a href="#e2e">端到端请求追踪</a></li>
+    <li><a href="#invariants">系统级不变式一览</a></li>
+    <li><a href="#sre-hook">SRE 挂钩点汇总</a></li>
+  </ol>
+  <hr>
+  <p style="font-size:12px;color:var(--fg-mute);margin:0">
+    → 方程逐一吃透 <a href="./equations-digest.html">equations-digest.html</a><br>
+    → 工程范式抽象见 <a href="./sre-adaptation.html">sre-adaptation.html</a><br>
+    → 总览知识库见 <a href="./knowledge-base.html">knowledge-base.html</a>
+  </p>
+</nav>
+<main>
+
+<h1 class="title">auto-decide · 算法级深度拆解
+  <small>每个模块下沉到算法步骤 / 数据结构 / 失败矩阵 / SRE 挂钩点</small>
+</h1>
+<div class="meta">
+  <span>文档版本：v0.2</span>
+  <span>对应 <code>auto-decide/</code></span>
+  <span>预期读者：算法实现者 / SRE / 架构评审</span>
+</div>
+
+<h2 id="intro">1 · 使用方式</h2>
+<p>这份文档是 <a href="./knowledge-base.html">knowledge-base.html</a> 的<strong>颗粒度下沉版</strong>，目的是让人/Codex 可以逐函数、逐行地理解系统行为，
+不再停留在"这一模块做什么"而是"这一模块的每一个分支在做什么、为什么这样做、何时会出错"。</p>
+<p>重点做了三件事：</p>
+<ol>
+  <li>把每个模块的<strong>输入输出契约</strong>形式化（precondition / postcondition / invariant）。</li>
+  <li>把<strong>算法步骤</strong>用伪代码逐行标注，每一步写"why"而不只是"what"。</li>
+  <li>把<strong>失败模式</strong>按 "输入异常 → 内部状态异常 → 输出路径 → 降级动作" 整理成矩阵。</li>
+</ol>
+<p>每个模块末尾的 <span class="badge badge-sre">SRE 挂钩</span> 给出本模块最可复用的抽象，在 <a href="./sre-adaptation.html">sre-adaptation.html</a> 里展开。</p>
+
+<h2 id="template">2 · 模块拆解模板</h2>
+<p>后续 9 个模块统一用这个模板，Codex 可按固定字段读。</p>
+
+<div class="callout contract">
+<span class="tag">模板字段</span>
+<strong>核心问题</strong>（一句话）·
+<strong>契约</strong>（in/out/pre/post/invariant）·
+<strong>数据结构内部视图</strong>·
+<strong>算法步骤</strong>（伪代码 + why）·
+<strong>数值稳定性</strong>·
+<strong>时延拆分</strong>·
+<strong>失败矩阵</strong>·
+<strong>单元测试视角</strong>·
+<strong>SRE 挂钩</strong>。
+</div>
+
+
+<h2 id="m1">3 · 模块 1 · 交互意图图 <code>InteractionIntentGraph</code></h2>
+
+<div class="module-card">
+<h4>核心问题</h4>
+<p>把"谁影响谁、影响多大"表达成一个加权有向图；每帧根据几何 + 意图更新。</p>
+
+<h4>契约</h4>
+<div class="contract-grid">
+<dt>IN</dt><dd>一组 <code>Node</code>：{id, type, pos∈ℝ², vel∈ℝ², intent∈P(5)}</dd>
+<dt>OUT</dt><dd>加权有向图 <code>{(src, dst) → w∈[0,1]}</code></dd>
+<dt>PRE</dt><dd>节点 id 唯一；intent 是非负分布（可未归一化）</dd>
+<dt>POST</dt><dd>边权单调：<code>dist ↑ ⇒ w ↓</code>；<code>conflict ↑ ⇒ w ↑</code></dd>
+<dt>INV</dt><dd>① 无自环；② <code>w &lt; EPS</code> 的边被剪枝；③ 重建而非增量（避免陈旧边）</dd>
+</div>
+
+<h3 id="m1-ds">3.1 数据结构内部视图</h3>
+
+<figure>
+<svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .card{fill:#fff;stroke:#767a82;stroke-width:1.2;rx:6}
+      .k{font:bold 12px -apple-system,sans-serif;fill:#1b1d22}
+      .v{font:11px ui-monospace,Menlo;fill:#4a4e57}
+      .ann{font:11px -apple-system;fill:#767a82}
+      .edge{stroke:#0b6b58;stroke-width:1.2;fill:none}
+    </style>
+  </defs>
+  <!-- _nodes dict -->
+  <rect class="card" x="20" y="20" width="230" height="240" rx="8"/>
+  <text class="k" x="135" y="40" text-anchor="middle">_nodes: Dict[str, Node]</text>
+  <line x1="30" y1="50" x2="240" y2="50" stroke="#e5e2dc"/>
+  <text class="v" x="30" y="72">"ego"  → Node(CAR, p=(0,0), v=(10,0),</text>
+  <text class="v" x="30" y="88">          intent={straight:1})</text>
+  <text class="v" x="30" y="112">"A"    → Node(CAR, p=(30,3), v=(−8,0),</text>
+  <text class="v" x="30" y="128">          intent={left:0.7, straight:0.3})</text>
+  <text class="v" x="30" y="152">"B"    → Node(BIKE, p=(25,−4), v=(5,−2),</text>
+  <text class="v" x="30" y="168">          intent={right:1})</text>
+  <text class="v" x="30" y="192">"C"    → Node(STATIC, p=(22,5), v=0)</text>
+  <text class="ann" x="30" y="240">插入序即 adjacency 行列序</text>
+
+  <!-- _edges dict -->
+  <rect class="card" x="280" y="20" width="240" height="240" rx="8"/>
+  <text class="k" x="400" y="40" text-anchor="middle">_edges: Dict[(src,dst), Edge]</text>
+  <line x1="290" y1="50" x2="510" y2="50" stroke="#e5e2dc"/>
+  <text class="v" x="290" y="72">("ego","A") → w=0.42, conflict="left-straight"</text>
+  <text class="v" x="290" y="96">("ego","B") → w=0.08, conflict="merge"</text>
+  <text class="v" x="290" y="120">("A","ego") → w=0.39</text>
+  <text class="v" x="290" y="144">("B","ego") → w=0.07</text>
+  <text class="v" x="290" y="168">("A","B")   → w &lt; EPS · 已剪</text>
+  <text class="ann" x="290" y="216">每帧重建 · 不留历史</text>
+  <text class="ann" x="290" y="232">复杂度 O(n²)</text>
+
+  <!-- derived adjacency matrix -->
+  <rect class="card" x="550" y="20" width="190" height="240" rx="8"/>
+  <text class="k" x="645" y="40" text-anchor="middle">to_adjacency() → ℝ⁴ˣ⁴</text>
+  <line x1="560" y1="50" x2="730" y2="50" stroke="#e5e2dc"/>
+  <g transform="translate(570,70)" font-family="Menlo,monospace" font-size="12" fill="#4a4e57">
+    <text y="0">      ego   A    B   C</text>
+    <text y="18">ego  0.00 0.42 0.08 0.00</text>
+    <text y="36">A    0.39 0.00 0.00 0.00</text>
+    <text y="54">B    0.07 0.00 0.00 0.00</text>
+    <text y="72">C    0.00 0.00 0.00 0.00</text>
+  </g>
+  <text class="ann" x="570" y="180">静态节点 C 不主动输出边</text>
+  <text class="ann" x="570" y="198">→ 对应列全 0（有静态，被动受影响）</text>
+  <text class="ann" x="570" y="218">对称性没有强制</text>
+  <text class="ann" x="570" y="234">（cos θ 方向项天然破坏对称）</text>
+</svg>
+<figcaption>图 3-1 · 意图图三份数据视图：节点表、边表、邻接矩阵。边表每帧从节点表重算。</figcaption>
+</figure>
+
+<h3 id="m1-algo">3.2 算法步骤（<code>update()</code> 伪代码 + why）</h3>
+
+<pre><code><span class="kw">def</span> <span class="fn">update</span>(self):
+    self._edges.<span class="fn">clear</span>()                         <span class="cmt"># ① 重建语义：避免陈旧边留存（比如 agent 已离开）</span>
+    <span class="kw">for</span> i, ni <span class="kw">in</span> enumerate(self._nodes.values()):
+        <span class="kw">for</span> j, nj <span class="kw">in</span> enumerate(self._nodes.values()):
+            <span class="kw">if</span> i == j: <span class="kw">continue</span>          <span class="cmt"># ② 无自环</span>
+            w = self.<span class="fn">_edge_weight</span>(ni, nj)     <span class="cmt"># ③ 核函数在下面拆解</span>
+            <span class="kw">if</span> w &gt;= self.EPS:                <span class="cmt"># ④ 小权重剪枝 —— 下游势能求和的开销由此有界</span>
+                self.<span class="fn">add_edge</span>(<span class="fn">Edge</span>(ni.node_id, nj.node_id, w))
+
+<span class="kw">def</span> <span class="fn">_edge_weight</span>(i, j):
+    d       = ‖j.pos − i.pos‖                         <span class="cmt"># 欧氏距离，单位 m</span>
+    dist_k  = exp(−d / D0)                             <span class="cmt"># ⑤ 指数核，保证 w∈[0,1] 且连续无奇点</span>
+    <span class="kw">if</span> rnorm &lt; 1e−6 <span class="kw">or</span> ‖i.vel‖ &lt; 1e−6:
+        heading = 0.5                                  <span class="cmt"># ⑥ 退化：无法算朝向时给中性值</span>
+    <span class="kw">else</span>:
+        cos_t = (i.vel · (j.pos − i.pos)) / (‖i.vel‖ · rnorm)
+        heading = 0.5·(cos_t + 1)                      <span class="cmt"># ⑦ 映射到 [0,1]：朝对方跑比跑开影响大</span>
+    conflict = <span class="fn">intent_conflict</span>(i.intent, j.intent)     <span class="cmt"># ⑧ 下面拆解</span>
+    <span class="kw">return</span> dist_k · heading · conflict                <span class="cmt"># ⑨ 乘积形式 —— 任一因子为 0 即断开</span>
+
+<span class="kw">def</span> <span class="fn">intent_conflict</span>(p_i, p_j):
+    total = 0
+    <span class="kw">for</span> a, pa <span class="kw">in</span> p_i.items():
+        <span class="kw">for</span> b, pb <span class="kw">in</span> p_j.items():
+            total += pa · pb · C_TABLE.<span class="fn">get</span>((a,b), 0.1)   <span class="cmt"># ⑩ 未知组合给 0.1 保守先验</span>
+    <span class="kw">return</span> clamp(total, 0, 1)                          <span class="cmt"># ⑪ 双重保险</span>
+</code></pre>
+
+<h5>关键设计决策（为何不这样做）</h5>
+<ul>
+  <li><strong>为何不用 1/d 作为距离核？</strong> 因为 <code>d→0</code> 时发散，会让下游 $\Phi$ 或 CBF 拿到无穷值，数值不稳。指数核有界且处处可导。</li>
+  <li><strong>为何乘积而不是加权和？</strong> 加权和在任一因子为 0 时仍可能贡献；乘积让"距离远"或"意图完全兼容"时天然置零，符合语义。</li>
+  <li><strong>为何每帧重建？</strong> 增量更新需要跟踪"哪些 agent 已离场"这类元数据，实现复杂度高；<code>O(n²)</code> 重建在 n≤100 量级远低于感知流水的成本，不是瓶颈。</li>
+  <li><strong>为何对未知冲突给 0.1？</strong> 比 0 保守（不忽略未知威胁），又比 1 不过激（未知不等于冲突）。</li>
+</ul>
+
+<h3 id="m1-num">3.3 数值与时延</h3>
+
+<table class="mini-table">
+  <thead><tr><th>场景</th><th>n</th><th>update() wall-time</th><th>edges 数</th><th>备注</th></tr></thead>
+  <tbody>
+    <tr><td>城市路口</td><td>10-30</td><td>&lt; 200 µs</td><td>~30</td><td>典型</td></tr>
+    <tr><td>高速车流</td><td>30-100</td><td>~1 ms</td><td>~200</td><td>EPS 剪枝生效</td></tr>
+    <tr><td>压力</td><td>300</td><td>~10 ms</td><td>~1500</td><td>需要 KD-tree 剪枝（未实现）</td></tr>
+  </tbody>
+</table>
+
+<h3 id="m1-fail">3.4 失败矩阵</h3>
+
+<table class="mini-table">
+  <thead><tr><th>输入异常</th><th>观察到</th><th>输出路径</th><th>下游影响</th><th>缓解</th></tr></thead>
+  <tbody>
+    <tr><td>intent 分布为全 0</td><td><code>intent_conflict = 0</code> → 所有边权=0</td><td>空图</td><td>势能交互项=0，类似"看不见其他车"</td><td>前置归一化；若 sum&lt;ε 告警</td></tr>
+    <tr><td>intent flicker（高熵震荡）</td><td>边权每帧抖动</td><td>图结构不稳</td><td>势能梯度噪声 → 刹车点头</td><td>对 p_i 做 EMA，α=0.3</td></tr>
+    <tr><td>两节点位置重叠 d≈0</td><td><code>exp(0)=1</code></td><td>边权 =1×heading×conflict</td><td>可能超高</td><td>上游感知去重；或加 <code>d_min=0.5</code> clamp</td></tr>
+    <tr><td>n 暴涨（&gt; 500）</td><td>update() 阻塞主环</td><td>超时</td><td>planner 错帧</td><td>KD-tree 先剪距离 &gt; 2·D0 的对</td></tr>
+    <tr><td>静态节点的 vel=0</td><td><code>‖vel‖&lt;1e-6</code> 命中退化分支</td><td>heading=0.5</td><td>静态障碍也有权重</td><td>正确 —— 下游按 STATIC 类型跳过博弈项</td></tr>
+  </tbody>
+</table>
+
+<h5>单元测试视角（已覆盖）</h5>
+<ul>
+  <li><code>test_close_far_weight_monotone</code>：距离单调性。</li>
+  <li><code>test_orthogonal_motion_has_small_weight</code>：朝向修正。</li>
+  <li><code>test_intent_conflict_symmetric_and_bounded</code>：冲突值 bounded。</li>
+</ul>
+
+<h5>未覆盖（建议补）</h5>
+<ul>
+  <li>intent flicker 下的边权方差上界。</li>
+  <li>EPS 剪枝对下游势能数值的影响回归。</li>
+</ul>
+
+<div class="callout sre">
+<span class="tag">SRE 挂钩</span>
+<span class="badge badge-sre">抽象</span> 意图图本质是 <em>"把不确定性语义化到加权图"</em>。
+在 SRE 里能直接对应："把故障相关性"建模为"服务依赖图"：节点是服务/实例，边权是"A 抖动 → B 受影响"的经验概率，
+核函数换成 <em>call RPS × error correlation × SLO sensitivity</em>。见 <a href="./sre-adaptation.html#incident-graph">sre-adaptation §3</a>。
+</div>
+</div>
+
+<h2 id="m2">4 · 模块 2 · 车辆动力学 <code>BicycleModel</code></h2>
+
+<div class="module-card">
+<h4>核心问题</h4>
+<p>给定当前状态与输入，产生<strong>一步后</strong>的状态；保证永远不越摩擦 / 速度包络。</p>
+
+<h4>契约</h4>
+<div class="contract-grid">
+<dt>IN</dt><dd><code>State (px,py,ψ,v,a,μ)</code>, <code>Control (δ,j)</code>, <code>dt≤0.1s</code></dd>
+<dt>OUT</dt><dd>新 <code>State</code></dd>
+<dt>PRE</dt><dd><code>μ∈(0,1.2]</code>, <code>v≥0</code>, <code>|a|≤μ·g</code>（由前次 step 保证）</dd>
+<dt>POST</dt><dd>新 state 仍满足所有 PRE；<code>v∈[0, v_max]</code></dd>
+<dt>INV</dt><dd>clamp 发生在两处：<code>f()</code> 内 jerk clamp + <code>step()</code> 末端状态 clamp（双保险）</dd>
+</div>
+
+<h3 id="m2-ds">4.1 RK4 与 clamp 的双层防护</h3>
+
+<figure>
+<svg viewBox="0 0 780 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="mb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a4e57"/>
+    </marker>
+    <style>
+      .box{fill:#fff;stroke:#767a82;stroke-width:1.2}
+      .clamp{fill:#fff9e6;stroke:#b08800;stroke-width:1.5}
+      .lbl{font:12px -apple-system;fill:#1b1d22}
+      .m{font:11px ui-monospace;fill:#4a4e57}
+      .s{font:11px -apple-system;fill:#767a82}
+    </style>
+  </defs>
+
+  <rect class="box" x="20" y="40" width="110" height="50" rx="8"/>
+  <text class="lbl" x="75" y="64" text-anchor="middle">state x</text>
+  <text class="s" x="75" y="80" text-anchor="middle">(px,py,ψ,v,a,μ)</text>
+
+  <rect class="box" x="20" y="120" width="110" height="50" rx="8"/>
+  <text class="lbl" x="75" y="144" text-anchor="middle">control u</text>
+  <text class="s" x="75" y="160" text-anchor="middle">(δ, j)</text>
+
+  <!-- clamp1 -->
+  <rect class="clamp" x="180" y="80" width="130" height="70" rx="8"/>
+  <text class="lbl" x="245" y="104" text-anchor="middle">① f() 内 jerk clamp</text>
+  <text class="s" x="245" y="122" text-anchor="middle">if a≥μg and j&gt;0 → j=0</text>
+  <text class="s" x="245" y="138" text-anchor="middle">if a≤−μg and j&lt;0 → j=0</text>
+
+  <!-- RK4 -->
+  <rect class="box" x="360" y="40" width="180" height="150" rx="8"/>
+  <text class="lbl" x="450" y="62" text-anchor="middle" style="font-weight:700">② RK4 一步</text>
+  <text class="m" x="370" y="82">k1 = f(x₀)</text>
+  <text class="m" x="370" y="98">k2 = f(x₀ + ½dt·k1)</text>
+  <text class="m" x="370" y="114">k3 = f(x₀ + ½dt·k2)</text>
+  <text class="m" x="370" y="130">k4 = f(x₀ + dt·k3)</text>
+  <text class="m" x="370" y="150">x₁ = x₀ + dt/6·(k1+2k2+2k3+k4)</text>
+  <text class="s" x="370" y="172">每次 f() 调用都触发 ①</text>
+
+  <!-- clamp2 -->
+  <rect class="clamp" x="590" y="80" width="170" height="80" rx="8"/>
+  <text class="lbl" x="675" y="104" text-anchor="middle">③ step() 末端状态 clamp</text>
+  <text class="s" x="675" y="122" text-anchor="middle">a ← clip(a, −μg, μg)</text>
+  <text class="s" x="675" y="138" text-anchor="middle">v ← clip(v, 0, v_max)</text>
+  <text class="s" x="675" y="154" text-anchor="middle">兜底 —— RK4 累积误差的保险</text>
+
+  <!-- out -->
+  <rect class="box" x="590" y="200" width="170" height="50" rx="8" fill="#eaf7ec" stroke="#0b6b58"/>
+  <text class="lbl" x="675" y="224" text-anchor="middle" style="font-weight:700">新 state x₁</text>
+  <text class="s" x="675" y="240" text-anchor="middle">满足所有 POST</text>
+
+  <!-- arrows -->
+  <path d="M130,65 C 155,65 160,90 180,115" stroke="#4a4e57" fill="none" marker-end="url(#mb)"/>
+  <path d="M130,145 C 155,145 160,130 180,120" stroke="#4a4e57" fill="none" marker-end="url(#mb)"/>
+  <path d="M310,115 L360,115" stroke="#4a4e57" marker-end="url(#mb)"/>
+  <path d="M540,115 L590,115" stroke="#4a4e57" marker-end="url(#mb)"/>
+  <path d="M675,160 L675,200" stroke="#4a4e57" marker-end="url(#mb)"/>
+</svg>
+<figcaption>图 4-1 · 两处 clamp 的拓扑关系：① 在每次 f() 调用里保证导数方向不越界；③ 在 RK4 完成后兜底消除数值累积。</figcaption>
+</figure>
+
+<h3 id="m2-algo">4.2 单步积分伪代码</h3>
+
+<pre><code><span class="kw">def</span> <span class="fn">step</span>(state, u, dt):
+    x0 = state.<span class="fn">to_vec</span>()                              <span class="cmt"># ndarray(6)</span>
+    <span class="kw">def</span> <span class="fn">_eval</span>(xv):
+        <span class="kw">return</span> self.<span class="fn">f</span>(<span class="fn">State.from_vec</span>(xv), u)
+    k1 = <span class="fn">_eval</span>(x0)
+    k2 = <span class="fn">_eval</span>(x0 + 0.5·dt·k1)
+    k3 = <span class="fn">_eval</span>(x0 + 0.5·dt·k2)
+    k4 = <span class="fn">_eval</span>(x0 + dt·k3)
+    x1 = x0 + dt/6 · (k1 + 2k2 + 2k3 + k4)
+
+    a_cap = x1[5] · G                                  <span class="cmt"># μ·g, μ 本身不变（x1[5]==x0[5]）</span>
+    x1[4] = <span class="fn">clip</span>(x1[4], −a_cap, a_cap)                <span class="cmt"># ③ 加速度 clamp</span>
+    x1[3] = <span class="fn">clip</span>(x1[3], 0, v_max)                     <span class="cmt"># ③ 速度 clamp</span>
+    <span class="kw">return</span> <span class="fn">State.from_vec</span>(x1)
+</code></pre>
+
+<h5>为何 jerk 作为输入，而不是 acceleration？</h5>
+<p>因为 CBF 在刹车距离 barrier 上需要做到 <em>相对度 1</em>。考察 $h = d - v·τ - v²/(2a_\text{brk})$：</p>
+$$
+\dot h = \nabla_p d \cdot \dot p - τ\dot v - \frac{v\dot v}{a_\text{brk}}
+      = -v\cos\theta - (τ + v/a_\text{brk})\,a
+$$
+<p>$a$ 在状态里、受 $\dot a = j$ 驱动。如果让 acceleration 直接作为输入 $u=a$，则 $a$ 是代数变量、命令切换会瞬断，
+不符合真实执行器（线控刹车/油门有速率限制）。把 $a$ 放进状态、让 $j$ 作为输入，命令连续可导，
+barrier 的 $\dot h$ 就对 $u$ 不再有"紧急切换"导致的不连续。</p>
+
+<h3 id="m2-manifold">4.3 非欧流形判定 <code>Manifold.is_feasible</code></h3>
+
+<pre><code><span class="kw">def</span> <span class="fn">is_feasible</span>(state):
+    <span class="kw">if</span> state.v &lt; −0.01 <span class="kw">or</span> state.v &gt; v_max·1.05: <span class="kw">return</span> False   <span class="cmt"># ① 速度包络</span>
+    <span class="kw">if</span> |state.a| &gt; μ·g + 1e−3: <span class="kw">return</span> False                      <span class="cmt"># ② 摩擦包络</span>
+    <span class="kw">for</span> obs <span class="kw">in</span> obstacles:
+        <span class="kw">if</span> obs.<span class="fn">signed_distance</span>(state.px, state.py) &lt; 0:               <span class="cmt"># ③ void 判定</span>
+            <span class="kw">return</span> False
+    <span class="kw">return</span> True
+</code></pre>
+
+<p>三项构成"连续层的合法子集"。注意这里的 1e-3 / 1.05 是<em>诊断阈值</em>，比 clamp 宽一点以容忍数值误差；真正的约束由 clamp 保证。</p>
+
+<h3 id="m2-fail">4.4 失败矩阵</h3>
+<table class="mini-table">
+  <thead><tr><th>异常</th><th>路径</th><th>后果</th><th>缓解</th></tr></thead>
+  <tbody>
+    <tr><td>μ=0（冰面）</td><td>a_cap=0 → 任何 jerk 都被 clamp 到 0</td><td>车辆不能加减速</td><td>正确行为；上层 planner 应在低 μ 时放弃追赶目标速度</td></tr>
+    <tr><td>dt 被意外放大（调度抖动）</td><td>RK4 误差 O(dt⁵) 放大</td><td>状态偏差</td><td>planner 主环限 dt≤0.1；超时进入降级（L2）</td></tr>
+    <tr><td>感知 μ 错误</td><td>友好 clamp 但所有 CBF 低估刹车距离</td><td>撞</td><td>derating + μ_residual 监视（见 R-02）</td></tr>
+    <tr><td>steer NaN（上游 bug）</td><td><code>np.tan(NaN)=NaN</code></td><td>状态污染</td><td>入口 <code>clip(u.steer, ±max_steer)</code> 已挡 NaN？不，clip 对 NaN 穿透 → 需要额外 NaN 检查</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+<span class="tag">待修</span>
+<code>np.clip(NaN, lo, hi)</code> 仍返回 NaN。建议在 <code>BicycleModel.f</code> 入口加 <code>if not np.isfinite(u.steer) or not np.isfinite(u.jerk): return zeros(6)</code>；
+这是个不大但安全敏感的补丁，列入 <code>PR-1.2-03-nan-guard</code>。
+</div>
+
+<h5>SRE 挂钩</h5>
+<div class="callout sre">
+<span class="tag">抽象</span> <em>"输入 → 两重 clamp → 输出"</em> 是一个可复用模式：把任何物理/业务不等式表达成"调用时钳位 + 末端钳位"的双层防护。
+在 SRE 里对应"客户端 timeout 裁剪 + 服务端 deadline 裁剪"，也是双保险。详见
+<a href="./sre-adaptation.html#double-clamp">sre-adaptation §4</a>。
+</div>
+</div>
+
+<h2 id="m3">5 · 模块 3 · 势能场 <code>PotentialField</code></h2>
+
+<div class="module-card">
+<h4>核心问题</h4>
+<p>把目标 / 障碍 / 交互三类诉求合成一个标量场 $\Phi$；给下游名义策略一个物理可解释的方向。</p>
+
+<h4>契约</h4>
+<div class="contract-grid">
+<dt>IN</dt><dd><code>state, manifold, graph, ego_id</code></dd>
+<dt>OUT</dt><dd><code>value(x) → float</code>, <code>grad_xy(x) → ℝ²</code>, <code>flow_direction(x) → ℝ² (unit)</code></dd>
+<dt>PRE</dt><dd>三项权重非负；goal 是 2D 点</dd>
+<dt>POST</dt><dd>梯度数值有界（因 obstacle_potential 使用 <code>max(d, 0.05)</code> 下限）</dd>
+<dt>INV</dt><dd>安全半径外 obstacle 项 ≡ 0（有限支集）</dd>
+</div>
+
+<h4>三项的设计张力</h4>
+<table class="mini-table">
+  <thead><tr><th>项</th><th>形式</th><th>作用范围</th><th>常见病态</th><th>对策</th></tr></thead>
+  <tbody>
+    <tr><td>吸引</td><td>$\tfrac12 w_g\|p-p_g\|^2$</td><td>全局</td><td>距离大时梯度过大，推翻其他项</td><td>小 $w_g$（默认 1.0，demo 里降到 0.05）</td></tr>
+    <tr><td>排斥</td><td>$w_o(r_s/d-1)^2·\mathbb{1}[d&lt;r_s]$</td><td>有限 $r_s$</td><td>U 形障碍产生局部极小</td><td>上层做全局路径，$\Phi$ 只做局部</td></tr>
+    <tr><td>交互</td><td>$w_i\sum w_{ij}/d_{ij}$</td><td>由 $G_I$ 决定</td><td>边权抖动 → 梯度抖动</td><td>EMA 平滑 $p_i$</td></tr>
+  </tbody>
+</table>
+
+<h4>梯度的数值实现</h4>
+<p>默认用二阶中心差分的简化版（前向差分）：</p>
+$$
+\frac{\partial\Phi}{\partial p_x} \approx \frac{\Phi(p_x+\epsilon, p_y) - \Phi(p_x, p_y)}{\epsilon}, \quad \epsilon = 10^{-3} \text{ m}
+$$
+<p>在 2D 平面上每帧只做 2 次 $\Phi$ 求值，&lt; 50 μs。<strong>为什么不一次求解析梯度？</strong> 因为 obstacle 项在 $d=r_s$ 处有不连续切换（<code>𝟙[d&lt;r_s]</code>），
+解析梯度要按分支写，调试成本高；数值差分虽然有 $O(\epsilon)$ 误差，但下游 CBF 会兜底硬约束，梯度只做"方向建议"而非"量化命令"。</p>
+
+<div class="callout warn">
+<span class="tag">常见陷阱</span>
+<code>obstacle_potential</code> 使用 <code>max(d, 0.05)</code> 防止 $d→0$ 发散。但这同时会让 <em>"贴近障碍时梯度渐趋于常量"</em>——
+在非常接近障碍时，势能梯度已经不能把车推开了，这是交给 CBF 硬拦的原因。<strong>结论：$\Phi$ 是"软建议"，硬约束只能靠 CBF。</strong>
+</div>
+
+<div class="callout sre">
+<span class="tag">抽象</span> 这是典型的 <em>"多目标加权合成 + 局部梯度启发"</em>。
+SRE 里做 QoS 调度 / 自动调参可以复用：
+把"成本 / 延迟 / 可用性"三项合成一个 $\Phi$，名义策略沿 $-\nabla\Phi$ 走；
+CBF 兜"错误率 &lt; 阈值"这类硬约束。详见 <a href="./sre-adaptation.html#qos">sre-adaptation §5</a>。
+</div>
+</div>
+
+<h2 id="m4">6 · 模块 4 · Lyapunov 稳定性 <code>QuadraticLyapunov</code> / <code>StabilityMonitor</code></h2>
+
+<div class="module-card">
+<h4>核心问题</h4>
+<p>给系统装一个"能量计"$V(x)$：只要任何控制命令让 $\dot V$ 超标，就认为动力学上不稳定。</p>
+
+<h4>契约</h4>
+<div class="contract-grid">
+<dt>IN</dt><dd><code>state, u, dynamics, manifold, target_speed, dt</code></dd>
+<dt>OUT</dt><dd><code>check()→(stable:bool, dV_dt:float)</code>; <code>metrics()→dict</code></dd>
+<dt>PRE</dt><dd><code>dt ∈ (0, 0.1]</code>; <code>target_speed ∈ [0, v_max]</code></dd>
+<dt>POST</dt><dd><code>V(x^*)=0</code>, <code>V(x)≥0</code>, 连续</dd>
+<dt>INV</dt><dd>V 只反映<em>稳定性</em>；安全由 CBF 管 —— <strong>两者数学解耦</strong></dd>
+</div>
+
+<h4>为什么 V 里不含距离项 —— 工程踩坑实录</h4>
+<p>原文措辞上把"车辆安全距离"也塞进 $V$。第一版实现跟着这样做：</p>
+$$
+V_{\text{bad}}(x) = \tfrac12 q_v (v-v^*)^2 + \frac{q_d}{\max(d_\min, \epsilon)^2}
+$$
+<p>结果：车辆朝目标前进 → 最近障碍距离变小 → $V$ 单调上升 → T_inv 判定不稳定 → 每一步都刹。Demo 里打印出 "<code>emergency_brake steps: 150/150</code>"。</p>
+<p>诊断：<strong>$V$ 把两个物理意义不同的量耦合成一个代数式</strong>，导致 Lyapunov 的"能量下降"语义被污染——接近障碍不等于能量上升。</p>
+<p>修复（当前版本）：</p>
+$$
+V(x) = \tfrac12 q_v (v - v^*)^2
+$$
+<p>一个纯速度跟踪项。距离的硬约束完全移到 CBF。这呼应原文 §2 说的"Lyapunov = 物理红线 / CBF = 拓扑栅栏"的<strong>职责分工</strong>——
+工程落地上必须严格解耦。</p>
+
+<h4>$\dot V$ 的数值实现</h4>
+
+<pre><code><span class="kw">def</span> <span class="fn">dV_dt</span>(state, u, dynamics, manifold, target_speed, dt=0.01):
+    v0 = <span class="fn">V_full</span>(state, manifold, target_speed)       <span class="cmt"># 当前能量</span>
+    s1 = dynamics.<span class="fn">step</span>(state, u, dt)                  <span class="cmt"># 前向积分一步</span>
+    v1 = <span class="fn">V_full</span>(s1, manifold, target_speed)          <span class="cmt"># 下一步能量</span>
+    <span class="kw">return</span> (v1 − v0) / dt                            <span class="cmt"># 前向差分</span>
+</code></pre>
+
+<p><strong>为何 dt=0.01 而不是 planner 的 0.1？</strong>
+较小的 dt 让差分更贴近真导数；但太小会进入 jerk 尚未累计影响 v 的"盲区"。0.01 是经验甜点：jerk 对 $\dot V$ 的影响已经显形（$\Delta v \approx j \cdot dt^2 / 2 \sim 3\times 10^{-4}$ m/s 仍可测），同时噪声可控。</p>
+
+<h4 id="m7-state">StabilityMonitor 与 T_inv 的状态机协作</h4>
+
+<figure>
+<svg viewBox="0 0 780 260" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ma4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a4e57"/>
+    </marker>
+    <style>
+      .st{fill:#fff;stroke:#0b6b58;stroke-width:1.4;rx:10}
+      .st-relax{fill:#fff9e6;stroke:#b08800;stroke-width:1.4;rx:10}
+      .st-fail{fill:#ffefe6;stroke:#b0361e;stroke-width:1.4;rx:10}
+      .lbl{font:12px -apple-system;fill:#1b1d22}
+      .s{font:11px -apple-system;fill:#767a82}
+      .c{font:11px ui-monospace;fill:#4a4e57}
+    </style>
+  </defs>
+  <rect class="st" x="30" y="30" width="170" height="70" rx="10"/>
+  <text class="lbl" x="115" y="54" text-anchor="middle" style="font-weight:700">stable</text>
+  <text class="s" x="115" y="72" text-anchor="middle">dV/dt ≤ −γV</text>
+  <text class="c" x="115" y="88" text-anchor="middle">首次尝试即通过</text>
+
+  <rect class="st" x="230" y="30" width="170" height="70" rx="10"/>
+  <text class="lbl" x="315" y="54" text-anchor="middle" style="font-weight:700">relaxed_exp</text>
+  <text class="s" x="315" y="72" text-anchor="middle">dV/dt ≤ −γV</text>
+  <text class="c" x="315" y="88" text-anchor="middle">松弛 k 次后达到</text>
+
+  <rect class="st-relax" x="430" y="30" width="170" height="70" rx="10"/>
+  <text class="lbl" x="515" y="54" text-anchor="middle" style="font-weight:700">relaxed</text>
+  <text class="s" x="515" y="72" text-anchor="middle">dV/dt ≤ τ</text>
+  <text class="c" x="515" y="88" text-anchor="middle">只满足普通 Lyapunov</text>
+
+  <rect class="st-relax" x="630" y="30" width="130" height="70" rx="10"/>
+  <text class="lbl" x="695" y="54" text-anchor="middle" style="font-weight:700">non_increasing</text>
+  <text class="s" x="695" y="72" text-anchor="middle">dV/dt ≈ 0</text>
+  <text class="c" x="695" y="88" text-anchor="middle">边缘稳定</text>
+
+  <rect class="st-fail" x="280" y="160" width="220" height="70" rx="10"/>
+  <text class="lbl" x="390" y="184" text-anchor="middle" style="font-weight:700" fill="#b0361e">emergency_brake</text>
+  <text class="s" x="390" y="202" text-anchor="middle">Control(0, −j_max)</text>
+  <text class="c" x="390" y="218" text-anchor="middle">松弛 N 次仍不行</text>
+
+  <!-- transitions -->
+  <path d="M200,65 L228,65" stroke="#4a4e57" marker-end="url(#ma4)"/>
+  <path d="M400,65 L428,65" stroke="#4a4e57" marker-end="url(#ma4)"/>
+  <path d="M600,65 L628,65" stroke="#4a4e57" marker-end="url(#ma4)"/>
+  <path d="M515,100 L400,158" stroke="#b0361e" stroke-dasharray="4 3" marker-end="url(#ma4)"/>
+  <path d="M315,100 L385,158" stroke="#b0361e" stroke-dasharray="4 3" marker-end="url(#ma4)"/>
+</svg>
+<figcaption>图 6-1 · T_inv 返回的五种 status 状态机。恢复路径只能往左（更保守），不允许就地升级。</figcaption>
+</figure>
+
+<div class="callout sre">
+<span class="tag">SRE 挂钩</span>
+<span class="badge badge-sre">抽象</span> Lyapunov 的核心模式是 <em>"定义一个单调下降的量 → 监视其导数 → 违反时矫正"</em>。
+SRE 里对标：定义 <em>"错误预算消耗率"</em>（如 error budget 的瞬时 burn rate），监视它是否超过衰减目标，超标时自动降级 feature flag / 限流。
+见 <a href="./sre-adaptation.html#burn-rate">sre-adaptation §6</a>。
+</div>
+</div>
+
+<h2 id="m5">7 · 模块 5 · 可达集 <code>ReachableSet</code> / <code>DeadZoneDetector</code></h2>
+
+<div class="module-card">
+<h4>核心问题</h4>
+<p>在 $T$ 秒内车辆能去哪里？当威胁落在"去不到的地方之外"时就是逻辑死区——提前告警。</p>
+
+<h4>契约</h4>
+<div class="contract-grid">
+<dt>IN</dt><dd><code>state0, horizon T, n_samples N, dt</code></dd>
+<dt>OUT</dt><dd><code>endpoints: ℝᴺˣ²</code>; <code>hull_vertices: ℝᴹˣ²</code>; <code>in_reachable(target): bool</code></dd>
+<dt>PRE</dt><dd><code>T ∈ (0, 5]</code>, <code>N ∈ [50, 500]</code></dd>
+<dt>POST</dt><dd>hull 包络 endpoints；事件驱动，不在每帧主环调用</dd>
+<dt>INV</dt><dd>凸包 <strong>乐观高估</strong>：hull ⊇ 真实可达集；只可作为"不可达"的下界证明，不可作为"可达"的保证</dd>
+</div>
+
+<h4>采样策略的选择</h4>
+<table class="mini-table">
+  <thead><tr><th>方案</th><th>覆盖率</th><th>N 敏感度</th><th>选中？</th></tr></thead>
+  <tbody>
+    <tr><td>均匀随机（当前）</td><td>一般</td><td>中</td><td>✓ 实现最简</td></tr>
+    <tr><td>Latin Hypercube</td><td>较好</td><td>低</td><td>可替换，scipy 可用</td></tr>
+    <tr><td>Sobol 低差序列</td><td>最好</td><td>低</td><td>推荐演进方向</td></tr>
+    <tr><td>极值采样（bang-bang）</td><td>包络最优</td><td>极低</td><td>最适合可达集；未实现</td></tr>
+  </tbody>
+</table>
+
+<h4>为什么采用"分段常值、一次切换"而不是"每步随机"？</h4>
+<pre><code>steer1, steer2, jerk1, jerk2 = <span class="fn">uniform</span>(...)    <span class="cmt"># 每条轨迹 2 套参数</span>
+half = steps // 2
+<span class="kw">for</span> t <span class="kw">in</span> range(steps):
+    <span class="kw">if</span> t &lt; half: controls.<span class="fn">append</span>(Control(steer1, jerk1))
+    <span class="kw">else</span>:        controls.<span class="fn">append</span>(Control(steer2, jerk2))
+</code></pre>
+<p>原因：<strong>实际执行器有带宽限制</strong>（转向与加速度不会每 0.1 s 翻转），每步随机会模拟出真实系统去不到的轨迹，
+凸包会<strong>乐观放大</strong>。用"分段常值 + 一次切换"是在可达集乐观程度与算法简单性之间的折中。</p>
+
+<h4>DeadZoneDetector 的最坏情况构造</h4>
+
+<pre><code><span class="kw">def</span> <span class="fn">check</span>(state, threat_pos, threat_vel):
+    <span class="cmt"># 最坏情况：自车全力刹（最保守），他车匀速（最坏轨迹假设）</span>
+    controls = [<span class="fn">Control</span>(0, −jerk_max)] · steps
+    traj = dynamics.<span class="fn">rollout</span>(state, controls, dt)
+    <span class="kw">for</span> i, s <span class="kw">in</span> enumerate(traj):
+        tp = threat_pos + threat_vel · (i·dt)
+        clear = ‖(s.px, s.py) − tp‖
+        min_clear = min(min_clear, clear)
+    <span class="kw">return</span> (min_clear &lt; 0, min_clear)
+</code></pre>
+
+<p>注意：这里的"最坏"是<strong>非对称假设</strong>——对自己保守（全力刹）、对对方激进（匀速撞来）。在不确定性博弈下这等价于假设对方"最不配合"，与 §2.3 的最坏情况纳什思想一致。</p>
+
+<div class="callout sre">
+<span class="tag">SRE 挂钩</span>
+<span class="badge badge-sre">抽象</span> 可达集是 <em>"容量 / 预算的前瞻性证明"</em>——"未来 T 秒内我能做到什么"。
+SRE 里对标：<em>"未来 5 分钟内系统能处理的流量上限"</em>（基于 auto-scaling 速率 × 实例预热时间）。
+当预估负载超出此集合，提前触发 graceful shed / 拒绝路径。
+详见 <a href="./sre-adaptation.html#capacity">sre-adaptation §7</a>。
+</div>
+</div>
+
+<h2 id="m6">8 · 模块 6 · CBF-QP <code>CBFQPFilter</code></h2>
+
+<div class="module-card">
+<h4>核心问题</h4>
+<p>把任何安全建议（"离障碍要远"、"车道别出"）表达成一个数学不等式 $\dot h + \alpha h \ge 0$，
+再解一个 QP 把名义命令投到"不违反任何不等式"的最近点。</p>
+
+<h4>契约</h4>
+<div class="contract-grid">
+<dt>IN</dt><dd><code>state, u_nom, barriers: List[BarrierFunction]</code></dd>
+<dt>OUT</dt><dd><code>u_safe, info{status, violations}</code>; 永不抛异常</dd>
+<dt>PRE</dt><dd>至少一条 barrier 返回有限值</dd>
+<dt>POST</dt><dd>返回的 u_safe 在执行器包络内；若所有 barrier 全部无解则 <code>Control(0,-j_max)</code></dd>
+<dt>INV</dt><dd>"nom 已满足所有 barrier" 分支立即返回 u_nom（零开销）</dd>
+</div>
+
+<h3 id="m6-braking">8.1 刹车距离 barrier 推导（工程扩展）</h3>
+
+<p>原论文直接用"距离 barrier"$h=d-r_s$。但这对 jerk 驱动系统 <strong>相对度 = 2</strong>，一次 QP 无法收敛。工程上必须自己造一个相对度 1 的 barrier：</p>
+
+<h5>推导</h5>
+<p>考虑 ego 沿 $+x$ 方向以速度 $v$、加速度 $a$ 运动，目标是"碰前刹停"。若施加常值减速 $a_\text{brk}$，刹停距离为 $v^2/(2a_\text{brk})$；
+但 jerk 驱动意味着 $a$ 不能瞬时切换，需要约 $\tau = |a-(-a_\text{brk})|/j_\text{max}$ 秒 ramp，期间已走 $v\tau$。</p>
+
+$$
+h_\text{brake}(x) = d_\text{obs}(p) - r_s - v\tau - \frac{v^2}{2a_\text{brk}(\mu)}
+$$
+
+<p>对时间求导（忽略 $\mu$ 缓变）：</p>
+
+$$
+\dot h = -v\cos\theta - \tau \dot v - \frac{v\dot v}{a_\text{brk}} = -v\cos\theta - \left(\tau + \frac{v}{a_\text{brk}}\right)\cdot a
+$$
+
+<p>$a$ 在状态里，$\dot a = j$，因此 $\dot h$ <em>不直接</em>依赖 $u$——相对度还是看起来像 2？
+这里的关键是："QP 选 $u$ 后，用 <code>h_dot_horizon=0.1s</code> 的<strong>有限差分</strong>估计 $\dot h$"，
+把 $a$ 在 horizon 内的累积变化 $\Delta a \approx j\cdot \text{dt}$ 纳入进来——这才是工程上让 jerk 直接影响 $\dot h$ 的真相。</p>
+
+<h5>$a_\text{brk}(\mu)$ 的 μ 自适应</h5>
+$$
+a_\text{brk}(\mu) = \text{safety} \cdot \min(a_\text{max}, \mu g), \quad \text{safety}=0.6
+$$
+<p>双限：执行器上限 $a_\text{max}=6$ m/s²；路面摩擦 $\mu g$；再乘 0.6 的 derating 吸收 $\mu$ 估计误差。μ=0.5 的雨天自动得到 $a_\text{brk}\approx 2.9$ m/s²，刹车距离拉长 1.7 倍，CBF 更早开始刹。</p>
+
+<h3 id="m6-grid">8.2 网格搜索 vs 真 QP</h3>
+
+<p>本实现用二级网格搜索替代 QP，避免引入 OSQP 等外部依赖。</p>
+
+<pre><code><span class="cmt"># 粗网格</span>
+best_u = None, best_cost = ∞
+<span class="kw">for</span> s <span class="kw">in</span> linspace(steer_lo, steer_hi, 11):
+    <span class="kw">for</span> j <span class="kw">in</span> linspace(jerk_lo, jerk_hi, 11):        <span class="cmt"># 121 个候选</span>
+        u = Control(s, j)
+        cost, ok = <span class="fn">_objective</span>(state, u_nom, u)
+        <span class="kw">if</span> ok <span class="kw">and</span> cost &lt; best_cost:
+            best_u, best_cost = u, cost
+<span class="cmt"># 精化：在 best_u 周围一格里再搜 21×21</span>
+s0, j0 = best_u
+ds, dj = (hi-lo)/11
+<span class="kw">for</span> s <span class="kw">in</span> linspace(s0-ds, s0+ds, 21):
+    <span class="kw">for</span> j <span class="kw">in</span> linspace(j0-dj, j0+dj, 21):        <span class="cmt"># 441 个候选</span>
+        ...
+<span class="cmt"># 最终 562 次 barrier 评估 · 每次 ~10 µs → 6 ms</span>
+</code></pre>
+
+<h5>为什么还可以接受？</h5>
+<ul>
+  <li>2D 控制空间足够小，网格覆盖密度够（精化步距 &lt; 1% 包络）。</li>
+  <li>每个候选的 cost 计算是纯向量运算，可以 numpy 矢量化到一次调用（未来优化）。</li>
+  <li>网格不可行时<strong>明确的 fallback</strong>（刹停）比 QP 求解器不收敛更好调试。</li>
+</ul>
+
+<h5>什么时候必须换 QP？</h5>
+<ul>
+  <li>barrier 数 &gt; 10：穷举仍然 ok，但随 barrier 数线性上升。</li>
+  <li>控制维度 &gt; 2：每加一维网格点数乘 10，立刻退化。本工程 <code>(δ, j)</code> 是 2D 的恰好位于可接受边缘。</li>
+  <li>需要提供 dual 信息做约束灵敏度分析：真 QP 给出 Lagrange 乘子，网格法没有。</li>
+</ul>
+
+<h3 id="m6-relative">8.3 相对度分析：为何 DistanceBarrier 不够</h3>
+
+<figure>
+<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#767a82;stroke-width:1.2}
+      .lbl{font:12px -apple-system;fill:#1b1d22}
+      .m{font:11px ui-monospace;fill:#4a4e57}
+      .red{font:11px -apple-system;fill:#b0361e;font-weight:700}
+      .green{font:11px -apple-system;fill:#0b6b58;font-weight:700}
+    </style>
+  </defs>
+
+  <rect class="box" x="20" y="30" width="320" height="160" rx="8" fill="#ffefe6"/>
+  <text class="lbl" x="180" y="54" text-anchor="middle" style="font-weight:700">DistanceBarrier</text>
+  <text class="m" x="30" y="78">h = d − r_s</text>
+  <text class="m" x="30" y="96">ḣ = −v·cos θ</text>
+  <text class="m" x="30" y="114">ḧ = −v̇·cos θ + v·θ̇·sin θ</text>
+  <text class="m" x="30" y="132">  = −a·cos θ + ...</text>
+  <text class="m" x="30" y="150">⃛h = −j·cos θ + ...</text>
+  <text class="red" x="30" y="178">jerk 要到 ⃛h 才出现 → 单次 QP 无法直接拦</text>
+
+  <rect class="box" x="380" y="30" width="320" height="160" rx="8" fill="#eaf7ec"/>
+  <text class="lbl" x="540" y="54" text-anchor="middle" style="font-weight:700">BrakingDistanceBarrier</text>
+  <text class="m" x="390" y="78">h = d − r_s − vτ − v²/(2a_brk)</text>
+  <text class="m" x="390" y="96">ḣ = −v·cos θ − (τ+v/a_brk)·a</text>
+  <text class="m" x="390" y="120">有限差分 horizon=0.1s 吞 Δa = j·dt</text>
+  <text class="m" x="390" y="138">⇒ ḣ 对 j 线性敏感</text>
+  <text class="green" x="390" y="168">相对度 1 · QP 可即时矫正</text>
+</svg>
+<figcaption>图 8-1 · 两类 barrier 的相对度对比。刹车距离 barrier 把速度也塞进 h，把 jerk 的作用从"需要 3 次求导"变成"1 次求导 + 有限差分"。</figcaption>
+</figure>
+
+<div class="callout sre">
+<span class="tag">SRE 挂钩</span>
+<span class="badge badge-sre">抽象</span> CBF-QP 的骨架是 <em>"名义建议 + 若干不等式约束 → 求最近可行解"</em>。
+SRE 里对标：<em>"客户端想发 1000 QPS，但必须满足 cache 命中率≥95%、CPU≤70% …… 求能满足所有 SLO 的最近流量上限"</em>。
+这就是 admission controller 的数学底子。详见 <a href="./sre-adaptation.html#admission">sre-adaptation §8</a>。
+</div>
+</div>
+
+<h2 id="m7">9 · 模块 7 · T_inv 算子 <code>ControlInvariantOperator</code></h2>
+
+<div class="module-card">
+<h4>核心问题</h4>
+<p>把"任何可能违反 Lyapunov 的名义命令"矫正成"一定不违反"。是整个系统的<strong>最后一道闸</strong>。</p>
+
+<h4>契约</h4>
+<div class="contract-grid">
+<dt>IN</dt><dd><code>state, u_nn</code></dd>
+<dt>OUT</dt><dd><code>u_safe ∈ U</code>; <code>info{V, dV_dt, status ∈ {stable, relaxed_exp, relaxed, non_increasing, emergency_brake}}</code></dd>
+<dt>PRE</dt><dd>下游 CBF 已跑过一次（保证 barrier 已经折叠）</dd>
+<dt>POST</dt><dd><strong>返回的 u_safe 保证 $\dot V(x, u_\text{safe}) \le \tau$</strong>（τ=1e-3），或 status=<code>emergency_brake</code></dd>
+<dt>INV</dt><dd>有限步终止（最多 <code>relax_steps+1</code> 次评估）；绝不抛异常</dd>
+</div>
+
+<h3 id="m7-invariants">9.1 正确性不变式（评审要点）</h3>
+
+<div class="callout contract">
+<span class="tag">I-01 · 终止性</span>
+松弛过程每次 <code>jerk ← jerk − j_max/N</code>，单调下降，最多 N 步达到 <code>jerk = -j_max</code>。
+此时命令等价于 fallback，fallback 永远满足 Lyapunov（速度下降，$V$ 下降）。故算法必然终止。
+</div>
+
+<div class="callout contract">
+<span class="tag">I-02 · 安全性</span>
+若 status ∈ {stable, relaxed_exp, relaxed, non_increasing}：$\dot V \le \tau$。
+若 status = emergency_brake：执行 $u=(0, -j_\max)$，对应 $a$ 单调变负、$v$ 单调下降、$V = \tfrac12 q_v(v-v^*)^2$ 的导数 $q_v(v-v^*)a$。
+注意当 $v &lt; v^*$ 时 $(v-v^*) &lt; 0$、$a &lt; 0$ → $\dot V &gt; 0$，<em>此时 Lyapunov 反而上升</em>——这是 emergency_brake 的<strong>已知折中</strong>：
+宁可暂时不稳定（偏离目标速度）也不撞。故 emergency_brake 是<strong>超越 Lyapunov 约束的兜底</strong>。
+</div>
+
+<div class="callout contract">
+<span class="tag">I-03 · 有界性</span>
+返回的 u_safe 满足执行器约束：<code>|steer|≤max_steer</code>, <code>|jerk|≤jerk_max</code>。
+这由下游 CBF 的 grid 范围保证（见 §8.2）+ fallback 显式构造。
+</div>
+
+<div class="callout contract">
+<span class="tag">I-04 · 观测完备性</span>
+任何一次 apply 必然写 info 四字段。status 是外部 SLI（<code>emergency_brake</code> 计数）。不允许静默成功。
+</div>
+
+<h3>9.2 关键代码段的逐行标注</h3>
+
+<pre><code><span class="kw">def</span> <span class="fn">apply</span>(state, u_nn):
+    u_cbf, cbf_info = self.cbf.<span class="fn">filter</span>(state, u_nn)      <span class="cmt"># (1) 先过 CBF：折叠可行集</span>
+    V = self.stability.fn.<span class="fn">V_full</span>(state, ...)           <span class="cmt"># (2) 当前能量</span>
+    exp_target = −self.gamma · V                        <span class="cmt"># (3) 指数衰减目标 dV/dt ≤ −γV</span>
+
+    u = u_cbf
+    info = {"cbf": cbf_info, "V": V, "dV_dt": <span class="kw">None</span>, "status": "unchanged"}
+
+    <span class="kw">def</span> <span class="fn">_dv</span>(cand):
+        <span class="kw">return</span> self.stability.fn.<span class="fn">dV_dt</span>(state, cand, ...)
+
+    dv = <span class="fn">_dv</span>(u)
+    info["dV_dt"] = dv
+
+    <span class="cmt"># (4) 快车道：已经稳定</span>
+    <span class="kw">if</span> dv ≤ self.tol:
+        info["status"] = "stable" <span class="kw">if</span> dv ≤ exp_target + 1e-6 <span class="kw">else</span> "non_increasing"
+        <span class="kw">return</span> u, info
+
+    <span class="cmt"># (5) 松弛循环：逐步降 jerk</span>
+    best_u, best_dv = u, dv
+    <span class="kw">for</span> step <span class="kw">in</span> range(self.relax_steps):
+        new_jerk = max(u.jerk − j_max/N, −j_max)         <span class="cmt"># 单调下降 → I-01 终止性</span>
+        u = Control(u.steer, new_jerk)
+        dv = <span class="fn">_dv</span>(u)
+        <span class="kw">if</span> dv &lt; best_dv: best_u, best_dv = u, dv
+        <span class="kw">if</span> dv ≤ exp_target + 1e-6:                        <span class="cmt"># 最优出口</span>
+            info["dV_dt"] = dv
+            info["status"] = "relaxed_exp"
+            <span class="kw">return</span> u, info
+        <span class="kw">if</span> dv ≤ self.tol:                                 <span class="cmt"># 次优出口</span>
+            info["dV_dt"] = dv
+            info["status"] = "relaxed"
+            <span class="kw">return</span> u, info
+
+    <span class="cmt"># (6) 松弛耗尽：取最优中间结果</span>
+    <span class="kw">if</span> best_dv ≤ self.tol:
+        info["status"] = "relaxed"
+        <span class="kw">return</span> best_u, info
+
+    <span class="cmt"># (7) 真正的降级 —— I-02 的"兜底"分支</span>
+    brake = Control(0.0, −j_max)
+    dv_brake = <span class="fn">_dv</span>(brake)
+    info["dV_dt"] = dv_brake
+    info["status"] = "emergency_brake"
+    <span class="kw">return</span> brake, info
+</code></pre>
+
+<h4>时延拆分</h4>
+<table class="mini-table">
+  <thead><tr><th>分支</th><th>评估次数</th><th>单次 µs</th><th>P50</th><th>P99</th></tr></thead>
+  <tbody>
+    <tr><td>fast path (stable)</td><td>1</td><td>100</td><td>0.1 ms</td><td>0.2 ms</td></tr>
+    <tr><td>松弛 1-3 次</td><td>2-4</td><td>100</td><td>0.3 ms</td><td>0.5 ms</td></tr>
+    <tr><td>松弛 8 次 + fallback</td><td>10</td><td>100</td><td>1.0 ms</td><td>1.5 ms</td></tr>
+    <tr><td>最坏合计</td><td></td><td></td><td><strong>~0.3 ms</strong></td><td><strong>~2 ms</strong></td></tr>
+  </tbody>
+</table>
+
+<div class="callout sre">
+<span class="tag">SRE 挂钩</span>
+<span class="badge badge-sre">抽象</span> T_inv 的本质是 <em>"候选动作 → 硬约束验证 → 迭代松弛 → 保底降级"</em>——这是一个<strong>命令矫正器</strong>的通用模式。
+SRE 对标：pull request 的<em>CI guard</em>：候选变更 → 若干 check → 不通过就 reject / 自动 hotfix / 最终只允许 revert。
+详见 <a href="./sre-adaptation.html#tinv-guard">sre-adaptation §9</a>。
+</div>
+</div>
+
+<h2 id="m8">10 · 模块 8 · 博弈 / 安全冗余 <code>BeliefState</code> / <code>WorstCaseGame</code></h2>
+
+<div class="module-card">
+<h4>核心问题</h4>
+<p>把"我不知道你要干什么"这种信息不完备翻译成"多留一车位"这种几何缓冲。
+本模块<strong>不产生命令</strong>，而是<em>改 CBF 的 safety_margin</em>——博弈层的不确定性被"代数化"到几何层。</p>
+
+<h4>契约</h4>
+<div class="contract-grid">
+<dt>IN</dt><dd><code>BeliefState.distribution: dict[intent→prob]</code>; <code>rel_speed</code></dd>
+<dt>OUT</dt><dd><code>safe_buffer(rel_speed, belief) → float (meters)</code></dd>
+<dt>PRE</dt><dd>distribution 非负；上游归一化</dd>
+<dt>POST</dt><dd>$r_\text{buf} \ge r_\text{base}$；关于 entropy 单调不减；关于 rel_speed 单调不减</dd>
+<dt>INV</dt><dd>最坏情况聚合：<code>aggregate_buffer = max over opponents</code></dd>
+</div>
+
+<h4>为何是加性而不是乘性？</h4>
+$$
+r_\text{buf} = r_\text{base} + k_v \max(v_\text{close}, 0) + k_\eta \cdot \eta
+$$
+<p>加性的好处：<strong>线性可解释</strong>——"意图不确定给我加了 2m、对方开得快给我加了 3m"。
+乘性会让低闭合速度 + 高熵变成"0 × large = 0"的漏洞。
+代价：极端情况 buffer 可能过大，但这是安全方向的过保守，可接受。</p>
+
+<h4>熵的归一化</h4>
+$$
+\eta = \frac{H(p)}{\log |p|} = \frac{-\sum p_k \log p_k}{\log |p|} \in [0, 1]
+$$
+<p>用<em>归一化</em>熵而非原始熵，这样 belief 的类别数不影响 $k_\eta$ 的解读——$\eta=0.5$ 永远意味着"一半不确定性"，无论类别是 4 还是 10。</p>
+
+<h4>与 CBF 的耦合接口</h4>
+<pre><code><span class="cmt"># planner 初始化时</span>
+barriers = <span class="fn">make_obstacle_barriers</span>(manifold, margin=self.game.base_buffer)
+
+<span class="cmt"># 改进空间：每帧按 belief 更新 margin —— 目前未实现</span>
+<span class="cmt"># TODO（PR-2.3-02）：每帧 margin ← WorstCaseGame.aggregate_buffer(...)</span>
+</code></pre>
+<p>当前实现是<strong>静态缓冲</strong>：初始化时固定 margin。动态更新的 PR 预估需要：</p>
+<ul>
+  <li>在 <code>StructuralPlanner.step</code> 里加一行 <code>self.cbf.barriers = make_obstacle_barriers(..., margin=r_buf)</code>。</li>
+  <li>或者给 <code>BarrierFunction</code> 协议加 <code>safety_margin</code> 属性（避免重建对象）。</li>
+</ul>
+
+<div class="callout sre">
+<span class="tag">SRE 挂钩</span>
+<span class="badge badge-sre">抽象</span> 这就是 <em>"用不确定性度量驱动安全余量"</em>。
+SRE 对标：上游监控抖动大（<em>observability entropy</em>高）时，自动加大 SLO 余量：
+例如 <em>"错误率 P99 波动大 → 自动把限流阈值从 95% 降到 85%"</em>。
+详见 <a href="./sre-adaptation.html#uncertainty-margin">sre-adaptation §10</a>。
+</div>
+</div>
+
+<h2 id="m9">11 · 模块 9 · Planner 装配 <code>StructuralPlanner</code></h2>
+
+<div class="module-card">
+<h4>核心问题</h4>
+<p>把前 8 个模块装成一个<strong>唯一对外入口</strong>：<code>step(state, graph, dt) → (next_state, u_safe, trace)</code>。</p>
+
+<h4>构造顺序的依赖图</h4>
+<figure>
+<svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="mm9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a4e57"/>
+    </marker>
+    <style>
+      .b{fill:#fff;stroke:#767a82;stroke-width:1.2;rx:8}
+      .h{fill:#eaf7ec;stroke:#0b6b58;stroke-width:1.4;rx:8}
+      .lbl{font:12px -apple-system;fill:#1b1d22}
+      .s{font:11px -apple-system;fill:#767a82}
+    </style>
+  </defs>
+  <rect class="b" x="20" y="30" width="120" height="50" rx="8"/>
+  <text class="lbl" x="80" y="54" text-anchor="middle">dynamics</text>
+  <text class="s" x="80" y="70" text-anchor="middle">BicycleModel</text>
+
+  <rect class="b" x="20" y="110" width="120" height="50" rx="8"/>
+  <text class="lbl" x="80" y="134" text-anchor="middle">manifold</text>
+  <text class="s" x="80" y="150" text-anchor="middle">List[Obstacle]</text>
+
+  <rect class="b" x="20" y="190" width="120" height="50" rx="8"/>
+  <text class="lbl" x="80" y="214" text-anchor="middle">game</text>
+  <text class="s" x="80" y="230" text-anchor="middle">WorstCaseGame</text>
+
+  <rect class="b" x="180" y="30" width="140" height="50" rx="8"/>
+  <text class="lbl" x="250" y="54" text-anchor="middle">potential</text>
+  <text class="s" x="250" y="70" text-anchor="middle">PotentialField</text>
+
+  <rect class="b" x="180" y="110" width="140" height="50" rx="8"/>
+  <text class="lbl" x="250" y="134" text-anchor="middle">lyap</text>
+  <text class="s" x="250" y="150" text-anchor="middle">QuadraticLyapunov</text>
+
+  <rect class="h" x="360" y="30" width="150" height="50" rx="8"/>
+  <text class="lbl" x="435" y="54" text-anchor="middle">nominal</text>
+  <text class="s" x="435" y="70" text-anchor="middle">GradientPolicy</text>
+
+  <rect class="h" x="360" y="110" width="150" height="50" rx="8"/>
+  <text class="lbl" x="435" y="134" text-anchor="middle">cbf</text>
+  <text class="s" x="435" y="150" text-anchor="middle">CBFQPFilter</text>
+
+  <rect class="h" x="550" y="70" width="180" height="60" rx="8"/>
+  <text class="lbl" x="640" y="98" text-anchor="middle">stability + t_inv</text>
+  <text class="s" x="640" y="116" text-anchor="middle">StabilityMonitor · T_inv</text>
+
+  <!-- edges -->
+  <path d="M140,55 L175,55" stroke="#4a4e57" marker-end="url(#mm9)"/>
+  <path d="M140,135 L175,135" stroke="#4a4e57" marker-end="url(#mm9)"/>
+  <path d="M140,213 L355,120" stroke="#4a4e57" marker-end="url(#mm9)"/>
+  <path d="M320,55 L355,55" stroke="#4a4e57" marker-end="url(#mm9)"/>
+  <path d="M320,135 L355,135" stroke="#4a4e57" marker-end="url(#mm9)"/>
+  <path d="M510,55 L545,95" stroke="#4a4e57" marker-end="url(#mm9)"/>
+  <path d="M510,135 L545,105" stroke="#4a4e57" marker-end="url(#mm9)"/>
+</svg>
+<figcaption>图 11-1 · Planner 内部对象图。箭头=依赖方向；灰色=数据容器；绿色=算法组件。构造顺序必须保证无环。</figcaption>
+</figure>
+
+<h4><code>step()</code> 的精确流程</h4>
+
+<pre><code><span class="kw">def</span> <span class="fn">step</span>(state, graph, dt):                     <span class="cmt"># 外部唯一入口</span>
+    u_nn = self.<span class="fn">nominal</span>(state, graph)                 <span class="cmt"># (1) 名义策略：可替换点 ★</span>
+    u_safe, info = self.t_inv.<span class="fn">apply</span>(state, u_nn)       <span class="cmt"># (2) CBF + Lyapunov 矫正</span>
+    next_state = self.dynamics.<span class="fn">step</span>(state, u_safe, dt)  <span class="cmt"># (3) 应用到动力学</span>
+
+    trace = {                                        <span class="cmt"># (4) 可观测性</span>
+        "u_nn":  [u_nn.steer, u_nn.jerk],
+        "u_safe": [u_safe.steer, u_safe.jerk],
+        "state": state.to_vec(),
+        "next_state": next_state.to_vec(),
+        "min_dist": self.manifold.<span class="fn">min_distance</span>(state),
+        "V": info["V"],
+        "dV_dt": info["dV_dt"],
+        "status": info["status"],
+        "cbf_status": info["cbf"]["status"],
+    }
+    <span class="kw">return</span> next_state, u_safe, trace
+</code></pre>
+
+<p>注意 graph 更新不在这里——是调用者的职责。这让"感知→意图图更新"与"决策→step"可以在不同线程/不同频率跑。</p>
+
+<div class="callout sre">
+<span class="tag">唯一入口原则</span>
+<strong>任何对 dynamics.step 的外部调用都是 bug。</strong>
+Codex 评审可以固化成：<code>grep -R 'dynamics\.step' | grep -v 'planner.py\|reachable.py\|test_' → empty</code>。
+</div>
+</div>
+
+<h2 id="e2e">12 · 端到端请求追踪</h2>
+
+<p>下面这张图展示<strong>一帧</strong>从感知到动力学的完整数据流。每个节点标注了典型时延、产生的指标、失败路径。</p>
+
+<figure>
+<svg viewBox="0 0 1080 480" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ma12" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333"/>
+    </marker>
+    <marker id="mr12" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b0361e"/>
+    </marker>
+    <style>
+      .s1{fill:#eef2ff;stroke:#2a4ab0;stroke-width:1.4}
+      .s2{fill:#eaf7ec;stroke:#0b6b58;stroke-width:1.4}
+      .s3{fill:#fff9e6;stroke:#b08800;stroke-width:1.4}
+      .s4{fill:#f4ece0;stroke:#5a4400;stroke-width:1.4}
+      .sf{fill:#ffefe6;stroke:#b0361e;stroke-width:1.4}
+      .tr{fill:#f3eef9;stroke:#5a2a9d;stroke-width:1.2}
+      .lbl{font:bold 12px -apple-system;fill:#1b1d22}
+      .sub{font:11px -apple-system;fill:#767a82}
+      .mono{font:10px ui-monospace;fill:#4a4e57}
+      .metric{font:10px ui-monospace;fill:#5a2a9d}
+    </style>
+  </defs>
+
+  <!-- t=0: perception -->
+  <rect class="s1" x="20" y="30" width="160" height="90" rx="8"/>
+  <text class="lbl" x="100" y="52" text-anchor="middle">t0 感知</text>
+  <text class="sub" x="100" y="70" text-anchor="middle">obs 到达</text>
+  <text class="mono" x="100" y="88" text-anchor="middle">~5 ms（外部）</text>
+  <text class="metric" x="100" y="106" text-anchor="middle">obs.age_ms</text>
+
+  <!-- graph update -->
+  <rect class="s1" x="210" y="30" width="160" height="90" rx="8"/>
+  <text class="lbl" x="290" y="52" text-anchor="middle">t1 graph.update</text>
+  <text class="sub" x="290" y="70" text-anchor="middle">重算 w_ij</text>
+  <text class="mono" x="290" y="88" text-anchor="middle">0.2-1 ms</text>
+  <text class="metric" x="290" y="106" text-anchor="middle">graph.update_ms · edges_count</text>
+
+  <!-- game update -->
+  <rect class="s1" x="400" y="30" width="160" height="90" rx="8"/>
+  <text class="lbl" x="480" y="52" text-anchor="middle">t2 game.buffer</text>
+  <text class="sub" x="480" y="70" text-anchor="middle">r_buf 聚合</text>
+  <text class="mono" x="480" y="88" text-anchor="middle">0.1 ms</text>
+  <text class="metric" x="480" y="106" text-anchor="middle">game.entropy · buffer</text>
+
+  <!-- nominal -->
+  <rect class="s2" x="590" y="30" width="160" height="90" rx="8"/>
+  <text class="lbl" x="670" y="52" text-anchor="middle">t3 nominal(u_nn)</text>
+  <text class="sub" x="670" y="70" text-anchor="middle">GradientPolicy / NN</text>
+  <text class="mono" x="670" y="88" text-anchor="middle">0.3-0.8 ms</text>
+  <text class="metric" x="670" y="106" text-anchor="middle">policy.step_ms</text>
+
+  <!-- CBF -->
+  <rect class="s3" x="20" y="170" width="160" height="100" rx="8"/>
+  <text class="lbl" x="100" y="192" text-anchor="middle">t4 CBF filter</text>
+  <text class="sub" x="100" y="210" text-anchor="middle">网格 121+441 候选</text>
+  <text class="mono" x="100" y="228" text-anchor="middle">3-6 ms</text>
+  <text class="metric" x="100" y="246" text-anchor="middle">cbf.filter_ms</text>
+  <text class="metric" x="100" y="260" text-anchor="middle">cbf.fallback_rate</text>
+
+  <!-- T_inv -->
+  <rect class="s3" x="210" y="170" width="160" height="100" rx="8"/>
+  <text class="lbl" x="290" y="192" text-anchor="middle">t5 T_inv.apply</text>
+  <text class="sub" x="290" y="210" text-anchor="middle">Lyapunov 松弛</text>
+  <text class="mono" x="290" y="228" text-anchor="middle">0.3-2 ms</text>
+  <text class="metric" x="290" y="246" text-anchor="middle">tinv.status_count{*}</text>
+  <text class="metric" x="290" y="260" text-anchor="middle">tinv.V · dV_dt</text>
+
+  <!-- dynamics.step -->
+  <rect class="s4" x="400" y="170" width="160" height="100" rx="8"/>
+  <text class="lbl" x="480" y="192" text-anchor="middle">t6 dynamics.step</text>
+  <text class="sub" x="480" y="210" text-anchor="middle">RK4 一步</text>
+  <text class="mono" x="480" y="228" text-anchor="middle">50-100 µs</text>
+  <text class="metric" x="480" y="246" text-anchor="middle">dyn.step_ms</text>
+  <text class="metric" x="480" y="260" text-anchor="middle">dyn.a_clamped_rate</text>
+
+  <!-- actuator -->
+  <rect class="s4" x="590" y="170" width="160" height="100" rx="8"/>
+  <text class="lbl" x="670" y="192" text-anchor="middle">t7 执行器</text>
+  <text class="sub" x="670" y="210" text-anchor="middle">线控刹车 / 转向</text>
+  <text class="mono" x="670" y="228" text-anchor="middle">~10 ms（外部）</text>
+  <text class="metric" x="670" y="246" text-anchor="middle">actuator.latency</text>
+
+  <!-- trace sink -->
+  <rect class="tr" x="800" y="90" width="260" height="180" rx="10"/>
+  <text class="lbl" x="930" y="114" text-anchor="middle">trace.jsonl · 异步写</text>
+  <text class="sub" x="930" y="136" text-anchor="middle">每帧一行 JSON，10 个字段</text>
+  <text class="mono" x="815" y="160">{ t, state, next_state,</text>
+  <text class="mono" x="815" y="176">  u_nn, u_safe,</text>
+  <text class="mono" x="815" y="192">  V, dV_dt, min_dist,</text>
+  <text class="mono" x="815" y="208">  status, cbf_status }</text>
+  <text class="sub" x="930" y="236" text-anchor="middle" style="font-weight:700;fill:#5a2a9d">single source of truth</text>
+  <text class="sub" x="930" y="252" text-anchor="middle">离线按 JSON Schema 解析</text>
+
+  <!-- fallback -->
+  <rect class="sf" x="210" y="330" width="340" height="80" rx="10"/>
+  <text class="lbl" x="380" y="358" text-anchor="middle" fill="#b0361e">⊗ 降级路径</text>
+  <text class="sub" x="380" y="378" text-anchor="middle">emergency_brake: Control(0, −j_max)</text>
+  <text class="mono" x="380" y="396" text-anchor="middle">绕过名义策略，直接到 dynamics.step</text>
+
+  <!-- SLO pill -->
+  <rect fill="#fff" stroke="#1b1d22" stroke-width="1.2" x="20" y="330" width="170" height="80" rx="10"/>
+  <text class="lbl" x="105" y="354" text-anchor="middle">单帧 SLO</text>
+  <text class="sub" x="105" y="372" text-anchor="middle">total P99 &lt; 15 ms</text>
+  <text class="sub" x="105" y="388" text-anchor="middle">SLI = t1-t6 合计</text>
+  <text class="mono" x="105" y="404" text-anchor="middle">budget: 20 ms</text>
+
+  <!-- arrows -->
+  <line x1="180" y1="75" x2="205" y2="75" stroke="#333" marker-end="url(#ma12)"/>
+  <line x1="370" y1="75" x2="395" y2="75" stroke="#333" marker-end="url(#ma12)"/>
+  <line x1="560" y1="75" x2="585" y2="75" stroke="#333" marker-end="url(#ma12)"/>
+  <path d="M670,120 C 670,150 130,150 100,165" stroke="#333" fill="none" marker-end="url(#ma12)"/>
+  <line x1="180" y1="220" x2="205" y2="220" stroke="#333" marker-end="url(#ma12)"/>
+  <line x1="370" y1="220" x2="395" y2="220" stroke="#333" marker-end="url(#ma12)"/>
+  <line x1="560" y1="220" x2="585" y2="220" stroke="#333" marker-end="url(#ma12)"/>
+
+  <!-- trace arrows (dashed) -->
+  <path d="M290,120 L810,120" stroke="#5a2a9d" stroke-width="0.8" stroke-dasharray="3 3" fill="none"/>
+  <path d="M100,270 L810,200" stroke="#5a2a9d" stroke-width="0.8" stroke-dasharray="3 3" fill="none"/>
+  <path d="M290,270 L810,210" stroke="#5a2a9d" stroke-width="0.8" stroke-dasharray="3 3" fill="none"/>
+  <path d="M480,270 L810,220" stroke="#5a2a9d" stroke-width="0.8" stroke-dasharray="3 3" fill="none"/>
+
+  <!-- fallback arrow -->
+  <path d="M290,270 L380,328" stroke="#b0361e" stroke-dasharray="5 4" fill="none" marker-end="url(#mr12)"/>
+  <path d="M550,380 C 600,370 600,290 590,270" stroke="#b0361e" stroke-dasharray="5 4" fill="none" marker-end="url(#mr12)"/>
+</svg>
+<figcaption>图 12-1 · 单帧请求追踪。紫色虚线 = 异步 trace；红色虚线 = 降级通道。所有实时指标都能在一行 JSON 里被拿到。</figcaption>
+</figure>
+
+<h2 id="invariants">13 · 系统级不变式一览</h2>
+
+<p>这些是跨模块的<strong>全局不变式</strong>。任何 PR 都必须保持它们为真；Codex 可按 ID 自动扫描。</p>
+
+<table>
+  <thead><tr><th>ID</th><th>不变式</th><th>谁守护</th><th>测试</th></tr></thead>
+  <tbody>
+    <tr><td>INV-G1</td><td>车辆永不进入障碍内部：<code>manifold.min_distance(s) ≥ 0</code></td><td>CBF + T_inv 联合</td><td><code>test_planner.py</code> 的集成测试</td></tr>
+    <tr><td>INV-G2</td><td>每一次执行器命令都出自 <code>T_inv.apply</code></td><td>StructuralPlanner.step 唯一入口</td><td>静态扫描 grep</td></tr>
+    <tr><td>INV-G3</td><td>物理约束：<code>|a|≤μg</code>, <code>0≤v≤v_max</code></td><td>BicycleModel.step 的双层 clamp</td><td><code>test_friction_envelope_clamped</code></td></tr>
+    <tr><td>INV-G4</td><td>动作空间可行：<code>|steer|≤max_steer, |jerk|≤jerk_max</code></td><td>CBF grid 范围 + BicycleModel.f 入口 clamp</td><td>（需补）</td></tr>
+    <tr><td>INV-G5</td><td><code>T_inv</code> 有限步终止：最多 <code>relax_steps+1</code> 次评估</td><td>T_inv.apply 的松弛循环</td><td>（需补）</td></tr>
+    <tr><td>INV-G6</td><td>trace 字段契约：10 字段必须齐全</td><td>StructuralPlanner.step 返回</td><td>JSON Schema（待建）</td></tr>
+    <tr><td>INV-G7</td><td>降级兜底永远可行：<code>Control(0, −j_max)</code> 必属可行集</td><td>执行器参数定义</td><td>静态断言</td></tr>
+    <tr><td>INV-G8</td><td>Lyapunov 与 CBF 职责解耦：V 不含距离项</td><td>QuadraticLyapunov 的定义</td><td>代码 review</td></tr>
+    <tr><td>INV-G9</td><td>意图图无自环，边权剪枝</td><td>graph.update() 的两个 if</td><td><code>test_graph.py</code></td></tr>
+    <tr><td>INV-G10</td><td>VehicleParams 只读（frozen dataclass）</td><td>types.py 的 <code>@dataclass(frozen=True)</code></td><td>类型系统</td></tr>
+  </tbody>
+</table>
+
+<h2 id="sre-hook">14 · SRE 挂钩点汇总</h2>
+
+<p>把前面每个模块末尾的"SRE 挂钩"抽出来，形成一张<strong>可迁移抽象索引表</strong>。右栏对应 <a href="./sre-adaptation.html">sre-adaptation.html</a> 的章节。</p>
+
+<table>
+  <thead><tr><th>来源模块</th><th>物理模型</th><th>可迁移抽象</th><th>SRE 对应</th><th>去处</th></tr></thead>
+  <tbody>
+    <tr><td>§3 意图图</td><td>加权有向图 + 意图语义</td><td>"把不确定性语义化到加权图"</td><td>故障相关性图 / 服务依赖图</td><td><a href="./sre-adaptation.html#incident-graph">§3</a></td></tr>
+    <tr><td>§4 动力学</td><td>jerk 驱动 + 双层 clamp</td><td>"命令连续可导 + 两处钳位"</td><td>timeout budget chain</td><td><a href="./sre-adaptation.html#double-clamp">§4</a></td></tr>
+    <tr><td>§5 势能场</td><td>多目标加权合成 + 梯度下降</td><td>"多 SLO 目标合成的启发式方向"</td><td>自适应限流 / QoS 调度</td><td><a href="./sre-adaptation.html#qos">§5</a></td></tr>
+    <tr><td>§6 Lyapunov</td><td>单调下降量 + 监视导数</td><td>"bounded decay SLI"</td><td>error budget burn rate</td><td><a href="./sre-adaptation.html#burn-rate">§6</a></td></tr>
+    <tr><td>§7 可达集</td><td>前向 reachability 凸包</td><td>"未来 T 秒容量的前瞻性证明"</td><td>capacity forecast / admission</td><td><a href="./sre-adaptation.html#capacity">§7</a></td></tr>
+    <tr><td>§8 CBF-QP</td><td>名义 + 不等式 → 最近可行</td><td>"admission control 的数学骨架"</td><td>QoS admission controller</td><td><a href="./sre-adaptation.html#admission">§8</a></td></tr>
+    <tr><td>§9 T_inv</td><td>候选 → 硬校验 → 松弛 → 兜底</td><td>"命令矫正器（action guard）"</td><td>CI guard / policy enforcer</td><td><a href="./sre-adaptation.html#tinv-guard">§9</a></td></tr>
+    <tr><td>§10 博弈</td><td>熵 → 几何缓冲</td><td>"用不确定性度量驱动安全余量"</td><td>observability-driven derating</td><td><a href="./sre-adaptation.html#uncertainty-margin">§10</a></td></tr>
+    <tr><td>§11 Planner</td><td>唯一入口 + 可观测</td><td>"control plane 骨架"</td><td>通用策略执行框架</td><td><a href="./sre-adaptation.html#control-plane">§11</a></td></tr>
+  </tbody>
+</table>
+
+<hr>
+<p style="color: var(--fg-mute); font-size: 12px; text-align: center; margin-top: 28px;">
+auto-decide deep-dive · v0.2 · 算法级颗粒度拆解 · 下一篇：<a href="./sre-adaptation.html">工程能力到 SRE 的迁移</a>
+</p>
+
+</main>
+</body>
+</html>

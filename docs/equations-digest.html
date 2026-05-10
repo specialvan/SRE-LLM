@@ -1,0 +1,1828 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>auto-decide · 方程手册</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']], tags: 'ams' },
+  svg: { fontCache: 'global' },
+  options: { renderActions: { addMenu: [] } }
+};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --fg:#1a1d22; --fg-soft:#4a4e57; --fg-mute:#767a82;
+  --bg:#fbfbf8; --bg-card:#fff; --bg-code:#252932;
+  --bg-ok:#eaf7ec; --bg-warn:#ffefe6; --bg-note:#fff9e6; --bg-sre:#eef2ff;
+  --bg-deriv:#fef6f1; --bg-alt:#f2eef9; --bg-sym:#f1f7f5;
+  --accent:#0b6b58; --accent2:#5a2a9d; --accent-math:#903030;
+  --rule:#e5e2dc; --link:#1249a7;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.7}
+body{display:grid;grid-template-columns:310px minmax(0,1fr);min-height:100vh}
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;border-right:1px solid var(--rule);padding:20px 16px;background:var(--bg-card);font-size:13px}
+nav.toc h1{font-size:15px;margin:0 0 2px}
+nav.toc .sub{color:var(--fg-mute);font-size:11.5px;margin-bottom:14px}
+nav.toc ol{list-style:none;padding:0;margin:0;counter-reset:toc}
+nav.toc ol li{counter-increment:toc;margin:1px 0}
+nav.toc ol>li>a::before{content:counters(toc,".") "  ";color:var(--fg-mute);font-variant-numeric:tabular-nums;font-size:0.9em}
+nav.toc ol ol{padding-left:12px;border-left:1px dashed var(--rule);margin:1px 0 4px}
+nav.toc a{color:var(--fg-soft);text-decoration:none;display:block;padding:1px 5px;border-radius:3px;font-size:12.5px;line-height:1.45}
+nav.toc a:hover{background:#eef5f2;color:var(--accent)}
+nav.toc .eqlink{font-family:var(--mono);color:#903030;font-size:11px;opacity:0.8;margin-right:4px}
+main{padding:44px clamp(24px,5vw,60px);max-width:1080px}
+h1.title{font-size:31px;line-height:1.2;margin:0 0 4px;letter-spacing:-0.01em}
+h1.title small{display:block;font-weight:normal;color:var(--fg-mute);font-size:14px;margin-top:4px}
+.meta{color:var(--fg-mute);font-size:13px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:10px 0;margin:18px 0 30px;display:flex;flex-wrap:wrap;gap:14px}
+h2{font-size:23px;margin-top:52px;padding-top:14px;border-top:2px solid var(--fg);letter-spacing:-0.01em}
+h3{font-size:17px;margin-top:34px;color:var(--accent-math);font-family:var(--sans)}
+h4{font-size:14.5px;margin-top:18px;color:var(--fg);letter-spacing:0.02em;text-transform:none}
+h5{font-size:12.5px;margin:14px 0 4px;color:var(--fg-soft);text-transform:uppercase;letter-spacing:0.07em;font-weight:700}
+p,li{color:var(--fg-soft)}
+code{font-family:var(--mono);background:#f4f1ec;padding:1px 6px;border-radius:3px;font-size:0.9em}
+pre{background:var(--bg-code);color:#e3e7ee;padding:13px 15px;border-radius:7px;overflow-x:auto;line-height:1.5;font-size:12.3px;margin:12px 0}
+pre code{background:transparent;color:inherit;padding:0}
+.callout{border-left:4px solid var(--accent);background:var(--bg-ok);padding:11px 15px;margin:12px 0;border-radius:0 7px 7px 0}
+.callout.warn{border-color:#d07000;background:var(--bg-warn)}
+.callout.note{border-color:#b08800;background:var(--bg-note)}
+.callout.sre{border-color:#2a4ab0;background:var(--bg-sre)}
+.callout.deriv{border-color:var(--accent-math);background:var(--bg-deriv)}
+.callout.alt{border-color:var(--accent2);background:var(--bg-alt)}
+.callout.sym{border-color:var(--accent);background:var(--bg-sym)}
+.callout .tag{font-size:10.5px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:var(--fg);display:block;margin-bottom:3px}
+figure{margin:22px 0}
+figure figcaption{font-size:12.5px;color:var(--fg-mute);text-align:center;margin-top:5px}
+figure svg{display:block;margin:0 auto;max-width:100%;height:auto;background:var(--bg-card);border:1px solid var(--rule);border-radius:7px}
+table{border-collapse:collapse;margin:14px 0;width:100%;font-size:13px}
+table th,table td{border-bottom:1px solid var(--rule);padding:7px 10px;text-align:left;vertical-align:top}
+table th{background:#f4ece0;font-weight:600}
+table tr:last-child td{border-bottom:1px solid var(--fg)}
+a{color:var(--link)}
+hr{border:none;border-top:1px solid var(--rule);margin:22px 0}
+.eq-card{border:1px solid var(--rule);border-radius:9px;padding:18px 22px;margin:26px 0;background:var(--bg-card);box-shadow:0 1px 0 rgba(0,0,0,0.03)}
+.eq-card header{border-bottom:1px dashed var(--rule);padding-bottom:10px;margin-bottom:14px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.eq-card header .eid{background:#903030;color:#fff;padding:3px 10px;border-radius:6px;font-weight:700;font-size:13px;font-family:var(--mono);letter-spacing:0.03em}
+.eq-card header h3{margin:0;color:var(--fg);font-family:var(--sans);font-size:17.5px}
+.eq-card header .src{color:var(--fg-mute);font-size:12px;margin-left:auto}
+.eq-card .eqdisplay{text-align:center;margin:16px 0;padding:8px 14px;background:#fbfbf0;border:1px solid #efe8cc;border-radius:6px;overflow-x:auto}
+.sym-table{font-size:12.5px}
+.sym-table th,.sym-table td{padding:4px 10px}
+.sym-table code{background:#e4ece8;color:#0b6b58;font-size:0.95em}
+dl.kv{display:grid;grid-template-columns:min-content 1fr;gap:3px 16px;margin:10px 0;font-size:13px}
+dl.kv dt{font-weight:700;color:var(--fg);white-space:nowrap}
+dl.kv dd{margin:0;color:var(--fg-soft)}
+.badge{display:inline-block;padding:1px 7px;border-radius:3px;font-size:10.5px;font-weight:700;letter-spacing:0.03em;margin-right:4px;vertical-align:2px}
+.badge-paper{background:#e4ece8;color:#0b6b58}
+.badge-impl{background:#f2eef9;color:var(--accent2)}
+.badge-code{background:#f4ece0;color:#5a4400}
+@media(max-width:900px){body{grid-template-columns:1fr}nav.toc{position:relative;height:auto;border-right:none;border-bottom:1px solid var(--rule)}}
+</style>
+</head>
+<body>
+
+<nav class="toc">
+  <h1>方程手册</h1>
+  <div class="sub">吃透每一个公式 · 符号 · 推导 · 等价形式 · 陷阱</div>
+  <ol>
+    <li><a href="#intro">1. 为什么要吃透方程</a></li>
+    <li><a href="#atlas">2. 方程总览与依赖图</a></li>
+    <li><a href="#symbols">3. 符号总表</a></li>
+    <li><a href="#eq-graph">4. 图结构相关</a>
+      <ol>
+        <li><a href="#e01"><span class="eqlink">E-01</span> 图本体</a></li>
+        <li><a href="#e02"><span class="eqlink">E-02</span> 边权核</a></li>
+        <li><a href="#e03"><span class="eqlink">E-03</span> 距离核</a></li>
+        <li><a href="#e04"><span class="eqlink">E-04</span> 朝向修正</a></li>
+        <li><a href="#e05"><span class="eqlink">E-05</span> 意图冲突期望</a></li>
+      </ol>
+    </li>
+    <li><a href="#eq-dyn">5. 动力学相关</a>
+      <ol>
+        <li><a href="#e06"><span class="eqlink">E-06</span> 状态向量</a></li>
+        <li><a href="#e07"><span class="eqlink">E-07</span> ẋ = f(x, u)</a></li>
+        <li><a href="#e08"><span class="eqlink">E-08</span> bicycle 各分量</a></li>
+        <li><a href="#e09"><span class="eqlink">E-09</span> 摩擦包络</a></li>
+        <li><a href="#e10"><span class="eqlink">E-10</span> RK4</a></li>
+      </ol>
+    </li>
+    <li><a href="#eq-pot">6. 势能与梯度流</a>
+      <ol>
+        <li><a href="#e11"><span class="eqlink">E-11</span> 受限梯度流</a></li>
+        <li><a href="#e12"><span class="eqlink">E-12</span> 势能分解</a></li>
+        <li><a href="#e13"><span class="eqlink">E-13</span> 目标项</a></li>
+        <li><a href="#e14"><span class="eqlink">E-14</span> 障碍项</a></li>
+        <li><a href="#e15"><span class="eqlink">E-15</span> 交互项</a></li>
+        <li><a href="#e16"><span class="eqlink">E-16</span> 梯度数值差分</a></li>
+      </ol>
+    </li>
+    <li><a href="#eq-lyap">7. Lyapunov</a>
+      <ol>
+        <li><a href="#e17"><span class="eqlink">E-17</span> V(x)</a></li>
+        <li><a href="#e18"><span class="eqlink">E-18</span> dV/dt ≤ 0</a></li>
+        <li><a href="#e19"><span class="eqlink">E-19</span> 指数衰减 dV/dt ≤ −γV</a></li>
+        <li><a href="#e20"><span class="eqlink">E-20</span> 有限差分估计</a></li>
+      </ol>
+    </li>
+    <li><a href="#eq-reach">8. 可达集</a>
+      <ol>
+        <li><a href="#e21"><span class="eqlink">E-21</span> R(x₀, T) 定义</a></li>
+        <li><a href="#e22"><span class="eqlink">E-22</span> 最坏情况停车</a></li>
+      </ol>
+    </li>
+    <li><a href="#eq-game">9. 博弈 / 冗余</a>
+      <ol>
+        <li><a href="#e23"><span class="eqlink">E-23</span> 信息熵</a></li>
+        <li><a href="#e24"><span class="eqlink">E-24</span> 归一化熵</a></li>
+        <li><a href="#e25"><span class="eqlink">E-25</span> 安全缓冲</a></li>
+      </ol>
+    </li>
+    <li><a href="#eq-cbf">10. CBF</a>
+      <ol>
+        <li><a href="#e26"><span class="eqlink">E-26</span> 安全集 h ≥ 0</a></li>
+        <li><a href="#e27"><span class="eqlink">E-27</span> CBF 主条件</a></li>
+        <li><a href="#e28"><span class="eqlink">E-28</span> 类 K 函数推广</a></li>
+        <li><a href="#e29"><span class="eqlink">E-29</span> 距离 barrier</a></li>
+        <li><a href="#e30"><span class="eqlink">E-30</span> 刹车距离 barrier</a></li>
+        <li><a href="#e31"><span class="eqlink">E-31</span> ḣ 解析式推导</a></li>
+        <li><a href="#e32"><span class="eqlink">E-32</span> a_brk(μ)</a></li>
+      </ol>
+    </li>
+    <li><a href="#eq-qp">11. QP 与 T_inv</a>
+      <ol>
+        <li><a href="#e33"><span class="eqlink">E-33</span> CBF-QP</a></li>
+        <li><a href="#e34"><span class="eqlink">E-34</span> KKT 条件</a></li>
+        <li><a href="#e35"><span class="eqlink">E-35</span> T_inv 算子</a></li>
+      </ol>
+    </li>
+    <li><a href="#anti">12. 常见错用 / 等价变形目录</a></li>
+    <li><a href="#bridge">13. 每个方程到 SRE 的迁移对位</a></li>
+  </ol>
+  <hr>
+  <p style="font-size:12px;color:var(--fg-mute);margin:0">
+    ← 总览 <a href="./knowledge-base.html">knowledge-base</a><br>
+    ← 深拆 <a href="./deep-dive.html">deep-dive</a><br>
+    ← SRE 迁移 <a href="./sre-adaptation.html">sre-adaptation</a>
+  </p>
+</nav>
+
+<main>
+
+<h1 class="title">auto-decide · 方程手册
+  <small>每一个公式的符号 / 推导 / 为什么是这个形式 / 等价变形 / 数值陷阱 / 代码位置</small>
+</h1>
+<div class="meta">
+  <span>文档版本：v0.1</span>
+  <span>编号：E-01 ~ E-35</span>
+  <span>对应代码：<code>auto-decide/auto_decide/</code></span>
+  <span>约定：<span class="badge badge-paper">paper</span> 原文显式给出；<span class="badge badge-impl">impl</span> 工程补出</span>
+</div>
+
+<h2 id="intro">1 · 为什么要吃透方程</h2>
+
+<p>前三份文档（<a href="./knowledge-base.html">总览</a> / <a href="./deep-dive.html">深拆</a> / <a href="./sre-adaptation.html">SRE 迁移</a>）都偏"系统视角"。
+但工程里最常见的 bug，其实都藏在<strong>方程的细节</strong>里：</p>
+
+<ul>
+  <li>量纲错了一个 <code>dt</code>，系统就会莫名抖动；</li>
+  <li>Lyapunov 多加一项"距离能量"就让 demo 连刹不前；</li>
+  <li>距离 barrier 看着对，但<em>相对度</em>是 2，CBF 不收敛；</li>
+  <li>熵没归一化，类别数一变常数就失效。</li>
+</ul>
+
+<p>本文目的就一个：<strong>让 35 个方程每一个都能回答六个问题</strong>——</p>
+<ol>
+  <li>每个<em>符号</em>代表什么物理量、单位是什么；</li>
+  <li>这个形式<em>为什么</em>是这样（而不是别的）；</li>
+  <li>关键的<em>推导</em>步骤；</li>
+  <li>边界与<em>退化</em>情况（$v\to 0$, $\mu\to 0$ 等）；</li>
+  <li>实现里可能<em>踩到</em>的数值陷阱；</li>
+  <li>对应的<em>代码行和测试</em>。</li>
+</ol>
+
+<div class="callout sre">
+<span class="tag">SRE 视角</span>
+本文末尾 §13 把每个方程都映射到 SRE 对应物——吃透方程的数学结构，就能保证跨域迁移不是表面类比，而是结构同构。
+</div>
+
+<h2 id="atlas">2 · 方程总览与依赖图</h2>
+
+<p>下图展示了 35 个方程之间的依赖关系。<strong>实线 = 数学依赖</strong>（后者推导需要前者），<strong>虚线 = 功能调用</strong>（下游用上游做数值评估）。</p>
+
+<figure>
+<svg viewBox="0 0 1000 560" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#333"/></marker>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#903030"/></marker>
+    <style>
+      .node{fill:#fff;stroke:#903030;stroke-width:1.3;rx:6}
+      .node-p{fill:#eaf7ec;stroke:#0b6b58;stroke-width:1.3;rx:6}
+      .node-i{fill:#f2eef9;stroke:#5a2a9d;stroke-width:1.3;rx:6}
+      .lbl{font:bold 11px ui-monospace,Menlo;fill:#1a1d22}
+      .tit{font:10px -apple-system;fill:#4a4e57}
+      .edge{stroke:#333;stroke-width:1;fill:none}
+      .edge-f{stroke:#903030;stroke-width:0.8;fill:none;stroke-dasharray:3 3}
+      .grp{font:bold 12px -apple-system;fill:#4a4e57}
+    </style>
+  </defs>
+
+  <!-- Groups -->
+  <text class="grp" x="80" y="25">图 · §4</text>
+  <text class="grp" x="320" y="25">动力学 · §5</text>
+  <text class="grp" x="560" y="25">势能 · §6</text>
+  <text class="grp" x="780" y="25">Lyapunov · §7</text>
+
+  <!-- Graph group -->
+  <g>
+    <rect class="node-p" x="20" y="40" width="70" height="36"/><text class="lbl" x="55" y="56" text-anchor="middle">E-01</text><text class="tit" x="55" y="70" text-anchor="middle">G_I</text>
+    <rect class="node-p" x="100" y="40" width="70" height="36"/><text class="lbl" x="135" y="56" text-anchor="middle">E-02</text><text class="tit" x="135" y="70" text-anchor="middle">w_ij</text>
+    <rect class="node-i" x="20" y="95" width="70" height="36"/><text class="lbl" x="55" y="111" text-anchor="middle">E-03</text><text class="tit" x="55" y="125" text-anchor="middle">g(d)</text>
+    <rect class="node-i" x="100" y="95" width="70" height="36"/><text class="lbl" x="135" y="111" text-anchor="middle">E-04</text><text class="tit" x="135" y="125" text-anchor="middle">heading</text>
+    <rect class="node-i" x="60" y="150" width="70" height="36"/><text class="lbl" x="95" y="166" text-anchor="middle">E-05</text><text class="tit" x="95" y="180" text-anchor="middle">𝔼[C]</text>
+  </g>
+
+  <!-- Dynamics group -->
+  <g>
+    <rect class="node-p" x="270" y="40" width="70" height="36"/><text class="lbl" x="305" y="56" text-anchor="middle">E-06</text><text class="tit" x="305" y="70" text-anchor="middle">x</text>
+    <rect class="node-p" x="350" y="40" width="70" height="36"/><text class="lbl" x="385" y="56" text-anchor="middle">E-07</text><text class="tit" x="385" y="70" text-anchor="middle">ẋ=f(x,u)</text>
+    <rect class="node-i" x="270" y="95" width="70" height="36"/><text class="lbl" x="305" y="111" text-anchor="middle">E-08</text><text class="tit" x="305" y="125" text-anchor="middle">各分量</text>
+    <rect class="node-p" x="350" y="95" width="70" height="36"/><text class="lbl" x="385" y="111" text-anchor="middle">E-09</text><text class="tit" x="385" y="125" text-anchor="middle">|a|≤μg</text>
+    <rect class="node-i" x="310" y="150" width="70" height="36"/><text class="lbl" x="345" y="166" text-anchor="middle">E-10</text><text class="tit" x="345" y="180" text-anchor="middle">RK4</text>
+  </g>
+
+  <!-- Potential group -->
+  <g>
+    <rect class="node-p" x="510" y="40" width="70" height="36"/><text class="lbl" x="545" y="56" text-anchor="middle">E-11</text><text class="tit" x="545" y="70" text-anchor="middle">ẋ=−∇Φ</text>
+    <rect class="node-p" x="590" y="40" width="70" height="36"/><text class="lbl" x="625" y="56" text-anchor="middle">E-12</text><text class="tit" x="625" y="70" text-anchor="middle">Φ 分解</text>
+    <rect class="node-i" x="510" y="95" width="40" height="36"/><text class="lbl" x="530" y="111" text-anchor="middle">E-13</text>
+    <rect class="node-i" x="560" y="95" width="40" height="36"/><text class="lbl" x="580" y="111" text-anchor="middle">E-14</text>
+    <rect class="node-i" x="610" y="95" width="40" height="36"/><text class="lbl" x="630" y="111" text-anchor="middle">E-15</text>
+    <text class="tit" x="580" y="145" text-anchor="middle">goal · obs · int</text>
+    <rect class="node-i" x="550" y="150" width="70" height="36"/><text class="lbl" x="585" y="166" text-anchor="middle">E-16</text><text class="tit" x="585" y="180" text-anchor="middle">数值∇</text>
+  </g>
+
+  <!-- Lyapunov -->
+  <g>
+    <rect class="node-p" x="740" y="40" width="70" height="36"/><text class="lbl" x="775" y="56" text-anchor="middle">E-17</text><text class="tit" x="775" y="70" text-anchor="middle">V(x)</text>
+    <rect class="node-p" x="820" y="40" width="70" height="36"/><text class="lbl" x="855" y="56" text-anchor="middle">E-18</text><text class="tit" x="855" y="70" text-anchor="middle">dV/dt≤0</text>
+    <rect class="node-i" x="740" y="95" width="70" height="36"/><text class="lbl" x="775" y="111" text-anchor="middle">E-19</text><text class="tit" x="775" y="125" text-anchor="middle">≤−γV</text>
+    <rect class="node-i" x="820" y="95" width="70" height="36"/><text class="lbl" x="855" y="111" text-anchor="middle">E-20</text><text class="tit" x="855" y="125" text-anchor="middle">有限差分</text>
+  </g>
+
+  <!-- Reachable/game/CBF/QP row -->
+  <text class="grp" x="60" y="230">可达集 · §8</text>
+  <rect class="node-p" x="20" y="245" width="70" height="36"/><text class="lbl" x="55" y="261" text-anchor="middle">E-21</text><text class="tit" x="55" y="275" text-anchor="middle">R(x₀,T)</text>
+  <rect class="node-i" x="100" y="245" width="70" height="36"/><text class="lbl" x="135" y="261" text-anchor="middle">E-22</text><text class="tit" x="135" y="275" text-anchor="middle">最坏停车</text>
+
+  <text class="grp" x="230" y="230">博弈 · §9</text>
+  <rect class="node-p" x="210" y="245" width="60" height="36"/><text class="lbl" x="240" y="261" text-anchor="middle">E-23</text><text class="tit" x="240" y="275" text-anchor="middle">H(p)</text>
+  <rect class="node-i" x="280" y="245" width="60" height="36"/><text class="lbl" x="310" y="261" text-anchor="middle">E-24</text><text class="tit" x="310" y="275" text-anchor="middle">η</text>
+  <rect class="node-i" x="350" y="245" width="60" height="36"/><text class="lbl" x="380" y="261" text-anchor="middle">E-25</text><text class="tit" x="380" y="275" text-anchor="middle">r_buf</text>
+
+  <text class="grp" x="470" y="230">CBF · §10</text>
+  <rect class="node-p" x="450" y="245" width="60" height="36"/><text class="lbl" x="480" y="261" text-anchor="middle">E-26</text><text class="tit" x="480" y="275" text-anchor="middle">h≥0</text>
+  <rect class="node-p" x="520" y="245" width="60" height="36"/><text class="lbl" x="550" y="261" text-anchor="middle">E-27</text><text class="tit" x="550" y="275" text-anchor="middle">ḣ+αh≥0</text>
+  <rect class="node-p" x="590" y="245" width="60" height="36"/><text class="lbl" x="620" y="261" text-anchor="middle">E-28</text><text class="tit" x="620" y="275" text-anchor="middle">K-class</text>
+  <rect class="node-i" x="450" y="300" width="60" height="36"/><text class="lbl" x="480" y="316" text-anchor="middle">E-29</text><text class="tit" x="480" y="330" text-anchor="middle">dist</text>
+  <rect class="node-i" x="520" y="300" width="60" height="36"/><text class="lbl" x="550" y="316" text-anchor="middle">E-30</text><text class="tit" x="550" y="330" text-anchor="middle">brake</text>
+  <rect class="node-i" x="590" y="300" width="60" height="36"/><text class="lbl" x="620" y="316" text-anchor="middle">E-31</text><text class="tit" x="620" y="330" text-anchor="middle">ḣ 推导</text>
+  <rect class="node-i" x="520" y="350" width="60" height="36"/><text class="lbl" x="550" y="366" text-anchor="middle">E-32</text><text class="tit" x="550" y="380" text-anchor="middle">a_brk(μ)</text>
+
+  <text class="grp" x="750" y="230">QP · §11</text>
+  <rect class="node-p" x="720" y="245" width="70" height="36"/><text class="lbl" x="755" y="261" text-anchor="middle">E-33</text><text class="tit" x="755" y="275" text-anchor="middle">CBF-QP</text>
+  <rect class="node-i" x="800" y="245" width="70" height="36"/><text class="lbl" x="835" y="261" text-anchor="middle">E-34</text><text class="tit" x="835" y="275" text-anchor="middle">KKT</text>
+  <rect class="node-i" x="760" y="300" width="70" height="36"/><text class="lbl" x="795" y="316" text-anchor="middle">E-35</text><text class="tit" x="795" y="330" text-anchor="middle">T_inv</text>
+
+  <!-- key edges -->
+  <path class="edge" d="M55,76 L55,95" marker-end="url(#a)"/>
+  <path class="edge" d="M135,76 L135,95" marker-end="url(#a)"/>
+  <path class="edge" d="M90,131 L90,150" marker-end="url(#a)"/>
+
+  <path class="edge" d="M90,76 L100,76" marker-end="url(#a)"/>
+  <path class="edge" d="M95,185 C 130,210 170,95 135,95" marker-end="url(#a)"/>
+
+  <path class="edge" d="M305,76 L305,95" marker-end="url(#a)"/>
+  <path class="edge" d="M385,76 L385,95" marker-end="url(#a)"/>
+  <path class="edge" d="M310,131 L340,150" marker-end="url(#a)"/>
+  <path class="edge" d="M385,131 L360,150" marker-end="url(#a)"/>
+
+  <path class="edge" d="M545,76 L545,95" marker-end="url(#a)"/>
+  <path class="edge" d="M625,76 L625,95" marker-end="url(#a)"/>
+  <path class="edge" d="M585,131 L585,150" marker-end="url(#a)"/>
+
+  <path class="edge" d="M775,76 L775,95" marker-end="url(#a)"/>
+  <path class="edge" d="M855,76 L855,95" marker-end="url(#a)"/>
+  <path class="edge" d="M815,131 C 815,150 825,140 820,130" marker-end="url(#a)"/>
+
+  <!-- Cross edges -->
+  <path class="edge-f" d="M170,55 C 250,30 540,30 590,55" marker-end="url(#a2)"/>
+  <path class="edge" d="M420,55 L510,55" marker-end="url(#a)"/>
+  <path class="edge-f" d="M660,55 C 700,20 740,30 770,55" marker-end="url(#a2)"/>
+
+  <path class="edge" d="M55,170 C 55,240 50,255 55,260" marker-end="url(#a)"/>
+  <path class="edge-f" d="M345,170 C 345,210 135,255 135,260" marker-end="url(#a2)"/>
+
+  <path class="edge" d="M310,281 L345,281" marker-end="url(#a)"/>
+  <path class="edge" d="M380,281 L450,281" marker-end="url(#a)"/>
+
+  <path class="edge" d="M510,265 L520,265" marker-end="url(#a)"/>
+  <path class="edge" d="M580,265 L590,265" marker-end="url(#a)"/>
+  <path class="edge" d="M480,281 L480,300" marker-end="url(#a)"/>
+  <path class="edge" d="M550,281 L550,300" marker-end="url(#a)"/>
+  <path class="edge" d="M620,281 L620,300" marker-end="url(#a)"/>
+  <path class="edge" d="M580,336 L550,350" marker-end="url(#a)"/>
+  <path class="edge-f" d="M385,155 C 385,260 580,260 580,336" marker-end="url(#a2)"/>
+
+  <path class="edge" d="M650,336 C 680,290 720,260 720,265" marker-end="url(#a)"/>
+  <path class="edge" d="M790,281 L800,281" marker-end="url(#a)"/>
+  <path class="edge" d="M790,281 L795,300" marker-end="url(#a)"/>
+  <path class="edge-f" d="M855,131 C 855,200 820,255 790,300" marker-end="url(#a2)"/>
+
+  <!-- legend -->
+  <rect x="20" y="440" width="960" height="100" fill="#fff" stroke="#e5e2dc" rx="6"/>
+  <text class="grp" x="34" y="462">图例</text>
+  <rect class="node-p" x="100" y="448" width="18" height="18"/><text class="tit" x="125" y="461">paper</text>
+  <rect class="node-i" x="180" y="448" width="18" height="18"/><text class="tit" x="205" y="461">impl · 工程补</text>
+  <line x1="305" y1="458" x2="335" y2="458" class="edge"/><text class="tit" x="345" y="461">数学依赖</text>
+  <line x1="435" y1="458" x2="465" y2="458" class="edge-f"/><text class="tit" x="475" y="461">功能调用</text>
+  <text class="tit" x="34" y="490">读法：E-07 ẋ=f(x,u) 数学上依赖 E-06 x 的定义；E-27 ḣ+αh≥0 功能上调用 E-07 做数值 ḣ；</text>
+  <text class="tit" x="34" y="510">E-30 刹车距离 barrier 在 §10 把 E-09 μg 约束代数化进 h 本体，因此图里有斜跨两组的 E-09 → E-30 箭头；</text>
+  <text class="tit" x="34" y="530">E-35 T_inv 是 E-33 QP + E-19 Lyapunov 松弛的组合，位于最下游。</text>
+</svg>
+<figcaption>图 2-1 · 方程依赖图。共 35 个节点，分 8 组。颜色区分原文 vs 工程补；实线 = 数学依赖，虚线 = 功能调用。</figcaption>
+</figure>
+
+<h2 id="symbols">3 · 符号总表</h2>
+
+<p>出现在任何方程里的符号都登记在这里。工程代码里出现的变量名附在最右侧。</p>
+
+<table class="sym-table">
+  <thead>
+    <tr><th>符号</th><th>含义</th><th>量纲 / 单位</th><th>典型值</th><th>代码名</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>$p = (p_x, p_y)$</td><td>位置</td><td>m</td><td>—</td><td><code>state.px, state.py</code></td></tr>
+    <tr><td>$\psi$</td><td>航向角</td><td>rad</td><td>—</td><td><code>state.psi</code></td></tr>
+    <tr><td>$v$</td><td>纵向速度</td><td>m/s</td><td>[0, 35]</td><td><code>state.v</code></td></tr>
+    <tr><td>$a$</td><td>纵向加速度</td><td>m/s²</td><td>[−μg, μg]</td><td><code>state.a</code></td></tr>
+    <tr><td>$\mu$</td><td>路面摩擦系数</td><td>无量纲</td><td>0.2~1.2</td><td><code>state.mu</code></td></tr>
+    <tr><td>$g$</td><td>重力加速度</td><td>m/s²</td><td>9.81</td><td><code>types.G</code></td></tr>
+    <tr><td>$\delta$</td><td>前轮转向角</td><td>rad</td><td>[−35°, 35°]</td><td><code>u.steer</code></td></tr>
+    <tr><td>$j$</td><td>jerk（加速度的导数）</td><td>m/s³</td><td>[−6, 6]</td><td><code>u.jerk</code></td></tr>
+    <tr><td>$L$</td><td>轴距</td><td>m</td><td>2.8</td><td><code>params.wheelbase</code></td></tr>
+    <tr><td>$D_0$</td><td>图距离核尺度</td><td>m</td><td>15</td><td><code>graph.D0</code></td></tr>
+    <tr><td>$w_{ij}$</td><td>意图图边权</td><td>无量纲 ∈ [0,1]</td><td>—</td><td><code>Edge.weight</code></td></tr>
+    <tr><td>$\Phi$</td><td>复合势能</td><td>任意标量</td><td>—</td><td><code>PotentialField.value</code></td></tr>
+    <tr><td>$V$</td><td>Lyapunov 函数</td><td>任意标量</td><td>$\tfrac12 q_v (\Delta v)^2$</td><td><code>QuadraticLyapunov.V</code></td></tr>
+    <tr><td>$\gamma$</td><td>指数衰减率</td><td>1/s</td><td>0.5</td><td><code>ControlInvariantOperator.gamma</code></td></tr>
+    <tr><td>$h$</td><td>控制屏障函数</td><td>与 $p$ 同量纲（距离 barrier）</td><td>—</td><td><code>BarrierFunction.h</code></td></tr>
+    <tr><td>$\alpha$</td><td>CBF 类 K 增益</td><td>1/s</td><td>3.0</td><td><code>CBFQPFilter.alpha</code></td></tr>
+    <tr><td>$\tau$</td><td>反应时间</td><td>s</td><td>0.35</td><td><code>BrakingDistanceBarrier.reaction</code></td></tr>
+    <tr><td>$a_\text{brk}$</td><td>有效刹车减速度</td><td>m/s²</td><td>0.6·min(6, μg)</td><td><code>_a_brake()</code></td></tr>
+    <tr><td>$r_s$</td><td>安全半径 / margin</td><td>m</td><td>1.5~3</td><td><code>safety_margin</code></td></tr>
+    <tr><td>$\eta$</td><td>归一化熵</td><td>无量纲 ∈ [0,1]</td><td>—</td><td><code>BeliefState.uncertainty</code></td></tr>
+    <tr><td>$\mathcal{R}$</td><td>前向可达集</td><td>$\mathbb{R}^2$ 子集</td><td>—</td><td><code>ReachableSet</code></td></tr>
+    <tr><td>$dt$</td><td>采样周期</td><td>s</td><td>0.01~0.1</td><td>多处参数</td></tr>
+    <tr><td>$\rho, \delta$</td><td>QP 松弛罚因子 / 松弛变量</td><td>—</td><td>$\rho=10^3$</td><td><code>CBFQPFilter.rho</code></td></tr>
+  </tbody>
+</table>
+
+<div class="callout sym">
+<span class="tag">记号习惯</span>
+本手册遵守：$\Delta x \equiv x - x^*$（偏差），$\dot x \equiv dx/dt$，$\nabla_p f \equiv (\partial f/\partial p_x, \partial f/\partial p_y)$。
+所有"向量"未特别注明均为 2D 列向量；状态 $x$ 是 6 维向量。
+</div>
+
+<h2 id="eq-graph">4 · 图结构相关方程</h2>
+
+<!-- E-01 -->
+<div class="eq-card" id="e01">
+<header>
+  <span class="eid">E-01</span>
+  <h3>交互意图图</h3>
+  <span class="badge badge-paper">paper §1.1</span>
+  <span class="src">code: <code>graph.InteractionIntentGraph</code></span>
+</header>
+
+<div class="eqdisplay">
+$$G_I = (V_I, E_I)$$
+</div>
+
+<h5>符号</h5>
+<dl class="kv">
+  <dt>$V_I$</dt><dd>节点集，每个 $v \in V_I$ 是一个交通参与者（车、行人、自行车、静态物体）</dd>
+  <dt>$E_I$</dt><dd>边集 $E_I \subseteq V_I \times V_I$，每条边 $(i,j)$ 表示 $i$ 的行为会影响 $j$</dd>
+</dl>
+
+<h5>物理直觉</h5>
+<p>把"谁影响谁"分离出来成为一等公民。几何距离只是让边存在的<em>必要</em>条件，<strong>意图一致性</strong>才决定强度。
+这个抽象的价值在于：两辆平行直行的车，即便贴得很近，影响也可能很弱（没有意图冲突）；一辆准备并线的车，即便远一点，影响也很强。</p>
+
+<h5>为什么是有向图？</h5>
+<p>因为"A 对 B 的影响"和"B 对 A 的影响"<strong>不对称</strong>。例如 A 在前 B 在后，A 急刹对 B 的影响 ≫ 反向。
+这也是 E-04 的朝向修正必然破坏对称性的根源。</p>
+
+<h5>等价变形 / 常见表达</h5>
+<div class="callout alt">
+<span class="tag">等价</span>
+工程里经常看到的"邻接矩阵"、"消息传递图"（GNN）都是 $G_I$ 的特殊表达。图编码 + GNN 消息传递就是把 $G_I$ 灌进神经网络的主流路径。
+</div>
+
+<h5>代码 / 测试</h5>
+<dl class="kv">
+  <dt>实现</dt><dd><code>graph.InteractionIntentGraph</code>（<code>_nodes</code> dict + <code>_edges</code> dict + <code>to_adjacency()</code>）</dd>
+  <dt>测试</dt><dd><code>test_graph.py::test_close_far_weight_monotone</code></dd>
+</dl>
+</div>
+
+<!-- E-02 -->
+<div class="eq-card" id="e02">
+<header>
+  <span class="eid">E-02</span>
+  <h3>边权核函数</h3>
+  <span class="badge badge-impl">impl</span>
+  <span class="src">code: <code>graph._edge_weight</code></span>
+</header>
+
+<div class="eqdisplay">
+$$w_{ij} = g(\|p_j - p_i\|) \cdot \text{heading}(v_i, p_j - p_i) \cdot \mathbb{E}_{a\sim p_i, b\sim p_j}[C(a,b)]$$
+</div>
+
+<h5>符号</h5>
+<dl class="kv">
+  <dt>$g(\cdot)$</dt><dd>距离核（E-03 给出）</dd>
+  <dt>$\text{heading}$</dt><dd>朝向修正（E-04 给出），值域 [0, 1]</dd>
+  <dt>$\mathbb{E}[C]$</dt><dd>意图冲突期望（E-05 给出），值域 [0, 1]</dd>
+</dl>
+
+<h5>为什么是乘积而不是加权和？</h5>
+
+<div class="callout deriv">
+<span class="tag">推导动机</span>
+设计要求：
+<ol>
+  <li>$w_{ij} \in [0, 1]$（便于下游归一化）；</li>
+  <li>任一因子 = 0 时 $w = 0$（距离远 / 方向完全不关 / 意图完全兼容，都应断开）；</li>
+  <li>因子之间是<em>合取</em>关系（<strong>既</strong>近<strong>又</strong>同向<strong>又</strong>意图冲突）。</li>
+</ol>
+乘积同时满足这三条；加权和只满足 (1) 且数学上"近但不冲突"与"冲突但不近"会同权贡献——不是合取语义。
+</div>
+
+<h5>等价变形</h5>
+<p>如果写成 log-linear（对数域加法）：
+$$\log w_{ij} = \log g + \log \text{heading} + \log \mathbb{E}[C]$$
+这对 GNN 消息 softmax 更自然，但数值上当任一因子 → 0 时会 $-\infty$。本工程直接在线性域乘，更鲁棒。</p>
+
+<h5>陷阱</h5>
+<ul>
+  <li><strong>权重裁剪 vs 连续</strong>：一旦 $w &lt; \varepsilon$ 直接剪边，下游 $\Phi$ 的交互项在 $w$ 从 $\varepsilon$ 跳到 0 时会有微小不连续。
+    设 $\varepsilon = 10^{-3}$ 足够小，对 $\Phi$ 的数值梯度影响忽略不计，但在极端场景最好换成平滑截断 $\max(w - \varepsilon, 0)$。</li>
+</ul>
+</div>
+
+<!-- E-03 -->
+<div class="eq-card" id="e03">
+<header>
+  <span class="eid">E-03</span>
+  <h3>距离核</h3>
+  <span class="badge badge-impl">impl</span>
+  <span class="src">code: <code>graph._edge_weight</code></span>
+</header>
+
+<div class="eqdisplay">
+$$g(d) = \exp\!\left(-\frac{d}{D_0}\right),\quad D_0 = 15 \text{ m}$$
+</div>
+
+<h5>为什么是指数核而不是 $1/d$？</h5>
+
+<div class="callout deriv">
+<span class="tag">推导</span>
+<strong>候选 A</strong>：$g(d) = 1/d$ — 在 $d \to 0$ 发散，$w_{ij}$ 可能超过 1；不满足值域要求。<br>
+<strong>候选 B</strong>：$g(d) = 1/(1+d/D_0)$ — 有界 $\in (0, 1]$，但尾部衰减太慢（$O(1/d)$），远距离车的权重仍不可忽略。<br>
+<strong>候选 C</strong>：$g(d) = \exp(-d/D_0)$ — 有界、光滑、尾部指数衰减。<br>
+指数核的唯一代价是：对离群点的敏感性略弱于 $1/d^2$，但这正是我们想要的（远车不该剧烈影响决策）。
+</div>
+
+<h5>$D_0$ 的物理意义</h5>
+<p>$D_0$ 是"影响折半"的典型距离——更严格地说，$g(D_0) = 1/e \approx 0.37$。选 15 m 对应常规城市道路两车道宽度量级，
+超过这个距离的车相互影响迅速衰减，符合人类驾驶直觉。</p>
+
+<p>量纲检查：$d$ [m] / $D_0$ [m] 无量纲 ✓，指数无量纲 ✓，结果无量纲 ✓。</p>
+
+<h5>陷阱</h5>
+<p>$D_0$ 单位必须与 $d$ 一致。如果感知给出的是厘米或像素，忘记换算会让图全是空边（$D_0 = 15$ px 时 $d = $ 300 px 的车 $g \approx 2 \times 10^{-9}$）。</p>
+</div>
+
+<!-- E-04 -->
+<div class="eq-card" id="e04">
+<header>
+  <span class="eid">E-04</span>
+  <h3>朝向修正</h3>
+  <span class="badge badge-impl">impl</span>
+</header>
+
+<div class="eqdisplay">
+$$\text{heading}(v_i, \Delta p_{ij}) = \tfrac12 \left(1 + \cos \theta_{ij}\right),\quad \cos \theta_{ij} = \frac{v_i \cdot \Delta p_{ij}}{\|v_i\|\,\|\Delta p_{ij}\|}$$
+</div>
+
+<h5>几何直觉</h5>
+
+<figure>
+<svg viewBox="0 0 620 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="h1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0b6b58"/></marker>
+    <marker id="h2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b0361e"/></marker>
+    <style>.lbl{font:12px -apple-system;fill:#1b1d22}.s{font:11px -apple-system;fill:#767a82}.m{font:11px ui-monospace;fill:#4a4e57}</style>
+  </defs>
+  <!-- Case 1: approaching -->
+  <g transform="translate(40,30)">
+    <rect x="-18" y="-8" width="36" height="16" fill="#2a4ab0" rx="2"/>
+    <text class="s" x="0" y="-14" text-anchor="middle">i</text>
+    <line x1="18" y1="0" x2="80" y2="0" stroke="#0b6b58" stroke-width="2" marker-end="url(#h1)"/>
+    <text class="m" x="50" y="-6">v_i</text>
+  </g>
+  <g transform="translate(200,30)">
+    <rect x="-18" y="-8" width="36" height="16" fill="#b0361e" rx="2"/>
+    <text class="s" x="0" y="-14" text-anchor="middle">j</text>
+  </g>
+  <text class="lbl" x="120" y="60">θ = 0° · cos θ = 1 · heading = 1</text>
+  <text class="s" x="120" y="78" fill="#0b6b58">i 正对着 j 跑 · 最强影响</text>
+
+  <!-- Case 2: perpendicular -->
+  <g transform="translate(40,120)">
+    <rect x="-18" y="-8" width="36" height="16" fill="#2a4ab0" rx="2"/>
+    <line x1="18" y1="0" x2="80" y2="0" stroke="#0b6b58" stroke-width="2" marker-end="url(#h1)"/>
+  </g>
+  <g transform="translate(200,160)">
+    <rect x="-18" y="-8" width="36" height="16" fill="#b0361e" rx="2"/>
+  </g>
+  <line x1="40" y1="120" x2="200" y2="160" stroke="#767a82" stroke-width="1" stroke-dasharray="3 3"/>
+  <text class="lbl" x="120" y="200">θ ≈ 14° · cos θ ≈ 0.97 · heading ≈ 0.99</text>
+  <text class="s" x="120" y="217" fill="#0b6b58">斜对着 · 仍有影响</text>
+
+  <!-- Case 3: moving away -->
+  <g transform="translate(400,30)">
+    <rect x="-18" y="-8" width="36" height="16" fill="#2a4ab0" rx="2"/>
+    <line x1="-18" y1="0" x2="-80" y2="0" stroke="#0b6b58" stroke-width="2" marker-end="url(#h1)"/>
+    <text class="m" x="-50" y="-6">v_i</text>
+  </g>
+  <g transform="translate(560,30)">
+    <rect x="-18" y="-8" width="36" height="16" fill="#b0361e" rx="2"/>
+  </g>
+  <text class="lbl" x="480" y="60">θ = 180° · cos θ = −1 · heading = 0</text>
+  <text class="s" x="480" y="78" fill="#b0361e">i 背对 j 开走 · 无影响</text>
+
+  <!-- Case 4: orthogonal -->
+  <g transform="translate(400,130)">
+    <rect x="-18" y="-8" width="36" height="16" fill="#2a4ab0" rx="2"/>
+    <line x1="0" y1="-8" x2="0" y2="-50" stroke="#0b6b58" stroke-width="2" marker-end="url(#h1)"/>
+  </g>
+  <g transform="translate(560,130)">
+    <rect x="-18" y="-8" width="36" height="16" fill="#b0361e" rx="2"/>
+  </g>
+  <text class="lbl" x="480" y="195">θ = 90° · cos θ = 0 · heading = 0.5</text>
+  <text class="s" x="480" y="212">垂直 · 中性</text>
+</svg>
+<figcaption>图 4-1 · 朝向修正的四种典型配置。从 0 到 1 连续变化，避免硬阈值。</figcaption>
+</figure>
+
+<h5>为什么取 $\tfrac12 (1 + \cos\theta)$ 而不是直接 $\cos\theta$？</h5>
+
+<div class="callout deriv">
+<span class="tag">推导</span>
+<ul>
+  <li>$\cos\theta \in [-1, 1]$，作为权重会有<em>负值</em>——与 E-02 "乘积语义"冲突（负权边没有物理意义）。</li>
+  <li>$\tfrac12 (1 + \cos\theta) \in [0, 1]$：背对面=0，垂直=0.5，正对=1，光滑。</li>
+  <li>等价形式：$\cos^2(\theta/2)$（用半角公式），几何上更直观。</li>
+</ul>
+</div>
+
+<h5>退化：零速度</h5>
+<p>若 $\|v_i\| &lt; 10^{-6}$ m/s（几乎静止），$\cos\theta$ 无定义，代码退化为 $\text{heading} = 0.5$（中性）。这是对静止车的合理先验。</p>
+</div>
+
+<!-- E-05 -->
+<div class="eq-card" id="e05">
+<header>
+  <span class="eid">E-05</span>
+  <h3>意图冲突期望</h3>
+  <span class="badge badge-impl">impl</span>
+  <span class="src">code: <code>graph.intent_conflict</code></span>
+</header>
+
+<div class="eqdisplay">
+$$\mathbb{E}_{a\sim p_i, b\sim p_j}[C(a,b)] = \sum_{a \in \mathcal{A}} \sum_{b \in \mathcal{A}} p_i(a)\,p_j(b)\,C(a, b)$$
+</div>
+
+<h5>$C(a,b)$ 是什么</h5>
+<p>一个 $|\mathcal{A}|\times|\mathcal{A}|$ 的对称/非对称<em>冲突先验表</em>，条目在 $[0,1]$。典型如：</p>
+<table class="sym-table">
+  <thead><tr><th></th><th>直行</th><th>左转</th><th>右转</th><th>让行</th><th>停止</th></tr></thead>
+  <tbody>
+    <tr><th>直行</th><td>0.2</td><td>0.7</td><td>0.3</td><td>0.05</td><td>0.05</td></tr>
+    <tr><th>左转</th><td>0.7</td><td>0.4</td><td>0.2</td><td>—</td><td>—</td></tr>
+    <tr><th>右转</th><td>0.3</td><td>0.2</td><td>0.4</td><td>—</td><td>—</td></tr>
+  </tbody>
+</table>
+<p>未列出的组合给默认 0.1（保守先验，见代码 <code>_CONFLICT_TABLE</code>）。</p>
+
+<h5>为什么用期望？</h5>
+
+<div class="callout deriv">
+<span class="tag">推导</span>
+上游感知给出的是意图分布 $p_i(\cdot)$，不是硬意图。若直接用 $\arg\max p_i$ 离散化，会损失信息（例：$p=(0.51, 0.49)$ 与 $p=(0.99, 0.01)$ 处理一样）。
+期望形式 $\sum_{a,b} p_i(a) p_j(b) C(a,b)$ 是最小二乘意义下对不确定性的<strong>最自然平均</strong>，等价于双方意图在 $C$ 上的<em>Frobenius 内积</em>：
+$$\mathbb{E}[C] = p_i^\top \mathbf{C}\, p_j$$
+在代码里就是一次矩阵-向量乘，便于向量化。
+</div>
+
+<h5>边界与退化</h5>
+<ul>
+  <li>若 $p_i$ 是退化 one-hot $\delta_{a^*}$：$\mathbb{E}[C] = \sum_b p_j(b) C(a^*, b)$，退化到"确定 vs 不确定"。</li>
+  <li>若 $p_i, p_j$ 都 one-hot：退化到查表 $C(a^*, b^*)$。</li>
+  <li>若两者都均匀分布：$\mathbb{E}[C] = \bar{C}$（矩阵均值），一个全局保守下界。</li>
+</ul>
+
+<h5>陷阱</h5>
+<ul>
+  <li>上游意图分布若未归一化（$\sum_a p_i(a) \ne 1$），$\mathbb{E}[C]$ 的尺度会漂。代码里做了 <code>clamp(total, 0, 1)</code> 兜底，但正确做法是入口归一化。</li>
+  <li>$C(a,b)$ 的设计<strong>可能不对称</strong>（A 左转→直行 B 比反向更危险？），这取决于语义。本工程选了对称表，保守。</li>
+</ul>
+</div>
+
+<h2 id="eq-dyn">5 · 动力学相关方程</h2>
+
+<!-- E-06 -->
+<div class="eq-card" id="e06">
+<header>
+  <span class="eid">E-06</span>
+  <h3>状态向量</h3>
+  <span class="badge badge-paper">paper §1.2</span>
+  <span class="src">code: <code>types.State</code></span>
+</header>
+
+<div class="eqdisplay">
+$$x = (p_x, p_y, \psi, v, a, \mu)^\top \in \mathbb{R}^6$$
+</div>
+
+<h5>为什么选这 6 维？</h5>
+<dl class="kv">
+  <dt>$(p_x, p_y)$</dt><dd>位置 —— 决定势能场位置项与障碍距离</dd>
+  <dt>$\psi$</dt><dd>航向 —— 运动学 bicycle 唯一需要的姿态变量</dd>
+  <dt>$v$</dt><dd>速度 —— Lyapunov 与刹车距离 barrier 的主变量</dd>
+  <dt>$a$</dt><dd>加速度 —— 放进状态而非输入的关键（见 E-07 讨论）</dd>
+  <dt>$\mu$</dt><dd>摩擦 —— 来自感知的环境变量，影响 a 的可行域与 a_brk</dd>
+</dl>
+
+<h5>为什么没有侧向速度 $v_y$ 或偏航角速度 $\dot\psi$？</h5>
+
+<div class="callout deriv">
+<span class="tag">建模取舍</span>
+完整 bicycle 的 dynamic 模型有 6 维以上（含侧偏、轮胎滑移），但在：
+<ul>
+  <li>速度 &lt; 80 km/h 且</li>
+  <li>横向加速度 &lt; 0.3g</li>
+</ul>
+的工况下，运动学 bicycle 足够准（误差 &lt; 2%）。超出工况必须换 dynamic bicycle——这是 <code>Milestone 3</code> 的内容。
+</div>
+
+<h5>$\mu$ 作为状态而非常量</h5>
+<p>$\mu$ 从感知周期性更新，按状态处理有两个好处：(1) 代码里 <code>State</code> 是 frozen 的，任何 step 都会携带当前 $\mu$；(2) 单元测试里可以用不同 $\mu$ 造场景。</p>
+</div>
+
+<!-- E-07 -->
+<div class="eq-card" id="e07">
+<header>
+  <span class="eid">E-07</span>
+  <h3>车辆动力学方程</h3>
+  <span class="badge badge-paper">paper §1.2</span>
+  <span class="src">code: <code>dynamics.BicycleModel.f</code></span>
+</header>
+
+<div class="eqdisplay">
+$$\dot x = f(x, u),\quad u = (\delta, j)^\top$$
+</div>
+
+<h5>为什么 $u$ 里是 $(\delta, j)$ 而不是 $(\delta, a)$ 或 $(\delta, v)$？</h5>
+
+<div class="callout deriv">
+<span class="tag">关键决策</span>
+三种候选，每种都"能控制车"：
+<ol>
+  <li>$u = (\delta, v)$（速度直接作为输入）—— 违反物理，真实车做不到瞬时改 $v$。</li>
+  <li>$u = (\delta, a)$（加速度作为输入，$a$ 不入状态）—— 允许 $a$ 瞬时跳变，<strong>命令不连续</strong>，barrier 函数的 $\dot h$ 里会出不连续项。</li>
+  <li>$u = (\delta, j)$（jerk 作为输入，$a$ 入状态）—— 命令至少是分段连续的，$a$ 演化光滑，且刹车距离 barrier（E-30）对 $j$ 相对度 = 1（E-31 推导）。</li>
+</ol>
+选 (3)。代价：状态多一维，但获得 CBF 的可解性，非常划算。
+</div>
+
+<h5>映射到代码</h5>
+<pre><code><span>def</span> f(state, u):
+    ...
+    px_dot  = v · cos(ψ)       <span>#</span> 几何投影
+    py_dot  = v · sin(ψ)
+    ψ_dot   = (v/L) · tan(δ)   <span>#</span> 运动学 bicycle
+    v_dot   = a                <span>#</span> 加速度直接入速度
+    a_dot   = j                <span>#</span> 关键：jerk 驱动加速度
+    μ_dot   = 0                <span>#</span> μ 由上游感知更新
+    return [px_dot, py_dot, ψ_dot, v_dot, a_dot, μ_dot]
+</code></pre>
+</div>
+
+<!-- E-08 -->
+<div class="eq-card" id="e08">
+<header>
+  <span class="eid">E-08</span>
+  <h3>bicycle 各分量</h3>
+  <span class="badge badge-impl">impl</span>
+</header>
+
+<div class="eqdisplay">
+$$
+\dot x = \begin{pmatrix}
+\dot p_x \\ \dot p_y \\ \dot\psi \\ \dot v \\ \dot a \\ \dot\mu
+\end{pmatrix} =
+\begin{pmatrix}
+v \cos\psi \\ v \sin\psi \\ \dfrac{v}{L}\tan\delta \\ a \\ j \\ 0
+\end{pmatrix}
+$$
+</div>
+
+<h5>$\dot\psi = (v/L)\tan\delta$ 的推导</h5>
+
+<div class="callout deriv">
+<span class="tag">推导</span>
+运动学 bicycle 假设：前后轮纯滚动、无侧偏。令后轮瞬时圆心距 = $R$，则：
+$$R = L / \tan\delta$$
+由定义 $v = R\,\dot\psi$，故 $\dot\psi = v/R = (v/L)\tan\delta$。<br>
+注意 $\tan$ 在 $\delta \to \pm 90°$ 发散，所以 $\delta$ 必须被 $\text{max\_steer} = 35°$ 严格 clamp。
+</div>
+
+<h5>退化：$v = 0$</h5>
+<p>停车时 $\dot\psi = 0$ 无论 $\delta$ 多大——符合物理（静车转方向盘不动姿态）。</p>
+
+<h5>单位一致性检查</h5>
+<p>$v/L$ 单位为 1/s，$\tan\delta$ 无量纲，$\dot\psi$ 单位 rad/s ✓。</p>
+</div>
+
+<!-- E-09 -->
+<div class="eq-card" id="e09">
+<header>
+  <span class="eid">E-09</span>
+  <h3>摩擦包络</h3>
+  <span class="badge badge-paper">paper §1.2</span>
+  <span class="src">code: <code>BicycleModel.f / step</code></span>
+</header>
+
+<div class="eqdisplay">
+$$|a| \le \mu\, g$$
+</div>
+
+<h5>物理</h5>
+<p>轮胎能提供的最大纵向加速度受路面摩擦限制。干燥路面 $\mu \approx 1$ → $|a| \le 9.8$ m/s²；湿路 $\mu \approx 0.5$ → $|a| \le 4.9$ m/s²；结冰 $\mu \approx 0.2$ → $|a| \le 2.0$ m/s²。</p>
+
+<h5>圆周摩擦椭圆（更严谨的版本）</h5>
+<div class="callout deriv">
+<span class="tag">扩展</span>
+本工程简化为<strong>纵向</strong>上限，但真实轮胎的纵横向摩擦是共享的：
+$$\left(\frac{a_\text{long}}{\mu g}\right)^2 + \left(\frac{a_\text{lat}}{\mu g}\right)^2 \le 1$$
+即<em>friction ellipse</em>。当前转向用 $\delta$ clamp 代替，精度在运动学模型下够用；dynamic bicycle 会显式引入摩擦椭圆。
+</div>
+
+<h5>双层 clamp 实现</h5>
+<ol>
+  <li><strong>在 $f$ 里</strong>：若 $a \ge \mu g$ 且 $j &gt; 0$，把 $j$ 置 0（阻止 $a$ 继续上升）；反向同理。</li>
+  <li><strong>在 step 末端</strong>：$a_1 \leftarrow \text{clip}(a_1, -\mu g, \mu g)$ 作为兜底，防 RK4 数值误差累积越界。</li>
+</ol>
+
+<h5>陷阱</h5>
+<ul>
+  <li><strong>$\mu$ 被高估</strong>是量产前最大风险。建议：<em>感知 μ 估计只在 [0.2, 1.0] 之间，超出默认 clamp 到 0.5</em>（极端保守）。</li>
+  <li>$\mu$ 单位无量纲，但常见错误是拿"轮胎—路面附着系数"与"空气阻力系数" 混用。</li>
+</ul>
+</div>
+
+<!-- E-10 -->
+<div class="eq-card" id="e10">
+<header>
+  <span class="eid">E-10</span>
+  <h3>RK4 一步积分</h3>
+  <span class="badge badge-impl">impl</span>
+  <span class="src">code: <code>BicycleModel.step</code></span>
+</header>
+
+<div class="eqdisplay">
+$$
+\begin{aligned}
+k_1 &= f(x_t, u) \\
+k_2 &= f(x_t + \tfrac{dt}{2} k_1, u) \\
+k_3 &= f(x_t + \tfrac{dt}{2} k_2, u) \\
+k_4 &= f(x_t + dt\, k_3, u) \\
+x_{t+dt} &= x_t + \tfrac{dt}{6}(k_1 + 2k_2 + 2k_3 + k_4)
+\end{aligned}
+$$
+</div>
+
+<h5>为什么 RK4 而不是 Euler？</h5>
+
+<div class="callout deriv">
+<span class="tag">误差阶</span>
+<table class="sym-table">
+  <thead><tr><th>方法</th><th>单步误差</th><th>累积误差 $O$</th><th>每步代价</th></tr></thead>
+  <tbody>
+    <tr><td>Euler</td><td>$O(dt^2)$</td><td>$O(dt)$</td><td>1 次 $f$ 调用</td></tr>
+    <tr><td>RK2</td><td>$O(dt^3)$</td><td>$O(dt^2)$</td><td>2 次</td></tr>
+    <tr><td>RK4</td><td>$O(dt^5)$</td><td>$O(dt^4)$</td><td>4 次</td></tr>
+  </tbody>
+</table>
+在 $dt = 0.1$ s 下，Euler 累积误差约 $10\%$/s（速度每秒偏 1 m/s），RK4 约 $0.01\%$/s——对 10 s 预测足够精确，4 倍开销完全值得。
+</div>
+
+<h5>为什么不用隐式积分？</h5>
+<p>隐式（如 backward Euler）在 stiff 系统里更稳定，但：</p>
+<ul>
+  <li>我们的 $f$ 不 stiff（所有时间常数 &gt; 0.1 s）；</li>
+  <li>隐式需要迭代求根，难以毫秒级完成；</li>
+  <li>RK4 对光滑 $f$ 已经足够。</li>
+</ul>
+
+<h5>陷阱</h5>
+<ul>
+  <li><strong>dt 必须 &lt; 0.1 s</strong>：超过这个值后 RK4 误差阶的优势消失（真实轨迹出现曲率快速变化）。</li>
+  <li>上游感知与下游控制应使用<strong>同一个 dt</strong>，否则 state 与 control 对不齐。</li>
+  <li>RK4 每步<em>4 次</em> $f$ 调用，意味着每次 step 都触发 4 次 E-09 clamp——看似冗余但数值上必要。</li>
+</ul>
+</div>
+
+<h2 id="eq-pot">6 · 势能与梯度流</h2>
+
+<!-- E-11 -->
+<div class="eq-card" id="e11">
+<header>
+  <span class="eid">E-11</span>
+  <h3>受限梯度流</h3>
+  <span class="badge badge-paper">paper §1.3</span>
+  <span class="src">code: <code>potential.PotentialField.flow_direction</code></span>
+</header>
+
+<div class="eqdisplay">
+$$\dot x = -\nabla \Phi(x),\quad \text{s.t.}\; x \in \mathcal{M}$$
+</div>
+
+<h5>"受限"二字的含义</h5>
+<p>原式 $\dot x = -\nabla\Phi$ 是无约束梯度流，是"最速下降"方向。但状态空间是非欧流形 $\mathcal{M}$（有障碍 void + 摩擦约束），
+真实演化必须把 $-\nabla\Phi$ 投影到 $\mathcal{M}$ 的切空间 $T_x\mathcal{M}$：</p>
+$$\dot x = \text{Proj}_{T_x\mathcal{M}}(-\nabla\Phi)$$
+<p>本工程的"投影"由下游 CBF + $T_\text{inv}$ 实现——理论上等价于"先选方向再找最近可行点"。</p>
+
+<h5>数值实现细节</h5>
+<p><code>flow_direction(x)</code> 只返回位置平面的单位方向 $\hat d \in \mathbb{R}^2$：</p>
+$$\hat d = \frac{-\nabla_p \Phi(x)}{\|\nabla_p \Phi(x)\|}$$
+<p>然后交给 <code>GradientPolicy</code> 把 $\hat d$ 与当前航向 $\psi$ 对齐，生成 $(\delta, j)$ 候选。</p>
+
+<h5>陷阱</h5>
+<ul>
+  <li>局部极小：U 形障碍会让 $\nabla\Phi = 0$ 但未到目标。检测：若连续 $K$ 帧 $\|\nabla\Phi\| &lt; 10^{-3}$ 且 $\|p - p_\text{goal}\| &gt; 5$m，告警。</li>
+  <li>尺度错配：三项权重 $w_g, w_o, w_i$ 若相差 100x 以上，小权重项的梯度被<em>淹没</em>到浮点精度以下。建议三项的典型值尺度接近。</li>
+</ul>
+</div>
+
+<!-- E-12 -->
+<div class="eq-card" id="e12">
+<header>
+  <span class="eid">E-12</span>
+  <h3>势能分解</h3>
+  <span class="badge badge-impl">impl</span>
+</header>
+
+<div class="eqdisplay">
+$$\Phi(x) = \Phi_\text{goal}(x) + \Phi_\text{obs}(x) + \Phi_\text{int}(x)$$
+</div>
+
+<h5>为什么是加性？</h5>
+<div class="callout deriv">
+<span class="tag">推导</span>
+三个目标是独立的<em>惩罚</em>（越差越痛），且没有物理上的乘性耦合。加性形式下：
+$$\nabla \Phi = \nabla\Phi_\text{goal} + \nabla\Phi_\text{obs} + \nabla\Phi_\text{int}$$
+即三个梯度向量相加，计算开销 $O(3)$，而不是乘性形式下的 $O(3^2)$（每项对所有其他项求导）。
+</div>
+
+<h5>单位</h5>
+<p>$\Phi$ 单位是"任意能量"（只用到梯度，所以绝对值无关紧要）。但三项之间的<strong>相对量级</strong>必须对齐（见 E-11 陷阱）。</p>
+</div>
+
+<!-- E-13 -->
+<div class="eq-card" id="e13">
+<header>
+  <span class="eid">E-13</span>
+  <h3>目标项（吸引势）</h3>
+  <span class="badge badge-impl">impl</span>
+</header>
+
+<div class="eqdisplay">
+$$\Phi_\text{goal}(x) = \tfrac12 w_g \|p - p_g\|^2$$
+</div>
+
+<h5>为什么是二次而不是线性？</h5>
+<ul>
+  <li>二次 → 梯度 $\nabla_p \Phi_\text{goal} = w_g (p - p_g)$ 线性增长，远目标拉力大、近目标拉力小——自动收敛；</li>
+  <li>线性 → 梯度是常量单位向量，近目标也以固定力拉，容易振荡；</li>
+  <li>二次在 $p = p_g$ 处 $\nabla = 0$，目标是<em>不动点</em>，符合物理。</li>
+</ul>
+
+<h5>陷阱</h5>
+<p>在远距离（$\|p - p_g\| \gg$ 1）时，二次项会主导其他项。解决：把 $w_g$ 调小（demo 里用 0.05），或改成饱和式 $\Phi_\text{goal} = w_g \cdot \text{softplus}(\|p-p_g\| - R)$。</p>
+</div>
+
+<!-- E-14 -->
+<div class="eq-card" id="e14">
+<header>
+  <span class="eid">E-14</span>
+  <h3>障碍项（斥力势）</h3>
+  <span class="badge badge-impl">impl</span>
+</header>
+
+<div class="eqdisplay">
+$$\Phi_\text{obs}(x) = w_o \sum_{o \in \mathcal{O}} \left(\frac{r_s}{\max(d_o(p), \epsilon)} - 1\right)^2 \mathbb{1}[d_o(p) &lt; r_s]$$
+</div>
+
+<h5>符号</h5>
+<dl class="kv">
+  <dt>$d_o(p)$</dt><dd>到障碍 $o$ 的符号距离（正：外部；负：内部）</dd>
+  <dt>$r_s$</dt><dd>安全半径（影响作用范围）</dd>
+  <dt>$\epsilon$</dt><dd>数值下限（防止 $d \to 0$ 发散），取 0.05 m</dd>
+</dl>
+
+<h5>为什么这个形式？</h5>
+
+<div class="callout deriv">
+<span class="tag">比较</span>
+<strong>候选 A</strong>：$1/d^2$ — 经典 repulsive potential，但在 $d \to 0$ 发散，数值上必须裁剪 + 遥远处还有非零贡献（梯度污染）。<br>
+<strong>候选 B</strong>：$(r_s / d - 1)^2 \mathbb{1}[d &lt; r_s]$ — 有限支集，在 $d = r_s$ 光滑归零；在 $d \to 0$ 仍会涨到 $(r_s/\epsilon - 1)^2$，有界。<br>
+<strong>候选 C</strong>：$\exp(-d^2 / r_s^2)$ — 高斯型，光滑但<em>没有硬截断</em>，远处也轻微推一下（可能干扰目标项）。<br>
+<br>
+候选 B 的另一个优点：在 $d = r_s$ 附近梯度渐进 0，<em>温柔进入安全区</em>；$1/d^2$ 在 $d = r_s$ 处梯度突然变大，数值抖动。
+</div>
+
+<h5>指示函数 $\mathbb{1}[d &lt; r_s]$ 的不连续</h5>
+<p>严格讲 $\Phi_\text{obs}$ 在 $d = r_s$ 处有一阶不连续（虽然值连续，梯度左右不等）。实际影响：</p>
+<ul>
+  <li>$\Phi_\text{obs}|_{d = r_s^-} = 0$（因平方项为 0），与 $d = r_s^+$ 处的 0 平滑衔接，<em>值</em>连续；</li>
+  <li>$\nabla\Phi_\text{obs}|_{d = r_s^-} = 0$（平方项导数也为 0），与 $d = r_s^+$ 的 0 衔接，<em>梯度</em>连续。</li>
+  <li>所以实际上 E-14 在 $d = r_s$ 处是 $C^1$ 连续的！指示函数只是形式上的。</li>
+</ul>
+</div>
+
+<!-- E-15 -->
+<div class="eq-card" id="e15">
+<header>
+  <span class="eid">E-15</span>
+  <h3>交互项</h3>
+  <span class="badge badge-impl">impl</span>
+</header>
+
+<div class="eqdisplay">
+$$\Phi_\text{int}(x) = w_i \sum_{j \in N_\text{ego}} \frac{w_{ij}}{\max(d_{ij}, d_\min)}$$
+</div>
+
+<h5>与 E-14 的区别</h5>
+<p>障碍项是<em>静态</em>排斥（几何 void），交互项是<em>动态博弈</em>排斥——边权 $w_{ij}$ 把"对方意图"代数化了。<br>
+同一个位置的"石头"和"车"对 ego 的势能贡献可以差两个数量级。</p>
+
+<h5>为什么用 $1/d$ 而不是 $1/d^2$？</h5>
+<ul>
+  <li>障碍是"硬边界"（撞上就死），需要梯度在接近时<em>急剧</em>上升 → $1/d^2$；</li>
+  <li>动态他车已经在博弈里，用"温和"的 $1/d$ 就够（加上 $w_{ij}$ 权重已自带强度调节）；</li>
+  <li>避免两项叠加后近距离梯度爆炸（可能触发 E-09 clamp 级联）。</li>
+</ul>
+</div>
+
+<!-- E-16 -->
+<div class="eq-card" id="e16">
+<header>
+  <span class="eid">E-16</span>
+  <h3>梯度数值差分</h3>
+  <span class="badge badge-impl">impl</span>
+</header>
+
+<div class="eqdisplay">
+$$\frac{\partial \Phi}{\partial p_x} \approx \frac{\Phi(p_x + \epsilon, p_y) - \Phi(p_x, p_y)}{\epsilon},\quad \epsilon = 10^{-3}\text{ m}$$
+</div>
+
+<h5>为什么不解析梯度？</h5>
+<ul>
+  <li>$\Phi_\text{obs}$ 有 $\mathbb{1}[\cdot]$ 分支，解析梯度需要写多个 case；</li>
+  <li>$w_{ij}$ 也是数值计算的，对 $p$ 的解析梯度涉及交互图重算；</li>
+  <li>2 次函数求值 &lt; 50 μs，数值梯度足够快。</li>
+</ul>
+
+<h5>$\epsilon$ 的选取</h5>
+
+<div class="callout deriv">
+<span class="tag">权衡</span>
+中心差 $(f(x+\epsilon) - f(x-\epsilon))/(2\epsilon)$ 单次误差 $O(\epsilon^2)$，代码里用前向差 $O(\epsilon)$——因为 $\Phi$ 求值已经包含浮点误差，取 $\epsilon = 10^{-3}$ 是<strong>截断误差 ≈ 浮点误差</strong>的最优点（rule of thumb：$\epsilon \approx \sqrt{\text{eps}_\text{float}} \approx 1.5 \times 10^{-8}$ 对 double）。这里选更大的 $10^{-3}$ 是因为 $\Phi$ 的梯度本身量级大于浮点精度下限，取稍大的 $\epsilon$ 对结果不敏感。
+</div>
+</div>
+
+<h2 id="eq-lyap">7 · Lyapunov 稳定性</h2>
+
+<!-- E-17 -->
+<div class="eq-card" id="e17">
+<header>
+  <span class="eid">E-17</span>
+  <h3>Lyapunov 候选函数</h3>
+  <span class="badge badge-paper">paper §2.1</span>
+  <span class="src">code: <code>lyapunov.QuadraticLyapunov.V</code></span>
+</header>
+
+<div class="eqdisplay">
+$$V(x) = \tfrac12 q_v (v - v^*)^2,\quad q_v &gt; 0$$
+</div>
+
+<h5>Lyapunov 函数必须满足的三条（标准）</h5>
+<ol>
+  <li>$V(x^*) = 0$，$V(x) &gt; 0$ 对 $\forall x \ne x^*$；</li>
+  <li>$V$ 连续可导；</li>
+  <li>沿系统演化 $\dot V \le 0$（ω-limit 稳定）或 $\dot V &lt; 0$（渐近稳定）。</li>
+</ol>
+
+<p>我们的 $V$ 以 $x^* = (*, *, *, v^*, *, *)$ 为零点（只约束速度），满足 (1)(2)。(3) 的验证交给 E-18 的数值监视。</p>
+
+<h5>为什么只含速度项？（工程决策）</h5>
+
+<div class="callout deriv">
+<span class="tag">踩过的坑</span>
+第一版实现尝试把距离也放进来：
+$$V_\text{bad} = \tfrac12 q_v (v-v^*)^2 + \frac{q_d}{\max(d_\min, \epsilon)^2}$$
+表面上符合原文措辞"综合安全 + 效率"，但<strong>语义错位</strong>：<br>
+<em>朝目标前进会让 $d_\min$ 下降</em>（必经障碍附近），$V$ 上升 → T_inv 误判不稳定 → 连刹不前。<br><br>
+修正：Lyapunov 只负责<em>稳定性</em>（"能跟上目标速度"），距离的硬约束由 CBF 处理（E-26 ~ E-32）。数学上这对应：
+<ul>
+  <li>Lyapunov 是 <em>attractor</em> 的语言（内稳定）；</li>
+  <li>CBF 是 <em>forward invariance</em> 的语言（边界）。</li>
+</ul>
+两者<strong>不可混为一谈</strong>。
+</div>
+
+<h5>$q_v$ 的选择</h5>
+<p>$q_v$ 决定"相同速度误差下 $V$ 的大小"。默认 $q_v = 1$，则 $\Delta v = 5$ m/s 时 $V = 12.5$。
+在 $V_\max = \tfrac12 q_v v_\max^2 = 613$ 范围内，$\gamma = 0.5$ 给出的指数衰减目标值合理。</p>
+</div>
+
+<!-- E-18 -->
+<div class="eq-card" id="e18">
+<header>
+  <span class="eid">E-18</span>
+  <h3>Lyapunov 硬约束</h3>
+  <span class="badge badge-paper">paper §2.1</span>
+</header>
+
+<div class="eqdisplay">
+$$\frac{dV(x)}{dt} \le 0$$
+</div>
+
+<h5>推导 $\dot V$ 沿系统演化</h5>
+
+<div class="callout deriv">
+<span class="tag">链式法则</span>
+$$\dot V = \frac{\partial V}{\partial v} \dot v = q_v (v - v^*)\cdot a$$
+所以：
+<ul>
+  <li>$v &gt; v^*$（开太快）且 $a &gt; 0$ → $\dot V &gt; 0$（越快越偏，不稳）；</li>
+  <li>$v &gt; v^*$ 且 $a &lt; 0$ → $\dot V &lt; 0$（减速回归，稳）；</li>
+  <li>$v = v^*$ → $\dot V = 0$（边缘）。</li>
+</ul>
+这个简洁形式是"为什么 $V$ 只含速度项"的数学回报：<strong>T_inv 的"降 jerk"策略直接作用在 $a$，让 $\dot V$ 单调下降。</strong>
+</div>
+
+<h5>"硬约束"的工程含义</h5>
+<p>在 T_inv 里，若 $\dot V(u_{nn}) &gt; 0$，不是告警，而是<strong>拒绝命令</strong>然后松弛到合规（见 E-35）。这是"给 AI 戴物理枷锁"的数学实现。</p>
+</div>
+
+<!-- E-19 -->
+<div class="eq-card" id="e19">
+<header>
+  <span class="eid">E-19</span>
+  <h3>指数衰减目标</h3>
+  <span class="badge badge-impl">impl</span>
+</header>
+
+<div class="eqdisplay">
+$$\frac{dV(x)}{dt} \le -\gamma V(x),\quad \gamma &gt; 0$$
+</div>
+
+<h5>推导</h5>
+<p>E-18 的 $\dot V \le 0$ 只保证"不恶化"，不保证"回归目标速度的速度"。加强到 $\dot V \le -\gamma V$：</p>
+$$V(t) \le V(0) e^{-\gamma t}$$
+<p>即 $V$ 按时间常数 $1/\gamma$ 指数衰减。$\gamma = 0.5$ 对应时间常数 2 s，与乘用车的典型稳定恢复时间一致。</p>
+
+<h5>为什么是"优先"而不是"硬性"？</h5>
+<p>E-18 是<em>必达</em>（保命），E-19 是<em>理想</em>（体感好）。T_inv 的逻辑是："优先满足 E-19；不行退回 E-18；都不行就刹停"。这是三档降级的数学根基。</p>
+</div>
+
+<!-- E-20 -->
+<div class="eq-card" id="e20">
+<header>
+  <span class="eid">E-20</span>
+  <h3>$\dot V$ 的有限差分估计</h3>
+  <span class="badge badge-impl">impl</span>
+  <span class="src">code: <code>QuadraticLyapunov.dV_dt</code></span>
+</header>
+
+<div class="eqdisplay">
+$$\dot V(x, u) \approx \frac{V(\phi(x, u, dt)) - V(x)}{dt},\quad dt = 0.01 \text{ s}$$
+</div>
+
+<h5>$\phi(x, u, dt)$</h5>
+<p>即 <code>BicycleModel.step(x, u, dt)</code>，一次 RK4 积分。</p>
+
+<h5>为什么 $dt = 0.01$ 而不是 0.1？</h5>
+<div class="callout deriv">
+<span class="tag">权衡</span>
+<table class="sym-table">
+  <thead><tr><th>$dt$</th><th>看见 jerk 影响？</th><th>信噪比</th><th>计算代价</th></tr></thead>
+  <tbody>
+    <tr><td>0.001 s</td><td>✗（$a$ 没有时间累积）</td><td>低（被浮点噪声淹没）</td><td>高</td></tr>
+    <tr><td>0.01 s</td><td>✓</td><td>良好</td><td>1 次 step</td></tr>
+    <tr><td>0.1 s</td><td>✓✓（但过度合成）</td><td>好</td><td>1 次 step</td></tr>
+  </tbody>
+</table>
+选 0.01 s 是 jerk 效果刚开始累积、但还没被非线性 $\cos\psi$ 项"混入"的甜点。<strong>注意与 planner 主环 $dt = 0.1$ 是两个不同的 $dt$</strong>。
+</div>
+
+<h5>等价的解析式</h5>
+<p>用 $\dot V = q_v (v - v^*) a$ 可以解析计算，但：</p>
+<ul>
+  <li>解析式<em>只看瞬时</em> $\dot V$，不考虑 jerk 在 0.01 s 内让 $a$ 改变的效应；</li>
+  <li>有限差分捕捉到 $a_{t+0.01} \approx a_t + j\cdot 0.01$ 的<em>一阶效应</em>，这对 T_inv 的判断更有用。</li>
+</ul>
+</div>
+
+<h2 id="eq-reach">8 · 可达集</h2>
+
+<!-- E-21 -->
+<div class="eq-card" id="e21">
+<header>
+  <span class="eid">E-21</span>
+  <h3>前向可达集</h3>
+  <span class="badge badge-paper">paper §2.2</span>
+  <span class="src">code: <code>reachable.ReachableSet</code></span>
+</header>
+
+<div class="eqdisplay">
+$$\mathcal{R}(x_0, T) = \left\{\, \phi(T; x_0, u(\cdot))\;\middle|\; u(t) \in \mathcal{U},\; t \in [0, T]\,\right\}$$
+</div>
+
+<h5>数学性质</h5>
+<ul>
+  <li>$\mathcal{R}$ 通常是<em>非凸</em>的（转向有限 + 摩擦有限）。</li>
+  <li>$T$ 递增 → $\mathcal{R}$ 单调包含。</li>
+  <li>严格计算需要 Hamilton-Jacobi reachability（求解 PDE），昂贵。</li>
+</ul>
+
+<h5>工程近似：采样 + 凸包</h5>
+<div class="callout deriv">
+<span class="tag">近似链</span>
+<ol>
+  <li>在 $\mathcal{U}^N$ 里随机采 $N$ 条分段常值 $u(\cdot)$；</li>
+  <li>每条 RK4 积分到 $T$，拿到终点 $\phi(T; x_0, u)$；</li>
+  <li>对 $N$ 个终点求凸包 $\hat{\mathcal{R}}$。</li>
+</ol>
+这个近似：
+<ul>
+  <li>在<strong>可达</strong>判定上<em>保守</em>（$\hat{\mathcal{R}} \subset \mathcal{R}$，真实可达更大），<strong>不可达</strong>判定上<em>乐观</em>（$\mathcal{R}^c \subset \hat{\mathcal{R}}^c$，真实不可达更多）。</li>
+  <li>凸包的"乐观放大"抵消了部分采样"保守性"，综合偏<em>乐观</em>——这在 dead-zone 判定里是一个风险，必须带安全系数使用。</li>
+</ul>
+</div>
+
+<h5>复杂度</h5>
+<p>$N \cdot T/dt$ 次 $f$ 调用 + 凸包 $O(N \log N)$。$N = 200, T = 2$s, $dt = 0.1$s → 4000 次 $f$ + 凸包 → ~5 ms。</p>
+</div>
+
+<!-- E-22 -->
+<div class="eq-card" id="e22">
+<header>
+  <span class="eid">E-22</span>
+  <h3>最坏情况停车轨迹</h3>
+  <span class="badge badge-impl">impl</span>
+  <span class="src">code: <code>DeadZoneDetector.check</code></span>
+</header>
+
+<div class="eqdisplay">
+$$
+d_\min(x_0, x_\text{thr}, T) = \min_{t \in [0, T]} \|p(t; x_0, u_\text{brake}) - p_\text{thr}(t)\|,\quad u_\text{brake}(t) \equiv (0, -j_\max)
+$$
+</div>
+
+<h5>非对称假设（key）</h5>
+<ul>
+  <li>自车：全力刹（保守对自己）；</li>
+  <li>他车：匀速（激进假设对方不配合）。</li>
+</ul>
+<p>若 $d_\min &lt; 0$：无论如何都撞 → dead zone。这个判定直接作为 dead-zone 的<strong>下界</strong>，不是上界。</p>
+
+<h5>等价变形：解析上界</h5>
+
+<div class="callout deriv">
+<span class="tag">闭式</span>
+若忽略 jerk ramp，最坏刹车距离 $s_\text{stop} = v^2 / (2 a_\text{brk})$。
+若威胁以 $v_\text{thr}$ 匀速靠近，ego 相对闭合速度 $v_c = v + v_\text{thr}$，则相对停车时间 $t_s = v_c / a_\text{brk}$，相对停车距离 $s_c = v_c^2/(2a_\text{brk})$。
+若 $s_c &gt; d_\text{obs}^\text{init}$ → dead zone。<br>
+代码用数值仿真而不是闭式，因为 jerk ramp 的影响不可忽略，闭式会乐观估计。
+</div>
+</div>
+
+<h2 id="eq-game">9 · 博弈 / 安全冗余</h2>
+
+<!-- E-23 -->
+<div class="eq-card" id="e23">
+<header>
+  <span class="eid">E-23</span>
+  <h3>信息熵</h3>
+  <span class="badge badge-impl">impl</span>
+  <span class="src">code: <code>BeliefState.entropy</code></span>
+</header>
+
+<div class="eqdisplay">
+$$H(p) = -\sum_{k=1}^{K} p_k \log p_k,\quad p_k \ge 0,\; \sum_k p_k = 1$$
+</div>
+
+<h5>边界</h5>
+<ul>
+  <li>$H = 0$ iff 某个 $p_k = 1$（完全确定）；</li>
+  <li>$H = \log K$ iff 均匀分布（完全不确定）；</li>
+  <li>$H$ 关于 $p_k$ 凹。</li>
+</ul>
+
+<h5>数值实现</h5>
+<p>$p_k \log p_k$ 在 $p_k = 0$ 定义为 0（按极限）。代码用 <code>np.clip(p, 1e-9, 1)</code> 避免 $\log 0$。</p>
+
+<h5>陷阱</h5>
+<p>若上游给出未归一化的 $p$：$\sum p_k \ne 1$，$H$ 会偏离定义。代码做了归一化 + clip，但最佳做法是在上游确保归一化。</p>
+</div>
+
+<!-- E-24 -->
+<div class="eq-card" id="e24">
+<header>
+  <span class="eid">E-24</span>
+  <h3>归一化熵</h3>
+  <span class="badge badge-impl">impl</span>
+</header>
+
+<div class="eqdisplay">
+$$\eta = \frac{H(p)}{\log K} \in [0, 1]$$
+</div>
+
+<h5>为什么要归一化？</h5>
+
+<div class="callout deriv">
+<span class="tag">动机</span>
+若不归一化，$H$ 的尺度依赖类别数 $K$。例：
+<ul>
+  <li>$K = 2$ 二分类均匀时 $H = \log 2 \approx 0.69$；</li>
+  <li>$K = 10$ 十分类均匀时 $H = \log 10 \approx 2.30$。</li>
+</ul>
+下游 $r_\text{buf} = r_\text{base} + k_\eta \cdot H$ 若直接用 $H$，$k_\eta$ 会耦合到 $K$。
+归一化 $\eta = H / \log K$ 之后：<br>
+"一半不确定"永远意味着 $\eta \approx 0.5$，与 $K$ 无关。<br>
+这让 $k_\eta$ 成为一个真正的<em>语义参数</em>。
+</div>
+</div>
+
+<!-- E-25 -->
+<div class="eq-card" id="e25">
+<header>
+  <span class="eid">E-25</span>
+  <h3>安全缓冲公式</h3>
+  <span class="badge badge-impl">impl</span>
+  <span class="src">code: <code>WorstCaseGame.safe_buffer</code></span>
+</header>
+
+<div class="eqdisplay">
+$$r_\text{buf}(v_\text{close}, \eta) = r_\text{base} + k_v \cdot \max(v_\text{close}, 0) + k_\eta \cdot \eta$$
+</div>
+
+<h5>三项的物理意义</h5>
+<dl class="kv">
+  <dt>$r_\text{base}$</dt><dd>最小安全距离（3 m，约一车身）</dd>
+  <dt>$k_v \cdot v_\text{close}$</dt><dd>闭合速度换算成时间余量（$k_v = 1.2$ s：即每 m/s 加 1.2 m = 人类 1.2 秒反应时间的近似）</dd>
+  <dt>$k_\eta \cdot \eta$</dt><dd>不确定性惩罚（$k_\eta = 2$ m：完全不确定时多留 2 m）</dd>
+</dl>
+
+<h5>为什么是加性？</h5>
+<p>加性让每一项可独立解读与调参：</p>
+<ul>
+  <li>乘性 $r_\text{buf} = r_\text{base} \cdot (1 + k_v v_c)(1 + k_\eta \eta)$ — 低闭合速度 + 高熵会变成"几乎等于 $r_\text{base}$"的漏洞；</li>
+  <li>加性 — 任一因素高都会拉大 buffer。</li>
+</ul>
+
+<h5>多他车聚合</h5>
+$$r_\text{buf}^\text{multi} = \max_{j \in N_\text{ego}} r_\text{buf}(v_{c,j}, \eta_j)$$
+<p>最坏情况聚合——哪怕只有一辆"意图最不确定且最快靠近"的车，ego 也必须按它的要求留 buffer。</p>
+</div>
+
+<h2 id="eq-cbf">10 · 控制屏障函数（CBF）</h2>
+
+<!-- E-26 -->
+<div class="eq-card" id="e26">
+<header>
+  <span class="eid">E-26</span>
+  <h3>安全集</h3>
+  <span class="badge badge-paper">paper §3.2</span>
+</header>
+
+<div class="eqdisplay">
+$$\mathcal{C} = \{\, x \in \mathbb{R}^n \;:\; h(x) \ge 0 \,\}$$
+</div>
+
+<h5>前向不变性定义</h5>
+<div class="callout deriv">
+<span class="tag">定义</span>
+$\mathcal{C}$ 在动力学 $\dot x = f(x, u)$ 下<strong>前向不变</strong>，如果：
+$$x(0) \in \mathcal{C} \implies x(t) \in \mathcal{C},\; \forall t \ge 0$$
+即<em>一旦进入就永远不出</em>。目标：通过约束 $u$ 保持前向不变性。
+</div>
+
+<h5>为什么要这个定义？</h5>
+<p>"不出"比"最终收敛回"强得多。SLO/安全的语言是"<em>从不</em>违反"，不是"平均违反少"——这正是前向不变性的精髓。</p>
+</div>
+
+<!-- E-27 -->
+<div class="eq-card" id="e27">
+<header>
+  <span class="eid">E-27</span>
+  <h3>CBF 主条件（线性 α）</h3>
+  <span class="badge badge-paper">paper §3.2</span>
+  <span class="src">code: <code>CBFQPFilter._objective</code></span>
+</header>
+
+<div class="eqdisplay">
+$$\dot h(x, u) + \alpha\, h(x) \ge 0,\quad \alpha &gt; 0$$
+</div>
+
+<h5>为什么这个不等式保证前向不变？</h5>
+
+<div class="callout deriv">
+<span class="tag">严格证明</span>
+令 $\eta(t) := h(x(t))$。E-27 说 $\dot\eta \ge -\alpha \eta$，即：
+$$\frac{d}{dt}(e^{\alpha t} \eta) = e^{\alpha t}(\dot\eta + \alpha\eta) \ge 0$$
+所以 $e^{\alpha t}\eta(t) \ge e^{0}\eta(0) = h(x_0) \ge 0$，两边除以正数 $e^{\alpha t}$：
+$$h(x(t)) \ge h(x_0) \cdot e^{-\alpha t} \ge 0$$
+所以 $x(t) \in \mathcal{C}$ 对 $\forall t \ge 0$ 成立。<strong>QED</strong>。
+</div>
+
+<h5>$\alpha$ 的直觉</h5>
+<ul>
+  <li>$\alpha \to 0$：允许 $h$ 无限慢地逼近 0，反应慢；</li>
+  <li>$\alpha \to \infty$：要求 $\dot h \ge 0$，只要接近边界就刹死，过激；</li>
+  <li>$\alpha = 3$（本工程默认）：$h$ 的 1/$\alpha$ 时间常数 $\approx 0.33$ s，匹配乘用车反应时间。</li>
+</ul>
+</div>
+
+<!-- E-28 -->
+<div class="eq-card" id="e28">
+<header>
+  <span class="eid">E-28</span>
+  <h3>类 K 函数推广</h3>
+  <span class="badge badge-paper">paper §3.2</span>
+</div>
+
+<div class="eqdisplay">
+$$\dot h(x, u) + \kappa(h(x)) \ge 0$$
+</div>
+
+<p>$\kappa: [0, \infty) \to [0, \infty)$ 是类 K 函数（class $\mathcal{K}$ function）：</p>
+<ul>
+  <li>$\kappa(0) = 0$；</li>
+  <li>严格单调递增。</li>
+</ul>
+
+<h5>为什么要推广？</h5>
+<p>线性 $\alpha h$ 在 $h$ 很大时（远离边界）允许 $\dot h$ 可以很负，浪费机动能力；可以改成 $\kappa(h) = \alpha h$（保持线性）或 $\kappa(h) = \alpha h^3$（远离边界时更宽松、靠近边界时更紧）。</p>
+
+<h5>本工程的选择</h5>
+<p>用最简单的 $\kappa(h) = \alpha h$。理由：</p>
+<ul>
+  <li>线性形式让 QP 仍然是凸 QP；</li>
+  <li>非线性 $\kappa$ 需要上层算法支持，当前网格搜索不受益；</li>
+  <li>$\alpha$ 调参已足够覆盖所需行为。</li>
+</ul>
+</div>
+
+<!-- E-29 -->
+<div class="eq-card" id="e29">
+<header>
+  <span class="eid">E-29</span>
+  <h3>距离 barrier（相对度 2 版）</h3>
+  <span class="badge badge-impl">impl</span>
+  <span class="src">code: <code>cbf.DistanceBarrier</code></span>
+</header>
+
+<div class="eqdisplay">
+$$h_\text{dist}(x) = d_\text{obs}(p) - r_s$$
+</div>
+
+<h5>相对度分析（为什么工程上不够）</h5>
+
+<div class="callout deriv">
+<span class="tag">推导</span>
+$$\dot h = \nabla_p d_\text{obs} \cdot \dot p = \hat n \cdot (v \cos\psi, v \sin\psi) = v \cos\theta$$
+（$\hat n$ 是障碍外法向，$\theta$ 是速度与外法向夹角。）<br><br>
+注意：<strong>$\dot h$ 里没有 $u$</strong>！再求一次：
+$$\ddot h = \dot v \cos\theta - v\sin\theta\cdot\dot\theta = a\cos\theta - v\sin\theta\cdot\dot\psi$$
+$u = (\delta, j)$ 里 $\delta$ 通过 $\dot\psi = (v/L)\tan\delta$ 影响 $\ddot h$，$j$ 还需再求一阶才出现：
+$$\dddot h \sim j \cos\theta + \ldots$$
+所以 $h_\text{dist}$ 对 $u$ 的<strong>相对度 = 2（$\delta$）或 3（$j$）</strong>。<br><br>
+后果：单次 QP 约束 $\dot h + \alpha h \ge 0$ 里 $\dot h$ 不含 $u$，<em>QP 无法即时调节</em>——只能靠 $h$ 本身慢慢变化。高速接近障碍时来不及刹。
+</div>
+
+<h5>适用场景</h5>
+<p>虽然 jerk 相对度 3，但对<em>静态</em>场景（车道线、停车线等，几乎不动）仍然有用——这些场景 $v\cos\theta$ 很小，不用紧急矫正。</p>
+</div>
+
+<!-- E-30 -->
+<div class="eq-card" id="e30">
+<header>
+  <span class="eid">E-30</span>
+  <h3>刹车距离 barrier（相对度 1 版）</h3>
+  <span class="badge badge-impl">impl</span>
+  <span class="src">code: <code>cbf.BrakingDistanceBarrier</code></span>
+</header>
+
+<div class="eqdisplay">
+$$h_\text{brk}(x) = d_\text{obs}(p) - r_s - v\tau - \frac{v^2}{2\, a_\text{brk}(\mu)}$$
+</div>
+
+<h5>每一项的物理含义</h5>
+<dl class="kv">
+  <dt>$d_\text{obs}(p) - r_s$</dt><dd>纯几何余量（与 E-29 相同）</dd>
+  <dt>$v\tau$</dt><dd>反应时间余量：$a$ 从当前值 ramp 到 $-a_\text{brk}$ 之前走的距离</dd>
+  <dt>$v^2 / (2 a_\text{brk})$</dt><dd>匀减速 $a_\text{brk}$ 下从 $v$ 到 0 的刹车距离</dd>
+</dl>
+
+<h5>为什么加 $v\tau$ 项？</h5>
+
+<div class="callout deriv">
+<span class="tag">物理模型</span>
+理想匀减速假设 $a(t) \equiv -a_\text{brk}$，但实际 $a$ 从当前值 ramp（jerk 有限）。假设 $|j| \le j_\max$：
+$$\tau_\text{ramp} = \frac{a_\text{current} + a_\text{brk}}{j_\max}$$
+最坏情况 $a_\text{current} = a_\max$（比如 jerk 上升中），$\tau_\text{ramp} \approx (4 + 6)/6 = 1.67$ s。<br>
+我们选保守值 $\tau = 0.35$ s，对应<em>一般</em>情况 ramp 时间；极端场景还要靠 E-32 里的 safety derating 继续加倍。
+</div>
+
+<h5>为什么不包含 jerk ramp 的走过距离 $\tfrac12 a \tau^2$？</h5>
+<p>严格起见应该再加一项，但 $\tfrac12 a_\max \tau^2 = 0.5 \cdot 4 \cdot 0.35^2 \approx 0.25$ m，相对 $v\tau = 10 \cdot 0.35 = 3.5$ m 来说小一个数量级，
+实际 safety margin 已足够吸收。工程上选择<em>可接受的简化</em>。</p>
+</div>
+
+<!-- E-31 -->
+<div class="eq-card" id="e31">
+<header>
+  <span class="eid">E-31</span>
+  <h3>$\dot h_\text{brk}$ 解析推导</h3>
+  <span class="badge badge-impl">impl</span>
+</header>
+
+<div class="eqdisplay">
+$$
+\dot h_\text{brk} = \dot d_\text{obs} - \tau \dot v - \frac{v \dot v}{a_\text{brk}}
+= -v\cos\theta - \left(\tau + \frac{v}{a_\text{brk}}\right) a
+$$
+</div>
+
+<h5>逐项推导</h5>
+
+<div class="callout deriv">
+<span class="tag">链式法则</span>
+$\dot d_\text{obs} = \nabla_p d_\text{obs} \cdot \dot p = \hat n \cdot (v\cos\psi, v\sin\psi) = v\cos\theta$（$\theta$ 是"速度方向和障碍外法向的夹角"），
+但 $h$ 里是 $d_\text{obs} - \ldots$，所以 $\dot h$ 里第一项是 $-(-v\cos\theta) = -v\cos\theta$ 如果 $\cos\theta &gt; 0$（靠近障碍）。<br><br>
+更严格地：<em>远离障碍</em>时 $d_\text{obs}$ 增大，$\dot d &gt; 0$；<em>靠近</em>时 $\dot d &lt; 0$。工程实现用有限差 $(h_{t+dt} - h_t)/dt$ 避免符号容易搞错。
+<br><br>
+$-\tau \dot v - \frac{v\dot v}{a_\text{brk}} = -(\tau + v/a_\text{brk}) a$ — $a$<strong>直接出现</strong>，所以对 $a$ 相对度 1；$a$ 在状态里、$\dot a = j$，所以对 $j$ 相对度 2？
+<br><br>
+<strong>关键工程 trick</strong>：代码里 <code>h_dot_horizon = 0.1 s</code> 的有限差分——在 $\text{dt} = 0.1$ s 里，$a$ 会变化 $j \cdot \text{dt} = 0.6$ m/s²，这个变化进入有限差 $(h_{t+dt} - h_t)$，让 jerk <em>有效地</em>影响 $\dot h$。相对度变成"有效 1"。
+</div>
+
+<h5>几何直觉</h5>
+<p>$(\tau + v/a_\text{brk}) a$ 表示"当前加速度对有效刹车距离的影响"—— $a &gt; 0$（在加速）时，刹车距离会更长，$h$ 下降更快 → CBF 提前介入。</p>
+</div>
+
+<!-- E-32 -->
+<div class="eq-card" id="e32">
+<header>
+  <span class="eid">E-32</span>
+  <h3>μ 自适应有效刹车减速度</h3>
+  <span class="badge badge-impl">impl</span>
+  <span class="src">code: <code>BrakingDistanceBarrier._a_brake</code></span>
+</header>
+
+<div class="eqdisplay">
+$$a_\text{brk}(\mu) = s \cdot \min(a_\text{max}, \mu g),\quad s = 0.6$$
+</div>
+
+<h5>三重保守</h5>
+<ol>
+  <li>$a_\text{max} = 6$ m/s²：执行器上限；</li>
+  <li>$\mu g$：摩擦上限；</li>
+  <li>$s = 0.6$：对 $\mu$ 估计误差的 derating。</li>
+</ol>
+
+<h5>典型值</h5>
+<table class="sym-table">
+  <thead><tr><th>路面</th><th>$\mu$</th><th>$\mu g$</th><th>$\min(6, \mu g)$</th><th>$a_\text{brk}$</th></tr></thead>
+  <tbody>
+    <tr><td>干燥</td><td>1.0</td><td>9.8</td><td>6.0</td><td>3.6</td></tr>
+    <tr><td>湿路</td><td>0.5</td><td>4.9</td><td>4.9</td><td>2.9</td></tr>
+    <tr><td>结冰</td><td>0.2</td><td>2.0</td><td>2.0</td><td>1.2</td></tr>
+  </tbody>
+</table>
+
+<p>结冰时刹车距离：$v^2 / (2 a_\text{brk}) = 100 / 2.4 \approx 42$ m（v=10 m/s 时）。比干燥路面的 14 m 长 3 倍——CBF 自然更早介入。</p>
+
+<h5>为什么不把 $s$ 和 $\mu$ 合并成 $\mu_\text{eff} = s\mu$？</h5>
+<p>两个原因：(1) $s$ 是<em>模型不确定性</em>，$\mu$ 是<em>环境估计</em>——语义不同；(2) 若 derating 需要按场景调整（施工路段、OTA 新车型），只改 $s$ 而不动 $\mu$ 估计器。</p>
+</div>
+
+<h2 id="eq-qp">11 · CBF-QP 与 T_inv 算子</h2>
+
+<!-- E-33 -->
+<div class="eq-card" id="e33">
+<header>
+  <span class="eid">E-33</span>
+  <h3>CBF-QP 主问题</h3>
+  <span class="badge badge-impl">impl</span>
+  <span class="src">code: <code>CBFQPFilter.filter</code></span>
+</header>
+
+<div class="eqdisplay">
+$$
+\begin{aligned}
+\min_{u, \delta_s} \quad & \|u - u_\text{nom}\|^2 + \rho\, \delta_s^2 \\
+\text{s.t.}\quad & \dot h_i(x, u) + \alpha_i h_i(x) \ge -\delta_s,\quad i = 1, \ldots, m \\
+& u_\min \le u \le u_\max \\
+& \delta_s \ge 0
+\end{aligned}
+$$
+</div>
+
+<h5>松弛变量 $\delta_s$ 的作用</h5>
+
+<div class="callout deriv">
+<span class="tag">为什么要引松弛？</span>
+<ul>
+  <li><strong>保证 QP 始终可行</strong>：某些极端状态下所有约束同时严格满足可能不可行（比如被多面"围堵"），加 $\delta_s$ 让 QP 总有解。</li>
+  <li><strong>$\rho$ 大</strong>（默认 $10^3$）时，$\delta_s$ 被重罚近 0，所以正常情况 QP 等价于严格 CBF。</li>
+  <li><strong>$\rho$ 不能无穷大</strong>：数值上会把 Hessian condition number 搞糟；$10^3$ 量级与其他项相对尺度合适。</li>
+</ul>
+</div>
+
+<h5>QP 的凸性</h5>
+<p>若所有 $\dot h_i$ 对 $u$ 是<strong>线性</strong>（这里通过有限差分是近似线性），且目标是二次凸，则问题是凸 QP，有唯一全局最优解。</p>
+</div>
+
+<!-- E-34 -->
+<div class="eq-card" id="e34">
+<header>
+  <span class="eid">E-34</span>
+  <h3>KKT 条件（结构理解）</h3>
+  <span class="badge badge-impl">impl</span>
+</header>
+
+<div class="eqdisplay">
+$$
+\begin{aligned}
+u^* - u_\text{nom} &= \sum_i \lambda_i^* \nabla_u \dot h_i(x, u^*) \\
+\lambda_i^* &\ge 0,\quad \lambda_i^*\, \text{constraint slack}_i = 0 \\
+2\rho \delta_s^* &= \sum_i \lambda_i^*
+\end{aligned}
+$$
+</div>
+
+<h5>乘子 $\lambda_i^*$ 的解读</h5>
+<p>$\lambda_i^*$ 是<strong>CBF 约束 $i$ 的影子价格</strong>：如果把 $r_s$ 稍微减小 $\epsilon$，目标值会降低 $\epsilon \lambda_i^*$——也就是"这个 barrier 值多少"。</p>
+
+<p>SRE 版（admission controller）里，$\lambda_i^*$ 可以直接作为"哪条 SLO 当前最紧"的量化指标，比人肉看 dashboard 精确得多。</p>
+
+<h5>当前工程实现的简化</h5>
+<p>网格搜索不直接输出 $\lambda^*$；要拿到乘子必须换真 QP（OSQP / qpOASES）。本工程列入 <code>Milestone 2</code> 的升级目标之一。</p>
+</div>
+
+<!-- E-35 -->
+<div class="eq-card" id="e35">
+<header>
+  <span class="eid">E-35</span>
+  <h3>T<sub>inv</sub> 算子（正式定义）</h3>
+  <span class="badge badge-paper">paper §3.1</span>
+  <span class="src">code: <code>ControlInvariantOperator.apply</code></span>
+</header>
+
+<div class="eqdisplay">
+$$u_\text{safe} = T_\text{inv}(u_{nn}; x)$$
+</div>
+
+<p>不是一个简单的函数，而是一个<strong>算法</strong>：</p>
+
+<div class="eqdisplay">
+$$
+T_\text{inv}(u_{nn}; x) = \begin{cases}
+u_\text{cbf} & \text{if } \dot V(x, u_\text{cbf}) \le -\gamma V(x) \\
+u_\text{cbf} - \sum_{k=1}^{K^*} \Delta_k & \text{if 松弛后达到 } \dot V \le 0 \\
+u_\text{brake} = (0, -j_\max) & \text{otherwise}
+\end{cases}
+$$
+</div>
+
+<p>其中：</p>
+<ul>
+  <li>$u_\text{cbf} = \arg$min QP（E-33）</li>
+  <li>$\Delta_k$：第 k 次松弛，只作用于 jerk：$\Delta_k = (0, j_\max/N)$</li>
+  <li>$K^*$：最早满足 Lyapunov 条件的 k；$K^*$ 最多到 $N = 8$</li>
+</ul>
+
+<h5>正确性（四个不变式）</h5>
+<ol>
+  <li><strong>终止性</strong>：$K^*$ 有限（单调降 jerk，最多 N 步达到 $-j_\max$，fallback 永远可行）；</li>
+  <li><strong>安全性</strong>：返回值必然在 $\mathcal{C}$ 内（CBF 过滤） 且 $\dot V \le 0$（或显式 fallback）；</li>
+  <li><strong>有界性</strong>：$u_\text{safe} \in \mathcal{U}$ 由网格范围 + fallback 定义保证；</li>
+  <li><strong>观测完备</strong>：每次 apply 产出完整 status 与数值，无静默通过。</li>
+</ol>
+
+<h5>为什么是这个结构（CBF → Lyapunov → 松弛 → 兜底）？</h5>
+
+<div class="callout deriv">
+<span class="tag">设计原则</span>
+<ul>
+  <li><strong>先硬约束后软目标</strong>：CBF 是前向不变（硬），先过 CBF 把不安全动作剪掉；剩下的动作里再看 Lyapunov（软目标）。</li>
+  <li><strong>松弛而非一次性求解</strong>：一次性把 CBF + Lyapunov 合成 QP 会大幅增加 QP 维度与约束数，网格搜索不合适。分段<em>迭代松弛</em>更稳定、可解释。</li>
+  <li><strong>Fallback 存在性证明</strong>：$u_\text{brake}$ 永远位于 $\mathcal{U}$ 内（纯机械常量），提供<em>无条件</em>的终止出口。</li>
+</ul>
+</div>
+</div>
+
+<h2 id="anti">12 · 常见错用 / 等价变形目录</h2>
+
+<p>把评审中最容易反复出现的"这是不是等价？"、"能不能换一种写法？"汇总，给 Codex 一张规则表。</p>
+
+<table>
+  <thead><tr><th>ID</th><th>想法</th><th>判定</th><th>原因</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>X-01</td>
+      <td>把 $V$ 加距离项：$V' = V + q_d/d^2$</td>
+      <td><strong>错误</strong></td>
+      <td>见 E-17 讨论：安全（距离）由 CBF 管，Lyapunov 只管稳定。</td>
+    </tr>
+    <tr>
+      <td>X-02</td>
+      <td>用 $h(x) = -\log d_\text{obs}$ 替换距离 barrier</td>
+      <td>可以但慎用</td>
+      <td>$\log$ 在 $d \to 0$ 发散，数值要特别处理；相对度问题依然存在。</td>
+    </tr>
+    <tr>
+      <td>X-03</td>
+      <td>把 E-27 改为 $\dot h + \alpha h \ge 0$ 的<em>等式</em>形式</td>
+      <td><strong>错误</strong></td>
+      <td>等式形式会禁止 $h$ 比这个边界"更好"——丧失 CBF 的宽容度。</td>
+    </tr>
+    <tr>
+      <td>X-04</td>
+      <td>$\cos\theta$ 直接作为 heading 权重</td>
+      <td><strong>错误</strong></td>
+      <td>见 E-04：会有负权，破坏乘积语义。必须 $\tfrac12(1 + \cos\theta)$ 或等价。</td>
+    </tr>
+    <tr>
+      <td>X-05</td>
+      <td>势能各项合并为乘积 $\Phi = \Phi_g \cdot \Phi_o \cdot \Phi_i$</td>
+      <td><strong>错误</strong></td>
+      <td>任一项为 0 时整个 $\Phi = 0$ 梯度消失；加性保持"惩罚独立"。</td>
+    </tr>
+    <tr>
+      <td>X-06</td>
+      <td>意图图用无向图</td>
+      <td><strong>错误</strong></td>
+      <td>见 E-01：影响天然不对称，无向会丢失"谁影响谁"的关键信息。</td>
+    </tr>
+    <tr>
+      <td>X-07</td>
+      <td>用 Euler 代替 RK4</td>
+      <td>只在特定场景 OK</td>
+      <td>见 E-10：误差阶下降一阶，需要把 dt 减小 10×，同样代价。</td>
+    </tr>
+    <tr>
+      <td>X-08</td>
+      <td>跳过 E-09 的"步中 clamp"，只在 step 末端 clamp</td>
+      <td><strong>错误</strong></td>
+      <td>RK4 的中间点 $k_2, k_3$ 会穿越约束，末端 clamp 看到的 $a$ 可能已经走到 $2 \mu g$ 又回来。</td>
+    </tr>
+    <tr>
+      <td>X-09</td>
+      <td>熵不归一化直接用 $H$</td>
+      <td><strong>错误</strong></td>
+      <td>见 E-24：尺度依赖类别数，调参不可迁移。</td>
+    </tr>
+    <tr>
+      <td>X-10</td>
+      <td>把 $r_\text{buf}$ 从加性改为乘性</td>
+      <td><strong>错误</strong></td>
+      <td>见 E-25：乘性会让一个因子为 0 时 buffer 塌陷，漏洞。</td>
+    </tr>
+    <tr>
+      <td>X-11</td>
+      <td>CBF $\alpha$ 随 $h$ 动态调大 "$\alpha(h) = \alpha_0 + \beta/h$"</td>
+      <td>可以但要小心</td>
+      <td>属于 E-28 的类 K 推广，需要保证 $\kappa$ 仍是类 K 函数，且不破坏 QP 凸性。</td>
+    </tr>
+    <tr>
+      <td>X-12</td>
+      <td>$T_\text{inv}$ 里把 relax 方向从"降 jerk"改成"同时调 $\delta$ 和 $j$"</td>
+      <td>不必要</td>
+      <td>见 E-35：目标只是让 $\dot V \le 0$，$\dot V = q_v (v-v^*) a$ 与 $\delta$ 无关；调 $\delta$ 是冗余。</td>
+    </tr>
+    <tr>
+      <td>X-13</td>
+      <td>可达集用"最终位置平均" 替代凸包</td>
+      <td><strong>错误</strong></td>
+      <td>平均是一个<em>点</em>，不是<em>集合</em>；dead-zone 判定需要的是"威胁是否在 hull 外"。</td>
+    </tr>
+    <tr>
+      <td>X-14</td>
+      <td>把 $\tau$ 从 E-30 里拿掉（"反应时间不考虑"）</td>
+      <td><strong>错误</strong></td>
+      <td>相对度会隐性退化；实测会看到 BrakingDistanceBarrier 失效。</td>
+    </tr>
+    <tr>
+      <td>X-15</td>
+      <td>$a_\text{brk}$ 不考虑 $\mu$，用常数</td>
+      <td><strong>错误（μ 不确定时）</strong></td>
+      <td>雨雪天 barrier 会乐观，撞车风险增加 2~3 倍。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="bridge">13 · 每个方程到 SRE 的迁移对位</h2>
+
+<p>吃透公式的最终意义是：每个数学结构都能找到 SRE 对位，让迁移从"灵感类比"变成"结构同构"。下表是 35 个方程的完整迁移索引。</p>
+
+<table>
+  <thead>
+    <tr><th>方程</th><th>物理角色</th><th>SRE 对位</th><th>迁移注意</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>E-01 $G_I$</td><td>交互意图图</td><td>故障传播图（调用链 + 错误相关性）</td><td>有向、语义化、非对称</td></tr>
+    <tr><td>E-02 $w_{ij}$</td><td>边权乘积核</td><td>$w_{ij}$ = callshare × err_corr × slo_sens</td><td>乘积保合取语义</td></tr>
+    <tr><td>E-03 $g(d) = e^{-d/D_0}$</td><td>空间衰减</td><td>调用链跳数衰减 $e^{-\text{hops}/D_0}$</td><td>$D_0$ 对应"影响折半跳数"</td></tr>
+    <tr><td>E-04 heading</td><td>方向相关</td><td>流量方向（上下游）</td><td>上游 → 下游权重 ≠ 反向</td></tr>
+    <tr><td>E-05 $\mathbb{E}[C]$</td><td>意图冲突</td><td>类别间的冲突先验（rolling 两个 feature flag 冲突概率）</td><td>先验表可手工或学习</td></tr>
+    <tr><td>E-06 状态 $x$</td><td>6 维物理状态</td><td>SystemState: RPS, latency, CPU, errors, …</td><td>维度数在 6~12</td></tr>
+    <tr><td>E-07 $\dot x = f(x, u)$</td><td>系统动力学</td><td>系统对动作的响应模型（queueing theory / ML predictor）</td><td>predictor 是迁移的核心</td></tr>
+    <tr><td>E-08 bicycle</td><td>特定 f</td><td>特定 predictor（如 M/M/k）</td><td>选模型 = 选 bias-variance</td></tr>
+    <tr><td>E-09 $|a| \le \mu g$</td><td>物理包络</td><td>资源包络（CPU quota, memory limit）</td><td>双层 clamp 对应客户端+服务端 deadline</td></tr>
+    <tr><td>E-10 RK4</td><td>高阶积分</td><td>多步预测（不是单步推理）</td><td>predictor 需要 T 步前瞻</td></tr>
+    <tr><td>E-11 $\dot x = -\nabla\Phi$</td><td>受限梯度流</td><td>auto-scaler 的反馈方向</td><td>硬约束走 CBF，不在 Φ 里</td></tr>
+    <tr><td>E-12 $\Phi$ 分解</td><td>三项加性</td><td>lat² + cost² + err² 加性</td><td>调参独立</td></tr>
+    <tr><td>E-13 二次吸引</td><td>$\|p-p_g\|^2$</td><td>$(\text{metric} - \text{target})^2$</td><td>目标点=SLO target</td></tr>
+    <tr><td>E-14 斥力</td><td>$(r_s/d - 1)^2$</td><td>$(\text{SLO} / \text{metric} - 1)^2$ 有限支集</td><td>$r_s$ = SLO margin</td></tr>
+    <tr><td>E-15 交互项</td><td>依赖权重 / 距离</td><td>依赖服务健康 / 距离</td><td>耦合 E-01 图</td></tr>
+    <tr><td>E-16 数值梯度</td><td>有限差分</td><td>A/B 小步变更 + predictor 评估</td><td>等价于 what-if 模拟</td></tr>
+    <tr><td>E-17 $V = \tfrac12 q_v \Delta v^2$</td><td>Lyapunov 候选</td><td>error budget deficit²</td><td>单一语义（仅错误）</td></tr>
+    <tr><td>E-18 $\dot V \le 0$</td><td>稳定性硬约束</td><td>预算消耗不增</td><td>不等式，不是阈值</td></tr>
+    <tr><td>E-19 $\dot V \le -\gamma V$</td><td>指数衰减</td><td>预算指数恢复</td><td>$1/\gamma$ = 预算回充时间常数</td></tr>
+    <tr><td>E-20 有限差 $\dot V$</td><td>数值估计</td><td>滑窗差分预算消耗率</td><td>dt 选择与采样周期一致</td></tr>
+    <tr><td>E-21 $\mathcal{R}(x_0, T)$</td><td>前向可达</td><td>容量可达集（未来 T 秒能承接的 RPS × concurrency）</td><td>采样 + 凸包通用</td></tr>
+    <tr><td>E-22 最坏停车</td><td>非对称假设</td><td>最坏 shed 策略 vs 最大流量预测</td><td>对自己保守，对环境激进</td></tr>
+    <tr><td>E-23 $H(p)$</td><td>意图熵</td><td>监控源分歧熵</td><td>多 Prometheus 分歧度</td></tr>
+    <tr><td>E-24 $\eta$</td><td>归一化熵</td><td>同上，除以 $\log K$</td><td>避免类别数偶发影响</td></tr>
+    <tr><td>E-25 $r_\text{buf}$</td><td>缓冲公式</td><td>SLO 余量 = base + k_v·load + k_η·obs_entropy</td><td>加性、max 聚合多源</td></tr>
+    <tr><td>E-26 $\mathcal{C} = \{h \ge 0\}$</td><td>安全集</td><td>SLO-满足状态集</td><td>前向不变性 ≡ "始终满足"</td></tr>
+    <tr><td>E-27 $\dot h + \alpha h \ge 0$</td><td>CBF 主条件</td><td>admission 的核心不等式</td><td>$\alpha$ 调节敏感度</td></tr>
+    <tr><td>E-28 K 类推广</td><td>$\kappa(h)$</td><td>非线性余量（近边缘更紧）</td><td>通常先用线性版</td></tr>
+    <tr><td>E-29 $h_\text{dist}$</td><td>距离 barrier</td><td>"metric 到 SLO 的裕度"</td><td>相对度问题类似</td></tr>
+    <tr><td>E-30 $h_\text{brk}$</td><td>刹车距离 barrier</td><td>"考虑 auto-scaling ramp 的容量 barrier"</td><td>加 v·τ 项 ≡ 加 warmup 项</td></tr>
+    <tr><td>E-31 $\dot h$ 推导</td><td>相对度 1</td><td>admission 需要 ramp 显式建模</td><td>jerk → 扩容速率</td></tr>
+    <tr><td>E-32 $a_\text{brk}(\mu)$</td><td>μ 自适应</td><td>max_scale_rate(instance_type)</td><td>不同实例不同 ramp</td></tr>
+    <tr><td>E-33 CBF-QP</td><td>最近可行解</td><td>admission QP：最接近 u_nom 的 SLO-可行流量</td><td>松弛变量保可行</td></tr>
+    <tr><td>E-34 KKT</td><td>影子价格</td><td>λ* 作为"最紧 SLO"指标</td><td>需要真 QP solver</td></tr>
+    <tr><td>E-35 $T_\text{inv}$</td><td>四段算法</td><td>ChangeGuard：filter → check → relax → fallback</td><td>每段都对 SRE 必要</td></tr>
+  </tbody>
+</table>
+
+<div class="callout sre">
+<span class="tag">总结</span>
+35 个方程全部都有可迁移 SRE 对位。这不是巧合——<strong>物理控制理论</strong>和<strong>系统可靠性工程</strong>在本质上都在做同一件事：
+<em>在不确定性下用硬约束保证关键量的单调性</em>。一旦意识到这一点，auto-decide 的每一次数学推导都可以换个皮直接服务 SRE。
+</div>
+
+<hr>
+<p style="color:var(--fg-mute);font-size:12px;text-align:center;margin-top:30px">
+equations-digest · v0.1 · 35 个方程的完整吃透手册<br>
+相关：<a href="./knowledge-base.html">总览知识库</a> · <a href="./deep-dive.html">算法深拆</a> · <a href="./sre-adaptation.html">SRE 迁移范式</a>
+</p>
+
+</main>
+</body>
+</html>

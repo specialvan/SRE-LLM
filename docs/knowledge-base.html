@@ -1,0 +1,1842 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>auto-decide 知识库 · 自动驾驶决策动力学</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$', '$'], ['\\(', '\\)']],
+         displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root {
+  --fg: #1b1d22;
+  --fg-soft: #4a4e57;
+  --fg-mute: #767a82;
+  --bg: #fbfbfa;
+  --bg-card: #ffffff;
+  --bg-code: #f4f1ec;
+  --bg-note: #fff9e6;
+  --bg-warn: #ffefe6;
+  --bg-ok: #eaf7ec;
+  --bg-sre: #eef2ff;
+  --accent: #0b6b58;
+  --accent-weak: #d8ece6;
+  --rule: #e5e2dc;
+  --link: #1249a7;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); line-height: 1.75; }
+body { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 100vh; }
+nav.toc {
+  position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+  border-right: 1px solid var(--rule); padding: 24px 20px; background: var(--bg-card);
+  font-size: 14px;
+}
+nav.toc h1 { font-size: 15px; margin: 0 0 4px; letter-spacing: 0.04em; }
+nav.toc .subtitle { color: var(--fg-mute); font-size: 12px; margin-bottom: 18px; }
+nav.toc ol { list-style: none; padding: 0; margin: 0; counter-reset: toc; }
+nav.toc ol li { counter-increment: toc; margin: 2px 0; }
+nav.toc ol > li > a::before { content: counters(toc, ".") "  "; color: var(--fg-mute); font-variant-numeric: tabular-nums; }
+nav.toc ol ol { padding-left: 14px; border-left: 1px dashed var(--rule); margin: 2px 0 6px; }
+nav.toc a { color: var(--fg-soft); text-decoration: none; display: block; padding: 2px 6px; border-radius: 4px; }
+nav.toc a:hover { background: var(--accent-weak); color: var(--accent); }
+main { padding: 48px clamp(24px, 5vw, 64px); max-width: 1080px; }
+h1.title { font-size: 34px; line-height: 1.2; margin: 0 0 4px; letter-spacing: -0.01em; }
+h1.title small { display: block; font-weight: normal; color: var(--fg-mute); font-size: 15px; letter-spacing: 0; margin-top: 4px; }
+.meta { color: var(--fg-mute); font-size: 13px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 10px 0; margin: 20px 0 32px; display: flex; flex-wrap: wrap; gap: 16px; }
+.meta span { white-space: nowrap; }
+h2 { font-size: 26px; margin-top: 56px; padding-top: 16px; border-top: 2px solid var(--fg); letter-spacing: -0.01em; }
+h3 { font-size: 20px; margin-top: 40px; color: var(--accent); }
+h4 { font-size: 16px; margin-top: 28px; color: var(--fg); letter-spacing: 0.02em; }
+p, li { color: var(--fg-soft); }
+code { font-family: var(--mono); background: var(--bg-code); padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+pre { background: #23272e; color: #d8dee9; padding: 14px 18px; border-radius: 8px; overflow-x: auto; line-height: 1.55; font-size: 13px; }
+pre code { background: transparent; color: inherit; padding: 0; }
+.callout { border-left: 4px solid var(--accent); background: var(--bg-ok); padding: 12px 16px; margin: 18px 0; border-radius: 0 8px 8px 0; }
+.callout.warn { border-color: #d07000; background: var(--bg-warn); }
+.callout.note { border-color: #b08800; background: var(--bg-note); }
+.callout.sre { border-color: #2a4ab0; background: var(--bg-sre); }
+.callout .tag { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; color: var(--fg); display: block; margin-bottom: 4px; }
+figure { margin: 28px 0; }
+figure figcaption { font-size: 13px; color: var(--fg-mute); text-align: center; margin-top: 6px; }
+figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; background: var(--bg-card); border: 1px solid var(--rule); border-radius: 8px; }
+table { border-collapse: collapse; margin: 18px 0; width: 100%; font-size: 14px; }
+table th, table td { border-bottom: 1px solid var(--rule); padding: 8px 10px; text-align: left; vertical-align: top; }
+table th { background: #f4ece0; font-weight: 600; }
+table tr:last-child td { border-bottom: 1px solid var(--fg); }
+a { color: var(--link); }
+hr { border: none; border-top: 1px solid var(--rule); margin: 28px 0; }
+.kbd { font-family: var(--mono); background: #fff; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; font-size: 0.85em; }
+.module-card { border: 1px solid var(--rule); border-radius: 10px; padding: 18px 20px; margin: 18px 0; background: var(--bg-card); }
+.module-card h4 { margin-top: 0; }
+.risk-table td:first-child { font-weight: 600; color: var(--fg); }
+.risk-table .sev-high { color: #b0361e; font-weight: 700; }
+.risk-table .sev-med { color: #b07200; font-weight: 700; }
+.risk-table .sev-low { color: #137346; font-weight: 700; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 900px) {
+  body { grid-template-columns: 1fr; }
+  nav.toc { position: relative; height: auto; border-right: none; border-bottom: 1px solid var(--rule); }
+  .grid-2 { grid-template-columns: 1fr; }
+}
+.symbol-legend { font-size: 12px; color: var(--fg-mute); display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.symbol-legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: baseline; border-radius: 2px; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; letter-spacing: 0.05em; background: var(--accent-weak); color: var(--accent); margin-right: 4px; }
+</style>
+</head>
+<body>
+
+<nav class="toc">
+  <h1>auto-decide 知识库</h1>
+  <div class="subtitle">Lyapunov 硬约束下的不确定性导航 · 深度拆解 + SRE 评审</div>
+  <ol>
+    <li><a href="#intro">导读与使用方式</a>
+      <ol>
+        <li><a href="#reader-map">读者路径图</a></li>
+        <li><a href="#terms">术语与记号</a></li>
+      </ol>
+    </li>
+    <li><a href="#paper-summary">原文结构化摘要</a>
+      <ol>
+        <li><a href="#s-1">§1 核心结构</a></li>
+        <li><a href="#s-2">§2 数学边界</a></li>
+        <li><a href="#s-3">§3 优化空间重构</a></li>
+        <li><a href="#s-4">§4 结语</a></li>
+      </ol>
+    </li>
+    <li><a href="#arch">系统总架构图</a></li>
+    <li><a href="#module-deep">模块级深度拆解</a>
+      <ol>
+        <li><a href="#m-graph">1. 交互意图图 G<sub>I</sub></a></li>
+        <li><a href="#m-dyn">2. 车辆动力学 f(x,u)</a></li>
+        <li><a href="#m-pot">3. 势能场与受限梯度流</a></li>
+        <li><a href="#m-lyap">4. Lyapunov 稳定性</a></li>
+        <li><a href="#m-reach">5. 可达集 R(x₀,T)</a></li>
+        <li><a href="#m-cbf">6. 控制屏障函数 CBF</a></li>
+        <li><a href="#m-tinv">7. 控制不变集算子 T<sub>inv</sub></a></li>
+        <li><a href="#m-game">8. 非完全信息博弈</a></li>
+        <li><a href="#m-plan">9. Planner 主循环</a></li>
+      </ol>
+    </li>
+    <li><a href="#formula-to-code">公式 ↔ 代码逐行对照</a></li>
+    <li><a href="#sre-review">SRE 评审报告</a>
+      <ol>
+        <li><a href="#sre-slo">可靠性目标 SLO / SLI</a></li>
+        <li><a href="#sre-risk">风险清单</a></li>
+        <li><a href="#sre-obs">可观测性设计</a></li>
+        <li><a href="#sre-deg">失效与降级策略</a></li>
+        <li><a href="#sre-param">参数治理</a></li>
+        <li><a href="#sre-rollout">发布与演进路线</a></li>
+      </ol>
+    </li>
+    <li><a href="#codex-checklist">Codex 评审 checklist</a></li>
+    <li><a href="#appendix">附录</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<h1 class="title">auto-decide 知识库
+  <small>对《自动驾驶的决策动力学 —— 李雅普诺夫硬约束下的不确定性导航》的模块级机制拆解与 SRE 评审</small>
+</h1>
+<div class="meta">
+  <span>文档版本：v0.1</span>
+  <span>对应工程包：<code>auto-decide/</code></span>
+  <span>配套代码：13 个模块 / 13 个单元测试</span>
+  <span>受众：平台 / SRE / 算法评审 / Codex</span>
+</div>
+
+<div class="callout" style="margin-top:8px">
+<span class="tag">相关文档</span>
+本文是<strong>概览级</strong>知识库。按需深入：
+<ul style="margin:6px 0 0 0">
+  <li><a href="./deep-dive.html">deep-dive.html</a> — 算法级颗粒度拆解（数据结构、逐行伪代码、失败矩阵）</li>
+  <li><a href="./equations-digest.html">equations-digest.html</a> — 35 个方程逐一吃透（符号 / 推导 / 陷阱 / 等价变形 / SRE 迁移对位）</li>
+  <li><a href="./sre-adaptation.html">sre-adaptation.html</a> — 9 个命名模式 P-01~P-09，把本方案的工程能力复用到 SRE（附接口骨架）</li>
+</ul>
+</div>
+
+<h2 id="intro">1 · 导读与使用方式</h2>
+
+<p>本文是对原文《自动驾驶的决策动力学——李雅普诺夫硬约束下的不确定性导航》（华为拉格朗日数学中心 · 芮祥麟博士）的
+<strong>工程实现视角深度拆解</strong>，配套代码包 <code>auto-decide/</code>。它的使命有三个：</p>
+
+<ol>
+  <li><strong>把叙述翻译成机制</strong>。每一段"为什么"都给出对应的"怎么做"，以及代码里具体在哪儿。</li>
+  <li><strong>为 SRE 评审留下痕迹</strong>。所有可能出事的地方都标记了风险等级、监控指标、降级动作。</li>
+  <li><strong>让 Codex / 自动化 Review 能直接索引</strong>。公式 ↔ 代码 ↔ 风险三元对照表可被机器读取。</li>
+</ol>
+
+<h3 id="reader-map">1.1 读者路径图</h3>
+
+<figure>
+<svg viewBox="0 0 840 260" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a4e57"/>
+    </marker>
+    <style>
+      .role { fill: #fff; stroke: #0b6b58; stroke-width: 1.5; }
+      .stage { fill: #fff9e6; stroke: #b08800; stroke-width: 1.2; }
+      .label { font: 13px -apple-system, "PingFang SC", sans-serif; fill: #1b1d22; }
+      .role-label { font: bold 14px -apple-system, "PingFang SC", sans-serif; fill: #0b6b58; }
+      .edge { stroke: #4a4e57; stroke-width: 1.2; fill: none; }
+    </style>
+  </defs>
+
+  <rect class="role" x="20" y="20" width="150" height="46" rx="10"/>
+  <text class="role-label" x="95" y="48" text-anchor="middle">算法 / 研究</text>
+
+  <rect class="role" x="20" y="100" width="150" height="46" rx="10"/>
+  <text class="role-label" x="95" y="128" text-anchor="middle">SRE / 平台</text>
+
+  <rect class="role" x="20" y="180" width="150" height="46" rx="10"/>
+  <text class="role-label" x="95" y="208" text-anchor="middle">Codex 评审</text>
+
+  <rect class="stage" x="220" y="10" width="150" height="60" rx="8"/>
+  <text class="label" x="295" y="36" text-anchor="middle">§2 摘要</text>
+  <text class="label" x="295" y="54" text-anchor="middle" fill="#767a82" style="font-size: 11px;">把文章结构掌握</text>
+
+  <rect class="stage" x="410" y="10" width="150" height="60" rx="8"/>
+  <text class="label" x="485" y="36" text-anchor="middle">§4 模块拆解</text>
+  <text class="label" x="485" y="54" text-anchor="middle" fill="#767a82" style="font-size: 11px;">每模块的物理/数学</text>
+
+  <rect class="stage" x="600" y="10" width="220" height="60" rx="8"/>
+  <text class="label" x="710" y="36" text-anchor="middle">§5 公式→代码对照</text>
+  <text class="label" x="710" y="54" text-anchor="middle" fill="#767a82" style="font-size: 11px;">验证论文与实现一致性</text>
+
+  <rect class="stage" x="220" y="90" width="150" height="60" rx="8"/>
+  <text class="label" x="295" y="116" text-anchor="middle">§3 系统架构</text>
+  <text class="label" x="295" y="134" text-anchor="middle" fill="#767a82" style="font-size: 11px;">边界 / 数据流</text>
+
+  <rect class="stage" x="410" y="90" width="150" height="60" rx="8"/>
+  <text class="label" x="485" y="116" text-anchor="middle">§6 SRE 评审</text>
+  <text class="label" x="485" y="134" text-anchor="middle" fill="#767a82" style="font-size: 11px;">SLO / 风险 / 降级</text>
+
+  <rect class="stage" x="600" y="90" width="220" height="60" rx="8"/>
+  <text class="label" x="710" y="116" text-anchor="middle">配套 PR-REQUIREMENTS.md</text>
+  <text class="label" x="710" y="134" text-anchor="middle" fill="#767a82" style="font-size: 11px;">交付粒度的功能需求</text>
+
+  <rect class="stage" x="220" y="170" width="150" height="60" rx="8"/>
+  <text class="label" x="295" y="196" text-anchor="middle">§7 checklist</text>
+  <text class="label" x="295" y="214" text-anchor="middle" fill="#767a82" style="font-size: 11px;">机器可读评审项</text>
+
+  <rect class="stage" x="410" y="170" width="410" height="60" rx="8"/>
+  <text class="label" x="615" y="196" text-anchor="middle">auto_decide/*.py 源码 · tests/*.py 断言 · examples/* 可复现</text>
+  <text class="label" x="615" y="214" text-anchor="middle" fill="#767a82" style="font-size: 11px;">"证据链"：每条评审项都可落到具体行</text>
+
+  <path class="edge" d="M170,40 L215,40" marker-end="url(#arr)"/>
+  <path class="edge" d="M370,40 L410,40" marker-end="url(#arr)"/>
+  <path class="edge" d="M560,40 L595,40" marker-end="url(#arr)"/>
+
+  <path class="edge" d="M170,120 L215,120" marker-end="url(#arr)"/>
+  <path class="edge" d="M370,120 L410,120" marker-end="url(#arr)"/>
+  <path class="edge" d="M560,120 L595,120" marker-end="url(#arr)"/>
+
+  <path class="edge" d="M170,200 L215,200" marker-end="url(#arr)"/>
+  <path class="edge" d="M370,200 L410,200" marker-end="url(#arr)"/>
+</svg>
+<figcaption>图 1-1 · 三类读者的推荐阅读顺序。SRE 从架构进入，算法从摘要进入，Codex 直接从 checklist 倒推证据。</figcaption>
+</figure>
+
+<h3 id="terms">1.2 术语与记号</h3>
+
+<table>
+  <thead>
+    <tr><th>记号</th><th>含义</th><th>所在层</th><th>代码出口</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>$G_I = (V_I, E_I)$</td><td>交互意图图</td><td>离散 / 语义</td><td><code>graph.InteractionIntentGraph</code></td></tr>
+    <tr><td>$x \in \mathbb{R}^6$</td><td>状态向量 $(p_x, p_y, \psi, v, a, \mu)$</td><td>连续 / 动力学</td><td><code>types.State</code></td></tr>
+    <tr><td>$u \in \mathbb{R}^2$</td><td>控制输入 $(\text{steer}, \text{jerk})$</td><td>执行器</td><td><code>types.Control</code></td></tr>
+    <tr><td>$\Phi(x)$</td><td>复合势能（目标 + 障碍 + 交互）</td><td>决策 / 优化</td><td><code>potential.PotentialField</code></td></tr>
+    <tr><td>$V(x)$</td><td>Lyapunov 候选函数</td><td>稳定性闸门</td><td><code>lyapunov.QuadraticLyapunov</code></td></tr>
+    <tr><td>$R(x_0, T)$</td><td>前向可达集</td><td>可达性闸门</td><td><code>reachable.ReachableSet</code></td></tr>
+    <tr><td>$h(x)$</td><td>控制屏障函数</td><td>安全闸门</td><td><code>cbf.BarrierFunction</code></td></tr>
+    <tr><td>$T_\text{inv}$</td><td>控制不变集生成算子</td><td>矫正算子</td><td><code>invariant.ControlInvariantOperator</code></td></tr>
+    <tr><td>$u_{nn}, u_\text{safe}$</td><td>神经网络候选命令 / 矫正后命令</td><td>策略接口</td><td><code>planner.StructuralPlanner.step</code></td></tr>
+  </tbody>
+</table>
+
+<div class="callout note">
+<span class="tag">符号约定</span>
+全文公式用 LaTeX 排版；源文章用到的手写 katex 片段 <code>GI=(VI,EI)</code> 在此统一写作 $G_I = (V_I, E_I)$。
+"硬约束"特指以<strong>不等式形式</strong>写入数值求解器（QP 约束 / QP 松弛变量不许大于 0），而不是以 penalty / loss 的形式软化。
+</div>
+
+<h2 id="paper-summary">2 · 原文结构化摘要</h2>
+
+<p>原文 4 节的提纲式改写，每节只保留<strong>对工程实现有决定性影响的断言</strong>。</p>
+
+<h3 id="s-1">2.1 §1 核心结构 —— 时变非线性流形上的受限梯度流</h3>
+
+<p>原文的关键转向：把自动驾驶从"感知到控制的端到端回归问题"重新建模为
+<strong>离散层（意图博弈）</strong>与<strong>连续层（动力学流形）</strong>耦合的结构化问题。</p>
+
+<ul>
+  <li><strong>§1.1 离散层</strong>：$G_I = (V_I, E_I)$，边权描述的是 <em>意图冲突强度</em>，不是几何距离。</li>
+  <li><strong>§1.2 连续层</strong>：状态 $x = (p_x, p_y, \psi, v, a, \mu)$，动力学 $\dot x = f(x,u)$，轮胎约束 $|a|\le\mu g$ 把空间切成非欧流形。</li>
+  <li><strong>§1.3 耦合</strong>：决策 = 在势能场 $\Phi$ 中做<em>受限</em>梯度流 $\dot x = -\nabla\Phi(x)$，受限意味着投影回流形切空间 / 可行集。</li>
+</ul>
+
+<div class="callout sre">
+<span class="tag">SRE 视角</span>
+这一节定义了"问题本身"的边界，工程上意味着系统<strong>必须把"意图"作为一等公民</strong>。纯几何的避障（ACC / AEB）只对应连续层，
+一旦进入多智能体博弈场景就会失稳——这是 SLO 选型时选择"结构化决策"而不是"纯端到端"的数学依据。
+</div>
+
+<h3 id="s-2">2.2 §2 数学边界 —— Lyapunov / 可达集 / 博弈</h3>
+
+<p>原文列出了决定系统"能干什么"的三类硬边界：</p>
+
+<table>
+  <thead>
+    <tr><th>类别</th><th>公式</th><th>物理含义</th><th>越界后果</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>物理不变量</td>
+      <td>$\dfrac{dV(x)}{dt}\le 0$</td>
+      <td>能量函数单调不增</td>
+      <td>正反馈失控，任何算法无法挽回</td>
+    </tr>
+    <tr>
+      <td>拓扑边界</td>
+      <td>$\mathcal{R}(x_0,T)$</td>
+      <td>执行器能力封闭的可达集</td>
+      <td>逻辑死区：撞击不可避免</td>
+    </tr>
+    <tr>
+      <td>信息边界</td>
+      <td>纳什均衡下的安全冗余</td>
+      <td>缓冲区必须足以吸收他人最坏意图</td>
+      <td>概率型预测失败时事故</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="s-3">2.3 §3 优化空间重构 —— 结构生成算子</h3>
+
+<p>原文主张把搜索从"权重空间"挪到"安全空间"：</p>
+
+<ul>
+  <li><strong>§3.1 $T_\text{inv}$</strong>：$u_\text{safe} = T_\text{inv}(u_{nn})$，强制 $\dot V \le 0$。</li>
+  <li><strong>§3.2 CBF</strong>：$h(x)\ge 0 \wedge \dot h(x,u) + \alpha h(x) \ge 0$，几何上"拓扑栅栏"，优化上"搜索空间折叠"。</li>
+  <li><strong>§3.3 定量对比</strong>：长尾 OOD 场景，碰撞率较端到端降 2~3 个数量级。本工程的基准复现结果是 <strong>28% → 0%</strong>（在可恢复的场景集上，见 <code>examples/compare_e2e_vs_structural.py</code>）。</li>
+</ul>
+
+<h3 id="s-4">2.4 §4 结语 —— 给 AI 戴上物理的枷锁</h3>
+
+<p>原文落脚到一个经典的工程哲学断言：<em>AI 负责灵活性，物理不变量负责可控性</em>。
+落地为代码就是：任何神经网络输出，<strong>必须先过 <code>T_inv.apply</code> 才能写到线控</strong>——这一点是本工程最不可妥协的约束，也是 SRE 评审的首要 Guardrail（见 §<a href="#sre-risk">6.2</a> 风险 R-01）。</p>
+
+<h2 id="arch">3 · 系统总架构图</h2>
+
+<p>下图是 <code>StructuralPlanner.step(obs)</code> 一次控制循环的完整数据流。<strong>黄色闸门</strong>是硬约束检查点；
+<strong>绿色</strong>是可学习 / 可替换模块；<strong>红色</strong>是降级出口。</p>
+
+<figure>
+<svg viewBox="0 0 960 520" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333"/>
+    </marker>
+    <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b0361e"/>
+    </marker>
+    <style>
+      .b { stroke-width: 1.5; }
+      .perc { fill: #eef2ff; stroke: #2a4ab0; }
+      .learn { fill: #eaf7ec; stroke: #0b6b58; }
+      .gate { fill: #fff9e6; stroke: #b08800; }
+      .fallback { fill: #ffefe6; stroke: #b0361e; }
+      .act { fill: #f4ece0; stroke: #5a4400; }
+      .edge { stroke: #333; stroke-width: 1.3; fill: none; }
+      .edge-r { stroke: #b0361e; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+      .t { font: 13px -apple-system, "PingFang SC", sans-serif; fill: #1b1d22; }
+      .t-b { font: bold 13px -apple-system, "PingFang SC", sans-serif; fill: #1b1d22; }
+      .tag { font: 10px -apple-system, "PingFang SC", sans-serif; fill: #767a82; }
+      .mono { font: 11px ui-monospace, Menlo, monospace; fill: #4a4e57; }
+    </style>
+  </defs>
+
+  <!-- perception layer -->
+  <rect class="b perc" x="20" y="20" width="180" height="70" rx="8"/>
+  <text class="t-b" x="110" y="45" text-anchor="middle">感知 / 预测</text>
+  <text class="tag" x="110" y="63" text-anchor="middle">外部模块（非本工程）</text>
+  <text class="mono" x="110" y="79" text-anchor="middle">obs = {agents, map, ego}</text>
+
+  <!-- G_I update -->
+  <rect class="b perc" x="240" y="20" width="180" height="70" rx="8"/>
+  <text class="t-b" x="330" y="42" text-anchor="middle">① 交互意图图</text>
+  <text class="mono" x="330" y="60" text-anchor="middle">graph.update()</text>
+  <text class="tag" x="330" y="77" text-anchor="middle">§1.1 · G_I = (V_I, E_I)</text>
+
+  <!-- Potential -->
+  <rect class="b perc" x="460" y="20" width="180" height="70" rx="8"/>
+  <text class="t-b" x="550" y="42" text-anchor="middle">② 势能场 Φ(x)</text>
+  <text class="mono" x="550" y="60" text-anchor="middle">potential.value/grad</text>
+  <text class="tag" x="550" y="77" text-anchor="middle">§1.3 · ẋ = −∇Φ</text>
+
+  <!-- Belief / Worst case game -->
+  <rect class="b perc" x="680" y="20" width="260" height="70" rx="8"/>
+  <text class="t-b" x="810" y="42" text-anchor="middle">③ 意图置信度 &amp; 最坏博弈</text>
+  <text class="mono" x="810" y="60" text-anchor="middle">game.WorstCaseGame.safe_buffer</text>
+  <text class="tag" x="810" y="77" text-anchor="middle">§2.3 · 安全冗余下界</text>
+
+  <!-- Nominal policy -->
+  <rect class="b learn" x="240" y="140" width="180" height="70" rx="8"/>
+  <text class="t-b" x="330" y="162" text-anchor="middle">④ 名义策略 u_nn</text>
+  <text class="mono" x="330" y="180" text-anchor="middle">NN / MPC / GradientPolicy</text>
+  <text class="tag" x="330" y="197" text-anchor="middle">可替换 · 可学习</text>
+
+  <!-- Reach check -->
+  <rect class="b gate" x="460" y="140" width="180" height="70" rx="8"/>
+  <text class="t-b" x="550" y="162" text-anchor="middle">⑤ 可达集 / 死区检测</text>
+  <text class="mono" x="550" y="180" text-anchor="middle">reachable.DeadZoneDetector</text>
+  <text class="tag" x="550" y="197" text-anchor="middle">§2.2 闸门</text>
+
+  <!-- CBF filter -->
+  <rect class="b gate" x="240" y="260" width="180" height="70" rx="8"/>
+  <text class="t-b" x="330" y="282" text-anchor="middle">⑥ CBF-QP 过滤</text>
+  <text class="mono" x="330" y="300" text-anchor="middle">cbf.CBFQPFilter.filter</text>
+  <text class="tag" x="330" y="317" text-anchor="middle">§3.2 · ḣ + αh ≥ 0</text>
+
+  <!-- Lyapunov check + T_inv -->
+  <rect class="b gate" x="460" y="260" width="260" height="70" rx="8"/>
+  <text class="t-b" x="590" y="282" text-anchor="middle">⑦ 控制不变集算子 T<sub>inv</sub></text>
+  <text class="mono" x="590" y="300" text-anchor="middle">invariant.ControlInvariantOperator.apply</text>
+  <text class="tag" x="590" y="317" text-anchor="middle">§3.1 · dV/dt ≤ 0（优先 ≤ −γV）</text>
+
+  <!-- Dynamics step -->
+  <rect class="b act" x="760" y="260" width="180" height="70" rx="8"/>
+  <text class="t-b" x="850" y="282" text-anchor="middle">⑧ 动力学积分</text>
+  <text class="mono" x="850" y="300" text-anchor="middle">dynamics.BicycleModel.step</text>
+  <text class="tag" x="850" y="317" text-anchor="middle">§1.2 · RK4</text>
+
+  <!-- observability -->
+  <rect class="b perc" x="240" y="370" width="700" height="60" rx="8"/>
+  <text class="t-b" x="590" y="395" text-anchor="middle">⑨ 可观测性 · trace.jsonl</text>
+  <text class="mono" x="590" y="413" text-anchor="middle">V, dV/dt, h_min, cbf_status, u_nn, u_safe, status</text>
+
+  <!-- Fallback path -->
+  <rect class="b fallback" x="20" y="260" width="180" height="70" rx="8"/>
+  <text class="t-b" x="110" y="282" text-anchor="middle" fill="#b0361e">⊗ 降级：刹停回退</text>
+  <text class="mono" x="110" y="300" text-anchor="middle">Control(steer=0, jerk=-jerk_max)</text>
+  <text class="tag" x="110" y="317" text-anchor="middle">§6.4 失效策略</text>
+
+  <rect class="b fallback" x="20" y="370" width="180" height="60" rx="8"/>
+  <text class="t-b" x="110" y="395" text-anchor="middle" fill="#b0361e">告警 / 快停</text>
+  <text class="tag" x="110" y="413" text-anchor="middle">逃逸到冗余通道</text>
+
+  <!-- Arrows forward -->
+  <path class="edge" d="M200,55 L235,55" marker-end="url(#arr2)"/>
+  <path class="edge" d="M420,55 L455,55" marker-end="url(#arr2)"/>
+  <path class="edge" d="M640,55 L675,55" marker-end="url(#arr2)"/>
+
+  <path class="edge" d="M330,90 L330,135" marker-end="url(#arr2)"/>
+  <path class="edge" d="M550,90 L550,135" marker-end="url(#arr2)"/>
+  <path class="edge" d="M810,90 C 810,180 700,190 645,190" marker-end="url(#arr2)"/>
+
+  <path class="edge" d="M420,175 L455,175" marker-end="url(#arr2)"/>
+
+  <path class="edge" d="M330,210 L330,255" marker-end="url(#arr2)"/>
+  <path class="edge" d="M550,210 L550,255" marker-end="url(#arr2)"/>
+
+  <path class="edge" d="M420,295 L455,295" marker-end="url(#arr2)"/>
+  <path class="edge" d="M720,295 L755,295" marker-end="url(#arr2)"/>
+
+  <!-- observability inputs -->
+  <path class="edge" d="M330,330 L330,365" marker-end="url(#arr2)"/>
+  <path class="edge" d="M590,330 L590,365" marker-end="url(#arr2)"/>
+  <path class="edge" d="M850,330 L850,365" marker-end="url(#arr2)"/>
+
+  <!-- Fallback arrows -->
+  <path class="edge-r" d="M240,295 L205,295" marker-end="url(#arrR)"/>
+  <path class="edge-r" d="M460,295 C 300,370 150,310 110,330" marker-end="url(#arrR)"/>
+  <path class="edge-r" d="M110,330 L110,365" marker-end="url(#arrR)"/>
+
+  <!-- legend -->
+  <rect x="20" y="460" width="920" height="44" fill="#fbfbfa" stroke="#e5e2dc"/>
+  <rect x="35" y="472" width="14" height="14" class="perc"/><text class="tag" x="55" y="484">感知/语义</text>
+  <rect x="165" y="472" width="14" height="14" class="learn"/><text class="tag" x="185" y="484">可学习策略</text>
+  <rect x="295" y="472" width="14" height="14" class="gate"/><text class="tag" x="315" y="484">硬约束闸门</text>
+  <rect x="425" y="472" width="14" height="14" class="fallback"/><text class="tag" x="445" y="484">降级通道</text>
+  <rect x="555" y="472" width="14" height="14" class="act"/><text class="tag" x="575" y="484">执行器</text>
+  <line x1="685" y1="479" x2="715" y2="479" class="edge"/><text class="tag" x="720" y="484">正常数据流</text>
+  <line x1="825" y1="479" x2="855" y2="479" class="edge-r"/><text class="tag" x="860" y="484">降级路径</text>
+</svg>
+<figcaption>图 3-1 · auto-decide 决策一次循环的完整数据流。任何 ④ 的输出都必须经过 ⑥⑦ 两道闸门才能触达 ⑧。</figcaption>
+</figure>
+
+<div class="callout">
+<span class="tag">SRE 约束</span>
+该架构有 <strong>4 个不变式</strong>必须在任何提交里保持：
+<ol>
+  <li>①→④ 之间不得反向引用 ⑦（循环依赖会把降级路径拖入）；</li>
+  <li>④ 的任何输出必须经 ⑥ 再 ⑦（顺序不能换，CBF 折叠可行集、T<sub>inv</sub> 才能在折叠后的集上做 Lyapunov 投影）；</li>
+  <li>⑦ 失败时唯一合法出口是 ⊗（<code>Control(0, -jerk_max)</code>），不得由 ④ 再尝试；</li>
+  <li>⑨ 的写入不得阻塞主环（异步队列或采样写）。</li>
+</ol>
+</div>
+
+<h2 id="module-deep">4 · 模块级深度拆解</h2>
+
+<p>每个模块按同一结构展开：<strong>机制 → 关键公式 → 实现选择 → 参数清单 → 复杂度 / 时延 → 失败模式 → SRE 要点</strong>。
+这样 Codex 可以按固定字段扫描。</p>
+
+<!-- ================================================================= -->
+<h3 id="m-graph">4.1 模块 1 · 交互意图图 <code>G_I = (V_I, E_I)</code></h3>
+
+<div class="module-card">
+<p><strong>机制</strong>：把交通环境中每个参与者抽象成节点，每条边不仅有几何关系还带 <em>意图冲突</em> 语义。
+"距离近" 只是必要条件；真正决定相互影响强度的是"我想做的事和你想做的事是否冲突"。</p>
+
+<h4>关键公式</h4>
+<p>单条有向边 $i\to j$ 的权重：</p>
+$$
+w_{ij} = \underbrace{\exp\!\left(-\frac{\|p_j - p_i\|}{D_0}\right)}_{\text{距离核 } g(d)}
+\cdot \underbrace{\tfrac12\left(1 + \cos\theta_{ij}\right)}_{\text{朝向修正}}
+\cdot \underbrace{\mathbb{E}_{a\sim p_i,b\sim p_j}[C(a,b)]}_{\text{意图冲突概率}}
+$$
+其中 $\theta_{ij} = \angle(v_i,\, p_j - p_i)$，$C(a,b)$ 是意图冲突表。</p>
+
+<h4>实现选择</h4>
+<ul>
+  <li><strong>距离核用指数而非 $1/d$</strong>：保证边权在 $[0,1]$、连续、边界不发散。</li>
+  <li><strong>冲突表是"手工先验"</strong>：原文没规定形式，这里用小的字典（<code>graph._CONFLICT_TABLE</code>）。上层感知如果能给更好的分布，可以注入。</li>
+  <li><strong>每帧重建而非增量更新</strong>：场景规模小（&le;100 agents）时重建更稳，避免陈旧边。</li>
+</ul>
+
+<figure>
+<svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0b6b58"/>
+    </marker>
+    <marker id="bb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b08800"/>
+    </marker>
+    <style>
+      .vlabel { font: bold 13px -apple-system, sans-serif; fill: #1b1d22; }
+      .sub { font: 11px ui-monospace, Menlo; fill: #767a82; }
+      .annot { font: 12px -apple-system; fill: #4a4e57; }
+      .lane { stroke: #bbb; stroke-width: 1; stroke-dasharray: 4 6; fill: none; }
+    </style>
+  </defs>
+  <!-- Roads -->
+  <rect x="10" y="110" width="740" height="70" fill="#f4f1ec" stroke="#d8d2c5"/>
+  <line x1="10" y1="145" x2="750" y2="145" class="lane"/>
+  <!-- Ego -->
+  <g transform="translate(90,140)">
+    <rect x="-20" y="-10" width="40" height="20" fill="#2a4ab0" rx="3"/>
+    <text class="vlabel" x="0" y="-16" text-anchor="middle" fill="#2a4ab0">ego</text>
+    <text class="sub" x="0" y="30" text-anchor="middle">v=(10,0)</text>
+  </g>
+  <!-- Oncoming close -->
+  <g transform="translate(320,130)">
+    <rect x="-22" y="-10" width="44" height="20" fill="#b0361e" rx="3"/>
+    <text class="vlabel" x="0" y="-16" text-anchor="middle" fill="#b0361e">A</text>
+    <text class="sub" x="0" y="30" text-anchor="middle">v=(-8,0)</text>
+  </g>
+  <!-- Side car -->
+  <g transform="translate(440,165)">
+    <rect x="-22" y="-10" width="44" height="20" fill="#0b6b58" rx="3"/>
+    <text class="vlabel" x="0" y="-16" text-anchor="middle" fill="#0b6b58">B</text>
+    <text class="sub" x="0" y="30" text-anchor="middle">v=(6,-2)</text>
+  </g>
+  <!-- Far orthogonal car -->
+  <g transform="translate(660,125)">
+    <rect x="-22" y="-10" width="44" height="20" fill="#767a82" rx="3"/>
+    <text class="vlabel" x="0" y="-16" text-anchor="middle" fill="#767a82">C</text>
+    <text class="sub" x="0" y="30" text-anchor="middle">v=(0,-8)</text>
+  </g>
+
+  <!-- edges -->
+  <path d="M110,140 C 180,80 260,80 300,128" stroke="#0b6b58" stroke-width="4" fill="none" marker-end="url(#aa)"/>
+  <text class="annot" x="205" y="78" text-anchor="middle">w_ego→A ≈ 0.42（距近、意图冲突）</text>
+
+  <path d="M110,143 C 200,185 320,190 420,167" stroke="#0b6b58" stroke-width="1.8" fill="none" marker-end="url(#aa)"/>
+  <text class="annot" x="265" y="210" text-anchor="middle">w_ego→B ≈ 0.08（方向不同）</text>
+
+  <path d="M110,140 C 350,50 580,60 640,125" stroke="#b08800" stroke-width="0.8" fill="none" stroke-dasharray="3 4" marker-end="url(#bb)"/>
+  <text class="annot" x="420" y="50" text-anchor="middle" fill="#b08800">w_ego→C ≈ 0.003（&lt; EPS，过滤）</text>
+
+  <!-- Formula -->
+  <rect x="10" y="12" width="740" height="55" fill="#fff9e6" stroke="#e3d58a" rx="6"/>
+  <text class="vlabel" x="380" y="34" text-anchor="middle">w_{ij} = exp(−d/D₀) · ½(1+cos θ) · 𝔼[C(a,b)]</text>
+  <text class="sub" x="380" y="54" text-anchor="middle">每帧重建 · w &lt; EPS(1e-3) 自动剪枝</text>
+</svg>
+<figcaption>图 4-1 · 一个 ego 与 3 个他车的边权形成机制。C 被朝向修正压到 EPS 以下，不进入下游。</figcaption>
+</figure>
+
+<h4>参数清单</h4>
+<table>
+  <thead><tr><th>参数</th><th>含义</th><th>默认</th><th>影响</th></tr></thead>
+  <tbody>
+    <tr><td><code>D0</code></td><td>距离核尺度 (m)</td><td>15.0</td><td>越大相互作用辐射越远；实测 10-20m 合理</td></tr>
+    <tr><td><code>EPS</code></td><td>边权过滤阈</td><td>1e-3</td><td>影响图稀疏度与下游势能计算开销</td></tr>
+    <tr><td><code>_CONFLICT_TABLE</code></td><td>意图冲突先验</td><td>手工</td><td>上层感知若能注入，应替换</td></tr>
+  </tbody>
+</table>
+
+<h4>复杂度 / 时延</h4>
+<p>$O(n^2)$，$n$ = agent 数。100 agents 实测 &lt; 1 ms（纯 Python）。大于 1000 agents 需要改 KD-tree 剪枝。</p>
+
+<h4>失败模式</h4>
+<ul>
+  <li><strong>意图分布误差放大</strong>：若上层预测意图概率跳变（比如感知 flicker），$w_{ij}$ 会震荡，下游势能梯度跟着抖。缓解：对 $p_i$ 做 EMA 平滑。</li>
+  <li><strong>障碍物作为静态节点权重恒定</strong>：静态障碍没有意图，需要走 CBF 通道（见 <a href="#m-cbf">§4.6</a>），不在 $G_I$ 里纠缠。</li>
+</ul>
+
+<div class="callout sre">
+<span class="tag">SRE</span>
+指标：<code>graph.edges_count</code>、<code>graph.update_ms</code>（P50/P99）、<code>graph.intent_flicker_rate</code>（每秒意图主模式翻转次数）。
+Alert：<code>intent_flicker_rate</code> 连续 3s &gt; 2 Hz 表示上游不稳，此时下游应停止根据 $G_I$ 做激进决策（fall back 到纯几何）。
+</div>
+</div>
+
+<!-- ================================================================= -->
+<h3 id="m-dyn">4.2 模块 2 · 车辆动力学 <code>ẋ = f(x, u)</code></h3>
+
+<div class="module-card">
+<p><strong>机制</strong>：在连续层建模一辆车的物理行为。用<strong>运动学 bicycle 模型</strong>加 jerk 驱动——这样每个命令都是连续可导的，
+barrier 函数求梯度时不会出现台阶。轮胎摩擦 $|a|\le\mu g$ 在 $f$ 和 <code>step</code> 两处同时 clamp，保证数值上永远不越界。</p>
+
+<h4>关键公式</h4>
+$$
+x = (p_x, p_y, \psi, v, a, \mu)^\top,\quad
+u = (\delta, j)^\top
+$$
+$$
+\dot x = f(x,u) = \begin{pmatrix}
+v\cos\psi \\
+v\sin\psi \\
+(v/L)\tan\delta \\
+a \\
+j \\
+0
+\end{pmatrix},\quad |a| \le \mu g
+$$
+
+<figure>
+<svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .ax { stroke: #767a82; stroke-width: 1; }
+      .car { fill: #fff; stroke: #1b1d22; stroke-width: 1.5; }
+      .wheel { fill: #1b1d22; }
+      .arrow { stroke: #0b6b58; stroke-width: 2; fill: none; }
+      .dim { stroke: #b08800; stroke-width: 1; stroke-dasharray: 4 3; }
+      .lbl { font: 12px -apple-system, sans-serif; fill: #1b1d22; }
+      .mono { font: 12px ui-monospace; fill: #4a4e57; }
+      .sub { font: 11px -apple-system; fill: #767a82; }
+    </style>
+    <marker id="m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0b6b58"/>
+    </marker>
+    <marker id="m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b08800"/>
+    </marker>
+  </defs>
+
+  <!-- Ground axes -->
+  <line x1="40" y1="250" x2="360" y2="250" class="ax" marker-end="url(#m1)"/>
+  <line x1="40" y1="250" x2="40" y2="50" class="ax" marker-end="url(#m1)"/>
+  <text class="mono" x="360" y="268" text-anchor="end">x</text>
+  <text class="mono" x="30" y="55" text-anchor="end">y</text>
+
+  <!-- Car body (rotated slightly) -->
+  <g transform="translate(200,180) rotate(-12)">
+    <rect class="car" x="-70" y="-22" width="140" height="44" rx="6"/>
+    <circle class="wheel" cx="-50" cy="-22" r="4"/>
+    <circle class="wheel" cx="-50" cy="22" r="4"/>
+    <!-- steered front wheels -->
+    <g transform="translate(50,-22) rotate(20)"><rect class="wheel" x="-7" y="-2" width="14" height="4"/></g>
+    <g transform="translate(50,22) rotate(20)"><rect class="wheel" x="-7" y="-2" width="14" height="4"/></g>
+    <!-- wheelbase -->
+    <line class="dim" x1="-50" y1="30" x2="50" y2="30"/>
+    <text class="lbl" x="0" y="46" text-anchor="middle" fill="#b08800">L (wheelbase)</text>
+    <!-- velocity arrow -->
+    <line class="arrow" x1="0" y1="0" x2="100" y2="0" marker-end="url(#m1)"/>
+    <text class="lbl" x="60" y="-8">v</text>
+    <!-- heading -->
+  </g>
+
+  <!-- heading angle -->
+  <path d="M200,180 L260,180" stroke="#767a82" stroke-dasharray="3 3"/>
+  <path d="M245,180 A 45,45 0 0 0 246,166" stroke="#b08800" stroke-width="1.5" fill="none"/>
+  <text class="lbl" x="270" y="170" fill="#b08800">ψ</text>
+
+  <!-- Steering angle inside -->
+  <text class="lbl" x="200" y="285" text-anchor="middle">运动学 bicycle 模型</text>
+
+  <!-- Right panel: jerk-driven integrator -->
+  <rect x="400" y="45" width="300" height="210" rx="10" fill="#fff9e6" stroke="#e3d58a"/>
+  <text class="lbl" x="550" y="70" text-anchor="middle" style="font-weight:700">jerk 驱动 + 摩擦 clamp</text>
+
+  <text class="mono" x="420" y="100">u = (δ, j)</text>
+  <text class="mono" x="420" y="120">ȧ = j  (直接)</text>
+  <text class="mono" x="420" y="140">v̇ = a</text>
+  <text class="mono" x="420" y="160">ṗ = (v cos ψ, v sin ψ)</text>
+  <text class="mono" x="420" y="180">ψ̇ = (v / L) tan δ</text>
+
+  <line x1="420" y1="195" x2="680" y2="195" class="dim"/>
+  <text class="sub" x="420" y="215">若 |a + j·dt| &gt; μg → 把 j 裁到使 |a| ≤ μg</text>
+  <text class="sub" x="420" y="233">RK4 积分 1 步 dt=0.1s · 末端再 clamp</text>
+</svg>
+<figcaption>图 4-2 · 运动学 bicycle + jerk 驱动的结构图。L 是轴距；μg 是轮胎可用最大纵向加速度；clamp 发生在 f 与 step 两层。</figcaption>
+</figure>
+
+<h4>为什么选 jerk 而不是 acceleration？</h4>
+<p>CBF 在第二阶动力学上是"相对度 2"的，意味着 $u$ 不直接出现在 $\dot h$ 里，单次 QP 无法拦截高速接近。把 $a$ 从状态拿出、让 $j$ 作为输入，
+就能让距离类 barrier 变成相对度 1（通过 <em>刹车距离 barrier</em>，见 <a href="#m-cbf">§4.6</a>）。这是工程上与纯书本模型的关键差异。</p>
+
+<h4>参数清单</h4>
+<table>
+  <thead><tr><th>参数</th><th>默认</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>wheelbase L</code></td><td>2.8 m</td><td>普通乘用车</td></tr>
+    <tr><td><code>max_steer</code></td><td>35°</td><td>转向上限</td></tr>
+    <tr><td><code>jerk_max</code></td><td>6.0 m/s³</td><td>电子线控典型值</td></tr>
+    <tr><td><code>v_max</code></td><td>35 m/s</td><td>限速硬上限</td></tr>
+    <tr><td><code>μ</code></td><td>作为状态</td><td>来自感知：干燥路面 ≈ 1.0；雨天 ≈ 0.5；冰面 ≈ 0.2</td></tr>
+  </tbody>
+</table>
+
+<h4>失败模式</h4>
+<ul>
+  <li><strong>μ 感知错误</strong>：下游所有屏障都依赖 μg，如果 μ 被高估，刹车距离被低估，CBF 允许更晚减速——<em>首要风险</em>。
+    缓解：用 <code>safety=0.6</code> 的 derating（见 <code>BrakingDistanceBarrier._a_brake</code>）。</li>
+  <li><strong>RK4 vs 真实车辆</strong>：kinematic 模型忽略侧偏，高速大转向时有 1~2% 轨迹误差。在仿真中 OK，上车前必须换成 dynamic bicycle。</li>
+</ul>
+
+<div class="callout sre">
+<span class="tag">SRE</span>
+指标：<code>dyn.step_ms</code>（应 &lt; 0.1 ms），<code>dyn.mu_estimate</code>（连续性采样），<code>dyn.a_clamped_rate</code>（clamp 次数/秒）。
+<code>a_clamped_rate</code> 上升意味着执行器被物理约束，planner 可能已进入逻辑死区（见 <a href="#m-reach">§4.5</a>）。
+</div>
+</div>
+
+<!-- ================================================================= -->
+<h3 id="m-pot">4.3 模块 3 · 势能场与受限梯度流</h3>
+
+<div class="module-card">
+<p><strong>机制</strong>：把"到目的地"、"躲障碍"、"守规则"合成一个标量场 $\Phi$。
+期望车的轨迹沿 $-\nabla\Phi$ 流动，但要在可行流形的切空间里——这就是"受限梯度流"。</p>
+
+<h4>三项分解</h4>
+$$
+\Phi(x) = \underbrace{\tfrac12 w_g \|p - p_g\|^2}_{\text{吸引项}}
+       + \underbrace{w_o \sum_{o\in\mathcal{O}} \left(\frac{r_s}{d_o(p)} - 1\right)^2 \mathbb{1}[d_o &lt; r_s]}_{\text{排斥项}}
+       + \underbrace{w_i \sum_{j\in N_\text{ego}} \frac{w_{ij}}{\max(d_{ij}, 0.5)}}_{\text{交互项}}
+$$
+
+<p>$d_o$ 是到障碍的符号距离，$r_s$ 是安全半径。三项都是显式解析的，梯度默认用数值差分（2D 有限差分 &lt; 50 μs）。</p>
+
+<figure>
+<svg viewBox="0 0 740 260" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="obs" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#b0361e" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#b0361e" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="goal" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#0b6b58" stop-opacity="0.0"/>
+      <stop offset="1" stop-color="#0b6b58" stop-opacity="0.35"/>
+    </radialGradient>
+    <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0b6b58"/>
+    </marker>
+    <style>
+      .lbl { font: 12px -apple-system; fill: #1b1d22; }
+      .mono { font: 11px ui-monospace; fill: #4a4e57; }
+      .sub { font: 11px -apple-system; fill: #767a82; }
+    </style>
+  </defs>
+
+  <!-- Background gradient (attractive well towards goal on the right) -->
+  <ellipse cx="620" cy="130" rx="220" ry="140" fill="url(#goal)"/>
+  <!-- Obstacle repulsion -->
+  <circle cx="350" cy="130" r="120" fill="url(#obs)"/>
+  <circle cx="350" cy="130" r="28" fill="#b0361e"/>
+  <text class="lbl" x="350" y="133" text-anchor="middle" fill="#fff">obs</text>
+
+  <!-- Ego -->
+  <g transform="translate(80,150)">
+    <rect x="-16" y="-9" width="32" height="18" fill="#2a4ab0" rx="3"/>
+    <text class="lbl" x="0" y="-14" text-anchor="middle" fill="#2a4ab0">ego</text>
+  </g>
+
+  <!-- Goal marker -->
+  <g transform="translate(660,130)">
+    <polygon points="0,-12 10,4 -10,4" fill="#0b6b58"/>
+    <text class="lbl" x="0" y="24" text-anchor="middle" fill="#0b6b58">goal</text>
+  </g>
+
+  <!-- Flow lines - curved around obstacle -->
+  <path d="M95,150 C 200,150 240,70 370,60 C 480,50 600,110 645,130" stroke="#0b6b58" stroke-width="1.5" fill="none" marker-end="url(#ag)"/>
+  <path d="M95,155 C 200,180 260,240 380,230 C 500,220 600,180 645,140" stroke="#0b6b58" stroke-width="1.5" fill="none" marker-end="url(#ag)"/>
+
+  <!-- Legend boxes -->
+  <rect x="20" y="15" width="210" height="80" rx="6" fill="#fff" stroke="#e5e2dc"/>
+  <text class="lbl" x="125" y="32" text-anchor="middle" style="font-weight:700">Φ(x) 三项</text>
+  <text class="sub" x="30" y="50">① 吸引：½ w_g ‖p−p_g‖²</text>
+  <text class="sub" x="30" y="66">② 排斥：w_o (r_s/d − 1)² · 𝟙[d&lt;r_s]</text>
+  <text class="sub" x="30" y="82">③ 交互：w_i Σ w_ij / d_ij</text>
+
+  <rect x="510" y="15" width="210" height="80" rx="6" fill="#fff" stroke="#e5e2dc"/>
+  <text class="lbl" x="615" y="32" text-anchor="middle" style="font-weight:700">流向</text>
+  <text class="sub" x="520" y="50">ẋ = −∇Φ(x)</text>
+  <text class="sub" x="520" y="66">再投影到可行流形的切空间</text>
+  <text class="sub" x="520" y="82">实际投影由 CBF + T_inv 承担</text>
+</svg>
+<figcaption>图 4-3 · Φ(x) 三项叠加后的梯度流示意：吸引场把 ego 拉向 goal，排斥场把流线绕开障碍。</figcaption>
+</figure>
+
+<h4>实现选择</h4>
+<ul>
+  <li><strong>排斥项用 $(r_s/d - 1)^2$ 而不是 $1/d^2$</strong>：有限支集，不会影响远处的梯度，数值稳定。</li>
+  <li><strong>梯度用前向差分</strong>：$\mathcal{O}(\text{components})$ 求值两次，在 2D 平面上成本极低。上车前可改解析梯度。</li>
+  <li><strong>交互项用 $w_{ij}/d_{ij}$</strong>：距离近且博弈权重大的邻居贡献最强。</li>
+</ul>
+
+<h4>参数清单</h4>
+<table>
+  <thead><tr><th>参数</th><th>默认</th><th>物理含义</th></tr></thead>
+  <tbody>
+    <tr><td><code>w_goal</code></td><td>1.0</td><td>吸引强度</td></tr>
+    <tr><td><code>w_obs</code></td><td>10.0</td><td>静态障碍排斥强度</td></tr>
+    <tr><td><code>w_interact</code></td><td>5.0</td><td>动态他车影响强度</td></tr>
+    <tr><td><code>safety_radius r_s</code></td><td>2.5 m</td><td>排斥场作用范围</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+<span class="tag">坑</span>
+局部极小值：势能法天然会卡在 U 形障碍后。这里靠上层的 CBF + 可达集兜底，不指望 Φ 独自规划。
+如果一帧 Φ 梯度接近 0 但离目标仍远（<code>‖∇Φ‖ &lt; 1e-3 且 ‖p-goal‖ &gt; 5m</code>），必须上报"规划停滞"。
+</div>
+</div>
+
+<!-- ================================================================= -->
+<h3 id="m-lyap">4.4 模块 4 · Lyapunov 稳定性</h3>
+
+<div class="module-card">
+<p><strong>机制</strong>：选一个能量函数 $V(x)$，让它沿系统演化单调不增。原文强调 $V$ 是"物理红线"：任何导致 $\dot V &gt; 0$ 的控制输入都被拒绝。</p>
+
+<div class="callout">
+<span class="tag">关键工程决策</span>
+代码里的 $V$ <strong>只包含速度跟踪项</strong>，<em>不包含</em>距离项——与原文里语言上的"安全势能函数"略有区别。
+原因：把"稳定 = 能跟踪目标速度"与"安全 = 不碰障碍"解耦，各自归 Lyapunov 和 CBF 两个不同数学工具。
+合并会导致走向目标的每一步都触发 V 上升，出现"连刹不前"的病态行为（我们在第一版实现里真踩过这个坑）。
+</div>
+
+<h4>关键公式</h4>
+$$
+V(x) = \tfrac12 q_v (v - v^*)^2,\qquad
+\frac{dV}{dt} = q_v (v-v^*)\cdot a
+$$
+<p>硬约束：$\dot V(x, u) \le 0$（数值形式：$(V_{t+dt} - V_t)/dt \le \tau$，$\tau = 10^{-3}$）。
+优先形式（指数衰减）：$\dot V \le -\gamma V$，$\gamma = 0.5$。</p>
+
+<figure>
+<svg viewBox="0 0 720 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .axis { stroke: #767a82; stroke-width: 1; }
+      .tick { stroke: #767a82; stroke-width: 1; }
+      .lbl { font: 12px -apple-system; fill: #1b1d22; }
+      .mono { font: 11px ui-monospace; fill: #4a4e57; }
+      .sub { font: 11px -apple-system; fill: #767a82; }
+    </style>
+    <marker id="lm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#767a82"/>
+    </marker>
+  </defs>
+
+  <!-- axes -->
+  <line x1="60" y1="240" x2="680" y2="240" class="axis" marker-end="url(#lm)"/>
+  <line x1="60" y1="240" x2="60" y2="30" class="axis" marker-end="url(#lm)"/>
+  <text class="lbl" x="680" y="258" text-anchor="end">t</text>
+  <text class="lbl" x="50" y="36" text-anchor="end">V(x)</text>
+
+  <!-- exponential decay curve -->
+  <path d="M80,60 C 150,100 220,170 300,200 C 380,220 500,228 650,232" stroke="#0b6b58" stroke-width="2.2" fill="none"/>
+  <text class="lbl" x="220" y="80" fill="#0b6b58" style="font-weight:700">理想衰减：V(t) = V₀ e^(−γt)</text>
+
+  <!-- boundary dV/dt = 0 -->
+  <line x1="60" y1="232" x2="680" y2="232" stroke="#b08800" stroke-dasharray="4 3"/>
+  <text class="sub" x="680" y="228" text-anchor="end" fill="#b08800">dV/dt = 0 · 稳定边界</text>
+
+  <!-- violating trajectory -->
+  <path d="M300,200 C 340,200 380,210 430,160 C 480,110 540,90 650,70" stroke="#b0361e" stroke-width="2" stroke-dasharray="5 3" fill="none"/>
+  <text class="lbl" x="520" y="110" fill="#b0361e">违规：dV/dt &gt; 0 → T_inv 介入</text>
+
+  <!-- Annotations -->
+  <circle cx="300" cy="200" r="5" fill="#1b1d22"/>
+  <text class="sub" x="308" y="196">触发点：NN 输出 u_nn</text>
+
+  <circle cx="430" cy="160" r="5" fill="#b0361e"/>
+  <text class="sub" x="436" y="156" fill="#b0361e">u_nn 保留则能量上升</text>
+
+  <path d="M430,160 L440,230" stroke="#0b6b58" stroke-width="1.5" marker-end="url(#lm)"/>
+  <text class="lbl" x="480" y="250" fill="#0b6b58">T_inv: jerk-=Δ 直到 dV/dt ≤ 0</text>
+
+  <!-- Right info box -->
+  <rect x="470" y="40" width="220" height="90" rx="8" fill="#fff9e6" stroke="#e3d58a"/>
+  <text class="lbl" x="580" y="60" text-anchor="middle" style="font-weight:700">数值实现</text>
+  <text class="sub" x="480" y="82">dV/dt ≈ (V(x_{t+dt}) − V(x_t))/dt</text>
+  <text class="sub" x="480" y="100">容差 τ = 1e-3</text>
+  <text class="sub" x="480" y="118">relax_steps = 8 次 jerk 回退</text>
+</svg>
+<figcaption>图 4-4 · Lyapunov 监视器 + T_inv 的矫正过程：一旦 $\dot V > 0$，T_inv 按步长降 jerk 直到重新满足 $\dot V \le 0$。</figcaption>
+</figure>
+
+<h4>数值实现细节</h4>
+<ol>
+  <li><code>dV_dt</code> 用前向差 $dt = 0.01$ s；太小看不到 jerk 的累计效应，太大损失精度。</li>
+  <li><code>check(state, u)</code> 返回 <code>(is_stable, dV_dt)</code>——必须<strong>两个值都返回</strong>，SRE 的 metrics 需要实际值而不仅布尔。</li>
+  <li>$V$ 只随速度误差平方增长 → $V_\max = \tfrac12 q_v v_{\max}^2 \approx 613$（$v^* = 0$, $v_\max = 35$），可以作为归一化基准。</li>
+</ol>
+
+<h4>失败模式</h4>
+<ul>
+  <li><strong>target_speed 漂移</strong>：如果上层 $v^*$ 跳变，Lyapunov 会忽然鼓起，触发一串 T_inv 矫正 → 体感 = 点刹。缓解：$v^*$ 要经过限幅器（$|\Delta v^*| \le 2 $m/s/每周期）。</li>
+  <li><strong>数值 $\dot V$ 抖动</strong>：低速时 $v - v^*$ 很小，有限差信噪比低。可对 $\dot V$ 做 5 点中值滤波。</li>
+</ul>
+
+<div class="callout sre">
+<span class="tag">SRE</span>
+指标：<code>lyap.V</code>、<code>lyap.dV_dt</code>、<code>lyap.tinv_intervene_rate</code>。
+Alert：<code>tinv_intervene_rate &gt; 20%</code> 持续 10 s 表示 NN 策略与物理边界严重不匹配——应切换到更保守的名义策略。
+</div>
+</div>
+
+<!-- ================================================================= -->
+<h3 id="m-reach">4.5 模块 5 · 可达集 <code>R(x₀, T)</code></h3>
+
+<div class="module-card">
+<p><strong>机制</strong>：给定当前状态 $x_0$ 与时间窗 $T$，枚举所有可行控制序列的终点，形成可达集。
+当外部不确定性（前车急刹、行人闯入）的位置落在可达集<em>外</em>，就意味着"无论怎么开都躲不过"——即"逻辑死区"。</p>
+
+<h4>关键公式</h4>
+$$
+\mathcal{R}(x_0, T) = \left\{ \phi(T; x_0, u(\cdot))\;\middle|\; u(t) \in \mathcal{U},\, t \in [0, T] \right\}
+$$
+<p>工程上用采样 + 凸包近似：随机生成 $N$ 条分段常值控制序列，各自 RK4 积分到 $T$，取终点；取终点的凸包作为可达区域。</p>
+
+<figure>
+<svg viewBox="0 0 720 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .pt { fill: #0b6b58; opacity: 0.55; }
+      .hull { fill: #eaf7ec; stroke: #0b6b58; stroke-width: 2; }
+      .obs { fill: #b0361e; opacity: 0.5; stroke: #b0361e; }
+      .lbl { font: 12px -apple-system; fill: #1b1d22; }
+      .sub { font: 11px -apple-system; fill: #767a82; }
+      .mono { font: 11px ui-monospace; fill: #4a4e57; }
+    </style>
+  </defs>
+
+  <!-- Current state -->
+  <circle cx="90" cy="150" r="8" fill="#2a4ab0"/>
+  <text class="lbl" x="90" y="175" text-anchor="middle">x₀</text>
+
+  <!-- Reachable hull -->
+  <path class="hull" d="M100,150 L170,90 L280,70 L380,90 L420,130 L400,175 L330,210 L220,210 L130,195 Z"/>
+  <text class="lbl" x="260" y="145" text-anchor="middle" fill="#0b6b58" style="font-weight:700">R(x₀, T=2s)</text>
+  <text class="sub" x="260" y="160" text-anchor="middle">凸包近似</text>
+
+  <!-- Sampled endpoints -->
+  <circle class="pt" cx="150" cy="100"/><circle class="pt" cx="180" cy="90"/><circle class="pt" cx="220" cy="85"/>
+  <circle class="pt" cx="260" cy="75"/><circle class="pt" cx="300" cy="80"/><circle class="pt" cx="350" cy="95"/>
+  <circle class="pt" cx="380" cy="120"/><circle class="pt" cx="400" cy="150"/><circle class="pt" cx="380" cy="180"/>
+  <circle class="pt" cx="340" cy="200"/><circle class="pt" cx="280" cy="205"/><circle class="pt" cx="220" cy="200"/>
+  <circle class="pt" cx="170" cy="185"/><circle class="pt" cx="140" cy="170"/><circle class="pt" cx="180" cy="150"/>
+  <circle class="pt" cx="230" cy="130"/><circle class="pt" cx="280" cy="140"/><circle class="pt" cx="320" cy="155"/>
+  <circle class="pt" cx="250" cy="165"/><circle class="pt" cx="200" cy="175"/>
+
+  <!-- threat inside hull (avoidable) -->
+  <circle class="obs" cx="330" cy="110" r="14"/>
+  <text class="sub" x="330" y="114" text-anchor="middle" fill="#fff">safe</text>
+  <text class="sub" x="330" y="140" text-anchor="middle" fill="#b0361e">威胁在集内 · 可规避</text>
+
+  <!-- threat outside hull (dead zone) -->
+  <circle class="obs" cx="520" cy="155" r="16" stroke-width="2"/>
+  <text class="sub" x="520" y="159" text-anchor="middle" fill="#fff">⚠</text>
+  <text class="sub" x="520" y="185" text-anchor="middle" fill="#b0361e">威胁在集外 · 逻辑死区</text>
+
+  <!-- Right text -->
+  <rect x="560" y="40" width="150" height="180" rx="8" fill="#fff9e6" stroke="#e3d58a"/>
+  <text class="lbl" x="635" y="60" text-anchor="middle" style="font-weight:700">输出</text>
+  <text class="sub" x="570" y="82">in_reachable(x₀, t) → bool</text>
+  <text class="sub" x="570" y="100">DeadZoneDetector.check(·)</text>
+  <text class="sub" x="570" y="118">→ (in_dead_zone, clear_m)</text>
+  <line x1="570" y1="130" x2="700" y2="130" stroke="#e3d58a"/>
+  <text class="sub" x="570" y="150">触发条件：</text>
+  <text class="sub" x="570" y="168">最坏情况刹停轨迹</text>
+  <text class="sub" x="570" y="184">min clearance &lt; 0</text>
+  <text class="sub" x="570" y="204">→ 告警 &amp; 提前启动 ⊗</text>
+</svg>
+<figcaption>图 4-5 · 可达集凸包。绿点是 200 个采样的控制序列终点；红色圆是潜在威胁；在 hull 外意味着不可规避。</figcaption>
+</figure>
+
+<h4>参数与复杂度</h4>
+<table>
+  <thead><tr><th>参数</th><th>默认</th><th>影响</th></tr></thead>
+  <tbody>
+    <tr><td><code>horizon T</code></td><td>2.0 s</td><td>越长可达集越大，但计算越慢</td></tr>
+    <tr><td><code>n_samples</code></td><td>200</td><td>终点采样数，权衡覆盖 vs 时延</td></tr>
+    <tr><td><code>dt</code></td><td>0.1 s</td><td>积分步长</td></tr>
+  </tbody>
+</table>
+<p>复杂度 $\mathcal{O}(N \cdot T/dt)$，200×20 次 <code>step</code>，实测 &lt; 5 ms。<strong>不在每帧主环里跑</strong>——只在"感知到显著威胁"时触发（事件驱动）。</p>
+
+<h4>失败模式</h4>
+<ul>
+  <li><strong>凸包高估</strong>：真实可达集通常是非凸的（U-turn 受限），凸包会把一些"达不到"的点也算进去——乐观偏差。需要用"凹补集"或 HJ reachability 更严谨。本版本够用于 dead-zone 保守下界。</li>
+  <li><strong>采样偏置</strong>：当前用均匀采样控制序列，覆盖度有限。可换成 Sobol 或 LHS 以更均匀。</li>
+</ul>
+
+<div class="callout sre">
+<span class="tag">SRE</span>
+指标：<code>reach.sample_ms</code>、<code>reach.dead_zone_rate</code>、<code>reach.hull_area</code>。
+触发条件（事件驱动）：出现速度差 &gt; 15 m/s 的他车 / 检测到突发障碍 / μ 突降。
+</div>
+</div>
+
+<!-- ================================================================= -->
+<h3 id="m-cbf">4.6 模块 6 · 控制屏障函数 CBF</h3>
+
+<div class="module-card">
+<p><strong>机制</strong>：定义安全集 $\mathcal{C} = \{x \mid h(x) \ge 0\}$，再通过不等式 $\dot h + \alpha h \ge 0$ 保证前向不变。
+这是把"软安全建议"变成"硬安全约束"的数学桥。本工程提供 <strong>两类</strong>屏障：纯几何（distance）与<strong>刹车距离</strong>（braking distance）。</p>
+
+<h4>两类屏障对比</h4>
+
+<table>
+  <thead>
+    <tr><th></th><th><code>DistanceBarrier</code></th><th><code>BrakingDistanceBarrier</code></th></tr>
+  </thead>
+  <tbody>
+    <tr><td>$h(x)$</td>
+        <td>$d_\text{obs}(p) - r_s$</td>
+        <td>$d_\text{obs}(p) - r_s - v\tau - \dfrac{v^2}{2 a_\text{brk}(\mu)}$</td></tr>
+    <tr><td>对 jerk 的相对度</td><td>2（不够灵敏）</td><td>1（可即时矫正）</td></tr>
+    <tr><td>适用</td><td>静态边界（车道线、停车线）</td><td>高速动态避障</td></tr>
+    <tr><td>μ 自适应</td><td>✗</td><td>✓ $a_\text{brk}(\mu) = 0.6 \min(a_\text{max}, \mu g)$</td></tr>
+  </tbody>
+</table>
+
+<figure>
+<svg viewBox="0 0 740 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .safe { fill: #eaf7ec; stroke: #0b6b58; stroke-width: 1.5; }
+      .danger { fill: #ffefe6; stroke: #b0361e; stroke-width: 1.5; }
+      .lbl { font: 12px -apple-system; fill: #1b1d22; }
+      .mono { font: 11px ui-monospace; fill: #4a4e57; }
+      .sub { font: 11px -apple-system; fill: #767a82; }
+    </style>
+    <marker id="ma" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1b1d22"/>
+    </marker>
+  </defs>
+
+  <!-- Left: DistanceBarrier -->
+  <rect x="20" y="10" width="340" height="280" fill="#fff" stroke="#e5e2dc" rx="8"/>
+  <text class="lbl" x="190" y="34" text-anchor="middle" style="font-weight:700">DistanceBarrier（相对度 2）</text>
+
+  <circle cx="280" cy="150" r="30" fill="#b0361e"/>
+  <text class="lbl" x="280" y="154" text-anchor="middle" fill="#fff">obs</text>
+  <circle cx="280" cy="150" r="50" fill="none" stroke="#b08800" stroke-dasharray="4 4"/>
+  <text class="sub" x="280" y="215" text-anchor="middle" fill="#b08800">安全半径 r_s</text>
+
+  <g transform="translate(70,150)">
+    <rect x="-20" y="-10" width="40" height="20" fill="#2a4ab0" rx="3"/>
+    <text class="sub" x="0" y="-14" text-anchor="middle">v=12m/s</text>
+  </g>
+  <line x1="90" y1="150" x2="225" y2="150" stroke="#1b1d22" stroke-width="1.2" marker-end="url(#ma)"/>
+  <text class="sub" x="160" y="142" text-anchor="middle">h = d − r_s &gt; 0 但 ḣ 对 jerk 不敏感</text>
+
+  <text class="mono" x="40" y="260">h &gt; 0 但接近 0 时，单次 QP</text>
+  <text class="mono" x="40" y="276">只能调 steer/a，<tspan fill="#b0361e">来不及刹</tspan></text>
+
+  <!-- Right: BrakingDistanceBarrier -->
+  <rect x="380" y="10" width="340" height="280" fill="#fff" stroke="#e5e2dc" rx="8"/>
+  <text class="lbl" x="550" y="34" text-anchor="middle" style="font-weight:700">BrakingDistanceBarrier（相对度 1）</text>
+
+  <circle cx="660" cy="150" r="30" fill="#b0361e"/>
+  <circle cx="660" cy="150" r="50" fill="none" stroke="#b08800" stroke-dasharray="4 4"/>
+
+  <!-- braking distance zone -->
+  <rect x="495" y="140" width="115" height="20" fill="#ffefe6" stroke="#b0361e" stroke-dasharray="3 3"/>
+  <text class="sub" x="552" y="134" text-anchor="middle" fill="#b0361e">v² / (2·a_brk)</text>
+  <rect x="460" y="140" width="35" height="20" fill="#fff9e6" stroke="#b08800" stroke-dasharray="3 3"/>
+  <text class="sub" x="478" y="134" text-anchor="middle" fill="#b08800">v·τ</text>
+
+  <g transform="translate(420,150)">
+    <rect x="-20" y="-10" width="40" height="20" fill="#2a4ab0" rx="3"/>
+  </g>
+  <line x1="440" y1="150" x2="605" y2="150" stroke="#1b1d22" stroke-width="1.2" marker-end="url(#ma)"/>
+
+  <text class="mono" x="400" y="200">h = d − r_s − v·τ − v²/(2·a_brk)</text>
+  <text class="mono" x="400" y="218">jerk 直接通过 a 影响 v → ḣ 相对度 1</text>
+  <text class="sub" x="400" y="240">QP 可即时令 u = 最大刹</text>
+  <text class="sub" x="400" y="258">τ 吸收 jerk-ramp 延迟（0.35 s）</text>
+  <text class="sub" x="400" y="276">a_brk = 0.6·min(a_max, μg) （μ 自适应）</text>
+</svg>
+<figcaption>图 4-6 · 两类 barrier 对比。左：几何距离 barrier；右：刹车距离 barrier（含反应时间 + μ 自适应）。</figcaption>
+</figure>
+
+<h4>CBF-QP 求解</h4>
+$$
+\begin{aligned}
+\min_u \quad & \|u - u_\text{nom}\|^2 + \rho\, \delta^2 \\
+\text{s.t.} \quad & \dot h_i(x, u) + \alpha h_i(x) \ge -\delta \quad \forall i\\
+& u \in \mathcal{U},\; \delta \ge 0
+\end{aligned}
+$$
+
+<p>本工程没拉 QP 求解器依赖，而是用 <strong>粗网格 + 精化网格</strong> 的两步搜索（详见 <code>cbf.CBFQPFilter.filter</code>），在 2D 输入上毫秒级收敛。上车需要替换为 OSQP / qpOASES。</p>
+
+<h4>参数清单</h4>
+<table>
+  <thead><tr><th>参数</th><th>默认</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>alpha</code></td><td>3.0</td><td>类 K 函数增益，越大反应越"急"</td></tr>
+    <tr><td><code>rho</code></td><td>1e3</td><td>松弛罚因子，越大越接近严格 QP</td></tr>
+    <tr><td><code>h_dot_horizon</code></td><td>0.1 s</td><td>有限差分前瞻，必须大于 jerk ramp 时间</td></tr>
+    <tr><td><code>reaction τ</code></td><td>0.35 s</td><td>CBF 中反应时间缓冲</td></tr>
+    <tr><td><code>a_max_brake</code></td><td>6.0 m/s²</td><td>保守刹车上限</td></tr>
+    <tr><td><code>safety</code></td><td>0.6</td><td>μ derating</td></tr>
+  </tbody>
+</table>
+
+<h4>失败模式</h4>
+<ul>
+  <li><strong>$\alpha$ 过小</strong>：系统反应迟钝，可能在动态障碍面前失效。</li>
+  <li><strong>$\alpha$ 过大</strong>：名义策略稍有动作就触发"急刹点头"，体感差。</li>
+  <li><strong>barrier 数量过多</strong>：QP 维度 = $n_\text{barrier}$，当障碍 &gt; 30 时网格搜索会变慢。上车需要改真 QP。</li>
+</ul>
+
+<div class="callout sre">
+<span class="tag">SRE</span>
+指标：<code>cbf.filter_ms</code>、<code>cbf.fallback_rate</code>（降级刹停次数 / 总步数）、<code>cbf.active_barriers</code>。
+Alert：<code>fallback_rate &gt; 5%</code> 10 s 表示 QP 长期不可行，名义策略必须立即收紧（减速 / 加大缓冲）。
+</div>
+</div>
+
+<!-- ================================================================= -->
+<h3 id="m-tinv">4.7 模块 7 · 控制不变集算子 <code>T_inv</code></h3>
+
+<div class="module-card">
+<p><strong>机制</strong>：原文 §3.1 的核心算子。输入任意神经网络 / MPC 的候选命令 $u_{nn}$，输出满足 Lyapunov 硬约束的 $u_\text{safe}$。
+这是整个系统最不可降级的组件——<em>所有下游执行器命令都必须过这个算子</em>。</p>
+
+<h4>三段流水</h4>
+<ol>
+  <li><strong>CBF 折叠</strong>：先让候选命令穿过 <code>CBFQPFilter</code>，剪掉所有违反 $\dot h + \alpha h \ge 0$ 的动作。</li>
+  <li><strong>Lyapunov 松弛</strong>：若 CBF 输出仍然令 $\dot V &gt; 0$，按步长 $\Delta j = j_\text{max}/N$ 迭代降 jerk，直到 $\dot V \le 0$（优先 $\dot V \le -\gamma V$）。</li>
+  <li><strong>降级兜底</strong>：松弛 $N$ 步后仍无解则退到 <code>Control(0, -jerk_max)</code>，告警 + 记录。</li>
+</ol>
+
+<figure>
+<svg viewBox="0 0 820 320" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="tarr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0b6b58"/>
+    </marker>
+    <marker id="tarr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b0361e"/>
+    </marker>
+    <style>
+      .nn { fill: #eaf7ec; stroke: #0b6b58; stroke-width: 1.5; }
+      .cbf { fill: #fff9e6; stroke: #b08800; stroke-width: 1.5; }
+      .lyap { fill: #fff9e6; stroke: #b08800; stroke-width: 1.5; }
+      .safe { fill: #f4ece0; stroke: #5a4400; stroke-width: 1.5; }
+      .brake { fill: #ffefe6; stroke: #b0361e; stroke-width: 1.5; }
+      .lbl { font: 12px -apple-system; fill: #1b1d22; }
+      .mono { font: 11px ui-monospace; fill: #4a4e57; }
+      .sub { font: 11px -apple-system; fill: #767a82; }
+      .edge { stroke: #0b6b58; stroke-width: 1.5; fill: none; }
+      .edge-r { stroke: #b0361e; stroke-width: 1.5; stroke-dasharray: 5 3; fill: none; }
+    </style>
+  </defs>
+
+  <!-- Input -->
+  <rect class="nn" x="20" y="140" width="130" height="54" rx="8"/>
+  <text class="lbl" x="85" y="165" text-anchor="middle" style="font-weight:700">u_nn</text>
+  <text class="sub" x="85" y="183" text-anchor="middle">NN / MPC 输出</text>
+
+  <!-- Stage 1: CBF -->
+  <rect class="cbf" x="200" y="40" width="200" height="110" rx="10"/>
+  <text class="lbl" x="300" y="65" text-anchor="middle" style="font-weight:700">① CBF 折叠</text>
+  <text class="mono" x="300" y="85" text-anchor="middle">cbf.filter(x, u_nn)</text>
+  <text class="sub" x="300" y="105" text-anchor="middle">ḣ + αh ≥ 0 对每个 barrier</text>
+  <text class="sub" x="300" y="123" text-anchor="middle">粗网格 + 精化搜索</text>
+  <text class="sub" x="300" y="141" text-anchor="middle">→ u_cbf（折叠后候选）</text>
+
+  <!-- Stage 2: Lyapunov relax -->
+  <rect class="lyap" x="450" y="40" width="230" height="110" rx="10"/>
+  <text class="lbl" x="565" y="65" text-anchor="middle" style="font-weight:700">② Lyapunov 松弛</text>
+  <text class="mono" x="565" y="85" text-anchor="middle">for k in range(N):</text>
+  <text class="sub" x="565" y="103" text-anchor="middle">if dV/dt(u) ≤ −γV → 最优出口</text>
+  <text class="sub" x="565" y="121" text-anchor="middle">elif dV/dt(u) ≤ τ  → 保守出口</text>
+  <text class="sub" x="565" y="139" text-anchor="middle">else: jerk ← jerk − j_max/N</text>
+
+  <!-- Safe output -->
+  <rect class="safe" x="720" y="70" width="90" height="50" rx="8"/>
+  <text class="lbl" x="765" y="92" text-anchor="middle" style="font-weight:700">u_safe</text>
+  <text class="sub" x="765" y="110" text-anchor="middle">→ 执行器</text>
+
+  <!-- Stage 3: Fallback -->
+  <rect class="brake" x="450" y="220" width="230" height="70" rx="10"/>
+  <text class="lbl" x="565" y="245" text-anchor="middle" style="font-weight:700" fill="#b0361e">③ 降级兜底</text>
+  <text class="mono" x="565" y="265" text-anchor="middle">Control(steer=0, jerk=−j_max)</text>
+  <text class="sub" x="565" y="283" text-anchor="middle">永远可行 · 必然刹停</text>
+
+  <!-- Log -->
+  <rect fill="#eef2ff" stroke="#2a4ab0" stroke-width="1.2" x="20" y="220" width="380" height="70" rx="10"/>
+  <text class="lbl" x="210" y="245" text-anchor="middle" style="font-weight:700">trace</text>
+  <text class="sub" x="210" y="263" text-anchor="middle">V, dV/dt, status ∈ {stable, relaxed, relaxed_exp,</text>
+  <text class="sub" x="210" y="281" text-anchor="middle">emergency_brake, non_increasing}</text>
+
+  <!-- Edges -->
+  <path class="edge" d="M150,167 L195,100" marker-end="url(#tarr)"/>
+  <path class="edge" d="M400,95 L445,95" marker-end="url(#tarr)"/>
+  <path class="edge" d="M680,95 L715,95" marker-end="url(#tarr)"/>
+
+  <!-- Loop within stage 2 -->
+  <path class="edge" d="M565,150 C 580,180 580,180 570,150" stroke-dasharray="3 2" marker-end="url(#tarr)"/>
+  <text class="sub" x="620" y="172" fill="#b08800">最多 N=8 次迭代</text>
+
+  <!-- Fallback edges -->
+  <path class="edge-r" d="M565,150 L565,215" marker-end="url(#tarr2)"/>
+  <text class="sub" x="595" y="180" fill="#b0361e">松弛耗尽</text>
+  <path class="edge-r" d="M680,255 C 750,255 770,180 760,130" marker-end="url(#tarr2)"/>
+
+  <!-- Observability arrows to log -->
+  <path stroke="#2a4ab0" stroke-width="1" fill="none" d="M300,150 L300,218" stroke-dasharray="2 2"/>
+  <path stroke="#2a4ab0" stroke-width="1" fill="none" d="M565,150 L400,218" stroke-dasharray="2 2"/>
+  <path stroke="#2a4ab0" stroke-width="1" fill="none" d="M565,220 L400,240" stroke-dasharray="2 2"/>
+</svg>
+<figcaption>图 4-7 · <code>T_inv.apply</code> 的三段流水：CBF 折叠 → Lyapunov 松弛 → 降级兜底；每段都向 trace 写指标。</figcaption>
+</figure>
+
+<h4>状态机</h4>
+<p><code>T_inv.apply</code> 会返回一个 <code>status ∈ {stable, non_increasing, relaxed, relaxed_exp, emergency_brake}</code>，含义：</p>
+<ul>
+  <li><code>stable</code>：首次尝试即满足 $\dot V \le -\gamma V$（最佳）；</li>
+  <li><code>relaxed_exp</code>：松弛后满足指数衰减目标；</li>
+  <li><code>relaxed</code>：松弛后只满足 $\dot V \le \tau$（退回普通 Lyapunov）；</li>
+  <li><code>non_increasing</code>：恰好在容差内，边缘稳定；</li>
+  <li><code>emergency_brake</code>：<strong>兜底</strong>，应触发告警。</li>
+</ul>
+
+<h4>正确性证明要点（评审提示）</h4>
+<ol>
+  <li>降级命令 <code>Control(0, −j_max)</code> 永远满足可行集（不违反转向约束、符合摩擦上限），QP 可行性保证终止。</li>
+  <li>松弛方向单调降 jerk → $V$ 的关于 $u$ 导数为 $q_v(v-v^*)\cdot \partial a / \partial j = q_v(v-v^*)\cdot dt$，方向单调正相关 → 单调下降。</li>
+  <li>最多 $N=8$ 次迭代后 jerk 达到下限，算法必然终止（有限步）。</li>
+</ol>
+
+<div class="callout sre">
+<span class="tag">SRE</span>
+指标：<code>tinv.status_count{stable|relaxed|relaxed_exp|emergency_brake}</code>。
+<code>emergency_brake</code> 占比 &gt; 2% 持续 30 s → P1 告警，名义策略需要更保守。
+</div>
+</div>
+
+<!-- ================================================================= -->
+<h3 id="m-game">4.8 模块 8 · 非完全信息博弈 / 安全冗余</h3>
+
+<div class="module-card">
+<p><strong>机制</strong>：原文 §2.3 的落地。他车意图不可观测时，planner 对"最坏情况"做兜底——把 CBF 的安全半径 $r_s$ 按置信度熵放大。
+这让"我不知道你要不要转"自动翻译成"那我就多留出一车位"。</p>
+
+<h4>关键公式</h4>
+$$
+\begin{aligned}
+H(p) &amp;= -\sum_k p_k \log p_k,\quad \eta = H(p)/\log |p| \in [0,1] \\
+r_\text{buf} &amp;= r_\text{base} + k_v \max(0, v_\text{close}) + k_\eta\, \eta
+\end{aligned}
+$$
+<p>$\eta$ 是归一化意图熵；$v_\text{close}$ 是闭合速度。对多个他车取 max（最坏情况聚合）。</p>
+
+<figure>
+<svg viewBox="0 0 720 260" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .bar { fill: #0b6b58; }
+      .bar2 { fill: #b08800; }
+      .lbl { font: 12px -apple-system; fill: #1b1d22; }
+      .mono { font: 11px ui-monospace; fill: #4a4e57; }
+      .sub { font: 11px -apple-system; fill: #767a82; }
+    </style>
+  </defs>
+
+  <!-- Left: confident belief -->
+  <rect x="20" y="10" width="320" height="240" fill="#fff" stroke="#e5e2dc" rx="8"/>
+  <text class="lbl" x="180" y="32" text-anchor="middle" style="font-weight:700">情况 A · 置信度集中</text>
+  <text class="sub" x="180" y="50" text-anchor="middle">对手几乎肯定直行</text>
+
+  <g transform="translate(50,80)">
+    <text class="sub" x="0" y="0">直行</text>
+    <rect class="bar" x="40" y="-10" width="200" height="14"/>
+    <text class="sub" x="0" y="30">左转</text>
+    <rect class="bar" x="40" y="20" width="18" height="14"/>
+    <text class="sub" x="0" y="60">让行</text>
+    <rect class="bar" x="40" y="50" width="10" height="14"/>
+  </g>
+
+  <text class="mono" x="50" y="185">H ≈ 0.3 · η ≈ 0.2</text>
+  <text class="lbl" x="180" y="215" text-anchor="middle" fill="#0b6b58">r_buf ≈ r_base + 0.4 m</text>
+  <text class="sub" x="180" y="235" text-anchor="middle">可以开近一点</text>
+
+  <!-- Right: uniform belief -->
+  <rect x="380" y="10" width="320" height="240" fill="#fff" stroke="#e5e2dc" rx="8"/>
+  <text class="lbl" x="540" y="32" text-anchor="middle" style="font-weight:700">情况 B · 置信度均匀</text>
+  <text class="sub" x="540" y="50" text-anchor="middle">对手意图不可知</text>
+
+  <g transform="translate(410,80)">
+    <text class="sub" x="0" y="0">直行</text>
+    <rect class="bar2" x="40" y="-10" width="80" height="14"/>
+    <text class="sub" x="0" y="30">左转</text>
+    <rect class="bar2" x="40" y="20" width="80" height="14"/>
+    <text class="sub" x="0" y="60">右转</text>
+    <rect class="bar2" x="40" y="50" width="80" height="14"/>
+    <text class="sub" x="0" y="90">让行</text>
+    <rect class="bar2" x="40" y="80" width="80" height="14"/>
+  </g>
+
+  <text class="mono" x="410" y="205">H ≈ log 4 · η ≈ 1.0</text>
+  <text class="lbl" x="540" y="225" text-anchor="middle" fill="#b08800">r_buf ≈ r_base + 2.0 m + k_v·v_close</text>
+  <text class="sub" x="540" y="242" text-anchor="middle">自动加大缓冲 → CBF 更早刹</text>
+</svg>
+<figcaption>图 4-8 · 意图熵 → 安全冗余。上游置信度越不集中，缓冲区越大；这个缓冲区以 <code>safety_margin</code> 形式注入 CBF。</figcaption>
+</figure>
+
+<h4>与 CBF 的耦合方式</h4>
+<p>这个模块<strong>不直接出控制命令</strong>。它把 $r_\text{buf}$ 写到 <code>make_obstacle_barriers(margin=r_buf)</code> 的参数里——
+他车的 barrier 会按当前置信度做几何膨胀。这样博弈层的不确定性就被<em>"代数化"</em>成 CBF 约束的一部分，
+单元测试只需要验证"输入熵→输出缓冲"的单调性，不需要联调。</p>
+
+<h4>参数清单</h4>
+<table>
+  <thead><tr><th>参数</th><th>默认</th><th>影响</th></tr></thead>
+  <tbody>
+    <tr><td><code>base_buffer r_base</code></td><td>3.0 m</td><td>最小安全距离</td></tr>
+    <tr><td><code>speed_gain k_v</code></td><td>1.2 s</td><td>每 m/s 闭合速度加多少 m 缓冲</td></tr>
+    <tr><td><code>entropy_gain k_η</code></td><td>2.0 m</td><td>完全不确定时的额外缓冲</td></tr>
+  </tbody>
+</table>
+
+<h4>失败模式 & 讨论</h4>
+<ul>
+  <li><strong>非真正的纳什均衡</strong>：本实现是"保守启发式"，不是真的求解对抗 game tree。实测在 Highway/Intersection 场景足够安全，但对"反复博弈让行"之类微妙交互不能最优响应。</li>
+  <li><strong>熵爆炸</strong>：意图分布极端均匀（感知失灵）时 $r_\text{buf}$ 会冲高，触发 Planner 连续减速——等价于"感知不信任时先慢下来"，体感对，安全对。</li>
+</ul>
+
+<div class="callout sre">
+<span class="tag">SRE</span>
+指标：<code>game.buffer_p50/p99</code>、<code>game.entropy_mean</code>。
+Alert：<code>game.entropy_mean &gt; 0.9</code> 持续 5 s → 感知上游可疑，上报数据质量问题。
+</div>
+</div>
+
+<!-- ================================================================= -->
+<h3 id="m-plan">4.9 模块 9 · Planner 主循环</h3>
+
+<div class="module-card">
+<p><strong>机制</strong>：把前面 8 个模块装配成一个 <code>step(obs) → (state, u_safe, trace)</code>。这是<strong>外部唯一调用入口</strong>。
+组装顺序由 §3 的 SRE 不变式约束：<code>graph → potential → game → nominal → cbf → T_inv → dynamics.step → trace</code>。</p>
+
+<figure>
+<svg viewBox="0 0 760 240" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .t { font: 12px -apple-system; fill: #1b1d22; }
+      .m { font: 11px ui-monospace; fill: #4a4e57; }
+      .s { font: 11px -apple-system; fill: #767a82; }
+      .box { fill: #fff; stroke: #767a82; stroke-width: 1.2; }
+    </style>
+    <marker id="pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1b1d22"/>
+    </marker>
+  </defs>
+
+  <rect x="10" y="30" width="80" height="50" rx="8" class="box" fill="#eef2ff"/>
+  <text class="t" x="50" y="58" text-anchor="middle">obs</text>
+
+  <rect x="110" y="30" width="90" height="50" rx="8" class="box" fill="#eef2ff"/>
+  <text class="t" x="155" y="54" text-anchor="middle">graph.update()</text>
+  <text class="s" x="155" y="70" text-anchor="middle">G_I</text>
+
+  <rect x="220" y="30" width="90" height="50" rx="8" class="box" fill="#eef2ff"/>
+  <text class="t" x="265" y="54" text-anchor="middle">game</text>
+  <text class="s" x="265" y="70" text-anchor="middle">r_buf</text>
+
+  <rect x="330" y="30" width="110" height="50" rx="8" class="box" fill="#eaf7ec"/>
+  <text class="t" x="385" y="54" text-anchor="middle">nominal(state, G_I)</text>
+  <text class="s" x="385" y="70" text-anchor="middle">→ u_nn</text>
+
+  <rect x="460" y="30" width="90" height="50" rx="8" class="box" fill="#fff9e6"/>
+  <text class="t" x="505" y="54" text-anchor="middle">cbf.filter</text>
+  <text class="s" x="505" y="70" text-anchor="middle">→ u_cbf</text>
+
+  <rect x="570" y="30" width="100" height="50" rx="8" class="box" fill="#fff9e6"/>
+  <text class="t" x="620" y="54" text-anchor="middle">T_inv.apply</text>
+  <text class="s" x="620" y="70" text-anchor="middle">→ u_safe</text>
+
+  <rect x="690" y="30" width="60" height="50" rx="8" class="box" fill="#f4ece0"/>
+  <text class="t" x="720" y="54" text-anchor="middle">step</text>
+  <text class="s" x="720" y="70" text-anchor="middle">→ x_{t+1}</text>
+
+  <!-- arrows -->
+  <line x1="90" y1="55" x2="105" y2="55" stroke="#1b1d22" marker-end="url(#pa)"/>
+  <line x1="200" y1="55" x2="215" y2="55" stroke="#1b1d22" marker-end="url(#pa)"/>
+  <line x1="310" y1="55" x2="325" y2="55" stroke="#1b1d22" marker-end="url(#pa)"/>
+  <line x1="440" y1="55" x2="455" y2="55" stroke="#1b1d22" marker-end="url(#pa)"/>
+  <line x1="550" y1="55" x2="565" y2="55" stroke="#1b1d22" marker-end="url(#pa)"/>
+  <line x1="670" y1="55" x2="685" y2="55" stroke="#1b1d22" marker-end="url(#pa)"/>
+
+  <!-- trace sink -->
+  <rect x="180" y="140" width="400" height="60" rx="8" class="box" fill="#eef2ff"/>
+  <text class="t" x="380" y="165" text-anchor="middle" style="font-weight:700">trace.jsonl</text>
+  <text class="m" x="380" y="185" text-anchor="middle">t · u_nn · u_safe · V · dV/dt · min_dist · status · cbf_status</text>
+
+  <!-- from each stage to trace -->
+  <path stroke="#2a4ab0" stroke-width="1" stroke-dasharray="2 2" fill="none" d="M155,80 L260,138"/>
+  <path stroke="#2a4ab0" stroke-width="1" stroke-dasharray="2 2" fill="none" d="M385,80 L380,138"/>
+  <path stroke="#2a4ab0" stroke-width="1" stroke-dasharray="2 2" fill="none" d="M505,80 L450,138"/>
+  <path stroke="#2a4ab0" stroke-width="1" stroke-dasharray="2 2" fill="none" d="M620,80 L520,138"/>
+</svg>
+<figcaption>图 4-9 · <code>StructuralPlanner.step</code> 的线性流水 + trace 分支（虚线是异步写入）。</figcaption>
+</figure>
+
+<h4>时延预算（单周期）</h4>
+<table>
+  <thead><tr><th>阶段</th><th>P50 (ms)</th><th>P99 (ms)</th><th>预算</th></tr></thead>
+  <tbody>
+    <tr><td><code>graph.update</code></td><td>0.5</td><td>1.0</td><td>2 ms</td></tr>
+    <tr><td><code>potential + nominal</code></td><td>0.3</td><td>0.8</td><td>2 ms</td></tr>
+    <tr><td><code>cbf.filter</code></td><td>3.5</td><td>6.0</td><td>8 ms</td></tr>
+    <tr><td><code>T_inv.apply</code></td><td>0.8</td><td>2.0</td><td>3 ms</td></tr>
+    <tr><td><code>dynamics.step</code></td><td>0.05</td><td>0.1</td><td>0.5 ms</td></tr>
+    <tr><td><strong>合计</strong></td><td><strong>~5 ms</strong></td><td><strong>~10 ms</strong></td><td><strong>20 ms</strong></td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+<span class="tag">总结</span>
+Planner 的任务不是"更聪明地开车"，而是<strong>保证无论上游策略多聪明或多蠢，输出始终落在物理安全集内</strong>。
+它是一个<em>安全过滤器</em>而不是<em>最优控制器</em>。上车工程里，上层可以随意替换 nominal 模块，T_inv 是不动的基座。
+</div>
+</div>
+
+<h2 id="formula-to-code">5 · 公式 ↔ 代码逐行对照</h2>
+
+<p>下面是一张评审用的<strong>机器可读表</strong>。每条公式都指向一个具体的函数与测试。评审时按 <code>F-xx</code> 编号核对；
+任何一行缺了 <code>code</code> 或 <code>test</code> 都必须在 PR 描述里解释原因。</p>
+
+<table>
+  <thead>
+    <tr><th>ID</th><th>原文公式</th><th>所在节</th><th>代码出口</th><th>单元测试</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>F-01</td><td>$G_I = (V_I, E_I)$</td><td>§1.1</td><td><code>graph.InteractionIntentGraph</code></td><td><code>test_graph.py::test_close_far_weight_monotone</code></td></tr>
+    <tr><td>F-02</td><td>$w_{ij} = g(d)\,\text{heading}\,\mathbb{E}[C(a,b)]$</td><td>§1.1</td><td><code>graph._edge_weight</code></td><td><code>test_graph.py::test_orthogonal_motion_has_small_weight</code></td></tr>
+    <tr><td>F-03</td><td>$x = (p_x, p_y, \psi, v, a, \mu)$</td><td>§1.2</td><td><code>types.State</code></td><td>（数据类，无行为测试）</td></tr>
+    <tr><td>F-04</td><td>$\dot x = f(x, u)$（bicycle + jerk）</td><td>§1.2</td><td><code>dynamics.BicycleModel.f</code></td><td><code>test_dynamics.py::test_straight_line_constant_speed</code></td></tr>
+    <tr><td>F-05</td><td>$|a| \le \mu g$</td><td>§1.2</td><td><code>BicycleModel.f / step</code> 末端 clamp</td><td><code>test_dynamics.py::test_friction_envelope_clamped</code></td></tr>
+    <tr><td>F-06</td><td>非可行"空洞"（Obstacle void）</td><td>§1.2</td><td><code>dynamics.Manifold.is_feasible</code></td><td><code>test_dynamics.py::test_manifold_obstacle_detection</code></td></tr>
+    <tr><td>F-07</td><td>$\dot x = -\nabla\Phi(x)$（受限梯度流）</td><td>§1.3</td><td><code>potential.PotentialField.flow_direction</code></td><td>（在 planner 集成测试中验证）</td></tr>
+    <tr><td>F-08</td><td>$\Phi = \Phi_\text{goal} + \Phi_\text{obs} + \Phi_\text{int}$</td><td>§1.3</td><td><code>potential.{goal,obstacle,interaction}_potential</code></td><td>—</td></tr>
+    <tr><td>F-09</td><td>$V(x) \ge 0,\, V(x^*) = 0$</td><td>§2.1</td><td><code>lyapunov.QuadraticLyapunov.V</code></td><td><code>test_lyapunov.py::test_V_monotonic_with_velocity_error</code></td></tr>
+    <tr><td>F-10</td><td>$\dot V(x,u) \le 0$</td><td>§2.1</td><td><code>lyapunov.StabilityMonitor.check</code></td><td><code>test_lyapunov.py::test_stable_cruising_has_nonpositive_dV</code></td></tr>
+    <tr><td>F-11</td><td>$\dot V(x,u) &gt; 0$ 时应矫正</td><td>§2.1</td><td><code>test_accel_raises_V_when_already_at_target_speed</code> 触发</td><td><code>test_lyapunov.py::test_accel_raises_V_when_already_at_target_speed</code></td></tr>
+    <tr><td>F-12</td><td>$\mathcal{R}(x_0, T)$ 前向可达集</td><td>§2.2</td><td><code>reachable.ReachableSet.sample / hull</code></td><td>（由 <code>DeadZoneDetector</code> 复用）</td></tr>
+    <tr><td>F-13</td><td>"逻辑死区" 判定</td><td>§2.2</td><td><code>reachable.DeadZoneDetector.check</code></td><td>—（建议增加 PR-2.2-02 测试）</td></tr>
+    <tr><td>F-14</td><td>意图熵 $H(p)$ / 安全冗余 $r_\text{buf}$</td><td>§2.3</td><td><code>game.BeliefState.entropy</code> / <code>game.WorstCaseGame.safe_buffer</code></td><td>—（建议增加 PR-2.3-01 测试）</td></tr>
+    <tr><td>F-15</td><td>$u_\text{safe} = T_\text{inv}(u_{nn})$</td><td>§3.1</td><td><code>invariant.ControlInvariantOperator.apply</code></td><td><code>test_planner.py::test_emergency_brake_when_obstacle_ahead</code></td></tr>
+    <tr><td>F-16</td><td>$h(x) \ge 0$ 安全集</td><td>§3.2</td><td><code>cbf.BarrierFunction</code> 协议</td><td>—</td></tr>
+    <tr><td>F-17</td><td>$\dot h + \alpha h \ge 0$</td><td>§3.2</td><td><code>cbf.CBFQPFilter._objective</code> 约束项</td><td><code>test_cbf.py::test_filter_brakes_when_facing_obstacle</code></td></tr>
+    <tr><td>F-18</td><td>刹车距离 barrier（相对度 1）</td><td>§3.2（工程扩展）</td><td><code>cbf.BrakingDistanceBarrier</code></td><td>（在 planner 集成测试中验证）</td></tr>
+    <tr><td>F-19</td><td>搜索空间折叠</td><td>§3.2</td><td><code>cbf.CBFQPFilter.filter</code></td><td><code>test_cbf.py::test_filter_passes_through_safe_command</code></td></tr>
+    <tr><td>F-20</td><td>E2E vs 结构化基准</td><td>§3.3</td><td><code>examples/compare_e2e_vs_structural.py</code></td><td>（手动运行，CI 中可加 smoke）</td></tr>
+  </tbody>
+</table>
+
+<div class="callout note">
+<span class="tag">评审建议</span>
+F-13、F-14 暂无独立测试（行为正确但缺 regression）。列入 <strong>Codex 评审时必提的 follow-up PR</strong>：
+<code>PR-2.2-02-tests</code> 与 <code>PR-2.3-01-tests</code>。
+</div>
+
+<h2 id="sre-review">6 · SRE 评审报告</h2>
+
+<p>以下章节按 Google SRE Handbook 的模板组织：SLO → 风险矩阵 → 可观测性 → 失效与降级 → 参数治理 → 发布路线。
+每一项都对齐前文的"模块卡"，便于 Codex 按引用回溯。</p>
+
+<h3 id="sre-slo">6.1 可靠性目标（SLO / SLI）</h3>
+
+<p>本系统是<em>安全关键</em>的实时控制组件。SLO 分成两类：<strong>安全 SLO（不可降级）</strong>与<strong>性能 SLO（可降级）</strong>。</p>
+
+<h4>安全 SLO（必达）</h4>
+<table>
+  <thead><tr><th>SLI</th><th>指标定义</th><th>SLO</th><th>越界处置</th></tr></thead>
+  <tbody>
+    <tr><td>物理穿透率</td><td>单帧 <code>manifold.min_distance(s) &lt; 0</code> 占比</td><td>&lt; 10⁻⁶ / mile</td><td>直接停车 + 回滚</td></tr>
+    <tr><td>$\dot V$ 违规率</td><td>一帧内 $\dot V &gt; 0$ 且未进入 T_inv 矫正</td><td>= 0</td><td>P0，整车下线</td></tr>
+    <tr><td>紧急刹停回退率</td><td><code>status == emergency_brake</code> 占比</td><td>&lt; 0.5% / 100 km 日常驾驶</td><td>P1 告警 + 名义策略评审</td></tr>
+  </tbody>
+</table>
+
+<h4>性能 SLO（可降级）</h4>
+<table>
+  <thead><tr><th>SLI</th><th>指标定义</th><th>SLO</th><th>越界处置</th></tr></thead>
+  <tbody>
+    <tr><td>单帧时延 P99</td><td><code>planner.step</code> wall time</td><td>&lt; 15 ms</td><td>触发降频（50 Hz → 25 Hz）</td></tr>
+    <tr><td>舒适度</td><td>jerk RMS（1 分钟滑窗）</td><td>&lt; 3 m/s³</td><td>评审名义策略参数</td></tr>
+    <tr><td>目标到达率</td><td>规划任务完成比例</td><td>&gt; 95%</td><td>长期优化方向</td></tr>
+  </tbody>
+</table>
+
+<div class="callout sre">
+<span class="tag">错误预算</span>
+把"紧急刹停回退率"作为主要<em>错误预算</em> SLI：每 1000 公里一次 = 0.1% 预算；连续 3 个日历月超额则<strong>冻结名义策略升级</strong>，只允许修 bug，直到恢复。
+</div>
+
+<h3 id="sre-risk">6.2 风险清单</h3>
+
+<table class="risk-table">
+  <thead>
+    <tr><th>ID</th><th>风险</th><th>严重度</th><th>触发场景</th><th>检测</th><th>缓解</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>R-01</td>
+      <td>NN 输出绕过 T_inv</td>
+      <td class="sev-high">严重</td>
+      <td>代码重构误把 nominal 直连 dynamics.step</td>
+      <td>集成测试：强制注入会撞的 nominal，检验 min_distance ≥ 0</td>
+      <td>保持 <code>StructuralPlanner.step</code> 为唯一出口 + pre-commit 静态检查</td>
+    </tr>
+    <tr>
+      <td>R-02</td>
+      <td>μ 估计错误（高估）</td>
+      <td class="sev-high">严重</td>
+      <td>雨雪/落叶 → 感知认为干燥</td>
+      <td>对比加速度实测与模型 → <code>mu_residual</code></td>
+      <td>默认 <code>safety=0.6</code> derating；<code>mu_residual</code> 异常时强制降到 0.4</td>
+    </tr>
+    <tr>
+      <td>R-03</td>
+      <td>CBF-QP 长期 infeasible</td>
+      <td class="sev-high">严重</td>
+      <td>连续 emergency_brake</td>
+      <td><code>cbf.fallback_rate</code> 10s 滑窗 &gt; 5%</td>
+      <td>自动收紧名义策略：<code>target_speed -= 2 m/s</code></td>
+    </tr>
+    <tr>
+      <td>R-04</td>
+      <td>意图感知 flicker</td>
+      <td class="sev-med">中</td>
+      <td>上游模型对遮挡敏感</td>
+      <td><code>graph.intent_flicker_rate &gt; 2Hz</code></td>
+      <td>对 $p_i$ 做 EMA 平滑，α=0.3</td>
+    </tr>
+    <tr>
+      <td>R-05</td>
+      <td>势能局部极小</td>
+      <td class="sev-med">中</td>
+      <td>U 形障碍</td>
+      <td><code>‖∇Φ‖ &lt; 1e-3 且 ‖p-goal‖ &gt; 5</code> 持续 2s</td>
+      <td>事件驱动启用全局路径规划（out of scope）</td>
+    </tr>
+    <tr>
+      <td>R-06</td>
+      <td>可达集乐观偏差</td>
+      <td class="sev-med">中</td>
+      <td>凸包近似把不可达点算进来</td>
+      <td>凸包 vs 真实轨迹交叉验证</td>
+      <td>只用于 dead-zone 下界，决不用于上界；不用于"可以变道"的判定</td>
+    </tr>
+    <tr>
+      <td>R-07</td>
+      <td>QP 网格搜索太慢</td>
+      <td class="sev-low">低</td>
+      <td>障碍数 &gt; 30</td>
+      <td><code>cbf.filter_ms P99 &gt; 8</code></td>
+      <td>替换为 OSQP / qpOASES</td>
+    </tr>
+    <tr>
+      <td>R-08</td>
+      <td>trace 写入阻塞主环</td>
+      <td class="sev-low">低</td>
+      <td>磁盘慢或满</td>
+      <td><code>trace.append_ms</code> 突增</td>
+      <td>异步队列 + 采样（1/10 帧）+ ring buffer</td>
+    </tr>
+    <tr>
+      <td>R-09</td>
+      <td>target_speed 跳变</td>
+      <td class="sev-low">低</td>
+      <td>上游 route planner 更新</td>
+      <td><code>|Δv*| &gt; 2 m/s/step</code></td>
+      <td>rate limiter 限幅</td>
+    </tr>
+    <tr>
+      <td>R-10</td>
+      <td>dynamic 模型误差</td>
+      <td class="sev-med">中</td>
+      <td>高速大转向（&gt; 80 km/h + &gt; 15°）</td>
+      <td>轨迹误差累积监视</td>
+      <td>上车前切换到 dynamic bicycle（含侧偏）</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="sre-obs">6.3 可观测性设计</h3>
+
+<p>本工程已内建 <strong>结构化 trace</strong>（<code>trace.jsonl</code>），每一帧一行 JSON。SRE 侧以这份 trace 为 single source of truth。</p>
+
+<h4>指标集（Prometheus 命名风格）</h4>
+<pre><code># counters
+auto_decide_steps_total{status="stable|relaxed|relaxed_exp|emergency_brake|non_increasing"}
+auto_decide_cbf_filter_total{status="nom_ok|qp_ok|fallback_brake"}
+auto_decide_penetration_total{severity="near|hard"}
+
+# gauges
+auto_decide_V
+auto_decide_dV_dt
+auto_decide_min_distance_m
+auto_decide_belief_entropy
+auto_decide_active_barriers
+
+# histograms (latency, bucketed in ms)
+auto_decide_step_duration_ms
+auto_decide_cbf_filter_duration_ms
+auto_decide_tinv_apply_duration_ms
+</code></pre>
+
+<h4>trace 字段契约</h4>
+<pre><code>{
+  "t":        float,  // 相对时间 (s)
+  "state":    [px, py, psi, v, a, mu],
+  "next_state": [px, py, psi, v, a, mu],
+  "u_nn":     [steer, jerk],
+  "u_safe":   [steer, jerk],
+  "V":        float,
+  "dV_dt":    float,
+  "min_dist": float,
+  "status":   "stable|relaxed|relaxed_exp|non_increasing|emergency_brake",
+  "cbf_status": "nom_ok|qp_ok|fallback_brake"
+}</code></pre>
+
+<p>评审项：对这份契约做 <strong>JSON Schema</strong> 固化（待完成 PR-4-02-schema），保证跨版本可解析。</p>
+
+<h3 id="sre-deg">6.4 失效与降级策略</h3>
+
+<figure>
+<svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .st { fill: #fff; stroke: #0b6b58; stroke-width: 1.4; }
+      .st-warn { fill: #fff9e6; stroke: #b08800; stroke-width: 1.4; }
+      .st-bad { fill: #ffefe6; stroke: #b0361e; stroke-width: 1.4; }
+      .lbl { font: 12px -apple-system; fill: #1b1d22; }
+      .sub { font: 11px -apple-system; fill: #767a82; }
+    </style>
+    <marker id="sa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a4e57"/>
+    </marker>
+  </defs>
+
+  <rect class="st" x="30" y="30" width="160" height="60" rx="10"/>
+  <text class="lbl" x="110" y="55" text-anchor="middle" style="font-weight:700">L0 正常</text>
+  <text class="sub" x="110" y="75" text-anchor="middle">NN + CBF + T_inv 全链路</text>
+
+  <rect class="st-warn" x="260" y="30" width="160" height="60" rx="10"/>
+  <text class="lbl" x="340" y="55" text-anchor="middle" style="font-weight:700">L1 保守策略</text>
+  <text class="sub" x="340" y="75" text-anchor="middle">target_speed-=2 · r_buf×1.3</text>
+
+  <rect class="st-warn" x="490" y="30" width="160" height="60" rx="10"/>
+  <text class="lbl" x="570" y="55" text-anchor="middle" style="font-weight:700">L2 降频 / 回退名义</text>
+  <text class="sub" x="570" y="75" text-anchor="middle">切到 GradientPolicy / 25 Hz</text>
+
+  <rect class="st-bad" x="260" y="150" width="160" height="60" rx="10"/>
+  <text class="lbl" x="340" y="175" text-anchor="middle" style="font-weight:700" fill="#b0361e">L3 紧急刹停</text>
+  <text class="sub" x="340" y="195" text-anchor="middle">u=(0, −j_max) · 直到停车</text>
+
+  <rect class="st-bad" x="490" y="150" width="160" height="60" rx="10"/>
+  <text class="lbl" x="570" y="175" text-anchor="middle" style="font-weight:700" fill="#b0361e">L4 交出控制</text>
+  <text class="sub" x="570" y="195" text-anchor="middle">切到冗余通道 / 人工接管</text>
+
+  <!-- transitions -->
+  <path d="M190,60 L255,60" stroke="#4a4e57" marker-end="url(#sa)"/>
+  <text class="sub" x="222" y="52" text-anchor="middle">fallback_rate&gt;5%</text>
+  <path d="M420,60 L485,60" stroke="#4a4e57" marker-end="url(#sa)"/>
+  <text class="sub" x="452" y="52" text-anchor="middle">step_ms P99&gt;15</text>
+  <path d="M340,90 L340,148" stroke="#4a4e57" marker-end="url(#sa)"/>
+  <text class="sub" x="348" y="122">dead-zone 检出</text>
+  <path d="M570,90 L570,148" stroke="#4a4e57" marker-end="url(#sa)"/>
+  <text class="sub" x="578" y="122">T_inv 连续 emergency_brake</text>
+  <path d="M420,180 L485,180" stroke="#b0361e" marker-end="url(#sa)"/>
+  <text class="sub" x="452" y="172" text-anchor="middle" fill="#b0361e">停车后仍报错</text>
+
+  <rect x="20" y="240" width="700" height="30" fill="#fff" stroke="#e5e2dc" rx="6"/>
+  <text class="sub" x="370" y="260" text-anchor="middle">恢复路径：L2→L1→L0 需要连续 30s 无降级事件 + 人工确认，防止 flapping</text>
+</svg>
+<figcaption>图 6-1 · 5 级降级状态机。向下降级是自动的，向上恢复需要冷却期 + 人工确认。</figcaption>
+</figure>
+
+<h3 id="sre-param">6.5 参数治理</h3>
+
+<p>本工程全部参数（约 25 个）集中在三个类：<code>VehicleParams</code> / <code>PotentialField</code> / <code>CBFQPFilter</code> / <code>QuadraticLyapunov</code> / <code>ControlInvariantOperator</code> / <code>WorstCaseGame</code>。
+治理原则：</p>
+<ol>
+  <li><strong>车辆物理参数</strong>（<code>VehicleParams</code>）是车型级常量，由整车配置文件发下；禁止代码硬编码。</li>
+  <li><strong>控制 tuning 参数</strong>（<code>alpha</code>, <code>gamma</code>, <code>q_v</code>）走影子发布（shadow deploy），对比 7 天 trace 指标后才允许上线。</li>
+  <li><strong>安全边界参数</strong>（<code>safety</code>, <code>reaction</code>, <code>base_buffer</code>）任何下调需要双人评审 + 记录在 <code>PARAM_CHANGELOG.md</code>。</li>
+  <li><strong>参数单元</strong>：所有涉及时间的单位是秒，距离是米，角度是弧度——注释中明示；评审时 Codex 应扫描带"rate/time"而单位不明的参数。</li>
+</ol>
+
+<table>
+  <thead><tr><th>类别</th><th>变更策略</th><th>回滚时间</th></tr></thead>
+  <tbody>
+    <tr><td>车辆物理（L / v_max）</td><td>随整车 OTA</td><td>需要整车重启</td></tr>
+    <tr><td>控制 tuning</td><td>影子 → 灰度 5% → 50% → 100%</td><td>&lt; 5 min</td></tr>
+    <tr><td>安全边界</td><td>仅保守方向自动，放宽方向手动</td><td>&lt; 1 min（配置中心热更）</td></tr>
+  </tbody>
+</table>
+
+<h3 id="sre-rollout">6.6 发布与演进路线</h3>
+
+<p>从研究原型到量产的路径：</p>
+<ol>
+  <li><strong>Milestone 1 · 仿真闭环</strong>（当前）：<code>examples/*</code> + pytest 全通；benchmark E2E 28% → 结构化 0% 碰撞率。</li>
+  <li><strong>Milestone 2 · QP 替换</strong>：把网格搜索换成 OSQP，P99 压到 &lt; 3 ms。</li>
+  <li><strong>Milestone 3 · dynamic bicycle</strong>：引入侧偏动力学，适配 &gt; 80 km/h 场景。</li>
+  <li><strong>Milestone 4 · HIL（硬件在环）</strong>：在实车 ECU 上跑 10⁶ 公里仿真，安全 SLO 达标。</li>
+  <li><strong>Milestone 5 · 数据触发式升级</strong>：收集实车 trace，对名义策略做 imitation learning；T_inv 保持不变作为安全基座。</li>
+</ol>
+
+<div class="callout warn">
+<span class="tag">禁止事项</span>
+演进过程中<strong>不得</strong>把"让 NN 直接输出 u_safe 绕过 T_inv"作为"优化项"——这是结构生成算子的本质约束，
+任何删除或弱化 T_inv 的 PR 必须被 reject。
+</div>
+
+<h2 id="codex-checklist">7 · Codex 评审 checklist</h2>
+
+<p>以下是 <strong>机器可读</strong>的评审项。Codex / 自动化 Review 可以按 <code>C-xx</code> 编号扫描 PR diff，对齐"公式 → 代码 → 测试 → 指标"四元组。</p>
+
+<h3>7.1 硬规则（违反即 reject）</h3>
+
+<table>
+  <thead><tr><th>ID</th><th>检查项</th><th>定位</th><th>命中条件</th></tr></thead>
+  <tbody>
+    <tr><td>C-01</td><td>T_inv 唯一出口</td><td><code>auto_decide/planner.py</code></td>
+      <td>对 <code>dynamics.step</code> 的调用链必须经过 <code>ControlInvariantOperator.apply</code></td></tr>
+    <tr><td>C-02</td><td>硬约束不得软化</td><td><code>auto_decide/cbf.py</code> / <code>invariant.py</code></td>
+      <td>CBF / Lyapunov 约束以不等式进入 QP / 判定，而非 <code>loss += λ·violation</code></td></tr>
+    <tr><td>C-03</td><td>降级兜底必定可行</td><td><code>invariant.apply</code> 末端</td>
+      <td><code>Control(0, −jerk_max)</code> 永远返回，不得抛异常</td></tr>
+    <tr><td>C-04</td><td>μ derating</td><td><code>cbf.BrakingDistanceBarrier._a_brake</code></td>
+      <td><code>safety &lt; 1.0</code>；PR 若下调此值需人工 override</td></tr>
+    <tr><td>C-05</td><td>参数单位注释</td><td>所有参数定义行</td>
+      <td>涉及 s / m / rad / m/s / m/s² / m/s³ 的参数必须在注释里标</td></tr>
+    <tr><td>C-06</td><td>trace 字段契约</td><td><code>planner.step</code> 返回</td>
+      <td>必含 10 个字段（见 <a href="#sre-obs">§6.3</a>）</td></tr>
+  </tbody>
+</table>
+
+<h3>7.2 软规则（提示 + 建议）</h3>
+
+<table>
+  <thead><tr><th>ID</th><th>检查项</th><th>建议动作</th></tr></thead>
+  <tbody>
+    <tr><td>C-11</td><td>新增 barrier 必须自带 <code>h_dot_horizon</code> 参数</td><td>继承 <code>BarrierFunction</code> 协议，默认值 0.1 s</td></tr>
+    <tr><td>C-12</td><td>新增模块必须更新 <code>FORMULA_MAP.md</code> 与本 HTML 的 §5 表</td><td>每行公式 → (code, test) 补齐</td></tr>
+    <tr><td>C-13</td><td>修改默认参数必须附 benchmark 报告</td><td>跑 <code>compare_e2e_vs_structural</code> 前后对比</td></tr>
+    <tr><td>C-14</td><td>潜在长尾场景覆盖</td><td>pytest 中新增 scenario 对应 <a href="#sre-risk">风险 R-0X</a></td></tr>
+    <tr><td>C-15</td><td>trace 字段新增/删除必须走 PR-4-02-schema</td><td>更新 JSON Schema</td></tr>
+  </tbody>
+</table>
+
+<h3>7.3 公式完整性（自动扫描）</h3>
+
+<p>扫描器伪代码（供 Codex 参考）：</p>
+<pre><code>for formula_id, {eq, paper_section, code_symbol, test_name} in FORMULA_TABLE:
+    assert symbol_defined(code_symbol), f"{formula_id} missing in code"
+    assert test_defined(test_name), f"{formula_id} missing unit test"
+    assert changelog_covers(formula_id, recent_days=30), \
+        f"{formula_id} may be stale, re-verify mapping"
+</code></pre>
+
+<p>表 <code>FORMULA_TABLE</code> 来自 <a href="#formula-to-code">§5</a>，ID 范围 F-01 ~ F-20。</p>
+
+<h2 id="appendix">8 · 附录</h2>
+
+<h3>8.1 关键名词词汇表</h3>
+<table>
+  <thead><tr><th>术语</th><th>英文</th><th>一句话</th></tr></thead>
+  <tbody>
+    <tr><td>受限梯度流</td><td>Constrained gradient flow</td><td>势能梯度方向被投影回可行流形切空间</td></tr>
+    <tr><td>控制不变集</td><td>Control invariant set</td><td>存在 u 使系统永远停在集合内的最大子集</td></tr>
+    <tr><td>屏障函数</td><td>Control barrier function (CBF)</td><td>保证前向不变的标量函数 + 其时间导数条件</td></tr>
+    <tr><td>Lyapunov 函数</td><td>Lyapunov function</td><td>能量函数，随系统演化单调不增则稳定</td></tr>
+    <tr><td>可达集</td><td>Reachable set</td><td>给定时间内可行控制覆盖的状态集合</td></tr>
+    <tr><td>纳什均衡</td><td>Nash equilibrium</td><td>没人能单方面偏离而获益的策略组合</td></tr>
+    <tr><td>相对度</td><td>Relative degree</td><td>输出对输入首次非零导数的阶数</td></tr>
+    <tr><td>长尾场景</td><td>Long-tail scenario</td><td>出现频率低但后果严重的罕见场景</td></tr>
+    <tr><td>分布外</td><td>OOD (out-of-distribution)</td><td>训练集没覆盖的输入分布</td></tr>
+  </tbody>
+</table>
+
+<h3>8.2 参考资料</h3>
+<ul>
+  <li>原文：<a href="https://www.chaspark.com/#/hotspots/1262929214745849856">自动驾驶的决策动力学 —— 李雅普诺夫硬约束下的不确定性导航</a>（华为拉格朗日数学与计算中心 · 芮祥麟博士）</li>
+  <li>Ames, A. D. et al., <em>Control Barrier Functions: Theory and Applications</em>, ECC 2019（CBF-QP 标准表述）</li>
+  <li>Khalil, H. K., <em>Nonlinear Systems</em>, 3rd ed.（Lyapunov 稳定性经典教材）</li>
+  <li>Mitchell, I. M., <em>The Flexible, Extensible and Efficient Toolbox of Level Set Methods</em>（HJ reachability）</li>
+  <li>Google SRE Handbook, Chapter 4: Service Level Objectives</li>
+</ul>
+
+<h3>8.3 工程包索引</h3>
+<pre><code>auto-decide/
+├── README.md                # 概览 + 快速开始
+├── PR-REQUIREMENTS.md       # PR 级功能需求
+├── docs/
+│   ├── FORMULA_MAP.md       # 公式 ↔ 代码表（本文 §5 的源文件）
+│   ├── DESIGN.md            # 设计说明
+│   └── knowledge-base.html  # 本文档
+├── auto_decide/             # 源码 10 个模块
+├── tests/                   # 13 个单元/集成测试
+└── examples/                # 2 个可复现 demo
+</code></pre>
+
+<div class="callout sre">
+<span class="tag">评审的评审</span>
+这份文档本身也是评审对象。任何对图 3-1（系统架构）或 §6 SRE 章节的重大修改必须带上<strong>"影响范围"注释</strong>——
+说明哪些模块卡 / 哪些测试 / 哪些指标受影响。Codex 可以按该注释自动生成 downstream PR list。
+</div>
+
+<hr>
+<p style="color: var(--fg-mute); font-size: 12px; text-align: center; margin-top: 32px;">
+auto-decide knowledge base · v0.1 · 用于模块拆解与 SRE 评审 · 对应代码包 <code>auto-decide/</code>
+</p>
+
+</main>
+</body>
+</html>

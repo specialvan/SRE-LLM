@@ -1,0 +1,1009 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>结构智能 → SRE 工程范式迁移</title>
+<script>
+window.MathJax = { tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] }, svg: { fontCache: 'global' } };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --fg:#1b1d22; --fg-soft:#4a4e57; --fg-mute:#767a82;
+  --bg:#fbfbfa; --bg-card:#fff; --bg-code:#272b33;
+  --bg-note:#fff9e6; --bg-warn:#ffefe6; --bg-ok:#eaf7ec; --bg-sre:#eef2ff;
+  --bg-contract:#f3eef9; --bg-pattern:#fff4e8;
+  --accent:#0b6b58; --accent-sre:#2a4ab0;
+  --rule:#e5e2dc; --link:#1249a7;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.72}
+body{display:grid;grid-template-columns:300px minmax(0,1fr);min-height:100vh}
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;border-right:1px solid var(--rule);padding:20px 18px;background:var(--bg-card);font-size:13.5px}
+nav.toc h1{font-size:15px;margin:0 0 4px}
+nav.toc .sub{color:var(--fg-mute);font-size:11.5px;margin-bottom:14px}
+nav.toc ol{list-style:none;padding:0;margin:0;counter-reset:toc}
+nav.toc ol li{counter-increment:toc;margin:2px 0}
+nav.toc ol>li>a::before{content:counters(toc,".") "  ";color:var(--fg-mute);font-variant-numeric:tabular-nums}
+nav.toc ol ol{padding-left:14px;border-left:1px dashed var(--rule);margin:2px 0 6px}
+nav.toc a{color:var(--fg-soft);text-decoration:none;display:block;padding:2px 6px;border-radius:4px}
+nav.toc a:hover{background:#e3e9f8;color:var(--accent-sre)}
+main{padding:44px clamp(24px,5vw,56px);max-width:1120px}
+h1.title{font-size:32px;line-height:1.2;margin:0 0 4px;letter-spacing:-0.01em}
+h1.title small{display:block;font-weight:normal;color:var(--fg-mute);font-size:14px;margin-top:4px}
+.meta{color:var(--fg-mute);font-size:13px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:10px 0;margin:20px 0 32px;display:flex;flex-wrap:wrap;gap:14px}
+h2{font-size:24px;margin-top:52px;padding-top:14px;border-top:2px solid var(--fg);letter-spacing:-0.01em}
+h3{font-size:19px;margin-top:40px;color:var(--accent-sre)}
+h4{font-size:15.5px;margin-top:24px;color:var(--fg);letter-spacing:0.02em}
+h5{font-size:14px;margin-top:18px;color:var(--fg-soft);text-transform:uppercase;letter-spacing:0.06em;font-weight:700}
+p,li{color:var(--fg-soft)}
+code{font-family:var(--mono);background:#f4f1ec;padding:1px 6px;border-radius:4px;font-size:0.9em}
+pre{background:var(--bg-code);color:#e3e7ee;padding:14px 16px;border-radius:8px;overflow-x:auto;line-height:1.55;font-size:12.5px;margin:14px 0}
+pre code{background:transparent;color:inherit;padding:0}
+pre .kw{color:#e688a8}
+pre .fn{color:#9fd3ff}
+pre .str{color:#c3e88d}
+pre .cmt{color:#777e8a;font-style:italic}
+pre .num{color:#ffcb6b}
+pre .typ{color:#c792ea}
+.callout{border-left:4px solid var(--accent);background:var(--bg-ok);padding:11px 16px;margin:14px 0;border-radius:0 8px 8px 0}
+.callout.warn{border-color:#d07000;background:var(--bg-warn)}
+.callout.note{border-color:#b08800;background:var(--bg-note)}
+.callout.sre{border-color:var(--accent-sre);background:var(--bg-sre)}
+.callout.contract{border-color:#5a2a9d;background:var(--bg-contract)}
+.callout.pattern{border-color:#a05000;background:var(--bg-pattern)}
+.callout .tag{font-size:10.5px;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;color:var(--fg);display:block;margin-bottom:3px}
+figure{margin:24px 0}
+figure figcaption{font-size:12.5px;color:var(--fg-mute);text-align:center;margin-top:6px}
+figure svg{display:block;margin:0 auto;max-width:100%;height:auto;background:var(--bg-card);border:1px solid var(--rule);border-radius:8px}
+table{border-collapse:collapse;margin:14px 0;width:100%;font-size:13.5px}
+table th,table td{border-bottom:1px solid var(--rule);padding:7px 10px;text-align:left;vertical-align:top}
+table th{background:#f4ece0;font-weight:600}
+table tr:last-child td{border-bottom:1px solid var(--fg)}
+a{color:var(--link)}
+hr{border:none;border-top:1px solid var(--rule);margin:24px 0}
+.pattern-card{border:1px solid var(--accent-sre);border-radius:10px;padding:18px 20px;margin:20px 0;background:#f7faff;box-shadow:0 1px 0 rgba(42,74,176,0.08)}
+.pattern-card header{display:flex;align-items:baseline;gap:12px;margin-bottom:8px}
+.pattern-card header .id{background:var(--accent-sre);color:#fff;padding:2px 10px;border-radius:999px;font-weight:700;font-size:13px;letter-spacing:0.04em}
+.pattern-card header h3{margin:0;color:var(--accent-sre);font-size:20px}
+.pattern-card header .origin{color:var(--fg-mute);font-size:12px;margin-left:auto}
+.parallel{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+.parallel .col{border:1px solid var(--rule);border-radius:8px;padding:12px 14px;background:#fff}
+.parallel .col h5{margin-top:0}
+.parallel .col.auto{border-left:4px solid var(--accent)}
+.parallel .col.sre{border-left:4px solid var(--accent-sre)}
+.badge{display:inline-block;padding:1px 7px;border-radius:3px;font-size:11px;font-weight:700;letter-spacing:0.03em;margin-right:4px}
+.badge-auto{background:var(--accent-weak);color:var(--accent)}
+.badge-sre{background:#e3e9f8;color:var(--accent-sre)}
+@media(max-width:900px){body{grid-template-columns:1fr}nav.toc{position:relative;height:auto;border-right:none;border-bottom:1px solid var(--rule)}.parallel{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="toc">
+  <h1>结构智能 → SRE</h1>
+  <div class="sub">工程能力的跨域迁移 · 可复用的范式目录</div>
+  <ol>
+    <li><a href="#why">1. 为什么可以迁移</a></li>
+    <li><a href="#mapping">2. 跨域映射总表</a></li>
+    <li><a href="#incident-graph">3. P-01 故障相关性图</a></li>
+    <li><a href="#double-clamp">4. P-02 双层 clamp</a></li>
+    <li><a href="#qos">5. P-03 多目标势能调度</a></li>
+    <li><a href="#burn-rate">6. P-04 Lyapunov 式 burn-rate</a></li>
+    <li><a href="#capacity">7. P-05 容量可达集</a></li>
+    <li><a href="#admission">8. P-06 CBF 式 admission</a></li>
+    <li><a href="#tinv-guard">9. P-07 T_inv 式 action guard</a></li>
+    <li><a href="#uncertainty-margin">10. P-08 不确定性驱动 derating</a></li>
+    <li><a href="#control-plane">11. P-09 通用 control plane</a></li>
+    <li><a href="#skeleton">12. 代码骨架汇总</a></li>
+    <li><a href="#adoption">13. 采用路线图</a></li>
+    <li><a href="#anti-patterns">14. 反模式与陷阱</a></li>
+  </ol>
+  <hr>
+  <p style="font-size:12px;color:var(--fg-mute);margin:0">
+    ← 工程包 <code>auto-decide/</code><br>
+    ← 知识库 <a href="./knowledge-base.html">knowledge-base.html</a><br>
+    ← 深拆 <a href="./deep-dive.html">deep-dive.html</a><br>
+    ← 方程手册 <a href="./equations-digest.html">equations-digest.html</a>
+  </p>
+</nav>
+<main>
+
+<h1 class="title">结构智能 → SRE 工程范式迁移
+  <small>把 auto-decide 的 9 个模块抽象成可复用的 SRE 模式，附接口骨架</small>
+</h1>
+<div class="meta">
+  <span>文档版本：v0.1</span>
+  <span>读者：SRE Lead · 平台架构 · Codex</span>
+  <span>本文共 9 个命名模式 P-01 ~ P-09</span>
+</div>
+
+<h2 id="why">1 · 为什么可以迁移</h2>
+
+<p>自动驾驶决策与 SRE 看起来是完全不同的领域，但它们共享一个<strong>结构同构</strong>：</p>
+
+<table>
+  <thead><tr><th>同构维度</th><th>自动驾驶（auto-decide）</th><th>SRE 平台</th></tr></thead>
+  <tbody>
+    <tr><td>环境</td><td>交通参与者 + 道路几何</td><td>服务 + 调用链 + 集群</td></tr>
+    <tr><td>状态</td><td>$x=(p, v, a, \mu)$ 连续</td><td>流量 / 容量 / 健康度 连续</td></tr>
+    <tr><td>动作</td><td>$u=(\delta, j)$ 低维</td><td>扩缩容 / 限流 / feature flag 离散+连续</td></tr>
+    <tr><td>硬约束</td><td>$|a|\le\mu g$, $h(x)\ge 0$</td><td>SLO / 资源配额 / 错误预算</td></tr>
+    <tr><td>名义策略</td><td>神经网络 / MPC</td><td>ML-driven auto-scaling / auto-tuning</td></tr>
+    <tr><td>保底行为</td><td>刹停</td><td>熔断 / 拒绝 / 只读降级</td></tr>
+    <tr><td>观测</td><td>感知流水 + trace.jsonl</td><td>monitoring + tracing + logs</td></tr>
+  </tbody>
+</table>
+
+<p>两个领域都有<strong>同一个工程痛点</strong>：上层用统计方法越做越聪明、但越聪明越容易"分布外翻车"。
+同一个解法是：<em>把结构化的硬约束嵌进执行链路，让聪明归聪明、可靠归可靠</em>。</p>
+
+<div class="callout sre">
+<span class="tag">核心断言</span>
+<strong>自动驾驶里 T_inv 在做什么，SRE 里就需要一个同样形状的东西。</strong>
+本文把这个"同样形状"形式化为 9 个命名模式，并给出可直接放进 Python/Go SRE 代码库的接口骨架。
+</div>
+
+<h2 id="mapping">2 · 跨域映射总表</h2>
+
+<p>把前文每个模块的"SRE 挂钩"统一归档。每个模式都有：<strong>ID · 一句话 · 物理原型 · SRE 重命名 · 最适用的 SRE 场景 · 风险/反面</strong>。</p>
+
+<table>
+  <thead><tr><th>ID</th><th>一句话</th><th>物理原型</th><th>SRE 场景</th></tr></thead>
+  <tbody>
+    <tr><td>P-01</td><td>把不确定性语义化到加权图</td><td>InteractionIntentGraph</td><td>故障相关性图、爆炸半径建模</td></tr>
+    <tr><td>P-02</td><td>命令连续可导 + 两处钳位</td><td>BicycleModel + clamp</td><td>多层 timeout / deadline 裁剪</td></tr>
+    <tr><td>P-03</td><td>多目标加权合成 + 局部梯度</td><td>PotentialField</td><td>自适应 QoS 调度、自动调参</td></tr>
+    <tr><td>P-04</td><td>bounded decay SLI</td><td>QuadraticLyapunov + dV/dt</td><td>error budget burn-rate</td></tr>
+    <tr><td>P-05</td><td>前瞻性容量证明</td><td>ReachableSet + DeadZone</td><td>capacity forecast、admission upper-bound</td></tr>
+    <tr><td>P-06</td><td>名义 + 不等式 → 最近可行</td><td>CBF-QP</td><td>admission controller、流量塑形</td></tr>
+    <tr><td>P-07</td><td>候选 → 硬校验 → 松弛 → 兜底</td><td>T_inv operator</td><td>CI guard、policy enforcer、变更闸门</td></tr>
+    <tr><td>P-08</td><td>不确定性驱动安全余量</td><td>BeliefState + WorstCaseGame</td><td>observability-driven derating</td></tr>
+    <tr><td>P-09</td><td>唯一入口的 control plane</td><td>StructuralPlanner.step</td><td>统一策略执行框架</td></tr>
+  </tbody>
+</table>
+
+<p>接下来按顺序展开每个模式。每一节的排版是：</p>
+<ul>
+  <li><strong>物理原型</strong>（左栏）vs <strong>SRE 迁移</strong>（右栏）并列；</li>
+  <li>接口骨架（Python dataclass 风格，易于照抄到 Go/Rust）；</li>
+  <li>一个真实场景样例；</li>
+  <li>采用成本 / 演进路径。</li>
+</ul>
+
+<h2 id="incident-graph">3 · P-01 · 故障相关性图 <small style="font-weight:normal;font-size:13px;color:var(--fg-mute)">← InteractionIntentGraph</small></h2>
+
+<div class="pattern-card">
+<header><span class="id">P-01</span><h3>Incident Propagation Graph</h3><span class="origin">← 模块 1 · 意图图</span></header>
+<p><strong>抽象</strong>：把<em>故障传播</em>表达成一个带语义权重的有向图。节点是服务/实例，边权是"A 抖动对 B 的破坏度"。
+每次健康检查刷新一轮，过阈值的边驱动告警 / 降级决策。</p>
+
+<div class="parallel">
+<div class="col auto">
+<h5><span class="badge badge-auto">auto-decide</span>InteractionIntentGraph</h5>
+<p>节点 = 交通参与者；边权 = 距离核 × 朝向 × 意图冲突</p>
+<pre><code>w_ij = exp(−d/D0)·heading·conflict(p_i,p_j)</code></pre>
+</div>
+<div class="col sre">
+<h5><span class="badge badge-sre">SRE</span>IncidentPropagationGraph</h5>
+<p>节点 = 服务/实例；边权 = 调用量占比 × 错误相关性 × SLO 敏感度</p>
+<pre><code>w_ij = call_share(i→j) · err_corr(i,j) · slo_sensitivity(j)</code></pre>
+</div>
+</div>
+
+<h5>接口骨架</h5>
+<pre><code><span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
+<span class="kw">from</span> typing <span class="kw">import</span> Dict, List
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">ServiceNode</span>:
+    service_id: <span class="typ">str</span>
+    instance: <span class="typ">str</span>                   <span class="cmt"># instance id / pod name</span>
+    health: <span class="typ">float</span>                    <span class="cmt"># 0..1，1=完全健康</span>
+    slo_budget_remaining: <span class="typ">float</span>      <span class="cmt"># 0..1</span>
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">IncidentEdge</span>:
+    src: <span class="typ">str</span>
+    dst: <span class="typ">str</span>
+    weight: <span class="typ">float</span>                    <span class="cmt"># 传播强度 ∈ [0,1]</span>
+    reason: <span class="typ">str</span>                     <span class="cmt"># "call_chain" / "shared_dep" / "replica_set"</span>
+
+<span class="kw">class</span> <span class="typ">IncidentPropagationGraph</span>:
+    EPS = 0.02                          <span class="cmt"># 权重剪枝阈值</span>
+    D0  = 3                             <span class="cmt"># 调用链跳数尺度</span>
+
+    <span class="kw">def</span> <span class="fn">update</span>(self, telemetry: <span class="typ">Telemetry</span>) -&gt; <span class="typ">None</span>:
+        <span class="str">"""每 N 秒重建一次，不做增量。"""</span>
+        self._edges.<span class="fn">clear</span>()
+        <span class="kw">for</span> i <span class="kw">in</span> telemetry.services:
+            <span class="kw">for</span> j <span class="kw">in</span> telemetry.services:
+                <span class="kw">if</span> i.id == j.id: <span class="kw">continue</span>
+                w = self.<span class="fn">_edge_weight</span>(i, j, telemetry)
+                <span class="kw">if</span> w &gt;= self.EPS:
+                    self.<span class="fn">add_edge</span>(<span class="fn">IncidentEdge</span>(i.id, j.id, w, <span class="str">"call_chain"</span>))
+
+    <span class="kw">def</span> <span class="fn">_edge_weight</span>(self, i, j, t: <span class="typ">Telemetry</span>) -&gt; <span class="typ">float</span>:
+        hops    = t.<span class="fn">hops</span>(i.id, j.id)
+        dist_k  = np.<span class="fn">exp</span>(−hops / self.D0)              <span class="cmt"># 调用跳数代替几何距离</span>
+        share   = t.<span class="fn">call_share</span>(i.id, j.id)              <span class="cmt"># A→B 占 A 出流量比</span>
+        err_c   = t.<span class="fn">error_correlation</span>(i.id, j.id)       <span class="cmt"># 过去 T 秒错误率相关</span>
+        <span class="kw">return</span> dist_k · share · err_c
+
+    <span class="kw">def</span> <span class="fn">blast_radius</span>(self, root_service: <span class="typ">str</span>, threshold=<span class="num">0.3</span>) -&gt; <span class="typ">List[str]</span>:
+        <span class="str">"""从 root 出发 BFS，收集 w 累积 ≥ threshold 的后代。"""</span>
+        ...
+</code></pre>
+
+<h5>真实场景：订单服务降级</h5>
+<p>订单服务 A 调用库存服务 B 和支付服务 C。A→B 边权 = 0.9（RPS 高、错误高度相关、B 的 SLO 敏感），A→C = 0.4。
+当 A 进入 circuit-open 状态时，<strong>blast_radius(A) = {B}</strong>——只对 B 做 traffic shaping，不动 C，避免过度降级。</p>
+
+<h5>采用成本</h5>
+<ul>
+  <li>需要调用链采样 + 错误率时序数据（大多数 SRE 平台已有）。</li>
+  <li>O(n²) 在 n &gt; 500 服务时需加 KD-tree / 预筛（与 auto-decide 相同问题）。</li>
+  <li>冷启动（无历史数据）时 <code>err_corr</code> 退化为 0.1 保守先验（对应 intent_conflict 的默认值）。</li>
+</ul>
+
+<div class="callout pattern">
+<span class="tag">迁移要点</span>
+<strong>不要用几何距离直接类比调用次数。</strong> 真正的"距离核"应该是<em>调用链跳数</em>或<em>错误传播延迟</em>——这决定了当 A 抖动时 B 多久会感受到。把 D0 设成"平均传播时间 / 监测周期"的比值，就能让权重尺度跟 SLO 采集粒度对齐。
+</div>
+</div>
+
+<h2 id="double-clamp">4 · P-02 · 双层 clamp <small style="font-weight:normal;font-size:13px;color:var(--fg-mute)">← BicycleModel jerk clamp</small></h2>
+
+<div class="pattern-card">
+<header><span class="id">P-02</span><h3>Double-Clamp Timeout Budget</h3><span class="origin">← 模块 2 · 动力学</span></header>
+<p><strong>抽象</strong>：任何资源约束（加速度 / timeout / 带宽）都应在<em>施加时</em>和<em>生效后</em>两处钳位。单层 clamp 总会被数值误差或异常路径绕过。</p>
+
+<div class="parallel">
+<div class="col auto">
+<h5><span class="badge badge-auto">auto-decide</span>BicycleModel</h5>
+<ol>
+  <li><code>f()</code> 里：若当前 a 已触顶，把 jerk 方向对应分量置 0</li>
+  <li><code>step()</code> 末端：对 a / v 做 <code>clip</code> 兜底数值累积</li>
+</ol>
+</div>
+<div class="col sre">
+<h5><span class="badge badge-sre">SRE</span>Deadline Propagation</h5>
+<ol>
+  <li>客户端 SDK：根据父级 deadline 裁剪子调用 timeout（命令钳位）</li>
+  <li>服务端入口：再次 clip 到"本服务最大处理窗口"（末端钳位）</li>
+</ol>
+</div>
+</div>
+
+<h5>接口骨架</h5>
+<pre><code><span class="kw">@dataclass(frozen=True)</span>
+<span class="kw">class</span> <span class="typ">Deadline</span>:
+    abs_ts: <span class="typ">float</span>                       <span class="cmt"># epoch seconds</span>
+    max_budget_ms: <span class="typ">int</span>                  <span class="cmt"># 本服务的最大处理时长</span>
+
+    <span class="kw">def</span> <span class="fn">remaining_ms</span>(self) -&gt; <span class="typ">int</span>:
+        <span class="kw">return</span> <span class="fn">max</span>(<span class="num">0</span>, <span class="fn">int</span>((self.abs_ts − time.<span class="fn">time</span>()) · <span class="num">1000</span>))
+
+<span class="kw">class</span> <span class="typ">RpcClient</span>:
+    <span class="kw">def</span> <span class="fn">call</span>(self, req, parent_deadline: <span class="typ">Deadline</span>):
+        <span class="cmt"># ① 命令钳位：根据父 deadline 裁剪</span>
+        effective = <span class="fn">min</span>(parent_deadline.<span class="fn">remaining_ms</span>(), self.default_timeout_ms)
+        <span class="kw">if</span> effective &lt;= <span class="num">0</span>:
+            <span class="kw">raise</span> <span class="typ">DeadlineExceeded</span>()
+        <span class="kw">return</span> self.<span class="fn">_send</span>(req, timeout_ms=effective)
+
+<span class="kw">class</span> <span class="typ">RpcServer</span>:
+    <span class="kw">def</span> <span class="fn">handle</span>(self, req):
+        <span class="cmt"># ② 末端钳位：即使客户端没设或设错，本服务也 cap</span>
+        declared = req.deadline.<span class="fn">remaining_ms</span>() <span class="kw">if</span> req.deadline <span class="kw">else</span> <span class="num">30000</span>
+        effective = <span class="fn">min</span>(declared, self.max_budget_ms)
+        ctx = <span class="typ">Context</span>(deadline_ms=effective)
+        <span class="kw">return</span> self.<span class="fn">_run</span>(req, ctx)
+</code></pre>
+
+<h5>真实场景：租户级 deadline</h5>
+<p>租户 A 调 gateway → authz → backend → db。每一跳都按 P-02 裁剪：哪怕 gateway 的 SDK bug 没传 deadline，backend 仍会 clamp 到自己的 <code>max_budget_ms</code>，
+避免 A 的一次慢请求把 backend worker 吊死。这个模式是 Google SRE book 里"hedged requests"和"deadline propagation"的合并版。</p>
+
+<div class="callout pattern">
+<span class="tag">迁移要点</span>
+<strong>clamp 必须用 <code>min()</code> 而不是 <code>assert</code>。</strong> 越界是正常业务情况，不是异常。工程上"出错时 fail-safe"比"出错时 fail-fast"优先——这点和动力学模型的 clamp 哲学完全一致。
+</div>
+</div>
+
+<h2 id="qos">5 · P-03 · 多目标势能调度 <small style="font-weight:normal;font-size:13px;color:var(--fg-mute)">← PotentialField</small></h2>
+
+<div class="pattern-card">
+<header><span class="id">P-03</span><h3>Multi-Objective Potential Scheduler</h3><span class="origin">← 模块 3 · 势能场</span></header>
+<p><strong>抽象</strong>：自适应调度不是"找最优策略"，而是"把多个目标合成一个标量场，沿 $-\nabla\Phi$ 走出一个方向建议"。
+硬约束（SLO / quota）不放在 $\Phi$ 里，而交给下游的 admission controller（P-06）。</p>
+
+<div class="parallel">
+<div class="col auto">
+<h5><span class="badge badge-auto">auto-decide</span>PotentialField</h5>
+<pre><code>Φ = w_g·‖p-goal‖² + w_o·(r/d-1)² + w_i·Σw_ij/d_ij</code></pre>
+<p>用数值梯度给出"往哪开"的方向。</p>
+</div>
+<div class="col sre">
+<h5><span class="badge badge-sre">SRE</span>ServiceQosField</h5>
+<pre><code>Φ = w_lat·lat² + w_cost·cost² + w_err·err² − w_util·util</code></pre>
+<p>用数值梯度给出"下一步 replicas / concurrency / cache size 应该怎么调"。</p>
+</div>
+</div>
+
+<h5>接口骨架</h5>
+<pre><code><span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">QosState</span>:
+    latency_p99_ms: <span class="typ">float</span>
+    cost_per_hour: <span class="typ">float</span>
+    error_rate: <span class="typ">float</span>
+    utilization: <span class="typ">float</span>
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">QosAction</span>:
+    d_replicas: <span class="typ">int</span>                   <span class="cmt"># 连续梯度经 round 后的离散动作</span>
+    d_concurrency: <span class="typ">float</span>
+    d_cache_size_mb: <span class="typ">float</span>
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">QosPotential</span>:
+    w_lat: <span class="typ">float</span> = <span class="num">1.0</span>
+    w_cost: <span class="typ">float</span> = <span class="num">0.3</span>
+    w_err: <span class="typ">float</span> = <span class="num">20.0</span>
+    w_util: <span class="typ">float</span> = <span class="num">0.5</span>
+    target_latency_ms: <span class="typ">float</span> = <span class="num">100.0</span>
+
+    <span class="kw">def</span> <span class="fn">value</span>(self, s: <span class="typ">QosState</span>) -&gt; <span class="typ">float</span>:
+        <span class="kw">return</span> (
+            self.w_lat  · <span class="fn">max</span>(<span class="num">0</span>, s.latency_p99_ms − self.target_latency_ms)**<span class="num">2</span>
+          + self.w_cost · s.cost_per_hour**<span class="num">2</span>
+          + self.w_err  · s.error_rate**<span class="num">2</span>
+          − self.w_util · s.utilization             <span class="cmt"># 利用率越高 Φ 越低（鼓励高 util）</span>
+        )
+
+    <span class="kw">def</span> <span class="fn">grad</span>(self, s: <span class="typ">QosState</span>, predictor) -&gt; <span class="typ">QosAction</span>:
+        <span class="str">"""用有限差分：微扰每个动作维度，predictor 预测 Φ 变化。"""</span>
+        base = self.<span class="fn">value</span>(s)
+        g = {}
+        <span class="kw">for</span> dim <span class="kw">in</span> [<span class="str">"d_replicas"</span>, <span class="str">"d_concurrency"</span>, <span class="str">"d_cache_size_mb"</span>]:
+            s_next = predictor.<span class="fn">what_if</span>(s, {dim: <span class="num">1</span>})
+            g[dim] = self.<span class="fn">value</span>(s_next) − base
+        <span class="kw">return</span> <span class="fn">QosAction</span>(
+            d_replicas=−<span class="fn">sign</span>(g[<span class="str">"d_replicas"</span>]),     <span class="cmt"># 沿 −∇Φ 方向</span>
+            d_concurrency=−g[<span class="str">"d_concurrency"</span>] · <span class="num">0.1</span>,
+            d_cache_size_mb=−<span class="fn">sign</span>(g[<span class="str">"d_cache_size_mb"</span>]) · <span class="num">64</span>,
+        )
+</code></pre>
+
+<h5>真实场景：热点服务的 auto-tuner</h5>
+<p>晚高峰流量上来，$\Phi$ 的 $\partial/\partial \text{replicas} &gt; 0$（更多 replicas 能压低 lat），所以 <code>d_replicas = +1</code>。
+同时 error_rate 还低，所以不会触发 w_err 主导。扩容两个后，util 上升，$-w_\text{util}\cdot util$ 再拉低 Φ，系统趋于稳定。
+<strong>硬约束不在 Φ 里</strong>：比如 "error_rate 必须 &lt; 0.5%" 这种走 P-06 admission controller。</p>
+
+<div class="callout pattern">
+<span class="tag">迁移要点</span>
+<strong>把 hard SLO 作为 penalty 塞进 Φ 是初学者最大的坑</strong>——正是 auto-decide 第一版实现踩过的（V 里塞距离项，导致规划停摆）。
+正确做法：$\Phi$ 只给方向，硬约束由下游 admission/CBF 承担。
+</div>
+</div>
+
+<h2 id="burn-rate">6 · P-04 · Lyapunov 式 Error-Budget burn-rate <small style="font-weight:normal;font-size:13px;color:var(--fg-mute)">← QuadraticLyapunov</small></h2>
+
+<div class="pattern-card">
+<header><span class="id">P-04</span><h3>Bounded-Decay Error Budget</h3><span class="origin">← 模块 4 · Lyapunov</span></header>
+<p><strong>抽象</strong>：定义一个随时间应单调非增的标量 $V$（错误预算消耗量），监视 $\dot V$。
+一旦超过衰减目标 $-\gamma V$，就<em>迭代松弛</em>当前变更：降级 feature flag、压低 rollout rate，直到 $\dot V$ 回到安全范围。</p>
+
+<div class="parallel">
+<div class="col auto">
+<h5><span class="badge badge-auto">auto-decide</span>QuadraticLyapunov</h5>
+<pre><code>V = ½ q_v (v − v*)²
+dV/dt ≤ 0 （硬）
+dV/dt ≤ −γV （优先）</code></pre>
+</div>
+<div class="col sre">
+<h5><span class="badge badge-sre">SRE</span>ErrorBudgetBurnRate</h5>
+<pre><code>V = 累积错误消耗 − 目标剩余预算
+dV/dt ≤ 0 （硬 · 消耗不快于期望）
+dV/dt ≤ −γV （优先 · 指数收敛回安全）</code></pre>
+</div>
+</div>
+
+<h5>接口骨架</h5>
+<pre><code><span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">BudgetSample</span>:
+    ts: <span class="typ">float</span>
+    total_requests: <span class="typ">int</span>
+    failed_requests: <span class="typ">int</span>
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">BudgetLyapunov</span>:
+    slo_target: <span class="typ">float</span> = <span class="num">0.999</span>           <span class="cmt"># 99.9% 可用性</span>
+    window_days: <span class="typ">int</span> = <span class="num">28</span>              <span class="cmt"># rolling window</span>
+    gamma: <span class="typ">float</span> = <span class="num">0.1</span>                 <span class="cmt"># 期望指数回收速率</span>
+
+    <span class="kw">def</span> <span class="fn">V</span>(self, samples: <span class="typ">List[BudgetSample]</span>) -&gt; <span class="typ">float</span>:
+        consumed = <span class="fn">sum</span>(s.failed_requests <span class="kw">for</span> s <span class="kw">in</span> samples)
+        allowed  = (<span class="num">1</span> − self.slo_target) · <span class="fn">sum</span>(s.total_requests <span class="kw">for</span> s <span class="kw">in</span> samples)
+        deficit  = consumed − allowed                  <span class="cmt"># 超标量，可能为负</span>
+        <span class="kw">return</span> <span class="fn">max</span>(deficit, <span class="num">0</span>) ** <span class="num">2</span> · <span class="num">0.5</span>
+
+    <span class="kw">def</span> <span class="fn">dV_dt</span>(self, samples, dt_s) -&gt; <span class="typ">float</span>:
+        V1 = self.<span class="fn">V</span>(samples[−<span class="num">1</span>:])
+        V0 = self.<span class="fn">V</span>(samples[−<span class="num">2</span>:−<span class="num">1</span>])
+        <span class="kw">return</span> (V1 − V0) / dt_s
+
+<span class="kw">class</span> <span class="typ">BudgetStabilityMonitor</span>:
+    <span class="kw">def</span> <span class="fn">check</span>(self, samples, dt_s) -&gt; <span class="typ">Tuple[bool, float]</span>:
+        dv = self.lyap.<span class="fn">dV_dt</span>(samples, dt_s)
+        <span class="kw">return</span> (dv &lt;= self.tol, dv)
+
+    <span class="kw">def</span> <span class="fn">metrics</span>(self, samples, dt_s) -&gt; <span class="typ">dict</span>:
+        <span class="kw">return</span> {
+            <span class="str">"budget_V"</span>: self.lyap.<span class="fn">V</span>(samples),
+            <span class="str">"budget_dV_dt"</span>: self.lyap.<span class="fn">dV_dt</span>(samples, dt_s),
+            <span class="str">"budget_target_decay"</span>: −self.lyap.gamma · self.lyap.<span class="fn">V</span>(samples),
+        }
+</code></pre>
+
+<h5>与传统 burn-rate alert 的差别</h5>
+<table>
+  <thead><tr><th></th><th>传统 burn-rate</th><th>P-04 Lyapunov 版</th></tr></thead>
+  <tbody>
+    <tr><td>衡量</td><td>过去 $w$ 分钟消耗速度</td><td>$V$ 与 $\dot V$ 的连续量</td></tr>
+    <tr><td>触发</td><td>离散阈值（1x/2x/14x）</td><td>连续：一旦违反 $\dot V\le 0$ 就松弛</td></tr>
+    <tr><td>动作</td><td>发告警给人</td><td>自动触发 P-07 action guard 矫正</td></tr>
+    <tr><td>回滚</td><td>人工决定</td><td>$\dot V \le -\gamma V$ 恢复后自动升档</td></tr>
+  </tbody>
+</table>
+
+<div class="callout pattern">
+<span class="tag">迁移要点</span>
+<strong>Lyapunov 模型让 SLO 从"离散阈值告警"升级为"连续反馈控制"。</strong>
+关键是 $V$ 必须只含<em>一个</em>语义（错误预算超标量），不要把 latency / cost 之类加进来——和 auto-decide 第一版 V 塞了距离项的错误完全对等。多目标走 P-03。
+</div>
+</div>
+
+<h2 id="capacity">7 · P-05 · 容量可达集 <small style="font-weight:normal;font-size:13px;color:var(--fg-mute)">← ReachableSet + DeadZoneDetector</small></h2>
+
+<div class="pattern-card">
+<header><span class="id">P-05</span><h3>Capacity Reachable Set</h3><span class="origin">← 模块 5 · 可达集</span></header>
+<p><strong>抽象</strong>：给定当前资源状态与扩缩容速率上限，在未来 $T$ 秒内<em>能承接的最大流量</em>是一个集合。若预测流量落在集合外，即"容量死区"——必须提前 shed / reject，而不是等 SLO 崩。</p>
+
+<div class="parallel">
+<div class="col auto">
+<h5><span class="badge badge-auto">auto-decide</span>ReachableSet(state0, T)</h5>
+<p>采样控制序列 + RK4 + 凸包。输出"哪些 (px, py) 到得了"。</p>
+</div>
+<div class="col sre">
+<h5><span class="badge badge-sre">SRE</span>CapacityReachableSet</h5>
+<p>采样扩缩容轨迹 + 预热延迟模型 + 凸包。输出"未来 T 秒能承接的 (RPS, concurrency) 组合"。</p>
+</div>
+</div>
+
+<h5>接口骨架</h5>
+<pre><code><span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">CapacityState</span>:
+    replicas: <span class="typ">int</span>
+    concurrency_per_replica: <span class="typ">int</span>
+    warm_replicas_fraction: <span class="typ">float</span>      <span class="cmt"># 0..1</span>
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">ScalingParams</span>:
+    max_scale_up_per_min: <span class="typ">int</span> = <span class="num">10</span>
+    max_scale_down_per_min: <span class="typ">int</span> = <span class="num">20</span>
+    warmup_seconds: <span class="typ">int</span> = <span class="num">45</span>
+
+<span class="kw">class</span> <span class="typ">CapacityReachableSet</span>:
+    <span class="kw">def</span> <span class="fn">sample_endpoints</span>(self, s0: <span class="typ">CapacityState</span>, T_sec: <span class="typ">int</span>, n=<span class="num">200</span>):
+        <span class="str">"""返回 shape=(n, 2) 的 (max_rps, max_concurrency) 终点。"""</span>
+        rng = np.random.<span class="fn">default_rng</span>(<span class="num">0</span>)
+        pts = np.<span class="fn">zeros</span>((n, <span class="num">2</span>))
+        steps = T_sec // <span class="num">15</span>
+        <span class="kw">for</span> k <span class="kw">in</span> <span class="fn">range</span>(n):
+            scale_actions = rng.<span class="fn">integers</span>(−<span class="num">5</span>, <span class="num">11</span>, size=steps)
+            s = s0
+            <span class="kw">for</span> a <span class="kw">in</span> scale_actions:
+                s = self.<span class="fn">apply</span>(s, a, dt=<span class="num">15</span>)
+            pts[k] = [self.<span class="fn">rps</span>(s), self.<span class="fn">concurrency</span>(s)]
+        <span class="kw">return</span> pts
+
+    <span class="kw">def</span> <span class="fn">apply</span>(self, s, action, dt_s):
+        <span class="cmt"># ① 新增 replicas 经过 warmup_seconds 才可用（相当于 jerk-ramp 延迟 τ）</span>
+        new_replicas = <span class="fn">max</span>(<span class="num">1</span>, s.replicas + action)
+        delay_factor = <span class="fn">min</span>(<span class="num">1.0</span>, dt_s / self.params.warmup_seconds)
+        warm = s.warm_replicas_fraction + (<span class="num">1</span>−s.warm_replicas_fraction)·delay_factor
+        <span class="kw">return</span> <span class="typ">CapacityState</span>(new_replicas, s.concurrency_per_replica, warm)
+
+<span class="kw">class</span> <span class="typ">CapacityDeadZone</span>:
+    <span class="kw">def</span> <span class="fn">check</span>(self, state, forecast_rps: <span class="typ">float</span>, T_sec=<span class="num">300</span>):
+        endpoints = self.reach.<span class="fn">sample_endpoints</span>(state, T_sec)
+        max_rps = endpoints[:, <span class="num">0</span>].<span class="fn">max</span>()
+        <span class="kw">return</span> (forecast_rps &gt; max_rps, max_rps)
+</code></pre>
+
+<h5>真实场景：预测流量超容量</h5>
+<p>下一个 5 分钟预测 RPS = 50k，当前 <code>CapacityState(replicas=100, concurrency=10, warm=0.9)</code>。
+采样 200 条扩容轨迹，凸包最大 RPS = 42k → <code>dead_zone=True, headroom=-8k</code>。
+决策：<strong>现在</strong>拒绝尾部 16% 流量（graceful shed），而不是等 5 分钟后 SLO 崩。
+</p>
+
+<div class="callout pattern">
+<span class="tag">迁移要点</span>
+<strong>Warm-up 延迟就是 SRE 版的 jerk-ramp</strong>：Pod 启动需要 45 s、container image pull 需要 30 s——这些延迟必须显式建模，否则扩容决策乐观，"已扩容=有容量"的假设会把人坑惨。
+</div>
+</div>
+
+<h2 id="admission">8 · P-06 · CBF 式 admission controller <small style="font-weight:normal;font-size:13px;color:var(--fg-mute)">← CBF-QP</small></h2>
+
+<div class="pattern-card">
+<header><span class="id">P-06</span><h3>Barrier-Constrained Admission</h3><span class="origin">← 模块 6 · CBF-QP</span></header>
+<p><strong>抽象</strong>：客户端想申请 $u_\text{nom}$ 的资源/流量，admission controller 求一个满足所有 SLO 硬约束的<em>最近可行值</em>。
+不等式形式，永远可行（最坏降到拒绝）。</p>
+
+<h5>核心不等式</h5>
+<p>对每条 SLO barrier $h_i$（如 "error_rate ≤ 0.5%"、"P99 ≤ 200ms"）：</p>
+$$
+\dot h_i(x, u) + \alpha_i h_i(x) \ge 0
+$$
+<p>$h_i(x) = \text{SLO threshold} - \text{current value}$，$\alpha_i$ 是类 K 函数增益。</p>
+
+<h5>接口骨架</h5>
+<pre><code><span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">SloBarrier</span>:
+    name: <span class="typ">str</span>                                <span class="cmt"># "error_rate" / "p99_latency"</span>
+    threshold: <span class="typ">float</span>
+    alpha: <span class="typ">float</span>                             <span class="cmt"># 类 K 函数增益</span>
+
+    <span class="kw">def</span> <span class="fn">h</span>(self, x: <span class="typ">SystemState</span>) -&gt; <span class="typ">float</span>:
+        <span class="kw">return</span> self.threshold − <span class="fn">getattr</span>(x, self.name)
+
+    <span class="kw">def</span> <span class="fn">h_dot</span>(self, x, u: <span class="typ">AdmissionAction</span>, predictor, dt=<span class="num">30</span>):
+        x1 = predictor.<span class="fn">what_if</span>(x, u, horizon_s=dt)
+        <span class="kw">return</span> (self.<span class="fn">h</span>(x1) − self.<span class="fn">h</span>(x)) / dt
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">AdmissionAction</span>:
+    accepted_rps: <span class="typ">float</span>
+    queue_size: <span class="typ">int</span>
+    cache_size_mb: <span class="typ">int</span>
+
+<span class="kw">class</span> <span class="typ">AdmissionController</span>:
+    barriers: <span class="typ">List[SloBarrier]</span>
+    predictor: <span class="typ">CapacityPredictor</span>
+    fallback: <span class="typ">AdmissionAction</span>              <span class="cmt"># 必然可行 · 通常是"只服务 keep-alive"</span>
+
+    <span class="kw">def</span> <span class="fn">filter</span>(self, x, u_nom: <span class="typ">AdmissionAction</span>) -&gt; <span class="typ">AdmissionAction</span>:
+        <span class="cmt"># 快车道：所有 barrier 已满足</span>
+        <span class="kw">if</span> <span class="fn">all</span>(b.<span class="fn">h_dot</span>(x, u_nom, self.predictor) + b.alpha · b.<span class="fn">h</span>(x) &gt;= <span class="num">0</span> <span class="kw">for</span> b <span class="kw">in</span> self.barriers):
+            <span class="kw">return</span> u_nom
+
+        <span class="cmt"># 搜索：在 u_nom 周围网格找最近可行</span>
+        best, best_cost = <span class="kw">None</span>, <span class="fn">float</span>(<span class="str">"inf"</span>)
+        <span class="kw">for</span> cand <span class="kw">in</span> self.<span class="fn">_grid_around</span>(u_nom):
+            <span class="kw">if</span> <span class="fn">all</span>(b.<span class="fn">h_dot</span>(x, cand, self.predictor) + b.alpha · b.<span class="fn">h</span>(x) &gt;= <span class="num">0</span> <span class="kw">for</span> b <span class="kw">in</span> self.barriers):
+                cost = self.<span class="fn">_cost</span>(cand, u_nom)
+                <span class="kw">if</span> cost &lt; best_cost: best, best_cost = cand, cost
+
+        <span class="kw">return</span> best <span class="kw">or</span> self.fallback
+</code></pre>
+
+<h5>真实场景：流量塑形</h5>
+<p>客户端想发 10k RPS（$u_\text{nom}$）。barrier 1 = "P99 &lt; 200 ms"，barrier 2 = "error_rate &lt; 0.5%"。
+predictor 告知：10k RPS 会让 P99 = 280 ms（violate h1）。
+AdmissionController 搜出最近可行 accepted_rps = 7.8k，返回给客户端做 back-pressure。</p>
+
+<p>这就是 <strong>AIMD / token bucket / leaky bucket 的数学上位替代</strong>：传统限流算法只回答"能不能过"，P-06 回答"最多能过多少能同时满足所有 SLO"。</p>
+
+<div class="callout pattern">
+<span class="tag">迁移要点</span>
+<strong>predictor 的质量决定 admission 的质量。</strong> 在 auto-decide 里 predictor 是 BicycleModel（物理一阶原理）；在 SRE 里可以是：1) queueing theory 模型（M/M/k），2) 历史 regression，3) 一个 ML 模型。
+初期用 queueing theory 就够了，不需要上 ML。
+</div>
+</div>
+
+<h2 id="tinv-guard">9 · P-07 · T_inv 式 Action Guard <small style="font-weight:normal;font-size:13px;color:var(--fg-mute)">← ControlInvariantOperator</small></h2>
+
+<div class="pattern-card">
+<header><span class="id">P-07</span><h3>Action Guard with Relax &amp; Fallback</h3><span class="origin">← 模块 7 · T_inv</span></header>
+<p><strong>抽象</strong>：任何"可能改动生产系统"的动作，必须经过 <em>候选 → 硬校验 → 迭代松弛 → 保底降级</em> 四段流水。
+这比"通过/拒绝"的二元门更柔和——通过就直接通过，不通过就逐步调弱直到可接受，最坏退到 no-op。</p>
+
+<div class="parallel">
+<div class="col auto">
+<h5><span class="badge badge-auto">auto-decide</span>ControlInvariantOperator.apply</h5>
+<ol>
+  <li>CBF 折叠</li>
+  <li>Lyapunov 检查</li>
+  <li>降 jerk 松弛 N 次</li>
+  <li>兜底刹停</li>
+</ol>
+</div>
+<div class="col sre">
+<h5><span class="badge badge-sre">SRE</span>ChangeGuard</h5>
+<ol>
+  <li>SLO admission（P-06）</li>
+  <li>Lyapunov 预算检查（P-04）</li>
+  <li>降 rollout rate 松弛</li>
+  <li>兜底 revert / no-op</li>
+</ol>
+</div>
+</div>
+
+<h5>接口骨架</h5>
+<pre><code><span class="kw">from</span> enum <span class="kw">import</span> Enum
+
+<span class="kw">class</span> <span class="typ">GuardStatus</span>(<span class="typ">Enum</span>):
+    PASS            = <span class="str">"pass"</span>                <span class="cmt"># 候选直接通过</span>
+    RELAXED_OPTIMAL = <span class="str">"relaxed_opt"</span>         <span class="cmt"># 松弛后达到指数衰减目标</span>
+    RELAXED         = <span class="str">"relaxed"</span>             <span class="cmt"># 松弛后满足普通约束</span>
+    NON_INCREASING  = <span class="str">"non_increasing"</span>      <span class="cmt"># 边缘通过（dV/dt ≈ 0）</span>
+    FALLBACK        = <span class="str">"fallback"</span>            <span class="cmt"># 松弛耗尽，回到 no-op / revert</span>
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">ChangeProposal</span>:
+    feature_flag: <span class="typ">str</span>
+    rollout_pct: <span class="typ">float</span>                  <span class="cmt"># 当前想发布的百分比 0..100</span>
+    config_delta: <span class="typ">dict</span>
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">ChangeGuard</span>:
+    admission: <span class="typ">AdmissionController</span>
+    budget: <span class="typ">BudgetStabilityMonitor</span>
+    relax_steps: <span class="typ">int</span> = <span class="num">5</span>
+    gamma: <span class="typ">float</span> = <span class="num">0.2</span>
+
+    <span class="kw">def</span> <span class="fn">apply</span>(self, state, proposal: <span class="typ">ChangeProposal</span>) -&gt; <span class="typ">Tuple[ChangeProposal, dict]</span>:
+        <span class="cmt"># ① 先过 admission（CBF 折叠）</span>
+        p_adm = self.admission.<span class="fn">filter</span>(state, proposal)
+
+        <span class="cmt"># ② Lyapunov check</span>
+        V = self.budget.<span class="fn">V</span>(state.samples)
+        exp_target = −self.gamma · V
+
+        info = {<span class="str">"V"</span>: V, <span class="str">"dV_dt"</span>: <span class="kw">None</span>}
+        p = p_adm
+        dv = self.budget.<span class="fn">dV_dt_with</span>(state, p)
+        info[<span class="str">"dV_dt"</span>] = dv
+
+        <span class="kw">if</span> dv &lt;= <span class="num">1e-3</span>:
+            info[<span class="str">"status"</span>] = <span class="typ">GuardStatus.PASS</span> <span class="kw">if</span> dv &lt;= exp_target <span class="kw">else</span> <span class="typ">GuardStatus.NON_INCREASING</span>
+            <span class="kw">return</span> p, info
+
+        <span class="cmt"># ③ 松弛：降 rollout_pct</span>
+        best, best_dv = p, dv
+        <span class="kw">for</span> k <span class="kw">in</span> <span class="fn">range</span>(self.relax_steps):
+            p = <span class="fn">dataclasses.replace</span>(p, rollout_pct=p.rollout_pct · <span class="num">0.5</span>)
+            dv = self.budget.<span class="fn">dV_dt_with</span>(state, p)
+            <span class="kw">if</span> dv &lt;= exp_target:
+                info.<span class="fn">update</span>(dV_dt=dv, status=<span class="typ">GuardStatus.RELAXED_OPTIMAL</span>)
+                <span class="kw">return</span> p, info
+            <span class="kw">if</span> dv &lt;= <span class="num">1e-3</span>:
+                info.<span class="fn">update</span>(dV_dt=dv, status=<span class="typ">GuardStatus.RELAXED</span>)
+                <span class="kw">return</span> p, info
+            <span class="kw">if</span> dv &lt; best_dv: best, best_dv = p, dv
+
+        <span class="cmt"># ④ 兜底：no-op（不改动）</span>
+        info.<span class="fn">update</span>(dV_dt=best_dv, status=<span class="typ">GuardStatus.FALLBACK</span>)
+        <span class="kw">return</span> <span class="fn">ChangeProposal</span>(feature_flag=proposal.feature_flag, rollout_pct=<span class="num">0</span>, config_delta={}), info
+</code></pre>
+
+<h5>真实场景：渐进发布</h5>
+<p>团队想把新排序算法的 rollout_pct 从 10% 升到 50%。</p>
+<ol>
+  <li>AdmissionController 说 50% 没有立即违反 SLO。</li>
+  <li>BudgetLyapunov 测算：若真升到 50%，未来 30 分钟 error_rate 预计上浮 → $\dot V &gt; 0$。</li>
+  <li>松弛：50% → 25% → 12.5%。在 25% 时 $\dot V \le -\gamma V$，<code>status = RELAXED_OPTIMAL</code>，返回 25%。</li>
+  <li>下一个评估周期再尝试 50%。</li>
+</ol>
+<p>这个模式的价值：<strong>把"灰度发布的步长决策"从经验工程升级成数学反馈控制</strong>，还自动产出 observability（status 计数）。</p>
+
+<div class="callout pattern">
+<span class="tag">迁移要点</span>
+<strong>fallback 必须是永远可行的 no-op。</strong>
+在 auto-decide 里 fallback 是"刹停"（物理上恒可达）；在 SRE 里 fallback 不能是"revert"（上一版可能刚刚也有问题），
+而应该是"不变化 / 保持当前状态"——这是唯一一定可行的。
+</div>
+</div>
+
+<h2 id="uncertainty-margin">10 · P-08 · 不确定性驱动 derating <small style="font-weight:normal;font-size:13px;color:var(--fg-mute)">← BeliefState + WorstCaseGame</small></h2>
+
+<div class="pattern-card">
+<header><span class="id">P-08</span><h3>Observability-Driven Margin</h3><span class="origin">← 模块 8 · 博弈</span></header>
+<p><strong>抽象</strong>：当感知 / 监控本身的不确定性升高，系统应该<em>主动加大安全余量</em>——而不是相信嘈杂的信号。
+这把"上游数据质量"变成了"下游决策阈值"的直接输入。</p>
+
+<h5>关键公式</h5>
+$$
+\text{margin}(t) = \text{margin}_\text{base} + k_v \cdot \text{signal}(t) + k_\eta \cdot \eta_\text{obs}(t)
+$$
+<p>$\eta_\text{obs}$ 是监控可观测性熵：时序点缺失率、多 source 分歧度、label 噪声等归一化。</p>
+
+<h5>接口骨架</h5>
+<pre><code><span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">ObservabilityState</span>:
+    missing_rate: <span class="typ">float</span>                  <span class="cmt"># 0..1</span>
+    source_divergence: <span class="typ">float</span>             <span class="cmt"># 多个 Prometheus 结果差异</span>
+    label_drift: <span class="typ">float</span>                   <span class="cmt"># label 分布漂移</span>
+
+    <span class="kw">def</span> <span class="fn">entropy</span>(self) -&gt; <span class="typ">float</span>:
+        <span class="str">"""归一化到 [0, 1]。"""</span>
+        <span class="kw">return</span> <span class="fn">min</span>(<span class="num">1.0</span>,
+            <span class="num">0.5</span>·self.missing_rate
+          + <span class="num">0.3</span>·self.source_divergence
+          + <span class="num">0.2</span>·self.label_drift)
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">DeratingPolicy</span>:
+    base_margin: <span class="typ">float</span> = <span class="num">0.05</span>            <span class="cmt"># 5% SLO 余量</span>
+    signal_gain: <span class="typ">float</span> = <span class="num">0.5</span>
+    entropy_gain: <span class="typ">float</span> = <span class="num">0.2</span>            <span class="cmt"># 熵=1 时加 20 个 pp</span>
+
+    <span class="kw">def</span> <span class="fn">effective_margin</span>(self, obs: <span class="typ">ObservabilityState</span>, signal: <span class="typ">float</span>) -&gt; <span class="typ">float</span>:
+        <span class="kw">return</span> (self.base_margin
+              + self.signal_gain · <span class="fn">max</span>(signal, <span class="num">0</span>)
+              + self.entropy_gain · obs.<span class="fn">entropy</span>())
+</code></pre>
+
+<h5>真实场景：多源告警冲突</h5>
+<p>Prometheus A 说 error_rate = 0.3%，Prometheus B 说 0.7%（两个采样器分歧）。
+<code>source_divergence = 0.4 / 0.5 = 0.8</code>；obs.entropy() ≈ 0.5。
+DeratingPolicy 把 SLO 余量从 5% 扩到 5% + 0.2·0.5 = 15%——<strong>admission controller 在多源分歧时自动更保守</strong>，
+直到运维确认了真实 error_rate，entropy 下降，余量才慢慢还回去。</p>
+
+<div class="callout pattern">
+<span class="tag">迁移要点</span>
+<strong>把监控质量作为一等输入，不是二等事后告警。</strong>
+这和 auto-decide 里 BeliefState.entropy 直接驱动 r_buf 的结构完全一致——<em>"我越不确定你的意图，我就离你越远"</em>。
+</div>
+</div>
+
+<h2 id="control-plane">11 · P-09 · 通用 control plane <small style="font-weight:normal;font-size:13px;color:var(--fg-mute)">← StructuralPlanner</small></h2>
+
+<div class="pattern-card">
+<header><span class="id">P-09</span><h3>Unified Control Plane Skeleton</h3><span class="origin">← 模块 9 · Planner</span></header>
+<p><strong>抽象</strong>：所有前面的模式在一个<em>唯一入口</em>里按固定顺序串起来，成为平台的"决策骨架"。
+外部系统只与此入口交互，这让"哪一层出了问题"可以通过 trace 精确定位。</p>
+
+<h5>接口骨架</h5>
+<pre><code><span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">Observation</span>:
+    telemetry: <span class="typ">Telemetry</span>
+    beliefs: <span class="typ">Dict[str, BeliefState]</span>
+    state: <span class="typ">SystemState</span>
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="typ">Decision</span>:
+    admission: <span class="typ">AdmissionAction</span>
+    change: <span class="typ">Optional[ChangeProposal]</span>
+    trace: <span class="typ">dict</span>
+
+<span class="kw">class</span> <span class="typ">SreControlPlane</span>:
+    <span class="str">"""auto-decide 对应物。外部唯一入口。"""</span>
+    graph: <span class="typ">IncidentPropagationGraph</span>        <span class="cmt"># P-01</span>
+    qos_potential: <span class="typ">QosPotential</span>              <span class="cmt"># P-03</span>
+    budget_mon: <span class="typ">BudgetStabilityMonitor</span>        <span class="cmt"># P-04</span>
+    capacity: <span class="typ">CapacityDeadZone</span>               <span class="cmt"># P-05</span>
+    admission: <span class="typ">AdmissionController</span>           <span class="cmt"># P-06</span>
+    guard: <span class="typ">ChangeGuard</span>                        <span class="cmt"># P-07</span>
+    derate: <span class="typ">DeratingPolicy</span>                   <span class="cmt"># P-08</span>
+
+    <span class="kw">def</span> <span class="fn">step</span>(self, obs: <span class="typ">Observation</span>, proposal: <span class="typ">Optional[ChangeProposal]</span>) -&gt; <span class="typ">Decision</span>:
+        <span class="cmt"># 1) 更新故障相关性图</span>
+        self.graph.<span class="fn">update</span>(obs.telemetry)
+
+        <span class="cmt"># 2) 不确定性驱动 margin</span>
+        margin = self.derate.<span class="fn">effective_margin</span>(obs.state.observability, <span class="fn">signal</span>(obs))
+        self.admission.barriers = self.<span class="fn">_barriers_with_margin</span>(margin)
+
+        <span class="cmt"># 3) 势能场给出名义动作</span>
+        u_nom_adm = self.<span class="fn">_nominal_from_potential</span>(obs.state)
+
+        <span class="cmt"># 4) admission 做 CBF 折叠</span>
+        u_adm = self.admission.<span class="fn">filter</span>(obs.state, u_nom_adm)
+
+        <span class="cmt"># 5) 若有变更请求，guard 校验</span>
+        u_change, guard_info = (self.guard.<span class="fn">apply</span>(obs.state, proposal)
+                                <span class="kw">if</span> proposal <span class="kw">else</span> (<span class="kw">None</span>, {}))
+
+        <span class="cmt"># 6) 容量 dead-zone 检测 → 预告警</span>
+        dead, headroom = self.capacity.<span class="fn">check</span>(obs.state.capacity,
+                                              obs.telemetry.forecast_rps)
+
+        <span class="cmt"># 7) 合成决策 + trace</span>
+        <span class="kw">return</span> <span class="typ">Decision</span>(
+            admission=u_adm,
+            change=u_change,
+            trace={
+                <span class="str">"blast_radius"</span>: self.graph.<span class="fn">blast_radius</span>(obs.state.primary_service),
+                <span class="str">"margin"</span>: margin,
+                <span class="str">"V"</span>: self.budget_mon.<span class="fn">V</span>(obs.telemetry.samples),
+                <span class="str">"dV_dt"</span>: self.budget_mon.<span class="fn">dV_dt</span>(obs.telemetry.samples, <span class="num">30</span>),
+                <span class="str">"capacity_headroom"</span>: headroom,
+                <span class="str">"capacity_dead_zone"</span>: dead,
+                <span class="str">"guard_status"</span>: guard_info.<span class="fn">get</span>(<span class="str">"status"</span>),
+            },
+        )
+</code></pre>
+
+<h5>trace 字段契约</h5>
+<p>和 auto-decide 一样，<strong>trace 是唯一真相源</strong>。固化为 JSON Schema：</p>
+<pre><code>{
+  <span class="str">"ts"</span>: <span class="typ">float</span>,
+  <span class="str">"blast_radius"</span>: [<span class="typ">str</span>, ...],
+  <span class="str">"margin"</span>: <span class="typ">float</span>,
+  <span class="str">"V"</span>: <span class="typ">float</span>, <span class="str">"dV_dt"</span>: <span class="typ">float</span>,
+  <span class="str">"capacity_headroom"</span>: <span class="typ">float</span>,
+  <span class="str">"capacity_dead_zone"</span>: <span class="typ">bool</span>,
+  <span class="str">"admission"</span>: {<span class="str">"accepted_rps"</span>: <span class="typ">float</span>, ...},
+  <span class="str">"guard_status"</span>: <span class="str">"pass|relaxed_opt|relaxed|non_increasing|fallback"</span>,
+  <span class="str">"decision_ms"</span>: <span class="typ">float</span>
+}</code></pre>
+
+<div class="callout pattern">
+<span class="tag">迁移要点</span>
+<strong>一个 control plane 一个 step() 入口。</strong> 把 P-01 ~ P-08 作为字段注入，Pythonic 的组合优于继承。
+每个字段独立可测，整体通过 pytest + trace Golden 回归保证不变式。
+</div>
+</div>
+
+<h2 id="skeleton">12 · 代码骨架汇总</h2>
+
+<p>把前面 9 个模式的接口骨架合并成一个<strong>可直接放进 repo 的包</strong> <code>sre_control/</code>。
+目录约定：</p>
+
+<pre><code>sre_control/
+├── __init__.py
+├── types.py                 <span class="cmt"># Observation / Decision / *State 数据类</span>
+├── graph.py                 <span class="cmt"># P-01 IncidentPropagationGraph</span>
+├── budget.py                <span class="cmt"># P-02 Deadline + P-04 BudgetLyapunov</span>
+├── qos.py                   <span class="cmt"># P-03 QosPotential + QosPolicy</span>
+├── capacity.py              <span class="cmt"># P-05 CapacityReachableSet + DeadZone</span>
+├── admission.py             <span class="cmt"># P-06 AdmissionController + SloBarrier</span>
+├── guard.py                 <span class="cmt"># P-07 ChangeGuard</span>
+├── derate.py                <span class="cmt"># P-08 DeratingPolicy</span>
+├── control_plane.py         <span class="cmt"># P-09 SreControlPlane.step</span>
+└── tests/
+    ├── test_graph.py
+    ├── test_budget_lyapunov.py
+    ├── test_admission_filter.py
+    ├── test_guard_relax.py
+    └── test_control_plane_e2e.py
+</code></pre>
+
+<p>这个目录结构跟 <code>auto_decide/</code> 几乎一一对应：</p>
+
+<table>
+  <thead><tr><th>auto_decide 模块</th><th>sre_control 模块</th><th>共同接口</th></tr></thead>
+  <tbody>
+    <tr><td><code>graph.py</code></td><td><code>graph.py</code></td><td><code>.update(telemetry); .blast_radius(root)</code></td></tr>
+    <tr><td><code>dynamics.py</code></td><td><code>budget.py</code> (Deadline 部分)</td><td><code>.clamp(value, limits)</code></td></tr>
+    <tr><td><code>potential.py</code></td><td><code>qos.py</code></td><td><code>.value(state); .grad(state)</code></td></tr>
+    <tr><td><code>lyapunov.py</code></td><td><code>budget.py</code> (Lyapunov 部分)</td><td><code>.V(state); .dV_dt(state, u)</code></td></tr>
+    <tr><td><code>reachable.py</code></td><td><code>capacity.py</code></td><td><code>.sample(); .check(forecast)</code></td></tr>
+    <tr><td><code>cbf.py</code></td><td><code>admission.py</code></td><td><code>.filter(state, u_nom)</code></td></tr>
+    <tr><td><code>invariant.py</code></td><td><code>guard.py</code></td><td><code>.apply(state, proposal)</code></td></tr>
+    <tr><td><code>game.py</code></td><td><code>derate.py</code></td><td><code>.effective_margin(obs)</code></td></tr>
+    <tr><td><code>planner.py</code></td><td><code>control_plane.py</code></td><td><code>.step(obs)</code></td></tr>
+  </tbody>
+</table>
+
+<h2 id="adoption">13 · 采用路线图</h2>
+
+<p>不要一次性全上。建议按<strong>风险从低到高</strong>顺序引入：</p>
+
+<figure>
+<svg viewBox="0 0 920 320" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .p{fill:#eef2ff;stroke:#2a4ab0;stroke-width:1.3;rx:8}
+      .p2{fill:#eaf7ec;stroke:#0b6b58;stroke-width:1.3;rx:8}
+      .p3{fill:#fff9e6;stroke:#b08800;stroke-width:1.3;rx:8}
+      .p4{fill:#f3eef9;stroke:#5a2a9d;stroke-width:1.3;rx:8}
+      .lbl{font:bold 13px -apple-system;fill:#1b1d22}
+      .s{font:11px -apple-system;fill:#767a82}
+      .m{font:10px ui-monospace;fill:#4a4e57}
+    </style>
+    <marker id="rm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <rect class="p" x="20" y="30" width="200" height="100" rx="10"/>
+  <text class="lbl" x="120" y="55" text-anchor="middle">阶段 A · 只读观察</text>
+  <text class="s" x="30" y="76">P-01 故障相关性图（只算不用）</text>
+  <text class="s" x="30" y="94">P-04 Lyapunov burn-rate（只报警）</text>
+  <text class="s" x="30" y="112">P-05 容量可达集（只生成报告）</text>
+  <text class="m" x="30" y="126">零生产影响 · 先建 metrics</text>
+
+  <rect class="p2" x="250" y="30" width="200" height="100" rx="10"/>
+  <text class="lbl" x="350" y="55" text-anchor="middle">阶段 B · 软 admission</text>
+  <text class="s" x="260" y="76">P-06 AdmissionController 只建议</text>
+  <text class="s" x="260" y="94">P-08 derating 只改 margin</text>
+  <text class="m" x="260" y="112">Shadow mode · 跑 2 周</text>
+  <text class="m" x="260" y="126">对比 traditional 限流</text>
+
+  <rect class="p3" x="480" y="30" width="200" height="100" rx="10"/>
+  <text class="lbl" x="580" y="55" text-anchor="middle">阶段 C · 硬生效</text>
+  <text class="s" x="490" y="76">P-06 开始真正 reject</text>
+  <text class="s" x="490" y="94">P-07 guard 接管变更</text>
+  <text class="m" x="490" y="112">灰度 5% → 50% → 100%</text>
+  <text class="m" x="490" y="126">每步观察 fallback 率</text>
+
+  <rect class="p4" x="710" y="30" width="200" height="100" rx="10"/>
+  <text class="lbl" x="810" y="55" text-anchor="middle">阶段 D · 统一 plane</text>
+  <text class="s" x="720" y="76">P-09 SreControlPlane</text>
+  <text class="s" x="720" y="94">P-03 QoS 自适应调度</text>
+  <text class="m" x="720" y="112">统一入口 · 其他 path deprecate</text>
+  <text class="m" x="720" y="126">季度级演进</text>
+
+  <line x1="220" y1="80" x2="248" y2="80" stroke="#333" marker-end="url(#rm)"/>
+  <line x1="450" y1="80" x2="478" y2="80" stroke="#333" marker-end="url(#rm)"/>
+  <line x1="680" y1="80" x2="708" y2="80" stroke="#333" marker-end="url(#rm)"/>
+
+  <rect x="20" y="170" width="890" height="130" rx="10" fill="#fff" stroke="#e5e2dc"/>
+  <text class="lbl" x="40" y="195">每阶段验收标准</text>
+  <text class="s" x="40" y="215">A → B：P-01/04/05 的 trace 已落盘 ≥ 1 周；metric dashboard 至少 10 个图表；</text>
+  <text class="s" x="40" y="233">B → C：P-06 在 shadow 下至少 2 周，false-positive rate（本应通过但被拦）&lt; 0.1%；</text>
+  <text class="s" x="40" y="251">C → D：P-06/07 生效后，平台 SLO 未下降；incident MTTR 下降 ≥ 20%；</text>
+  <text class="s" x="40" y="269">D → 稳定：所有关键业务线都接入 P-09；老路径有退役日期；Codex checklist 100% 覆盖。</text>
+</svg>
+<figcaption>图 13-1 · 四阶段采用路线。越右边风险越大，必须前一阶段的指标真的好看才能推进。</figcaption>
+</figure>
+
+<h2 id="anti-patterns">14 · 反模式与陷阱</h2>
+
+<div class="callout warn">
+<span class="tag">反模式 A-01</span>
+<strong>把所有 SLO 塞进一个 Φ 里</strong>。错。Φ 是"方向建议"，硬约束走 P-06。SRE 里常见错误：把 cost / latency / errors 全部加权合成一个 scalar loss，optimizer 为了总 loss 下降可以牺牲任一项——等价于 auto-decide 第一版 V 塞距离项，规划停摆。
+</div>
+
+<div class="callout warn">
+<span class="tag">反模式 A-02</span>
+<strong>fallback 不是恒可行的</strong>。在 SRE 里把 fallback 设成"revert 到上一版"是错的——上一版也可能有问题。正确做法：fallback 是"完全不改动"（no-op），或"只保留 health-check traffic"，这两个永远是可行的。
+</div>
+
+<div class="callout warn">
+<span class="tag">反模式 A-03</span>
+<strong>把 Lyapunov 用成 alert thresh</strong>。Lyapunov 的意义是<em>连续</em>监测 $\dot V$ 并驱动自动矫正，而不是"$V$ &gt; 阈值发告警"——那就退化成传统 alert 了。P-04 的灵魂是和 P-07 的 guard 联动自动降 rollout。
+</div>
+
+<div class="callout warn">
+<span class="tag">反模式 A-04</span>
+<strong>predictor 的误差被忽略</strong>。P-06 的质量 ≤ predictor 的质量。如果 predictor 是个新的 ML 模型，必须用 P-08 derating 把它的 prediction interval 作为额外 margin 喂进去——模型越不确定，余量越大。
+</div>
+
+<div class="callout warn">
+<span class="tag">反模式 A-05</span>
+<strong>绕过 control plane</strong>。P-09 的设计前提是唯一入口。一旦某个业务线"因为紧急"走了旁路，所有 trace / SLO / 不变式都失效。正确做法：加一个"bypass flag"，被 bypass 的动作也走 plane、只是记一条 <code>bypassed=true</code> 的 trace，事后可审计。
+</div>
+
+<div class="callout warn">
+<span class="tag">反模式 A-06</span>
+<strong>CI 检查器当 runtime guard 用</strong>（反过来也一样）。CI 是发布时的一次性门，P-07 是每次动作的实时门——两者在概念上对齐但不可替代。P-07 必须接入运行时 metrics，CI 静态检查只是锦上添花。
+</div>
+
+<hr>
+
+<h3>一句话收尾</h3>
+
+<p>整套 auto-decide 给 SRE 最重要的启示不是任何单个模式，而是一句话：</p>
+
+<div class="callout sre">
+<span class="tag">核心观点</span>
+<strong>"聪明"的上层与"可靠"的下层必须解耦。</strong>
+聪明归神经网络、启发式、调参器；可靠归数学不变量写进硬约束。
+auto-decide 在自动驾驶里这样做，SRE 同样需要——越往 AI-driven 运维走，这层"可靠"的物理地基越是不可或缺。
+</div>
+
+<hr>
+<p style="color: var(--fg-mute); font-size: 12px; text-align: center; margin-top: 32px;">
+sre-adaptation · v0.1 · 结构智能→SRE 工程能力迁移<br>
+配套：<a href="./knowledge-base.html">总览知识库</a> · <a href="./deep-dive.html">算法深拆</a> · 代码包 <code>auto-decide/</code>
+</p>
+
+</main>
+</body>
+</html>
