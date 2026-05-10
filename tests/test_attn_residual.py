@@ -43,6 +43,36 @@ def test_no_history_no_self_fallback():
     assert torch.allclose(y, x)
 
 
+def test_share_key_false_uses_per_slot_key_bank():
+    cfg = AttnResConfig(d_model=1, num_heads=1, share_key=False)
+    mod = AttentionResidual(cfg)
+    history = [
+        torch.tensor([[[1.0]]]),
+        torch.tensor([[[2.0]]]),
+    ]
+    x = torch.tensor([[[3.0]]])
+
+    # Build the per-slot key bank once, then overwrite weights deterministically.
+    _ = mod(history, x)
+    assert mod.w_k is None
+    assert len(mod.w_k_layers) == 3
+
+    with torch.no_grad():
+        mod.w_q.weight.fill_(1.0)
+        for layer in mod.w_k_layers:
+            layer.weight.zero_()
+        mod.w_k_layers[0].weight.fill_(1.0)
+
+    y_first = mod(history, x)
+
+    with torch.no_grad():
+        mod.w_k_layers[1].weight.fill_(1.0)
+
+    y_second = mod(history, x)
+
+    assert y_second.item() > y_first.item() + 0.5
+
+
 def test_gradient_flows_to_wq():
     cfg = AttnResConfig(d_model=8, num_heads=1)
     mod = AttentionResidual(cfg)

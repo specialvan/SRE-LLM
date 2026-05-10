@@ -181,7 +181,7 @@ flowchart TB
 
 | Priority | Refinement | Why |
 | --- | --- | --- |
-| P0 | 实现或移除 `share_key=False` | 当前是文档承诺，但代码仍是单一 `w_k` 共享路径 |
+| P1 | 为 SRE 原语补真实 metric 接入示例 | 目前 demo 证明机制，真实接入还没落到 exporter / reader |
 | P1 | 为 SRE 原语补真实 metric 接入示例 | 目前 demo 证明机制，真实接入还没落到 exporter / reader |
 | P1 | 统一控制接口命名 | `query / values / context / action` 现在语义清楚，但跨模块还可以更一致 |
 | P2 | 扩展 self-learning envelope 的 label 设计 | 目前是硬标签 + 规则式 labeler，可进一步支持 soft label |
@@ -209,8 +209,7 @@ flowchart TB
 
 如果下一轮继续深挖，我建议顺序是：
 
-1. 先补 `share_key=False` 的真实实现，或者正式删掉它。
-2. 再把 `sre_control` 的原语换成真实 metric source demo。
-3. 然后给 `sre_self_envelope` 做 soft label / per-dim quorum 的下一版。
+1. 再把 `sre_control` 的原语换成真实 metric source demo。
+2. 然后给 `sre_self_envelope` 做 soft label / per-dim quorum 的下一版。
+3. 最后把知识库自动生成目录和章节索引补起来。
 4. 最后把知识库改成半自动生成。
-

@@ -176,7 +176,7 @@
 
 - 论文机制实现
 - 当前状态：完成主干
-- 关注点：`share_key=False` 还未真正实现
+- 关注点：`share_key=False` 已落地，可继续向真实指标源推进
 
 ### Epic B
 
@@ -210,11 +210,9 @@
 
 ## 7. 已知 finding
 
-1. `AttentionResidual` 中 `share_key=False` 仍未实现。
-2. 这个问题在 review 中重复出现了两次，本质上是同一个 finding。
-3. 当前应把它视为唯一明确的开放正确性问题：
-   - 要么实现独立 key
-   - 要么正式删掉这个配置入口
+1. 当前没有新增的功能性 blocker。
+2. 接下来优先级最高的是把 SRE 原语接真实指标源，做一版 live demo。
+3. 之后再继续细化 self-learning envelope 的 label / quorum。
 
 ---
 
@@ -229,9 +227,9 @@
 
 ## 9. 下一步建议
 
-1. 先处理 `share_key=False`
-2. 接真实指标源，做一版 live demo
-3. 继续细化 self-learning envelope 的 label / quorum
+1. 接真实指标源，做一版 live demo
+2. 继续细化 self-learning envelope 的 label / quorum
+3. 让知识库目录和章节索引自动化生成
 4. 让知识库自动生成目录和章节索引
 
 ---
@@ -243,4 +241,3 @@
 - `docs/ARCHITECTURE.md`
 - `docs/knowledge-base.html`
 - `docs/assets/self_learning_envelope.gif`
-

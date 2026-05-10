@@ -42,7 +42,7 @@ class AttnResConfig:
         Set to a custom float to override.
     ``share_key``:
         If True, every history layer uses the same W_K; otherwise each
-        layer keeps its own W_K. Article defaults to a shared key.
+        history slot keeps its own W_K. Article defaults to a shared key.
     """
     d_model: int = 64
     num_heads: int = 1

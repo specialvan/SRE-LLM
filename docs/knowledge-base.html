@@ -2765,7 +2765,7 @@ new_lo = clip(new_lo, hard_lo, hard_hi)</div>
   <h4>Q2：W_Q 和 W_K 共享 vs 每层独立？</h4>
   <p>
     默认 <code>share_key=True</code>，即 <code>W_K</code> 由所有历史层共享——这保留了论文 §05.3 的"新参数最小"原则。
-    需要更强表达时可切到独立 K（当前工程未启用，避免引入调参负担）。
+    需要更强表达时可切到 <code>share_key=False</code>，此时每个历史槽位都会懒加载自己的 <code>W_K^{(k)}</code>。
   </p>
 
   <h4>Q3：Block Attention Residuals 内部为什么默认关闭经典残差？</h4>

@@ -37,6 +37,7 @@
 | `a_{l,k} = softmax_k( (q_l · K_k) / √d )` | §5.1 | `attention_residuals/attn_residual.py` — `AttentionResidual._compute_weights` |
 | `AttnRes_l = Σ_k a_{l,k} · x_k`          | §5.1 | `AttentionResidual.forward`                         |
 | `Σ_k a_{l,k} = 1`                         | §5.1 | `AttentionResidual.forward` 中的 `F.softmax`         |
+| `K_k = W_K^{(k)} x_k`                     | §5.1 | `AttentionResidual.forward` 的 `share_key=False` 分支 |
 | `x_{l+1} = AttnRes_l + F_l(x_l)`          | §5.1 | `AttentionResidualConnector.forward`                |
 
 ---
