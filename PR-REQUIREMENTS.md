@@ -1,154 +1,287 @@
-# PR 级功能需求清单（gan-matchmaking）
+# PR 级功能需求清单（phase 对齐版）
 
-把文章里的九大机制逐项翻译成可独立交付的 PR。每个 PR 都给出：背景、验收标准（DoD）、涉及文件、对应论文定位。
+这份清单把 `gan_matchmaking` 的交付拆成可独立审查、可独立合并的 PR。
+它不再按原始文章顺序组织，而是按当前仓库的 **架构分层 / 状态机 / 交付阶段** 对齐。
 
-> 命名规约：`PR-<section>-<seq>: <短标题>`
-> 颗粒度：`1 个 PR 1~2 天、不超过 400 行代码`。
+## 使用方式
 
----
+- `已完成`：仓库里已经有实现，主要用于 review、回归和后续重构参考。
+- `待补强`：当前有实现但还缺 runtime 闭环、artifact 版本化、跨进程协调等关键环节。
+- `待交付`：建议作为下一轮 Codex 的直接任务。
 
-## Epic 1 · 评级与隐藏分
+## 总体约束
 
-### PR-1-01 · TrueSkill 贝叶斯技能评级
-- **背景**：文章第 1 张图——`s ~ N(μ, σ²)`，根据比赛结果做高斯更新。
-- **范围**：
-  - `Rating(mu, sigma)` 数据类，`Player(id, rating)`。
-  - `TrueSkillRater.update(winners, losers)`：实现 TrueSkill 单场次高斯更新（两队简化版）。
-  - 提供 `expected_score(team_a, team_b)`。
-- **DoD**：
-  - 新建玩家 `sigma` 收敛单调下降（合成 100 局后 <5）。
-  - 随机两玩家长期对局，`mu` 差距反映真实实力差。
-- **文件**：`gan_matchmaking/trueskill.py`、`tests/test_trueskill.py`。
-
-### PR-1-02 · PCA 隐藏分特征提取
-- **背景**：文章第 4 张图——`XᵀXv = λv`，从多维行为提取主成分。
-- **范围**：
-  - `HiddenScoreExtractor.fit(X)`：中心化、SVD、取 `k` 个主成分。
-  - `transform(X)` 得到隐藏分；`explained_variance_ratio` 方便 debug。
-  - 与 TrueSkill 分线性融合 `score = α·μ + β·z`。
-- **DoD**：合成数据里，隐藏分能复原人工注入的潜在因子（相关系数 >0.95）。
-- **文件**：`gan_matchmaking/pca_hidden.py`、`tests/test_pca_hidden.py`。
-
-### PR-1-03 · GNN 队友协同图谱（纯 numpy）
-- **背景**：文章第 5 张图——节点嵌入 `h^(l+1) = ReLU(Wh + ΣWij·hj)`。
-- **范围**：
-  - `SynergyGraph.add_match(team_ids, win)`：累积共现和胜率。
-  - `SynergyGNN.forward(features, adj)`：2 层消息传递，纯 numpy。
-  - `synergy_score(i, j)` 输出两人组队协同预估。
-- **DoD**：
-  - 合成"高协同对子"下，协同分 >0；"低协同对子"<0。
-  - 一次 100 节点前向 <20 ms。
-- **文件**：`gan_matchmaking/gnn_synergy.py`、`tests/test_gnn_synergy.py`。
+1. 单 PR 只解决一个清晰问题。
+2. 任何 PR 都必须保留 trace、日志和测试。
+3. 任何 learned component 都必须有明确 fallback。
+4. 任何 decision policy 都必须可回放。
+5. 任何新增 runtime 行为都必须能被 runbook 解释。
 
 ---
 
-## Epic 2 · 奖惩与匹配公平性
+## Phase 0 - Control Plane Hardening
 
-### PR-2-01 · Dynamic K-Factor 连胜衰减
-- **背景**：文章第 3 张图——`K = K_max / (1 + e^{-λ(streak-θ)})`。
-- **范围**：
-  - `DynamicK(k_max, lam, theta).k(streak)` 返回当前 K。
-  - 当前连胜越多 K 越小（连胜保护失效方向）。
-  - 提供 `delta_rating(expected, actual, streak)`。
-- **DoD**：单调性测试：`streak` 越大，赢一局得分越少；输一局扣分更多。
-- **文件**：`gan_matchmaking/dynamic_k.py`、`tests/test_dynamic_k.py`。
+### PR-0-01 - Typed config and error taxonomy
 
-### PR-2-02 · Handicap 连胜惩罚 Elo
-- **背景**：文章第 6 张图——`E_A = 1 / (1 + 10^((R_B - R_A + Penalty)/400))`。
-- **范围**：
-  - `HandicapElo.penalty(streak, loss_streak)` 随连胜增大、随连败减小。
-  - `expected_win(r_a, r_b, penalty)`。
-  - `update(r_a, r_b, score_a, k, penalty)`。
-- **DoD**：
-  - 连胜 10 场后，期望胜率被拽回 ~50%。
-  - 无连胜时退化为标准 Elo。
-- **文件**：`gan_matchmaking/handicap.py`、`tests/test_handicap.py`。
+- **目标**：把运行时配置和错误体系固定成稳定契约。
+- **范围**
+  - `core/config.py`
+  - `core/errors.py`
+  - `tests/test_core_config.py`
+- **交付标准**
+  - 配置能从 dict / JSON / path 加载。
+  - 非法配置返回 `ConfigError`，并带 `details`。
+  - 所有核心失败路径都能映射到 typed exception。
+- **状态**：已完成
 
-### PR-2-03 · Information Entropy 对局熵最大化匹配
-- **背景**：文章第 7 张图——`max_M H(Outcome) = -Σ p log2 p`。
-- **范围**：
-  - `EntropyMatcher.win_prob(team_a, team_b)` 用 Elo/TrueSkill 给出胜率。
-  - `EntropyMatcher.score_config(team_a, team_b)` 返回 `H(p, 1-p)`。
-  - `find_best_match(candidates)` 在候选队伍里挑熵最大（最不确定）的一组。
-- **DoD**：分差 0 的对局熵=1；分差极大时熵接近 0；`find_best_match` 优先选五五开。
-- **文件**：`gan_matchmaking/entropy_match.py`、`tests/test_entropy_match.py`。
+### PR-0-02 - Structured logging and tracing
 
----
+- **目标**：把每次决策变成可审计的 JSONL + correlation-id 链路。
+- **范围**
+  - `core/logging.py`
+  - `core/tracing.py`
+  - `tests/test_core_logging_tracing.py`
+- **交付标准**
+  - 每条日志都能带 `event`、`correlation_id`、`payload`。
+  - `span` 能稳定记录 stage 起止时间。
+  - 同一 logical decision 的日志可串起来。
+- **状态**：已完成
 
-## Epic 3 · 留存与博弈
+### PR-0-03 - Metrics, RNG, and protocols
 
-### PR-3-01 · EOMM 参与度优化匹配
-- **背景**：文章第 2 张图——`max_M E[P(Retain | M, H_t)]`。
-- **范围**：
-  - `RetentionModel.prob(history, match_config)` —— 一个线性/logistic 模型，占位实现。
-  - `EOMMMatcher.best(history, candidates)` 返回 argmax 留存概率的配置。
-  - 支持 `epsilon`-贪婪探索参数。
-- **DoD**：
-  - 当历史里"上一局逆风"时，模型倾向选"下一局较好带"的配置。
-  - 单次决策 <1 ms。
-- **文件**：`gan_matchmaking/eomm.py`、`tests/test_eomm.py`。
-
-### PR-3-02 · Survival Analysis 玩家流失生存分析
-- **背景**：文章第 8 张图——Cox 比例风险 `h(t|X) = h_0(t) exp(βᵀX)`。
-- **范围**：
-  - `CoxModel.fit(X, durations, events)`：用偏似然最大化（牛顿迭代或 scipy.optimize）。
-  - `hazard(X, t)` / `survival(X, t)` 输出流失风险与生存曲线。
-  - 辅助 `ChurnRiskMonitor.predict(player_history)`：包装上述。
-- **DoD**：
-  - 合成数据上，β 估计误差 <10%。
-  - 连败越多 hazard 越大（单调）。
-- **文件**：`gan_matchmaking/survival.py`、`tests/test_survival.py`。
-
-### PR-3-03 · Minimax BP 零和博弈纳什均衡
-- **背景**：文章第 9 张图——`min_y max_x U(x, y) = max_x min_y U(x, y)`。
-- **范围**：
-  - `zero_sum_nash(U)`：用 LP 或迭代法（fictitious play）解两人零和纳什。
-  - `BPSession`：BP 序列 state machine，每一步调用 Nash 求解器。
-  - 返回混合策略 + 价值。
-- **DoD**：
-  - 对典型"石头剪刀布"矩阵能收敛到均匀分布。
-  - `value(x*, y*)` 满足 minimax 定理（误差 <1e-6）。
-- **文件**：`gan_matchmaking/minimax_bp.py`、`tests/test_minimax_bp.py`。
+- **目标**：补齐指标、确定性随机源和协议边界。
+- **范围**
+  - `core/metrics.py`
+  - `core/random.py`
+  - `core/protocols.py`
+  - `tests/test_core_metrics.py`
+- **交付标准**
+  - 指标可导出 Prometheus text。
+  - 同 seed + 同输入可复现。
+  - 协议边界允许替换实现而不改上层。
+- **状态**：已完成
 
 ---
 
-## Epic 4 · 端到端装配
+## Phase 1 - Domain Pipeline
 
-### PR-4-01 · 肝度管线 Pipeline
-- **背景**：九个模块合起来形成一条闭环管线。
-- **范围**：`GanPipeline.next_match(player, pool)`：
-  1. `TrueSkillRater` → 估计 μ, σ
-  2. `HiddenScoreExtractor` → 融合隐藏分
-  3. `SynergyGNN` → 给候选队伍打协同分
-  4. `DynamicK` + `HandicapElo` → 算调整后的期望胜率
-  5. `EntropyMatcher` → 过滤掉确定性过高的对局
-  6. `EOMMMatcher` → 从剩余候选里挑留存概率最高的
-  7. `ChurnRiskMonitor` → 若流失风险太高则手动"喂软对手"
-  8. `BPSession` → 返回推荐 BP 策略
-- **DoD**：`examples/demo_pipeline.py` 跑一次能打印完整 `trace`。
-- **文件**：`gan_matchmaking/pipeline.py`、`examples/demo_pipeline.py`、`tests/test_pipeline.py`。
+### PR-1-01 - Domain DTOs and decision enum
 
-### PR-4-02 · 可观测性与日志
-- **范围**：所有机制返回 `dict` trace；提供 `to_jsonl(trace)` helper。
-- **DoD**：一次 demo 产出 `trace.jsonl`。
+- **目标**：固定 SRE 决策对象和状态枚举。
+- **范围**
+  - `sre/domain.py`
+  - `tests/test_sre_self_iteration.py`
+- **交付标准**
+  - `DecisionKind` 只能是 `GO / CANARY / HOLD / ROLLBACK / ESCALATE`。
+  - `Decision` 必须包含 `trace`、`rationale`、`risk_level`、`confidence`。
+  - `ReleaseContext.validate()` 能拦住非法输入。
+- **状态**：已完成
 
-### PR-4-03 · 单元测试 & CI
-- **范围**：每个模块至少一组 pytest；可选 GitHub Actions 配置。
-- **DoD**：`pytest -q` 全绿，覆盖率 ≥ 70%。
+### PR-1-02 - Self-iteration pipeline orchestration
+
+- **目标**：把 9 个机制串成一个清晰的决策链。
+- **范围**
+  - `sre/self_iteration.py`
+  - `examples/sre_demo.py`
+  - `tests/test_sre_self_iteration.py`
+- **交付标准**
+  - `decide(ctx)` 生成完整 trace。
+  - 各 stage 有独立 payload。
+  - guard clauses、policy resolve、emit 流程清楚分离。
+- **状态**：已完成
+
+### PR-1-03 - Lock, breaker, and shadow boundary
+
+- **目标**：把并发、故障和灰度控制放到 pipeline 外围。
+- **范围**
+  - `sre/locking.py`
+  - `sre/circuit.py`
+  - `sre/shadow.py`
+  - `sre/self_iteration.py`
+- **交付标准**
+  - 同一 service 的并发 decide 不互相踩状态。
+  - breaker 可切 half-open / open / closed。
+  - shadow / advisory / off 都在 trace 中可见。
+- **状态**：已完成
 
 ---
 
-## 附录 · PR 与文章图片的双向追溯
+## Phase 2 - Persistence and Replay
 
-| PR 编号 | 文章定位 | 公式 |
-| --- | --- | --- |
-| PR-1-01 | 图 1 TrueSkill | `s ~ N(μ, σ²)` |
-| PR-1-02 | 图 4 PCA 隐藏分 | `XᵀX v = λ v` |
-| PR-1-03 | 图 5 GNN 协同 | `h^(l+1) = ReLU(Wh + ΣWij·hj)` |
-| PR-2-01 | 图 3 Dynamic K | `K = K_max/(1+e^{-λ(streak-θ)})` |
-| PR-2-02 | 图 6 Handicap Elo | `E_A = 1/(1+10^{(ΔR+Penalty)/400})` |
-| PR-2-03 | 图 7 Entropy | `H = -Σ p log2 p` |
-| PR-3-01 | 图 2 EOMM | `max E[P(Retain|M,H)]` |
-| PR-3-02 | 图 8 Survival | `h(t|X) = h_0(t)exp(β^T X)` |
-| PR-3-03 | 图 9 Minimax BP | `min_y max_x U = max_x min_y U` |
-| PR-4-01/02/03 | 装配 / CI | — |
+### PR-2-01 - Repository abstractions and in-memory parity
+
+- **目标**：把状态抽象成可替换的持久层接口。
+- **范围**
+  - `persistence/base.py`
+  - `persistence/memory.py`
+  - `tests/test_persistence.py`
+- **交付标准**
+  - service / synergy / observation 三类仓库接口清楚。
+  - memory 和 sqlite 的行为一致。
+- **状态**：已完成
+
+### PR-2-02 - SQLite durable store and decision persistence
+
+- **目标**：把运行态写入真正可审计的本地持久层。
+- **范围**
+  - `persistence/sqlite.py`
+  - `sre/self_iteration.py`
+  - `tests/test_persistence.py`
+- **交付标准**
+  - 服务状态、协同图、观测、决策都可落库。
+  - schema migration 可重复运行。
+  - 失败时事务回滚。
+- **状态**：已完成
+
+### PR-2-03 - Replay corpus and reproduce runbook
+
+- **目标**：让每次决策都能 byte-for-byte 回放。
+- **范围**
+  - `docs/runbooks/reproduce-decision.md`
+  - `tests/test_sre_self_iteration.py`
+  - `docs/codex-handoff.md`
+- **交付标准**
+  - 有清晰的 replay 输入 contract。
+  - 有 golden trace / golden decision 样例。
+  - 运行文档能指导复现和对比。
+- **状态**：已完成
+
+---
+
+## Phase 3 - Training and Artifact Hydration
+
+### PR-3-01 - Retention artifact versioning and loader
+
+- **目标**：把 EOMM 的训练结果变成 runtime artifact。
+- **范围**
+  - `training/retention.py`
+  - `eomm.py`
+  - `sre/self_iteration.py`
+  - `docs/adr/0006-runtime-artifact-versioning.md`
+- **交付标准**
+  - 训练产物带版本、时间、数据窗口、config hash。
+  - runtime 能明确区分 fitted / fallback / uninitialized。
+  - trace 能记录 artifact identity。
+- **状态**：待交付
+
+### PR-3-02 - Cox artifact versioning and loader
+
+- **目标**：把生存分析模型从训练脚本接入 runtime。
+- **范围**
+  - `training/cox.py`
+  - `survival.py`
+  - `sre/self_iteration.py`
+- **交付标准**
+  - Cox artifact 可持久化、可水合、可回滚。
+  - runtime fallback 必须有明确的 pessimistic 行为。
+  - trace 中能看到 fitted / fallback 状态。
+- **状态**：待交付
+
+### PR-3-03 - Artifact metadata in trace and persistence
+
+- **目标**：让模型版本成为决策的一部分，而不是外部注释。
+- **范围**
+  - `persistence/sqlite.py`
+  - `sre/domain.py`
+  - `sre/self_iteration.py`
+- **交付标准**
+  - 每条决策持久化 artifact version。
+  - replay 时可区分 code drift 与 model drift。
+  - 训练报告和运行日志可互相对照。
+- **状态**：待交付
+
+---
+
+## Phase 4 - Runtime Surfaces
+
+### PR-4-01 - HTTP service
+
+- **目标**：把 pipeline 暴露成标准库 HTTP 服务。
+- **范围**
+  - `service/app.py`
+  - `tests/test_http_service.py`
+- **交付标准**
+  - `POST /v1/decide`
+  - `POST /v1/observe`
+  - `GET /v1/services/{id}`
+  - `GET /healthz`
+  - `GET /readyz`
+  - `GET /metrics`
+- **状态**：已完成
+
+### PR-4-02 - CLI and latency benchmark
+
+- **目标**：给人工和自动化调用提供最小表面。
+- **范围**
+  - `cli.py`
+  - `bench/latency.py`
+  - `tests/test_cli.py`
+- **交付标准**
+  - CLI 可直接返回 decision JSON。
+  - benchmark 有 p50 / p95 / p99。
+  - 结果可用于上线前门禁。
+- **状态**：已完成
+
+### PR-4-03 - Deploy manifests and CI
+
+- **目标**：让它能被部署和持续验证。
+- **范围**
+  - `Dockerfile`
+  - `deploy/kubernetes/`
+  - `.github/workflows/ci.yml`
+- **交付标准**
+  - 容器化可运行。
+  - K8s 有 service / deployment / cronjob / probes。
+  - CI 覆盖核心路径和 benchmark gate。
+- **状态**：已完成
+
+---
+
+## Phase 5 - Knowledge and Reviewability
+
+### PR-5-01 - Architecture and module contracts
+
+- **目标**：把系统从“能跑”变成“能读懂”。
+- **范围**
+  - `docs/architecture.md`
+  - `docs/module-contracts.md`
+  - `docs/state-lifecycle.md`
+- **交付标准**
+  - 架构、模块、状态三层文档对齐。
+  - 每个模块的 ownership、fallback、readiness 明确。
+- **状态**：已完成
+
+### PR-5-02 - ADR and runbooks
+
+- **目标**：把设计决策和运维路径写清楚。
+- **范围**
+  - `docs/adr/`
+  - `docs/runbooks/`
+- **交付标准**
+  - 每个关键架构选择都有 ADR。
+  - 每个常见故障都有 runbook。
+- **状态**：已完成
+
+### PR-5-03 - Codex handoff and roadmap
+
+- **目标**：把交接链路标准化。
+- **范围**
+  - `docs/codex-handoff.md`
+  - `docs/implementation-roadmap.md`
+  - `README.md`
+- **交付标准**
+  - 下一位接手的人 5 分钟内能找到主线。
+  - 交接文档和 roadmap 可以直接驱动下一轮 Codex。
+- **状态**：已完成
+
+---
+
+## 下一轮最值得做的 PR
+
+1. **PR-3-01**：先把 retention artifact hydration 接起来。
+2. **PR-3-02**：再把 Cox artifact hydration 接起来。
+3. **PR-3-03**：把 artifact 版本写入 trace 和持久化。
+4. **PR-2-03**：补 golden replay corpus，覆盖 fitted / fallback / escalation。
+5. **PR-跨进程**：如果要多副本上线，再补外部 lease 或 DB 级协调。
+
+这五项会把“可跑”推进到“可复现、可回滚、可审计”的生产形态。
