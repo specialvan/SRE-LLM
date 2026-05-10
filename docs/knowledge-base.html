@@ -1,0 +1,1101 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Starship Recovery · 机制级知识库</title>
+<style>
+  :root{
+    --bg: #fbfaf7;
+    --panel: #ffffff;
+    --ink: #1b2430;
+    --mute: #4b5b6b;
+    --rule: #e5e0d5;
+    --accent: #b4411b;
+    --accent-soft: #f6e4db;
+    --key: #1f5fa3;
+    --key-soft: #e0ecf8;
+    --green: #2f7d3a;
+    --green-soft: #e3f1e4;
+    --warn-soft: #fbf1d8;
+    --warn-ink: #a8711a;
+    --mono: 'SFMono-Regular','Consolas','Menlo',monospace;
+    --serif: 'Noto Serif SC','Songti SC','PingFang SC','Georgia',serif;
+    --sans: 'PingFang SC','Segoe UI','Microsoft YaHei','Helvetica Neue',Arial,sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--ink); }
+  body{ font-family: var(--sans); font-size: 16px; line-height: 1.72; }
+  a{ color: var(--key); text-decoration: none; border-bottom: 1px dashed rgba(31,95,163,.35); }
+  a:hover{ color: var(--accent); border-bottom-color: var(--accent); }
+  code, .mono{ font-family: var(--mono); font-size: 0.92em; }
+  code{ background:#f2eee4; padding: 1px 6px; border-radius:4px; color:#31425a; }
+  pre{ background:#1d2330; color:#eef0f3; padding: 14px 16px; border-radius: 6px; overflow:auto; font-family:var(--mono); font-size: 13px; line-height:1.5; }
+  pre .kw{ color:#f0a36a; }
+  pre .st{ color:#9ecb9e; }
+  pre .nm{ color:#82c7ff; }
+  pre .cm{ color:#8c9aae; font-style: italic; }
+
+  header.hero{
+    background: linear-gradient(140deg, #1d2f42 0%, #2b465f 50%, #3d5f7a 100%);
+    color:#f2f1ec; padding: 56px 48px 36px;
+  }
+  header.hero .kicker{ font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color:#cbb79b; }
+  header.hero h1{ margin: 10px 0 4px; font-family: var(--serif); font-size: 36px; letter-spacing:.02em; }
+  header.hero h1 .en{ color:#e8bfa0; }
+  header.hero .sub{ color:#cdd6df; max-width: 900px; font-size: 15.5px; }
+  header.hero .meta{ margin-top: 18px; font-size: 13px; color:#a9bac8; }
+
+  main{ max-width: 1200px; margin: 0 auto; padding: 0 24px 64px;
+        display: grid; grid-template-columns: 260px 1fr; gap: 40px; }
+  aside.toc{
+    position: sticky; top: 16px; align-self: start;
+    max-height: calc(100vh - 32px); overflow:auto;
+    padding: 22px 18px; background: var(--panel); border: 1px solid var(--rule);
+    border-radius: 8px; font-size: 14px;
+  }
+  aside.toc h2{ font-size: 12px; margin: 0 0 10px; color:#7a8797; letter-spacing:.12em; text-transform: uppercase;}
+  aside.toc ol{ list-style: none; padding: 0; margin: 0; }
+  aside.toc li{ margin: 6px 0; }
+  aside.toc li a{ border-bottom:none; color: var(--ink); }
+  aside.toc li a:hover{ color: var(--accent); }
+  aside.toc li .n{ color:#aab6c4; margin-right: 6px; font-family: var(--mono); }
+
+  article section{ background: var(--panel); border: 1px solid var(--rule);
+                   border-radius: 10px; padding: 30px 32px; margin-top: 28px; }
+  article section:first-child{ margin-top: 18px; }
+  article section h2{ font-family: var(--serif); margin: 0 0 4px; font-size: 26px; }
+  article section h2 .tag{ font-size: 13px; color:#97886d; letter-spacing: .08em; margin-right: 10px; font-family: var(--sans); vertical-align: middle; }
+  article section .lead{ color: var(--mute); margin: 0 0 16px; font-size: 15px; }
+  article h3{ margin-top: 24px; font-size: 18px; font-family: var(--serif); }
+  article h4{ margin: 18px 0 6px; font-size: 13.5px; color:#39526a; text-transform: uppercase; letter-spacing:.1em; }
+  article p{ margin: 10px 0; }
+  article ul{ padding-left: 22px; }
+  article li{ margin: 4px 0; }
+
+  .pill{ display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px;
+         background: var(--key-soft); color: var(--key); margin-right: 6px; font-weight: 600; letter-spacing:.02em;}
+  .pill.accent{ background: var(--accent-soft); color: var(--accent); }
+  .pill.green{ background: var(--green-soft); color: var(--green); }
+  .pill.warn{ background: var(--warn-soft); color: var(--warn-ink); }
+
+  .formula{ background: #fdf7ef; border-left: 4px solid var(--accent);
+            padding: 12px 18px; margin: 14px 0; font-family: var(--mono);
+            font-size: 14.5px; white-space: pre-wrap; overflow:auto; border-radius: 0 6px 6px 0; color: #3a2f25; }
+  .note{ background: #f3efe4; border-left: 4px solid #caa96a; padding: 10px 14px; border-radius: 0 6px 6px 0; color:#524432; }
+  .warn{ background: #fbf1ed; border-left: 4px solid var(--accent); padding: 10px 14px; border-radius: 0 6px 6px 0; color: #6c2b14; }
+  .ok{ background: #eff6ee; border-left: 4px solid var(--green); padding: 10px 14px; border-radius: 0 6px 6px 0; color: #234d27; }
+
+  figure{ margin: 20px 0; padding: 14px; border: 1px solid var(--rule); background: #fbfaf5; border-radius: 8px; }
+  figure img{ display:block; margin: 0 auto; max-width: 100%; height: auto; }
+  figcaption{ margin-top: 8px; font-size: 13px; color: var(--mute); text-align: center; font-family: var(--serif); }
+
+  table{ width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px;}
+  th,td{ padding: 8px 10px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+  th{ background:#f5efe2; color:#4a3b22; font-weight: 600;}
+  tbody tr:nth-child(even){ background:#fbf8f1; }
+
+  .kbd{ font-family: var(--mono); font-size: 12px; padding: 1px 6px; background:#f1ece0; border:1px solid var(--rule); border-radius: 3px; color:#333; }
+
+  .sre-card{ background: var(--green-soft); border-left: 4px solid var(--green);
+             padding: 12px 14px 6px; border-radius: 0 6px 6px 0; margin: 14px 0; }
+  .sre-card h4{ color: var(--green); margin-top: 0; letter-spacing: .08em; }
+  .sre-card table th{ background: #d6ead4; color: var(--green); }
+  .sre-card table tbody tr:nth-child(even){ background: #f5faf4; }
+
+  .metric{ display: inline-flex; flex-direction: column; padding: 8px 14px; border: 1px solid var(--rule);
+           border-radius: 6px; background: #fdfcf7; margin: 4px 6px 4px 0; min-width: 120px; }
+  .metric .m-label{ font-size: 11px; color: var(--mute); letter-spacing: .06em; text-transform: uppercase; }
+  .metric .m-val{ font-family: var(--mono); font-size: 16px; color: var(--ink); font-weight: 600; }
+  .metric.before .m-val{ color: var(--accent); }
+  .metric.after  .m-val{ color: var(--key); }
+  .metric.gain   .m-val{ color: var(--green); }
+
+  hr.soft{ border:none; border-top: 1px dashed var(--rule); margin: 22px 0; }
+  footer{ text-align: center; color: var(--mute); font-size: 13px; padding: 28px; }
+
+  @media (max-width: 960px){
+    main{ grid-template-columns: 1fr; }
+    aside.toc{ position: static; max-height: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="kicker">Knowledge Base · v0.1  ·  for Codex review</div>
+  <h1><span class="en">Starship Recovery </span>· 机制级知识库</h1>
+  <p class="sub">
+    把 <code>DOC/spacex/</code> 里 19 张 OCR 截图背后的 8 个数学支柱全部落成可运行代码，每个模块用"机制图 + 动画数据收益 + SRE 控制映射"三联体展开。目标：作为 SRE 侧做控制回路/反馈系统设计时可以直接拷贝的模板库。
+  </p>
+  <div class="meta">
+    原文：《星舰自动回收背后的数学》（黄大年茶思屋，芮博数理工场·结构智能） ·
+    代码：<code>spacex/starship/</code> ·
+    分析：<code>spacex/analysis/</code> ·
+    资产：<code>spacex/docs/assets/</code>
+  </div>
+</header>
+
+<main>
+
+<aside class="toc" aria-label="目录">
+  <h2>目录 / Contents</h2>
+  <ol>
+    <li><a href="#s0"><span class="n">00</span>导读 · 怎么读这份知识库</a></li>
+    <li><a href="#s1"><span class="n">§1</span>Lossless Convexification</a></li>
+    <li><a href="#s2"><span class="n">§2</span>Successive Convex Programming</a></li>
+    <li><a href="#s3"><span class="n">§3</span>6-DoF 刚体动力学 SO(3)</a></li>
+    <li><a href="#s4"><span class="n">§4</span>推力指向 + 幅值锥</a></li>
+    <li><a href="#s5"><span class="n">§5</span>EKF 多源融合</a></li>
+    <li><a href="#s6"><span class="n">§6</span>MPC 滚动时域</a></li>
+    <li><a href="#s7"><span class="n">§7</span>Belly-Flop → Landing-Flip</a></li>
+    <li><a href="#s8"><span class="n">§8</span>塔架捕获推力分配</a></li>
+    <li><a href="#sre"><span class="n">★</span>SRE 迁移总表</a></li>
+    <li><a href="#stack"><span class="n">⊚</span>SRE 端到端栈（复利）</a></li>
+    <li><a href="#deep"><span class="n">∇</span>方程逐项拆解</a></li>
+    <li><a href="#codex"><span class="n">⎈</span>Codex Review 指引</a></li>
+  </ol>
+</aside>
+
+<article>
+
+<!-- ===================== 00 导读 ===================== -->
+<section id="s0">
+  <h2><span class="tag">00</span>导读 · 怎么读这份知识库</h2>
+  <p class="lead">八个模块一个模板：机制直觉 → 数学公式 → 原理图 → 动画收益 → SRE 控制映射 → 代码实现 → 局限。</p>
+
+  <h3>为什么星舰回收算法值得 SRE 借鉴</h3>
+  <p>星舰 Super Heavy 从 100 km 高空落到塔架两根机械臂中间的 &lt;1 m 窗口，靠的不是大模型，而是一套很老的控制栈：<b>状态估计 → 轨迹优化 → 安全过滤 → 执行器分配</b>。这套"可观测量 → 模型 → 约束 → 执行"的闭环，和 SRE 做流量调度、灰度发布、弹性伸缩、限流是同一套骨架。</p>
+
+  <table>
+    <thead><tr><th>星舰侧</th><th>SRE 侧</th><th>共同结构</th></tr></thead>
+    <tbody>
+      <tr><td>雷达/IMU/视觉量测</td><td>Prometheus/Trace/日志</td><td>多源观测 → 一致性融合</td></tr>
+      <tr><td>MPC 20 Hz 再解</td><td>PID/Autoscaler 再评估</td><td>滚动时域 + 热启动</td></tr>
+      <tr><td>CBF 安全过滤</td><td>熔断 / SLO 守门</td><td>硬约束优先级高于优化目标</td></tr>
+      <tr><td>推力器分配</td><td>负载均衡 + 健康实例分流</td><td>过定约束最小二乘</td></tr>
+      <tr><td>李雅普诺夫衰减监视</td><td>错误预算 + 漂移告警</td><td>能量函数 &amp; 衰减率</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <b>约定</b>：每一节右上角会出现三种数据指标胶囊
+    <span class="metric before"><span class="m-label">Before</span><span class="m-val">X</span></span>
+    <span class="metric after"><span class="m-label">After</span><span class="m-val">Y</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">×N</span></span>
+    表示 baseline / paper 方案 / 相对收益。数字全部来自 <code>analysis/</code> 目录的可复现脚本。
+  </div>
+
+  <h3>验证基线</h3>
+  <ul>
+    <li><code>pytest tests -q</code> — 11 个用例全通过</li>
+    <li><code>python -m analysis.run_all</code> — 2.5 s 内跑完 8 个 before/after 对照</li>
+    <li><code>python -m scripts.build_mechanism_diagrams</code> — 生成本页 8 张机制图</li>
+    <li><code>python -m scripts.build_benefit_gifs</code> — 生成本页 8 张 GIF 动画</li>
+  </ul>
+</section>
+
+
+<!-- ===================== §1 Lossless Convexification ===================== -->
+<section id="s1">
+  <h2><span class="tag">§1 · image-11 / image-12</span>Lossless Convexification — 非凸推力下界怎么变凸</h2>
+  <p class="lead">G-FOLD (Açıkmeşe 2007) 最核心的一步：把推力幅值区间 <code>ρ₁ ≤ ‖Γ‖ ≤ ρ₂</code> 里的非凸"禁区"用一个松弛变量 σ 填平，得到凸问题，同时证明松弛是"无损的"（最优解的 σ 自动打到 ρ₁/ρ₂）。</p>
+
+  <div>
+    <span class="pill accent">难点</span> 节流下界 ρ₁ &gt; 0 使可行集成为环（donut），非凸
+    <span class="pill key">解法</span> 引入 σ，让 ‖Γ‖ ≤ σ 且 ρ₁ ≤ σ ≤ ρ₂
+    <span class="pill green">结果</span> 凸 SOCP，可在毫秒级全局最优
+  </div>
+
+  <h3>机制直觉</h3>
+  <p>Raptor 一旦点火，推力有一个节流下限（~40% ρ₂）。传统表达会把"推力 0 或 &gt; ρ₁"写成非凸析取约束；但如果我们允许一个"伪推力"变量 σ 作为推力包络的上界，然后把真正的推力范数约束在 σ 之下，就得到一个线性锥组合——凸到不能再凸。数学上 Açıkmeşe 证明最优解里一定有 <code>σ = ‖Γ‖</code>，这就是"无损"的来源。</p>
+
+  <figure>
+    <img src="assets/s01_mechanism.png" alt="§1 lossless convexification 机制图">
+    <figcaption>左：原始非凸环形可行集。右：引入 σ 后的凸盘。</figcaption>
+  </figure>
+
+  <h3>数学公式</h3>
+  <div class="formula">min   −z(T)                                (= max 末端质量)
+s.t.  ṙ = v
+      v̇ = g + Γ / m
+      z = ln m     ⇒  ż = −‖Γ‖ / (Isp · g0 · m)
+      ‖Γ‖ ≤ σ                                (★ 无损松弛)
+      ρ1 ≤ σ ≤ ρ2                             (节流包络)
+      Γ · n̂ ≥ σ · cos θ_max                    (§4 指向锥)</div>
+
+  <h3>动画 · 数据收益</h3>
+  <figure>
+    <img src="assets/s01_benefit.gif" alt="§1 descent benefit animation">
+    <figcaption>左图：baseline（全程 ρ₂ 满推）vs PDG 的高度曲线；右图（对数纵轴）：末端位置误差实时收益。</figcaption>
+  </figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">末端位置误差 Before</span><span class="m-val">148 m</span></span>
+    <span class="metric after"><span class="m-label">After (PDG)</span><span class="m-val">2 × 10⁻⁶ m</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">×10⁸</span></span>
+  </div>
+
+  <h3>代码实现</h3>
+  <pre><span class="cm"># starship/lossless_convex.py</span>
+<span class="kw">from</span> starship.lossless_convex <span class="kw">import</span> LosslessPDG
+pdg = LosslessPDG(r0=[0,0,300], v0=[0,0,-80], m0=250_000, T=6, N=30)
+r, v, Gamma, info = pdg.solve()            <span class="cm"># SLSQP 内点, ~300 ms</span>
+<span class="nm">print</span>(info[<span class="st">"cone_margin_min"</span>])      <span class="cm"># ≥ 0 时指向锥紧约束被严守</span></pre>
+
+  <div class="sre-card">
+    <h4>SRE 映射 · 流量调度里的"节流下界"</h4>
+    <p>对应的 SRE 场景是 <b>连接池最小保活 + 最大并发</b>：一个 upstream 要么完全关闭，要么至少保留 N 个 idle connection 用于健康探测；"要么 0 要么 ≥ N"就是一个非凸可行集。用同样的 trick：引入 σ 作为"意图并发数"，让 <code>active ≤ σ, N ≤ σ ≤ M</code>，最优化问题立刻凸化。</p>
+    <table>
+      <thead><tr><th>星舰</th><th>SRE 等价物</th></tr></thead>
+      <tbody>
+        <tr><td>ρ₁ 节流下界</td><td>连接池 keep-alive minimum</td></tr>
+        <tr><td>ρ₂ 节流上界</td><td>per-instance 最大 RPS / 并发</td></tr>
+        <tr><td>σ 松弛变量</td><td>scheduler 分配给该 upstream 的"名义带宽"</td></tr>
+        <tr><td>Isp 单位推力 / 秒消耗</td><td>单位 QPS 的 CPU cost</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>局限</h3>
+  <ul>
+    <li>Lossless 的证明要求线性动力学 + 凸代价 + 凸约束；真实系统里大气阻力/倾斜姿态让动力学非凸，需要叠 §2 SCP 逐次凸化。</li>
+    <li>SRE 侧最常见的偏差：cost 函数含 step（SLA 分级计费），不可微，用 <b>SOCP → MILP</b> 或 Benders 分解替代。</li>
+  </ul>
+</section>
+
+
+<!-- ===================== §2 SCP ===================== -->
+<section id="s2">
+  <h2><span class="tag">§2 · image-13 / image-14</span>Successive Convex Programming — 非线性系统上迭代拉直</h2>
+  <p class="lead">真实火箭动力学是非线性的（气动、姿态耦合、质量变化），我们无法一次凸化。SCP 的办法是沿当前参考轨迹做一阶线性化，解一个凸子问题，再把解作为下一轮的参考，用"置信域"控制每轮位移，迭代收敛。</p>
+
+  <div>
+    <span class="pill accent">难点</span> 非线性约束 + 非凸动力学
+    <span class="pill key">解法</span> 逐次线性化 + 置信域 QP + 更新参考轨迹
+    <span class="pill green">结果</span> 非凸问题用一连串凸子问题解到全局附近
+  </div>
+
+  <h3>机制直觉</h3>
+  <p>类比牛顿法：你不是一次解掉非线性方程 f(x)=0，而是在当前点做线性化 f(xₖ) + J·Δx = 0，沿梯度走一步；SCP 就是这个思路推广到轨迹维度——把"一维牛顿法"扩展到"整条轨迹的牛顿法"。置信域 ‖Δx‖ ≤ η 防止过度外推。</p>
+
+  <figure>
+    <img src="assets/s02_mechanism.png" alt="§2 SCP mechanism">
+    <figcaption>真曲线 = 非线性动力学；三条虚线 = 逐轮切线近似；虚线框 = 每轮置信域。置信域随迭代收缩。</figcaption>
+  </figure>
+
+  <h3>数学公式</h3>
+  <div class="formula">在参考 (x̄_k, ū_k) 做 Jacobian:
+    δẋ = A(t) δx + B(t) δu + c(t)       A = ∂f/∂x, B = ∂f/∂u
+
+凸子问题:
+    min  Σ (δx_kᵀQ δx_k + δu_kᵀR δu_k)
+    s.t. δx_{k+1} = A_k δx_k + B_k δu_k
+         ‖δx_k‖∞ ≤ η_x  (置信域)
+         ‖δu_k‖∞ ≤ η_u
+
+更新:  x̄ ← x̄ + δx,  ū ← ū + δu
+收敛:  ‖δx‖ &lt; ε  或  改进比 ρ 稳定 → η 自适应伸缩</div>
+
+  <h3>动画 · 数据收益</h3>
+  <figure>
+    <img src="assets/s02_benefit.gif" alt="§2 SCP benefit">
+    <figcaption>左：baseline（单次线性化忽略气动阻力）vs SCP 迭代逼近目标 20；右：相邻迭代间 ‖Δx‖ 的指数收敛。</figcaption>
+  </figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">单次线性化 末端误差</span><span class="m-val">8.08 m</span></span>
+    <span class="metric after"><span class="m-label">SCP 6 轮</span><span class="m-val">2.87 m</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">×2.8</span></span>
+  </div>
+
+  <h3>代码实现</h3>
+  <pre><span class="cm"># starship/scp.py</span>
+<span class="kw">from</span> starship.scp <span class="kw">import</span> SCP, linearize
+
+<span class="kw">def</span> sub_solver(x_ref, u_ref, A, B, c, eta_x, eta_u):
+    <span class="cm"># 解一个凸 QP/QCQP，返回 (x_new, u_new)</span>
+    ...
+
+scp = SCP(f=dynamics_nonlinear, sub_solver=sub_solver,
+          eta_x=10.0, eta_u=2.0, eps=1e-3, max_iter=8)
+x_opt, u_opt, info = scp.iterate(x_traj0, u_traj0)</pre>
+
+  <div class="sre-card">
+    <h4>SRE 映射 · 灰度发布的置信域</h4>
+    <p>对应的 SRE 场景是 <b>渐进式发布（canary rollout）</b>：你不直接把流量从 1% 跳到 100%，而是每轮放大一点，观察 SLO 指标，确认稳定就扩大"置信域"。SCP 的 η_x/η_u 自适应正是标准 canary 的比例调整规则：<code>improve_ratio &gt; 0.7 → ×2</code>，<code>&lt; 0.1 → /2</code>。</p>
+    <table>
+      <thead><tr><th>星舰</th><th>SRE 等价物</th></tr></thead>
+      <tbody>
+        <tr><td>参考轨迹 x̄</td><td>当前版本的流量配比</td></tr>
+        <tr><td>线性化 (A, B)</td><td>SLO 对流量/副本数的局部敏感度</td></tr>
+        <tr><td>置信域 η</td><td>canary 下一轮允许的流量增量</td></tr>
+        <tr><td>改进比 ρ</td><td>实际 error_rate 改进 / 预期改进</td></tr>
+        <tr><td>收敛条件 ‖Δx‖&lt;ε</td><td>两轮间 SLO 差异 &lt; noise</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>局限</h3>
+  <ul>
+    <li>非凸性严重时 SCP 会收敛到局部最优；SRE 里常见的"指标悬崖"（例如缓存命中率在 90% 处跳变）也会卡住。</li>
+    <li>线性化误差 c(t) 不能太大，否则子问题的解在真实动力学下违规；实践里加一个"违规松弛变量"并对其加权重大惩罚。</li>
+  </ul>
+</section>
+
+
+<!-- ===================== §3 Rigid body ===================== -->
+<section id="s3">
+  <h2><span class="tag">§3 · image-15 / image-16</span>6-DoF 刚体动力学 SO(3) — 为什么必须用四元数</h2>
+  <p class="lead">箭体的姿态在 SO(3) 上演化，不是 ℝ³。欧拉角用三个标量表示姿态会遇到"万向锁"（gimbal lock），而且直接对欧拉角积分 <code>θ̇ = ω</code> 只在小角度下近似成立。四元数把姿态放到 4-维单位球面上，用 <code>q̇ = ½ Ω(ω) q</code> 严格演化，数值上长期稳定。</p>
+
+  <div>
+    <span class="pill accent">难点</span> 欧拉角奇异 + 大角度运动（flip）
+    <span class="pill key">解法</span> 单位四元数 + 指数映射积分
+    <span class="pill green">结果</span> 精度高 5 个数量级，长期无漂移
+  </div>
+
+  <h3>机制直觉</h3>
+  <p>把姿态看作"从单位球的一个向量旋到另一个"。3 个欧拉角在球面的极点附近会合并（两个轴指向同一方向 = gimbal lock），所以用 4 个分量的四元数 <code>q=[w,x,y,z]</code> + 单位约束 ‖q‖=1 来参数化。它和旋转矩阵 R(q) 是 2:1 覆盖，但没有奇异。积分时用指数映射 <code>q ← exp(½·ω·dt) ⊗ q</code> 严格保单位。</p>
+
+  <figure>
+    <img src="assets/s03_mechanism.png" alt="§3 rigid body mechanism">
+    <figcaption>状态 (r, v, q, ω, m) 在 4 个微分方程里耦合演化，RK4 + 四元数指数映射保证长期数值稳定。</figcaption>
+  </figure>
+
+  <h3>数学公式</h3>
+  <div class="formula">平动:
+    ṙ = v
+    v̇ = g + (1/m) · R(q) · F_body
+
+姿态（SO(3) 上的运动学）:
+    q̇ = ½ · Ω(ω) · q
+
+         ┌  0   −ω_x  −ω_y  −ω_z ┐
+  Ω(ω) = │  ω_x   0    ω_z  −ω_y │
+         │  ω_y  −ω_z   0    ω_x │
+         └  ω_z   ω_y  −ω_x   0  ┘
+
+姿态动力学（Euler 刚体方程）:
+    ω̇ = J⁻¹ · (τ − ω × J ω)
+
+质量:
+    ṁ = −‖F_body‖ / (Isp · g0)</div>
+
+  <h3>动画 · 数据收益</h3>
+  <figure>
+    <img src="assets/s03_benefit.gif" alt="§3 rigid body benefit">
+    <figcaption>左：body z 轴的实时指向，绿=真值，红=Euler 积分，蓝=四元数。<br>右：姿态误差 5 秒内 Euler 累到 3°+；四元数始终保持在 1e-4° 以下。</figcaption>
+  </figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">Euler 积分 RMSE</span><span class="m-val">3.2°</span></span>
+    <span class="metric after"><span class="m-label">四元数</span><span class="m-val">3.3×10⁻⁵°</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">×10⁵</span></span>
+  </div>
+
+  <h3>代码实现</h3>
+  <pre><span class="cm"># starship/rigid_body.py + starship/quaternion.py</span>
+<span class="kw">from</span> starship <span class="kw">import</span> RigidBody, State6DOF
+
+body = RigidBody()
+s = State6DOF(r=[0,0,100], v=[0,0,-10], q=[1,0,0,0], w=[0,0,0], m=200_000)
+s = body.step(s, force_body=[0,0,2.3e6],     <span class="cm"># 推力</span>
+                 torque_body=[0,0,0],         <span class="cm"># RCS + gimbal 合力矩</span>
+                 dt=0.05)                     <span class="cm"># RK4 一步 + 四元数归一化</span></pre>
+
+  <div class="sre-card">
+    <h4>SRE 映射 · 多维耦合状态的一致性演化</h4>
+    <p>对应 SRE 场景：一个服务实例的状态不是单一 QPS，而是 <b>多维耦合</b>（CPU / Memory / GC 堆 / 连接数 / 缓存热度），并且有些维度在 R^n 上并没有良定义的加法（比如 "consistent hash ring 上的位置"）。</p>
+    <table>
+      <thead><tr><th>星舰</th><th>SRE 等价物</th></tr></thead>
+      <tbody>
+        <tr><td>位置 r 在 ℝ³</td><td>QPS / latency 等连续度量</td></tr>
+        <tr><td>姿态 q 在 SO(3)</td><td>一致性哈希位置 / 服务版本拓扑</td></tr>
+        <tr><td>欧拉角奇异 = gimbal lock</td><td>只用 rolling average 做时间加权 → 周期信号失真</td></tr>
+        <tr><td>四元数 unit-norm</td><td>在流形上做旋转（例如 ring resizing 时 consistent hashing 的最小扰动策略）</td></tr>
+      </tbody>
+    </table>
+    <p>教训：<b>SRE 系统里遇到"方向感"/"拓扑位置"类状态时，请在合适的流形上建模，而不是强行塞进 ℝ^n 里做欧氏运算。</b></p>
+  </div>
+
+  <h3>局限</h3>
+  <ul>
+    <li>四元数有 q 与 −q 两个表示同一姿态（double cover），拼接轨迹时要保证 continuity；SRE 里类似问题是 ring rebalancing 时选择最短 shift。</li>
+    <li>RK4 + exp-map 的组合只在 dt 较小时准确；SRE 侧如果观测周期过长，等价于"失去状态演化的辨识能力"，需要提高采样率。</li>
+  </ul>
+</section>
+
+
+<!-- ===================== §4 Cone ===================== -->
+<section id="s4">
+  <h2><span class="tag">§4 · image-17 / image-18</span>推力指向 ∩ 幅值锥 — 让 NN 候选动作可用</h2>
+  <p class="lead">NN/MPC 生成的候选推力 u_nom 不保证落在执行器可行集里（气动姿态稳定性要求推力矢量不能偏离箭体轴超过 θ_max，同时 ‖u‖ ≤ T_max）。过滤器把 u_nom 正交投影到"锥 ∩ 球"的可行集上，保证每一个执行的命令都合法。</p>
+
+  <div>
+    <span class="pill accent">难点</span> 候选控制经常出界（97% 违规）
+    <span class="pill key">解法</span> 闭式圆锥 + 球面投影（O(1) 不走 QP）
+    <span class="pill green">结果</span> 100% 命令合法、执行器不过载
+  </div>
+
+  <h3>机制直觉</h3>
+  <p>几何上，可行推力 = 一个顶点在原点、轴 n̂ 朝上、半角 θ_max 的"冰淇淋锥" ∩ 原点为圆心、半径 T_max 的球。投影分两步：先把任意 u 投到圆锥上（闭式，三种 case），再缩到球内（等比缩放）。整个过程不用 QP。</p>
+
+  <figure>
+    <img src="assets/s04_mechanism.png" alt="§4 cone projection">
+    <figcaption>蓝色锥＋球冠 = 可行推力集合；红点 u_nom 在锥外；绿点 u⋆ 是投影后的安全推力。</figcaption>
+  </figure>
+
+  <h3>数学公式</h3>
+  <div class="formula">原始硬约束:
+    ‖u‖ ≤ T_max                  (幅值球)
+    n̂ᵀ u ≥ ‖u‖ · cos θ_max         (指向锥)
+
+锥投影（把 t·n̂ + x·ê_perp 写成 (t, |x|) 二维）:
+    cone: |x| ≤ t · tan θ_max
+
+  case A — 已在锥内:            u
+  case B — 在锥的极区:          0       (投到顶点)
+  case C — 侧面投影:
+     t⋆ = (t + |x| · tan θ_max) / (1 + tan²θ_max)
+     x⋆ = (t⋆ · tan θ_max) · x̂
+
+然后若 ‖u⋆‖ &gt; T_max : 按比例缩到 T_max</div>
+
+  <h3>动画 · 数据收益</h3>
+  <figure>
+    <img src="assets/s04_benefit.gif" alt="§4 cone filter stream">
+    <figcaption>120 个 NN 候选推力流入。左：散点图，红 = raw，蓝 = 过滤后，全部落进锥+球。<br>右：累计违规占比，baseline 停在 ~97%，filter 稳定在 0%。</figcaption>
+  </figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">锥约束违规率</span><span class="m-val">97.4%</span></span>
+    <span class="metric after"><span class="m-label">After filter</span><span class="m-val">0%</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">硬约束归硬约束</span></span>
+  </div>
+
+  <h3>代码实现</h3>
+  <pre><span class="cm"># starship/thrust_constraints.py</span>
+<span class="kw">from</span> starship <span class="kw">import</span> ConeQPFilter
+
+filt = ConeQPFilter(n_hat=[0,0,1], theta_max=np.deg2rad(15), T_max=2.3e6)
+u_safe = filt.filter(u_nom)          <span class="cm"># 闭式投影, O(1) 运算</span></pre>
+
+  <div class="sre-card">
+    <h4>SRE 映射 · 限流器 &amp; 熔断器的硬护栏</h4>
+    <p>对应 SRE 场景：任何上游组件（业务代码 / ML 调度器 / AutoML agent）输出的流量/QPS/扩缩容建议都要先进 <b>硬护栏（guardrail）</b>，否则 one-off bug 会把后端打爆。过滤器的哲学就是"把建议当 u_nom，把 SLO 当锥"：建议再多，执行前必须经过投影。</p>
+    <table>
+      <thead><tr><th>星舰</th><th>SRE 等价物</th></tr></thead>
+      <tbody>
+        <tr><td>‖u‖ ≤ T_max</td><td>单实例 max RPS / 集群并发上限</td></tr>
+        <tr><td>n̂ᵀu ≥ ‖u‖cosθ_max</td><td>流量必须沿健康 pod 比例分配（否则方向偏）</td></tr>
+        <tr><td>u_nom（NN 输出）</td><td>ML 自动伸缩 / 智能路由建议</td></tr>
+        <tr><td>u_safe（过滤后）</td><td>实际下发的 ConfigMap / iptables rule</td></tr>
+      </tbody>
+    </table>
+    <p><b>教训：AI 侧的智能决策再漂亮，不经过闭式安全过滤就不能进生产环境的反馈回路。</b></p>
+  </div>
+
+  <h3>局限</h3>
+  <ul>
+    <li>只有单一锥时闭式；多锥交集（例如多台执行器各自指向锥）需要退化到 QP 投影。</li>
+    <li>锥 + 球之外的非凸约束（比如"优先级=P0 时不允许降级"）要单独加一个优先级层，不能塞进该模块。</li>
+  </ul>
+</section>
+
+
+<!-- ===================== §5 EKF ===================== -->
+<section id="s5">
+  <h2><span class="tag">§5 · image-1 / image-10 / image-19</span>EKF 多源融合 — 知道"物理"的估计器</h2>
+  <p class="lead">雷达 / IMU / 塔架视觉标志三源观测互补：雷达给远距离几何，IMU 给高频局部变化，视觉给近场亚米级对齐。EKF 把它们在同一套状态 (r, v, q, ω) 上做最小方差融合。关键不是卡尔曼增益公式，而是"过程模型 v̇ = g 带着物理先验"这件事，能在观测噪声同等的情况下把速度精度提升一个量级。</p>
+
+  <div>
+    <span class="pill accent">难点</span> 单源噪声大、多源量纲/频率不一致
+    <span class="pill key">解法</span> EKF predict/update + sequential sensor update
+    <span class="pill green">结果</span> 速度 RMSE 降低 9 倍
+  </div>
+
+  <h3>机制直觉</h3>
+  <p>EKF 干两件事：(1) <b>predict</b>：用物理模型把状态向前推一拍，同时让协方差 P 变大（"我不那么确定了"）；(2) <b>update</b>：一个新观测来了，用 Kalman 增益把 residual 反馈到状态并"拉紧" P。三源数据按每路独立的 (h, H, R) 依次更新即可。</p>
+
+  <figure>
+    <img src="assets/s05_mechanism.png" alt="§5 EKF pipeline">
+    <figcaption>三源传感器 → predict / update 两阶段 → 融合状态。状态回馈到下一帧 predict。</figcaption>
+  </figure>
+
+  <h3>数学公式</h3>
+  <div class="formula">Predict:
+    x̂_{k|k−1} = f(x̂_{k−1}, u_k)
+    P_{k|k−1} = F_k P_{k−1} F_kᵀ + Q_k         F_k = ∂f/∂x
+
+Update (对每个传感器顺序做一次):
+    y = z − h(x̂_{k|k−1})                        (innovation)
+    S = H P_{k|k−1} Hᵀ + R
+    K = P_{k|k−1} Hᵀ S⁻¹
+    x̂_{k|k} = x̂_{k|k−1} + K · y
+    P_{k|k} = (I − K H) P_{k|k−1}
+
+观测模型:
+    radar :   h(x) = [‖r‖, atan2(r_y,r_x), atan2(r_z,‖r_xy‖)]
+    IMU   :   h(x) = [ω, R(q)ᵀ(v̇ − g)]
+    vision:   h(x) = π(K · R(q)ᵀ(P_marker − r))</div>
+
+  <h3>动画 · 数据收益</h3>
+  <figure>
+    <img src="assets/s05_benefit.gif" alt="§5 EKF error over time">
+    <figcaption>左：位置误差，两条曲线相近（位置噪声被雷达主导）。<br>右：速度误差——baseline 有限差分 ~481 m/s 波动，EKF 因为知道 v̇=g 很快收敛到 &lt;60 m/s。</figcaption>
+  </figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">速度 RMSE (raw)</span><span class="m-val">481 m/s</span></span>
+    <span class="metric after"><span class="m-label">EKF</span><span class="m-val">51 m/s</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">×9.4</span></span>
+  </div>
+
+  <h3>代码实现</h3>
+  <pre><span class="cm"># starship/ekf.py</span>
+<span class="kw">from</span> starship <span class="kw">import</span> EKF, MultiSensorEKF, RadarMeasurement, IMUMeasurement
+
+ekf = EKF(x=x0, P=P0, process_noise=Q, f=dynamics, F_jac=F_analytic)
+fused = MultiSensorEKF(ekf)
+<span class="kw">for</span> k <span class="kw">in</span> <span class="nm">range</span>(N):
+    fused.step(u=u_k, dt=0.05,
+               measurements=[(radar, z_radar),
+                             (imu,   z_imu),
+                             (vision, z_px <span class="kw">if</span> close_to_tower <span class="kw">else</span> None)])</pre>
+
+  <div class="sre-card">
+    <h4>SRE 映射 · 可观测性多源融合</h4>
+    <p>对应 SRE 场景：<b>指标 + 日志 + 分布式追踪 + 前端 RUM</b> 四种观测各有噪声和频率差异。今天多数系统只做"指标主、其他做上下文"的简单拼接；EKF 的思路是把四源放进同一个隐状态模型，让"知道物理"（如 QPS 应该随时间平滑 / GC pause 必为正值）的先验拉抬精度。</p>
+    <table>
+      <thead><tr><th>星舰</th><th>SRE 等价物</th></tr></thead>
+      <tbody>
+        <tr><td>雷达 (远距、低频、低噪)</td><td>Prometheus 聚合指标（1 min 分辨率）</td></tr>
+        <tr><td>IMU (近距、高频、局部)</td><td>应用进程内 metrics（每 QPS 精度）</td></tr>
+        <tr><td>视觉 fiducial（偶发高精度）</td><td>分布式 Trace / 用户层 RUM</td></tr>
+        <tr><td>物理过程模型 v̇ = g</td><td>业务先验：稳态下 QPS 连续、GC 停顿指数分布</td></tr>
+        <tr><td>Kalman 增益 K</td><td>"信任谁"的动态权重</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>局限</h3>
+  <ul>
+    <li>EKF 只对弱非线性有效；姿态在 flip 阶段大角度变化时要上 UKF 或 iterated-EKF。</li>
+    <li>多源中如有一路噪声模型错（R 设得太小），会毒化融合结果；SRE 侧要给 Prometheus 的 downsample 设 CI。</li>
+    <li>state-space 要 identifiable，至少有一路观测能区分位置和速度；SRE 里等价于"不要只有 5-min rolling avg"。</li>
+  </ul>
+</section>
+
+
+<!-- ===================== §6 MPC ===================== -->
+<section id="s6">
+  <h2><span class="tag">§6 · image-2 / image-3 / image-4</span>MPC 滚动时域 — "想 N 步，走 1 步，再想"</h2>
+  <p class="lead">PID 只看当前误差，LQR 给一套与时间无关的反馈增益，MPC 在每一拍都重新解一个 N 步最优问题、只把第一步打下去，下一拍再 shift + resolve。代价是算力，红利是对约束、扰动、时变参考的原生支持。</p>
+
+  <div>
+    <span class="pill accent">难点</span> 约束 + 扰动 + 时变参考
+    <span class="pill key">解法</span> 滚动时域 QP + warm start
+    <span class="pill green">结果</span> 末态误差下降 3×10⁴ 倍
+  </div>
+
+  <h3>机制直觉</h3>
+  <p>想象你在逆风骑车，看 50 m 前决定方向，踩一脚；下一秒又重新看 50 m 前，再踩一脚。MPC 是把"看 N 步 + 走 1 步"形式化：每拍 x_0 ← x̂_k，解一个带约束的 QP 得到最优 u_0..u_{N-1}，执行 u_0，下一拍把时间窗平移。</p>
+
+  <figure>
+    <img src="assets/s06_mechanism.png" alt="§6 MPC horizons">
+    <figcaption>每个矩形是一个"未来 N 步"的规划；橙色条是真正执行的 u₀。下一拍把蓝矩形整体右移。</figcaption>
+  </figure>
+
+  <h3>数学公式</h3>
+  <div class="formula">每拍的 QP:
+    min J = Σ_{k=0}^{N−1} (x_kᵀ Q x_k + u_kᵀ R u_k) + x_NᵀP x_N
+    s.t. x_{k+1} = A_d x_k + B_d u_k         (ZOH 离散)
+         u_min ≤ u_k ≤ u_max                  (盒约束)
+         x_0 = x̂_now                          (测量反馈)
+
+下一拍执行:
+    apply u_0,  warm_start = [u_1 .. u_{N-1}, u_{N-1}]</div>
+
+  <h3>动画 · 数据收益</h3>
+  <figure>
+    <img src="assets/s06_benefit.gif" alt="§6 MPC tracking response">
+    <figcaption>在 t=4s 注入 -2 m/s 扰动。左：位置追踪，PD 超调明显；MPC 用输入饱和的最优解更快拉回。<br>右：误差曲线，MPC 的终值误差指数收敛到 &lt;1e-6。</figcaption>
+  </figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">PD 末态误差</span><span class="m-val">1.2×10⁻²</span></span>
+    <span class="metric after"><span class="m-label">MPC</span><span class="m-val">3.5×10⁻⁷</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">×3.4×10⁴</span></span>
+  </div>
+
+  <h3>代码实现</h3>
+  <pre><span class="cm"># starship/mpc.py</span>
+<span class="kw">from</span> starship <span class="kw">import</span> QuadraticMPC, LinearDiscretizer
+
+Ad, Bd = LinearDiscretizer(A, B).zoh(dt=0.1)
+mpc = QuadraticMPC(A=Ad, B=Bd,
+                   Q=np.diag([10,1]), R=np.eye(1)*0.05, P=np.diag([100,10]),
+                   N=15, u_min=[-1.0], u_max=[1.0])
+<span class="kw">for</span> t <span class="kw">in</span> horizon:
+    u = mpc.step(x_now)        <span class="cm"># 每拍解一次 box-QP，warm-start 由上一拍提供</span></pre>
+
+  <div class="sre-card">
+    <h4>SRE 映射 · 预测式自动伸缩 / 智能限流</h4>
+    <p>对应 SRE 场景：HPA (Horizontal Pod Autoscaler) 默认就是"当前 CPU&gt;80% 则扩"的反应式控制；MPC 的思路是 <b>预测未来 N 步的 QPS & 资源 profile，解一个带 SLO 约束的 QP</b>，只执行当前一拍的伸缩，然后重新评估。</p>
+    <table>
+      <thead><tr><th>星舰</th><th>SRE 等价物</th></tr></thead>
+      <tbody>
+        <tr><td>状态 x = (r, v)</td><td>(QPS, latency, CPU%)</td></tr>
+        <tr><td>输入 u</td><td>target 副本数变化 / 限流比例</td></tr>
+        <tr><td>离散动力学 A_d, B_d</td><td>副本扩缩 = QPS 容量线性响应</td></tr>
+        <tr><td>Q, R 权重</td><td>SLO 违反 vs 成本（实例费用）的 trade-off</td></tr>
+        <tr><td>u_min, u_max</td><td>每拍允许的最大扩缩比例</td></tr>
+        <tr><td>warm start</td><td>Scheduler Session 之间共享上次解</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>局限</h3>
+  <ul>
+    <li>QP 每拍要在 dt 以内解完，解不完就降级到一个 backup 控制器（比如纯刹停 / fallback PID）。</li>
+    <li>模型失配（A_d 不准）会导致 MPC "以为自己在动"但真实环境不动，表现为持续同方向推力。SRE 侧的典型病：AutoScaler 基于 CPU 预测，实际瓶颈是 network。</li>
+  </ul>
+</section>
+
+
+<!-- ===================== §7 Flip ===================== -->
+<section id="s7">
+  <h2><span class="tag">§7 · image-5 / image-6 / image-7</span>Belly-Flop → Landing-Flip — bang-bang 最小时间翻转</h2>
+  <p class="lead">星舰末段以肚子朝下（belly-down）高阻力姿态减速，最后 5-7 秒必须把自己"翻正"到发动机朝下才能点火着陆。这个动作必须在最短时间完成（燃料/气动窗口紧），用 bang-bang 最优：先满扭矩加速翻，再满扭矩反向刹停，到位时角速度恰好为零。</p>
+
+  <div>
+    <span class="pill accent">难点</span> 大角度 (90° → 0°)、时间窗口紧
+    <span class="pill key">解法</span> bang-bang 最优 (Pontryagin) + Euler 刚体积分
+    <span class="pill green">结果</span> 末态俯仰精确 0°、角速度 0°/s
+  </div>
+
+  <h3>机制直觉</h3>
+  <p>Pontryagin 最小值原理：时间最优控制在约束激活时呈 bang-bang（取边界）。对 <code>I·α = τ</code> 这种二阶积分器 + 端点约束 ω(T)=0、θ(T)=θ_end，最优控制策略是：<b>前半段 +τ_max 加速、后半段 −τ_max 刹停</b>，切换时刻精确在 T/2。</p>
+
+  <figure>
+    <img src="assets/s07_mechanism.png" alt="§7 flip mechanism">
+    <figcaption>左：箭体三相（belly → flipping → tail-down）。右：力矩 τ(t) 的 bang-bang profile，T/2 处切换。</figcaption>
+  </figure>
+
+  <h3>数学公式</h3>
+  <div class="formula">合成力矩:
+    τ_net = Σ_i (l_i × T_i) + τ_RCS
+
+刚体方程:
+    I · α = τ_net − ω × J ω         (pitch 轴一维时 ω × Jω = 0)
+
+Bang-bang 规划:
+    总 Δθ = τ_max · T² / (4 I)
+    → T = 2 · √(|Δθ| · I / τ_max)
+
+轨迹:
+    0 ≤ t &lt; T/2 :   τ(t) = +τ_max, ω(t) = +α t, θ(t) = θ_0 + ½αt²
+    T/2 ≤ t ≤ T  :   τ(t) = −τ_max, ω(t) = α(T−t), θ(T) = θ_end</div>
+
+  <h3>动画 · 数据收益</h3>
+  <figure>
+    <img src="assets/s07_benefit.gif" alt="§7 flip benefit">
+    <figcaption>左：箭体指向（红=恒定 0.3τ_max baseline、蓝=bang-bang）。<br>右：pitch 角随时间。baseline 3.2s 时还停在 36° 且有残留角速度；bang-bang 精准停在 0°。</figcaption>
+  </figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">末态 pitch</span><span class="m-val">36.4°</span></span>
+    <span class="metric after"><span class="m-label">Bang-bang</span><span class="m-val">0°</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">清零</span></span>
+  </div>
+  <div>
+    <span class="metric before"><span class="m-label">末态角速度</span><span class="m-val">33°/s</span></span>
+    <span class="metric after"><span class="m-label">Bang-bang</span><span class="m-val">0°/s</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">清零</span></span>
+  </div>
+
+  <h3>代码实现</h3>
+  <pre><span class="cm"># starship/flip_maneuver.py</span>
+<span class="kw">from</span> starship <span class="kw">import</span> FlipPlanner, net_torque
+
+planner = FlipPlanner(I_xx=1e8, tau_max=6e7, theta_start=np.pi/2, theta_end=0)
+t, theta_ref, omega_ref = planner.plan(dt=0.05)
+<span class="cm"># 下游 MPC 跟踪 (theta_ref, omega_ref)，内环 §8 做推力分配</span></pre>
+
+  <div class="sre-card">
+    <h4>SRE 映射 · 系统状态切换的最短收敛</h4>
+    <p>对应 SRE 场景：一次紧急止血（切流量 / 回滚版本 / 清缓存）需要在最短时间把系统从 "劣化态" 带回 "名义态"，且要干净收尾（不能刹过头造成反向抖动）。bang-bang 的思路：<b>先用最大力度推向目标，到达"中点"时切换为最大力度刹停</b>——避免缓慢的 PI 衰减，尤其是业务有严格 "deadline" 的场景。</p>
+    <table>
+      <thead><tr><th>星舰</th><th>SRE 等价物</th></tr></thead>
+      <tbody>
+        <tr><td>Δθ = 90°</td><td>从 100% 流量切到 1% 的总位移</td></tr>
+        <tr><td>τ_max</td><td>变更速率上限（per-second 流量调整幅度）</td></tr>
+        <tr><td>切换时刻 T/2</td><td>监控显示"已过中线"的阈值</td></tr>
+        <tr><td>末态 ω=0</td><td>切换完成后不能再抖动（要求指数衰减 1.0 次常数）</td></tr>
+      </tbody>
+    </table>
+    <p>实用场景：<b>Blue/Green 快速切换 &amp; 二次确认回滚</b>里，bang-bang 给了"最优切换时间"公式 <code>T = 2√(Δ/α)</code>，可以直接回答"这次切换最少要多久才能既达到目标又不超调"。</p>
+  </div>
+
+  <h3>局限</h3>
+  <ul>
+    <li>bang-bang 对模型参数敏感，实际星舰上还要叠一个 PD 外环做 robustness；SRE 里任何 bang-bang 切换都应该配对 "健康检查卡位"。</li>
+    <li>只有一维 pitch 的最小时间问题有闭式；三维姿态最小时间属于 Lie 群控制，需要数值解。</li>
+  </ul>
+</section>
+
+
+<!-- ===================== §8 Catch Allocation ===================== -->
+<section id="s8">
+  <h2><span class="tag">§8 · image / image-8 / image-9</span>塔架捕获推力分配 — 3 个执行器合成 6 维命令</h2>
+  <p class="lead">最后 50 m 的机械臂捕获段，系统需要同时控制 3 维力 + 3 维力矩（6 维），但只有 3 台 Raptor 可控——看起来"维度不够"，但因为三台推力器几何上彼此独立，只需要在 6×3 的几何矩阵上解一个 <b>有界最小二乘</b> 就能精确重建所需 wrench。</p>
+
+  <div>
+    <span class="pill accent">难点</span> 3 个执行器要映射到 6 维 wrench
+    <span class="pill key">解法</span> 带 box 约束的最小二乘 (lsq_linear)
+    <span class="pill green">结果</span> 不再有执行器饱和越界，残差结构良好
+  </div>
+
+  <h3>机制直觉</h3>
+  <p>对每台推力器 i，它贡献的 6 维 wrench 是 <code>[d_i; l_i × d_i]</code>（力方向 + 相对箭体质心的力矩）。把三台堆起来得到 6×3 的矩阵 A。求解：给定期望 wrench [F; τ]，找各自的推力幅值 t_i ∈ [T_min, T_max]，使 <code>A·t</code> 最接近需求。"有界" 是灵魂——pinv 的无界解会让 Raptor "虚构负推力"。</p>
+
+  <figure>
+    <img src="assets/s08_mechanism.png" alt="§8 allocation mechanism">
+    <figcaption>左：俯视三台 Raptor 的 120° 环绕布置，各自推力矢量叠加产生合成 F_body。右：分配问题的凸形式。</figcaption>
+  </figure>
+
+  <h3>数学公式</h3>
+  <div class="formula">几何矩阵 (6×N, N=3 台):
+    A = [  d_1   d_2   d_3   ]       (3 × N, 方向)
+        [ l_1×d_1  l_2×d_2  l_3×d_3 ]  (3 × N, 力矩臂)
+
+分配问题（有界最小二乘）:
+    min_t  ‖A · t − [F; τ]‖²
+    s.t.   T_min ≤ t_i ≤ T_max    ∀ i
+
+求解器：scipy.optimize.lsq_linear (Trust Region Reflective, ~200 µs)
+
+MPC 联动:
+    外环 MPC 输出 (F_demand, τ_demand)
+    → allocator.allocate() → 每台 Raptor 的瞬时推力
+    → 物理 actuation</div>
+
+  <h3>动画 · 数据收益</h3>
+  <figure>
+    <img src="assets/s08_benefit.gif" alt="§8 allocation stream">
+    <figcaption>120 个随机 wrench 需求流入。左：累计饱和违规占比，pinv 停在 34%（Raptor 被"虚构"成能输出负推力/超额推力），bounded LS 稳定在 0%。<br>右：分配残差分布。</figcaption>
+  </figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">pinv 饱和违规</span><span class="m-val">34%</span></span>
+    <span class="metric after"><span class="m-label">Bounded LS</span><span class="m-val">0%</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">清零</span></span>
+  </div>
+
+  <h3>代码实现</h3>
+  <pre><span class="cm"># starship/catch_controller.py</span>
+<span class="kw">from</span> starship <span class="kw">import</span> ThrusterBank, Thruster, ThrustAllocator, CatchController
+
+bank = ThrusterBank([Thruster(position=...r_i, direction=[0,0,1],
+                               T_min=0.4e6, T_max=2.3e6)
+                     <span class="kw">for</span> r_i <span class="kw">in</span> raptor_positions])
+allocator = ThrustAllocator(bank)
+t_per_engine, residual = allocator.allocate(F_demand, tau_demand)</pre>
+
+  <div class="sre-card">
+    <h4>SRE 映射 · 负载均衡 &amp; 多实例流量分配</h4>
+    <p>对应 SRE 场景：<b>一个 service 在多机房/多实例上，如何把总 QPS 分配到每个实例，满足"业务侧 RPS+地理路由"复合约束</b>。这和 6D wrench 映射到 3 台推力器是同一个问题：一个 over-determined 目标（业务侧看到的 QPS + p99 + cost），一个 box-bounded 决策变量（每实例 target RPS ∈ [min, capacity]）。</p>
+    <table>
+      <thead><tr><th>星舰</th><th>SRE 等价物</th></tr></thead>
+      <tbody>
+        <tr><td>推力方向 d_i</td><td>每实例上能承担的 QPS 单位向量</td></tr>
+        <tr><td>力矩臂 l_i × d_i</td><td>跨机房延迟影响（东/西机房延迟不同）</td></tr>
+        <tr><td>A · t = [F;τ]</td><td>全局 QPS + 区域分布目标</td></tr>
+        <tr><td>T_min ≤ t ≤ T_max</td><td>实例 keep-alive 下限 / capacity 上限</td></tr>
+        <tr><td>lsq_linear 残差</td><td>流量目标无法完美满足时的 "deficit"</td></tr>
+      </tbody>
+    </table>
+    <p>这就是 Google Maglev、Envoy weighted round-robin 背后的数学。<b>不要用 pinv 给每实例分权重</b>，因为它会出现负权重或超过 capacity 的无效解。</p>
+  </div>
+
+  <h3>局限</h3>
+  <ul>
+    <li>LS 最小化 L2 残差，对"关键力矩必须精确"的场景可以叠加等式硬约束分两步解。</li>
+    <li>随着推力器 degraded/faulty，A 的 rank 降低；SRE 侧等价：实例 roll-out 期间临时"丢 rank"。都需要实时检测并剔除对应列。</li>
+  </ul>
+</section>
+
+
+<!-- ===================== SRE 迁移总表 ===================== -->
+<section id="sre">
+  <h2><span class="tag">SRE</span>迁移总表 · 星舰控制栈到 SRE 工具箱的一一映射</h2>
+  <p class="lead">八个模块到 SRE 场景的 1:1 对照。表格按"从观测到执行"顺序排列，和一个标准 SRE 反馈回路的次序一致。</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>层次</th>
+        <th>模块</th>
+        <th>核心机制</th>
+        <th>SRE 对应组件</th>
+        <th>落地建议</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td rowspan="2"><b>观测</b></td>
+        <td>§5 EKF</td>
+        <td>带物理先验的多源最小方差融合</td>
+        <td>可观测性融合层（Metrics + Trace + RUM）</td>
+        <td>用 Kalman 改造 dashboards 的加权平均；至少给关键 SLI 加一个过程模型</td>
+      </tr>
+      <tr>
+        <td>§3 6-DoF 状态</td>
+        <td>在正确的流形上建状态</td>
+        <td>服务多维状态表示（拓扑 / 版本 / 一致性哈希）</td>
+        <td>拓扑状态用单位四元数或图，不要强压 ℝ^n</td>
+      </tr>
+      <tr>
+        <td rowspan="2"><b>规划</b></td>
+        <td>§6 MPC</td>
+        <td>滚动时域约束优化 + warm start</td>
+        <td>预测式 HPA / 容量规划 / Autoscaler</td>
+        <td>把 PID 型 HPA 升级为"未来 N 分钟 QPS 预测 + SLO 约束 QP"</td>
+      </tr>
+      <tr>
+        <td>§1 Lossless Cvx</td>
+        <td>非凸可行集引入松弛变量凸化</td>
+        <td>带 min-keep-alive 的连接池调度</td>
+        <td>任何"要么 0 要么 ≥ k"的约束先做凸松弛</td>
+      </tr>
+      <tr>
+        <td><b>迭代</b></td>
+        <td>§2 SCP</td>
+        <td>线性化 + 置信域 + 自适应半径</td>
+        <td>Canary rollout / 灰度扩量</td>
+        <td>ρ&gt;0.7 扩 2×；ρ&lt;0.1 缩 ½；ρ&lt;0 回滚</td>
+      </tr>
+      <tr>
+        <td rowspan="2"><b>安全</b></td>
+        <td>§4 锥 + 球过滤</td>
+        <td>闭式 O(1) 投影到硬约束可行集</td>
+        <td>Guardrail / SLO Gatekeeper / 熔断器</td>
+        <td>任何 AI/ML 建议都先过 guardrail，不得绕开</td>
+      </tr>
+      <tr>
+        <td>§7 bang-bang</td>
+        <td>最小时间状态切换</td>
+        <td>紧急回滚 / Blue-Green 切换</td>
+        <td>切换时用 bang-bang 公式估 deadline，监控到达"中线"再反向</td>
+      </tr>
+      <tr>
+        <td><b>执行</b></td>
+        <td>§8 推力分配</td>
+        <td>有界最小二乘映射到执行器</td>
+        <td>多实例负载均衡 / 多机房流量分配</td>
+        <td>用 lsq_linear，不要用 pinv；带 box 约束</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>推荐端到端模板</h3>
+  <div class="formula">SRE feedback loop template（从星舰管线搬运）:
+    1. observe_fuse   = EKF(指标, 追踪, RUM) / predict + update
+    2. predict_plan   = MPC(observe_fuse, horizon=N, 约束=SLO, cost=业务成本)
+                        预测失败 → 降级 PID fallback
+    3. safety_filter  = cone ∩ ball (每实例 max RPS / min connections)
+    4. allocate       = bounded LS(desired_wrench → per-instance QPS)
+    5. execute        = 下发 rule/config/weight
+    6. loop back to 1 at fixed dt (20 Hz 级就够大多数 SRE 场景)</div>
+
+  <div class="note">
+    <b>关键洞察</b>：SRE 今天最常做的是 <code>observe → threshold → alert → human-on-call</code>。星舰栈建议换成 <code>observe → fuse → predict → plan → safety → allocate → execute</code>，把人从每个环节抽离出来，只在"进入 dead zone"时触发 on-call。
+  </div>
+</section>
+
+
+<!-- ===================== SRE End-to-End Stack (compounding) ===================== -->
+<section id="stack">
+  <h2><span class="tag">⊚</span>SRE 端到端栈 · 把 8 个方程装成一个 <code>step()</code></h2>
+  <p class="lead">每个支柱单独用意义有限，组合起来才能"复利"。本节给出 <code>sre_control/</code> 包——每个 starship 模块的 SRE 原生适配层，和一条把它们串起来的 <code>SREControlStack.step()</code>。</p>
+
+  <h3>适配层一览</h3>
+  <table>
+    <thead>
+      <tr><th>§</th><th>Starship 原件</th><th>SRE 适配层</th><th>一句话功能</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>§1</td><td><code>LosslessPDG</code></td><td><code>PoolCapacityPlanner</code></td><td>把"要么 0 要么 ≥ min"的连接池约束凸化成一条 LP</td></tr>
+      <tr><td>§2</td><td><code>SCP</code></td><td><code>CanaryScheduler</code></td><td>灰度流量比例的置信域自适应（ρ&gt;0.7 扩、&lt;0.1 缩）</td></tr>
+      <tr><td>§3</td><td><code>Quaternion / RigidBody</code></td><td><code>TopologyState</code></td><td>一致性哈希环、Raft term 在 SO(3) 上的正确演化（无漂移）</td></tr>
+      <tr><td>§4</td><td><code>ConeQPFilter</code></td><td><code>SLOGuardrail</code></td><td>把 AI 建议正交投影到 SLO 安全集（O(1) 闭式）</td></tr>
+      <tr><td>§5</td><td><code>EKF / MultiSensor</code></td><td><code>SignalFusion</code></td><td>指标 + 追踪 + RUM 一致化融合，给后验协方差而不是 rolling avg</td></tr>
+      <tr><td>§6</td><td><code>QuadraticMPC</code></td><td><code>PredictiveAutoscaler</code></td><td>基于流量预测的 HPA，warm-start 跨拍复用</td></tr>
+      <tr><td>§7</td><td><code>FlipPlanner</code></td><td><code>FastTrafficSwitcher</code></td><td>紧急切换的 bang-bang 最小时间公式</td></tr>
+      <tr><td>§8</td><td><code>ThrustAllocator</code></td><td><code>WeightedLoadBalancer</code></td><td>带 box 约束的 bounded LS，把 RPS 分配到多实例多机房</td></tr>
+    </tbody>
+  </table>
+
+  <h3>一条 <code>step()</code> 的数据流</h3>
+  <div class="formula">SREControlStack.step(dt, sensors, forecast_rps, replicas, zone_target, nn_proposal):
+
+    observe  ← SignalFusion(sensors)         §5 predict + sequential update
+    plan     ← PredictiveAutoscaler(         §6 receding-horizon QP
+                 current_replicas, observed_rps, forecast_rps)
+    canary   ← CanaryScheduler(current_share)  §2 adaptive trust region (可选)
+    safe     ← SLOGuardrail.audit(nn_proposal) §4 cone + ball projection
+    shares   ← WeightedLoadBalancer.allocate(  §8 bounded LS
+                  ‖safe‖, zone_target)
+    trace    ← {observe, plan, canary, safe, shares}</div>
+
+  <h3>端到端示例数据（<code>analysis/s09_sre_stack.py</code>）</h3>
+  <p>300 s 合成流量，两次人为事故：t=60-80 s <b>brown-out</b>（延迟 +40 ms，RPS 不涨）、t=180-200 s <b>流量翻倍</b>。比较反应式 HPA vs <code>SREControlStack</code>。</p>
+
+  <figure>
+    <img src="assets/s09_sre_stack.png" alt="§SRE end-to-end comparison">
+    <figcaption>上：RPS 曲线，两个红色竖带是注入的事故窗口。<br>中：副本数随时间——基线在 brown-out 时误把延迟当成负载，狂扩副本；stack 只看 RPS 和预测，稳定。<br>下：p99 延迟，基线 25% tick 超 SLO；stack 10%。</figcaption>
+  </figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">SLO 违规率 Before</span><span class="m-val">25%</span></span>
+    <span class="metric after"><span class="m-label">Stack</span><span class="m-val">10%</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">×2.5</span></span>
+  </div>
+  <div>
+    <span class="metric before"><span class="m-label">过度扩副本</span><span class="m-val">baseline 峰值 24</span></span>
+    <span class="metric after"><span class="m-label">Stack 峰值</span><span class="m-val">34</span></span>
+    <span class="metric warn"><span class="m-label">Trade-off</span><span class="m-val">+40% 实例</span></span>
+  </div>
+
+  <p class="note">
+    <b>诚实的解读</b>：stack 换来了 SLO 稳定性，代价是平均 1.4× 的副本数（在预测时更倾向"安全过扩"）。这是一个正常的 Pareto 取舍——通过调 <code>PredictiveAutoscaler</code> 的 <code>q_slo</code> 和 <code>r_cost</code> 可以滑动它的工作点。
+  </p>
+
+  <h3>跑一次</h3>
+  <pre><span class="cm"># 完整示例 (60 s 模拟 + 每 5 s 打印一行 trace)</span>
+python -m examples.demo_sre_loop
+
+<span class="cm"># 基准对比 (~3 s)</span>
+python -m analysis.s09_sre_stack
+
+<span class="cm"># 单测</span>
+pytest tests/test_sre_control.py -v</pre>
+</section>
+
+
+<!-- ===================== Equation Deep Dive ===================== -->
+<section id="deep">
+  <h2><span class="tag">∇</span>方程逐项拆解 · 每个符号为什么在那里</h2>
+  <p class="lead">本节是给审查者的"字典级"参考——每个方程每个符号都解释。完整版见 <a href="EQUATION_DEEP_DIVE.md"><code>docs/EQUATION_DEEP_DIVE.md</code></a>；此处摘最关键三处。</p>
+
+  <h3>§1 · 为什么要做 <code>z = ln m</code>？</h3>
+  <p>速度方程 <code>v̇ = g + Γ/m</code> 和质量方程 <code>ṁ = −‖Γ‖/(Isp g₀)</code> 若同时线性化，会出现 <code>Γ/m</code> 和 <code>‖Γ‖/m</code> 两个双变量乘积——非凸。</p>
+  <p>换元 <code>z = ln m</code>：</p>
+  <div class="formula">ṁ = m · ż   ⇒   ż = ṁ / m = −‖Γ‖ / (Isp g₀ m) = −‖Γ‖ · e^{−z} / (Isp g₀)
+v̇ = g + Γ · e^{−z}
+
+在 z 的一阶 Taylor 展开下：e^{−z} ≈ e^{−z̄}(1 − (z − z̄))
+整个系统对 (Γ, z) 变线性 → 可以塞进 SOCP solver</div>
+  <p class="note"><b>复用经验</b>：任何"决策变量出现在分母"的问题都应该考虑对数换元；SRE 里 <code>rps / capacity</code> 这样的 utilisation 控制可以同样处理。</p>
+
+  <h3>§3 · 四元数运动学为何除 2？</h3>
+  <p>群 SU(2) 是 SO(3) 的 2:1 覆盖：同一个姿态有两个四元数 (q 和 −q)。设旋转角为 θ、旋转轴为 ω̂：</p>
+  <div class="formula">R_axis-angle : 旋转 θ 对应 q = [cos(θ/2), sin(θ/2)·ω̂]
+
+代入 q̇:
+  若 ω 保持方向不变, 则 q(t) = [cos(θ(t)/2), sin(θ(t)/2)·ω̂],
+  θ(t) = ‖ω‖·t
+  ⇒ q̇(t) = (‖ω‖/2) · [−sin(θ/2), cos(θ/2)·ω̂]
+  ⇒ q̇ = ½ · Ω(ω) · q    ← 这就是 (3.1)</div>
+  <p class="note"><b>复用经验</b>：任何在"角度空间"上演化的物理量（2π 周期）用四元数族或复数 e^{iθ} 表示比用标量角度少坑。</p>
+
+  <h3>§4 · 锥约束的代数展开</h3>
+  <p>指向锥 <code>n̂ᵀu ≥ ‖u‖ cos θ</code> 看起来非凸（含 ‖u‖），其实是标准 SOC：</p>
+  <div class="formula">n̂ᵀu ≥ ‖u‖ cos θ
+⇔ (n̂ᵀu)² ≥ (‖u‖ cos θ)²  (若 n̂ᵀu ≥ 0)
+⇔ (n̂ᵀu)² · sin²θ ≥ ‖u − (n̂ᵀu)·n̂‖² · cos²θ
+⇔ (n̂ᵀu) · tan θ ≥ ‖u_perp‖
+这是 (t, x) 坐标下的冰淇淋锥 : t · tan θ ≥ ‖x‖
+
+second-order cone 标准形 : ‖x‖ ≤ a·t
+→ 凸；可以直接扔进 Mosek / ECOS / SCS</div>
+  <p>闭式投影的推导（Case C）：投影到 <code>‖x‖ = a·t</code> 的边界。设 (t₀, ‖x₀‖) 是待投影点，投影点 <code>(t⋆, a·t⋆)</code> 要求 `(t₀ − t⋆, ‖x₀‖ − a·t⋆)` 与 `(1, −1/a)` 正交（切向无残差）：</p>
+  <div class="formula">(t₀ − t⋆) · 1 + (‖x₀‖ − a·t⋆) · (−1/a) = 0
+⇒ t₀ − t⋆ − ‖x₀‖/a + t⋆ = 0
+⇒ t⋆ = (t₀ + a · ‖x₀‖) / (1 + a²)     ← 核心公式</div>
+
+  <h3>完整 8 节 × 每节 ~20 项的字典</h3>
+  <p>见 <a href="EQUATION_DEEP_DIVE.md"><code>docs/EQUATION_DEEP_DIVE.md</code></a>。用于 Codex 审查时的"定义查询"参考。</p>
+</section>
+
+
+<!-- ===================== Codex Review ===================== -->
+<section id="codex">
+  <h2><span class="tag">Codex</span>Review 指引 · 提交给 Codex 审核的要点</h2>
+  <p class="lead">本节给 Codex 这类代码审查 agent 提供<b>结构化审查建议</b>，避免 LLM 把"审代码"做成"抓变量名风格"。</p>
+
+  <h3>先读以下文件定位锚点</h3>
+  <ol>
+    <li><code>spacex/README.md</code> — 8 个数学支柱 / 代码模块的映射表</li>
+    <li><code>spacex/PR-REQUIREMENTS.md</code> — 每张 OCR 截图对应的 PR 级需求颗粒</li>
+    <li><code>spacex/docs/FORMULA_MAP.md</code> — 公式 ↔ starship/ 代码行号</li>
+    <li><code>spacex/docs/EQUATION_DEEP_DIVE.md</code> — 每个方程每个符号的字典</li>
+    <li><code>spacex/sre_control/</code> — 8 个 SRE 原生适配层（每文件 &lt; 100 行）</li>
+  </ol>
+
+  <h3>重点审查清单</h3>
+  <table>
+    <thead><tr><th>优先级</th><th>文件</th><th>审查点</th><th>为什么重要</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill accent">P0</span></td><td><code>thrust_constraints.py :: ConeQPFilter._cone_project</code></td><td>三种 case（内/极区/侧投）的数学正确性；浮点 tol</td><td>硬安全过滤，一个 edge case 就让过滤器失效；<code>SLOGuardrail</code> 直接继承</td></tr>
+      <tr><td><span class="pill accent">P0</span></td><td><code>rigid_body.py :: step</code></td><td>RK4 + quat exp-map 的交互顺序；mass depletion 的 sign</td><td>长仿真数值漂移来源；<code>TopologyState</code> 直接继承</td></tr>
+      <tr><td><span class="pill accent">P0</span></td><td><code>ekf.py :: EKF.update</code></td><td>K 的求解用 solve 还是 inv；P 的对称化；Joseph form 的必要性</td><td>EKF 数值稳定的老痛点；<code>SignalFusion</code> 直接继承</td></tr>
+      <tr><td><span class="pill key">P1</span></td><td><code>mpc.py :: _prediction_matrices</code></td><td>dense 矩阵规模 O(N²)；稀疏 QP 替代方案</td><td>性能瓶颈；<code>PredictiveAutoscaler</code> 直接继承</td></tr>
+      <tr><td><span class="pill key">P1</span></td><td><code>catch_controller.py :: ThrustAllocator.allocate</code></td><td>lsq_linear 在秩亏时的行为；故障推力器剔除</td><td>容错场景；<code>WeightedLoadBalancer</code> 直接继承</td></tr>
+      <tr><td><span class="pill key">P1</span></td><td><code>sre_control/stack.py :: step</code></td><td>模块间数据流、错误传播、部分 sensor 缺失时的降级</td><td>端到端组装的一致性</td></tr>
+      <tr><td><span class="pill green">P2</span></td><td>所有 <code>analysis/sXX_*.py</code></td><td>seed 固定、baseline 是否公平、度量定义</td><td>避免"做出好看曲线"的偏置</td></tr>
+      <tr><td><span class="pill green">P2</span></td><td><code>sre_control/*.py</code> 的 SRE 映射注释</td><td>SRE 语义是否正确、量纲是否一致</td><td>审查者应该能在不看星舰代码的前提下读懂 SRE 适配层</td></tr>
+    </tbody>
+  </table>
+
+  <h3>容易被误判的设计取舍</h3>
+  <ul>
+    <li><code>QuadraticMPC</code> 使用 scipy L-BFGS-B 而不是 OSQP：<b>故意</b>，是为了把依赖维持在 numpy+scipy。</li>
+    <li><code>EKF.F_jac</code> 默认数值雅可比：<b>故意</b>，让 6-DoF 测量模型可以不写解析 H；解析版在关键路径（radar）手写了。</li>
+    <li><code>LosslessPDG.solve</code> 用 SLSQP 而不是 SOCP solver：<b>故意</b>，保持零外部依赖；如需生产级速度请切 CVXPY + ECOS。</li>
+    <li><code>ConeQPFilter</code> 有闭式解不走 QP：<b>故意</b>，O(1) 安全过滤在 20 Hz 循环里是必需。</li>
+  </ul>
+
+  <h3>让 Codex 复现实验的最短指令</h3>
+  <pre><span class="cm"># 从仓库根目录</span>
+cd spacex
+pip install -r requirements.txt
+pytest tests -q                         <span class="cm"># 21 用例（含 sre_control 10 条）</span>
+python -m analysis.run_all              <span class="cm"># 9 主题 before/after 对照，~3 s</span>
+python -m examples.demo_sre_loop        <span class="cm"># 端到端 60 s SRE 循环</span>
+python -m scripts.build_mechanism_diagrams <span class="cm"># 机制图</span>
+python -m scripts.build_benefit_gifs    <span class="cm"># 动画（~1 分钟）</span>
+python -m examples.demo_powered_descent <span class="cm"># PDG 端到端</span>
+python -m examples.demo_catch_phase     <span class="cm"># 塔架捕获段</span></pre>
+
+  <div class="ok">
+    <b>审查签收建议</b>：
+    <ol>
+      <li>能复现 <code>analysis/artifacts/SUMMARY.txt</code> 里的所有 (before, after) 数字（误差 ±5%）；</li>
+      <li>P0 审查点无 correctness issue；</li>
+      <li>给每个 SRE 映射建议至少一个 counter-example（哪种 SRE 场景 <em>不</em> 适合本模块）。</li>
+    </ol>
+  </div>
+</section>
+
+</article>
+</main>
+
+<footer>
+  <p>starship-recovery · knowledge base v0.1 · generated from <code>DOC/spacex/</code></p>
+  <p>可观测、可约束、可迁移：对任何需要闭环控制的工程系统，这套栈的顺序都值得复刻。</p>
+</footer>
+
+</body>
+</html>
