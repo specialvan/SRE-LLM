@@ -1,0 +1,13 @@
+.venv
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+docs/images/*.gif
+examples/trace.jsonl
+examples/sre_trace.jsonl
+tests
+*.egg-info
+build
+dist
+state.sqlite*

@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+examples/trace.jsonl
+examples/sre_trace.jsonl

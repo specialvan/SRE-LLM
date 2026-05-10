@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gan-matchmaking"
+version = "0.1.0"
+description = "Engineering implementation of the matchmaking / rating algorithms analyzed in the 'Honor of Kings GAN mechanism' article."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "gan-matchmaking contributors" }]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "matplotlib>=3.7"]
+
+[project.scripts]
+gan-matchmaking = "gan_matchmaking.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["gan_matchmaking*"]
+exclude = ["tests*", "examples*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

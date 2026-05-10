@@ -1,0 +1,37 @@
+{
+  "service": {
+    "id": "payments-api",
+    "mu": 0.997,
+    "sigma": 0.005,
+    "win_streak": 4,
+    "loss_streak": 0,
+    "total_releases": 42,
+    "tier": "critical"
+  },
+  "candidates": [
+    {
+      "id": "canary-5pct",
+      "strategy": "canary",
+      "canary_fraction": 0.05,
+      "rollback_budget_seconds": 300,
+      "expected_success": 0.996
+    },
+    {
+      "id": "full-rollout",
+      "strategy": "full",
+      "canary_fraction": 0.0,
+      "rollback_budget_seconds": 600,
+      "expected_success": 0.994
+    }
+  ],
+  "telemetry": {
+    "error_rate_p99": 0.003,
+    "latency_p99_ms": 128.0,
+    "throughput_rps": 4800.0,
+    "memory_rss_mb": 496.0
+  },
+  "dependencies": ["billing-worker"],
+  "error_budget_remaining": 0.8,
+  "freeze_window": false,
+  "correlation_id": "demo-ctx-1"
+}

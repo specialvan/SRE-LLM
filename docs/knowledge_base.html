@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>gan-matchmaking · SRE 自迭代决策知识库</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$', '$'], ['\\(', '\\)']],
+         displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+  :root {
+    --primary: #2f6feb;
+    --primary-dark: #1d4fbf;
+    --accent: #f04e65;
+    --green: #2ca05b;
+    --orange: #f59f3d;
+    --purple: #8950c4;
+    --teal: #1abc9c;
+    --bg: #f7f9fc;
+    --card: #ffffff;
+    --text: #1f2328;
+    --muted: #586069;
+    --border: #e2e6ec;
+    --code-bg: #0d1117;
+    --code-text: #e6edf3;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+                 "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.7; }
+  header { background: linear-gradient(135deg, #1d4fbf 0%, #8950c4 100%);
+    color: white; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: 0.9; font-size: 14px; }
+  .layout { display: grid; grid-template-columns: 280px 1fr;
+    max-width: 1440px; margin: 0 auto; }
+  nav.toc { position: sticky; top: 0; align-self: start;
+    max-height: 100vh; overflow-y: auto; padding: 22px 16px;
+    background: var(--card); border-right: 1px solid var(--border);
+    font-size: 13.5px; }
+  nav.toc h2 { font-size: 11px; text-transform: uppercase;
+    color: var(--muted); letter-spacing: 1px; margin: 14px 8px 6px; }
+  nav.toc a { display: block; padding: 5px 10px;
+    color: var(--text); text-decoration: none;
+    border-radius: 6px; margin: 2px 0; }
+  nav.toc a:hover { background: #eef2f9; color: var(--primary); }
+  nav.toc a.active { background: #e3edff; color: var(--primary-dark);
+    font-weight: 600; }
+  main { padding: 28px 40px; max-width: 1000px; }
+  section.module { background: var(--card);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 24px 28px; margin-bottom: 26px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
+  section.module h2 { margin-top: 0; font-size: 22px;
+    display: flex; align-items: center; gap: 10px; }
+  section.module h2 .chip { font-size: 12px; background: #eef2f9;
+    color: var(--primary-dark); padding: 3px 10px;
+    border-radius: 999px; font-weight: 500; }
+  section.module h3 { font-size: 15px; color: var(--primary-dark);
+    margin: 22px 0 8px; letter-spacing: 0.3px;
+    border-bottom: 1px dashed var(--border); padding-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 14px;
+    margin-top: -6px; margin-bottom: 14px; }
+  .trio { display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 14px; margin: 16px 0; }
+  .trio figure { margin: 0; }
+  .trio figure img { width: 100%; border-radius: 8px;
+    border: 1px solid var(--border); background: white; }
+  .trio figure figcaption {
+    font-size: 12.5px; color: var(--muted); margin-top: 4px; text-align: center; }
+  .trio figure .tag { display: inline-block; font-size: 10.5px;
+    font-weight: 600; padding: 2px 8px; border-radius: 999px;
+    margin-right: 6px; vertical-align: middle; }
+  .tag.before { background: #f2f4f8; color: #555; }
+  .tag.after { background: #e3edff; color: var(--primary-dark); }
+  .tag.gain { background: #e6f5ec; color: var(--green); }
+  .gif-block { margin: 18px 0; text-align: center; }
+  .gif-block img { max-width: 100%; border-radius: 8px;
+    border: 1px solid var(--border); background: white; }
+  .gif-block .cap { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  pre { background: var(--code-bg); color: var(--code-text);
+    padding: 12px 14px; border-radius: 8px;
+    font-size: 12.5px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  code { background: #eef2f9; color: var(--primary-dark);
+    padding: 2px 6px; border-radius: 4px;
+    font-size: 0.92em;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  pre code { background: none; color: inherit; padding: 0; }
+  .metrics { display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 8px 22px; background: #f1f5fb; border-radius: 8px;
+    padding: 12px 16px; margin: 14px 0; font-size: 13px; }
+  .metrics div strong { color: var(--primary-dark); margin-right: 6px; }
+  .sre-card { background: #eefaf3; border-left: 4px solid var(--green);
+    padding: 10px 14px; border-radius: 0 6px 6px 0;
+    margin: 14px 0; font-size: 14px; }
+  .sre-card h4 { margin: 0 0 6px; color: #19783e; font-size: 14px; }
+  .warn-card { background: #fff6eb; border-left: 4px solid var(--orange);
+    padding: 10px 14px; border-radius: 0 6px 6px 0;
+    margin: 14px 0; font-size: 14px; }
+  ul.points { margin: 6px 0 12px; padding-left: 22px; }
+  ul.points li { margin: 3px 0; }
+  table.ref { width: 100%; border-collapse: collapse;
+    font-size: 13px; margin: 10px 0; }
+  table.ref th, table.ref td { padding: 8px 10px;
+    border: 1px solid var(--border); text-align: left; }
+  table.ref th { background: #f1f5fb; color: var(--primary-dark); }
+  footer { padding: 28px 40px 60px;
+    color: var(--muted); font-size: 13px; text-align: center; }
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.toc { position: static; max-height: none;
+      border-right: none; border-bottom: 1px solid var(--border); }
+    .trio { grid-template-columns: 1fr; }
+    main { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>gan-matchmaking · SRE 自迭代决策知识库</h1>
+  <p>九个数学机制的"公式前 / 公式后 / 数据收益 / 动态过程"四图解读，外加每机制的 SRE 控制方案参考。</p>
+</header>
+
+<div class="layout">
+
+<nav class="toc" id="toc">
+  <h2>概览</h2>
+  <a href="#overview">0. 全景图</a>
+
+  <h2>估计层</h2>
+  <a href="#m1">1. TrueSkill 可靠性评级</a>
+  <a href="#m4">4. PCA 遥测降维</a>
+  <a href="#m5">5. GNN 依赖协同</a>
+
+  <h2>排序 / 过滤层</h2>
+  <a href="#m3">3. 动态 K 因子</a>
+  <a href="#m6">6. Handicap 风险调整</a>
+  <a href="#m7">7. 对局信息熵</a>
+
+  <h2>风险 / 博弈层</h2>
+  <a href="#m2">2. EOMM 留存优化</a>
+  <a href="#m8">8. Cox 流失生存</a>
+  <a href="#m9">9. Minimax 博弈</a>
+
+  <h2>装配</h2>
+  <a href="#pipeline">10. SelfIterationPipeline</a>
+  <a href="#ref">附录 · 对照表</a>
+</nav>
+
+<main>
+
+<!-- =========================================================== -->
+<section class="module" id="overview">
+  <h2>0. 全景图 <span class="chip">overview</span></h2>
+  <p class="subtitle">九个机制按"估计 → 过滤 → 风险博弈"三列串起来，最终产出
+    <code>GO / CANARY / HOLD / ROLLBACK / ESCALATE</code> 五种决策之一。</p>
+
+  <figure class="gif-block">
+    <img src="images/10_pipeline.png" alt="SRE pipeline">
+    <div class="cap">估计层（蓝） → 排序过滤层（橙） → 风险博弈层（红） → 决策 trace（绿）</div>
+  </figure>
+
+  <div class="sre-card">
+    <h4>为什么这个架构适合 SRE 自迭代</h4>
+    <p>每个机制都是"公式 + 收益证据 + 回退策略"的三件套：</p>
+    <ul class="points">
+      <li>公式给出确定性推理规则，可被 codex 审查。</li>
+      <li>收益图把"不用公式 vs 用公式"的 delta 量化成数字，证明它不是装饰。</li>
+      <li>回退策略（未训练 fallback、shadow 模式、circuit breaker）保证 Day-1 也能跑。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- =========================================================== -->
+<section class="module" id="m1">
+  <h2>1. TrueSkill 可靠性评级 <span class="chip">估计层 · §1</span></h2>
+  <p class="subtitle">把每个服务的"可靠性"建模为高斯 $s\sim\mathcal{N}(\mu,\sigma^2)$。每次发布用贝叶斯更新让 $\sigma$ 收缩。</p>
+
+  <h3>公式吃透</h3>
+  <p>观察单次发布结果 $r$，用 Kalman-style 闭式解：</p>
+  $$
+    \mu' = \mu + \frac{\sigma^2}{\sigma^2 + \beta^2}(r - \mu),
+    \qquad
+    \sigma'^2 = \sigma^2\!\left(1 - \frac{\sigma^2}{\sigma^2 + \beta^2}\right) + \tau^2
+  $$
+  <p>$\beta$ 代表"单次发布表现噪声"，$\tau$ 是"每次发布技能可能漂移的量"。
+    没有 $\tau$ 时 $\sigma^2$ 会收敛到 0，系统永远不更新；加了 $\tau^2$ 保证有下界。</p>
+
+  <div class="trio">
+    <figure>
+      <span class="tag before">BEFORE</span>
+      <img src="images/01_trueskill_before.png" alt="naive">
+      <figcaption>朴素胜率估计在真值附近剧烈抖动，且没有不确定度带。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag after">AFTER</span>
+      <img src="images/01_trueskill_after.png" alt="bayes">
+      <figcaption>后验 μ 收敛到真值 31.5，±σ 带快速缩窄。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag gain">GAIN</span>
+      <img src="images/01_trueskill_gain.png" alt="mae">
+      <figcaption>60 次仿真平均 MAE：TrueSkill 比朴素估计低一个数量级。</figcaption>
+    </figure>
+  </div>
+
+  <div class="gif-block">
+    <img src="images/01_trueskill_gif.gif" alt="posterior update">
+    <div class="cap">动态：每次发布后后验分布的演化过程。</div>
+  </div>
+
+  <div class="sre-card">
+    <h4>SRE 控制方案</h4>
+    <ul class="points">
+      <li><b>观察动作</b>：每次发布成功/失败后调用 <code>pipeline.observe_release(service_id, success)</code>。</li>
+      <li><b>判定规则</b>：决策时用 <code>confidence = μ − 2σ</code> 做保守下界，<code>&lt; 0.5</code> 直接降级为 CANARY。</li>
+      <li><b>新服务</b>：冷启动用 $\mu_0=0.99,\sigma_0=0.02$，见 <code>runbooks/bootstrap-new-service.md</code>。</li>
+      <li><b>报警</b>：$\sigma$ 在 10 次发布后仍 $> 0.05$ → 触发 SRE 审阅（模型不该"越学越糊")。</li>
+    </ul>
+  </div>
+
+  <div class="metrics">
+    <div><strong>文件：</strong><code>gan_matchmaking/trueskill.py</code></div>
+    <div><strong>接入点：</strong><code>TrueSkillRater.update(team_a, team_b, score_a)</code></div>
+    <div><strong>单测：</strong><code>tests/test_trueskill.py</code></div>
+    <div><strong>指标：</strong><code>gan_service_confidence{service_id}</code></div>
+  </div>
+</section>
+
+<!-- =========================================================== -->
+<section class="module" id="m4">
+  <h2>4. PCA 遥测降维 <span class="chip">估计层 · §4</span></h2>
+  <p class="subtitle">原始遥测数十维（error_rate、latency p50/p99、throughput、内存、连接池…），
+    PCA 把它压成一个"稳定分" $z$，和 $\mu$ 融合。</p>
+
+  <h3>公式吃透</h3>
+  <p>中心化矩阵 $X$ 后做特征分解：</p>
+  $$ X^{\top} X\, v = \lambda\, v, \qquad z = V_k^{\top} x. $$
+  <p>本项目用 SVD（$X = U\Sigma V^{\top}$）而不是直接求协方差特征值：</p>
+  <ul class="points">
+    <li><b>数值稳定</b>：SVD 对 $X$ 病态鲁棒；协方差法对大条件数会爆。</li>
+    <li><b>符号任意</b>：$v$ 和 $-v$ 都是合法主成分，所以融合用 $\|z\|$ 而不是 $z$ 本身。</li>
+    <li><b>可解释性</b>：<code>explained_variance_ratio_</code> 直接显示每一维捕获了多少方差。</li>
+  </ul>
+
+  <div class="trio">
+    <figure>
+      <span class="tag before">BEFORE</span>
+      <img src="images/04_pca_hidden_before.png" alt="random">
+      <figcaption>随机方向投影，与潜因子相关系数接近 0。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag after">AFTER</span>
+      <img src="images/04_pca_hidden_after.png" alt="pca">
+      <figcaption>PC1 方向把色阶完美对齐潜因子，|corr|≈0.99。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag gain">GAIN</span>
+      <img src="images/04_pca_hidden_gain.png" alt="var">
+      <figcaption>8 维合成数据，前 2 个主成分捕获 ≥90% 方差。</figcaption>
+    </figure>
+  </div>
+
+  <div class="gif-block">
+    <img src="images/04_pca_hidden_gif.gif" alt="axis rotation">
+    <div class="cap">动态：候选方向在单位圆上旋转，实时显示与潜因子的相关性。</div>
+  </div>
+
+  <div class="sre-card">
+    <h4>SRE 控制方案</h4>
+    <ul class="points">
+      <li><b>数据来源</b>：Prometheus/Loki 拉 30 分钟窗口的多维遥测，装成 <code>telemetry</code> dict 传入 <code>ReleaseContext</code>。</li>
+      <li><b>降维维度</b>：默认 <code>n_components=2</code>。方差解释率 &lt; 80% 时应加维度，见
+        <code>tune-risk-thresholds.md</code>。</li>
+      <li><b>融合公式</b>：<code>fused = α·μ + β·‖z‖</code>，$\alpha=1,\beta=0.01$。
+        $\beta$ 的量级取决于 $z$ 的单位，需要一次校准。</li>
+      <li><b>检测</b>：$\|z\|$ 超过近 30 天 99 分位 → 可疑异常，直接触发 HOLD。</li>
+    </ul>
+  </div>
+
+  <div class="metrics">
+    <div><strong>文件：</strong><code>gan_matchmaking/pca_hidden.py</code></div>
+    <div><strong>入口：</strong><code>HiddenScoreExtractor.fit_transform(X)</code></div>
+    <div><strong>指标：</strong><code>gan_pca_explained_variance_ratio</code>（待上线）</div>
+    <div><strong>退化策略</strong>：未 fit 时 PCA 阶段 degraded，决策进入 HOLD。</div>
+  </div>
+</section>
+
+<!-- =========================================================== -->
+<section class="module" id="m5">
+  <h2>5. GNN 依赖协同 <span class="chip">估计层 · §5</span></h2>
+  <p class="subtitle">服务之间的依赖图不是树，是带权图。GNN 把"谁和谁一起上线成功率高"压成节点嵌入。</p>
+
+  <h3>公式吃透</h3>
+  <p>2 层消息传递，纯 numpy：</p>
+  $$
+    h_i^{(l+1)} = \mathrm{ReLU}\!\left(
+      W^{(l)} h_i^{(l)} + \sum_{j \in \mathcal{N}(i)} A_{ij}\, h_j^{(l)} U^{(l)}
+    \right)
+  $$
+  <p>边权 $A_{ij}$ 用 Laplace 平滑胜率：</p>
+  $$ A_{ij} = \frac{\text{wins}_{ij}+1}{\text{games}_{ij}+2} - 0.5. $$
+  <p>协同分就是最终层嵌入的内积 $s_{ij}=\langle h_i^{(L)}, h_j^{(L)}\rangle$。</p>
+
+  <div class="trio">
+    <figure>
+      <span class="tag before">BEFORE</span>
+      <img src="images/05_gnn_synergy_before.png" alt="raw">
+      <figcaption>只看原始边权，看不出两组 community。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag after">AFTER</span>
+      <img src="images/05_gnn_synergy_after.png" alt="after">
+      <figcaption>2 层 GNN 嵌入后，两个 community 颜色分明。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag gain">GAIN</span>
+      <img src="images/05_gnn_synergy_gain.png" alt="gain">
+      <figcaption>按 community 分组的准确率从 50% 提到接近 100%。</figcaption>
+    </figure>
+  </div>
+
+  <div class="gif-block">
+    <img src="images/05_gnn_synergy_gif.gif" alt="propagation">
+    <div class="cap">动态：消息从 s0 逐跳扩散，最终整张图进入稳态。</div>
+  </div>
+
+  <div class="sre-card">
+    <h4>SRE 控制方案</h4>
+    <ul class="points">
+      <li><b>图数据来源</b>：每次发布的 <code>depends_on</code> 清单写入 <code>synergy_edges</code> 表。</li>
+      <li><b>热度衰减</b>：边权用时间窗口（近 90 天）统计，避免历史锅永远卡脖子。</li>
+      <li><b>负协同</b>：$s_{ij} &lt; 0$ 表示两服务同窗口发布容易双挂，pipeline 会打 CANARY 降级。</li>
+      <li><b>兜底</b>：冷启动期 <code>min_games</code> 未达阈值，GNN 阶段自动跳过，只走其他信号。</li>
+    </ul>
+  </div>
+
+  <div class="metrics">
+    <div><strong>文件：</strong><code>gan_matchmaking/gnn_synergy.py</code></div>
+    <div><strong>入口：</strong><code>SynergyGraph.add_match / SynergyGNN.forward</code></div>
+    <div><strong>持久化：</strong><code>persistence/sqlite.py::synergy_edges</code></div>
+    <div><strong>单测：</strong><code>tests/test_gnn_synergy.py</code></div>
+  </div>
+</section>
+
+<!-- =========================================================== -->
+<section class="module" id="m3">
+  <h2>3. 动态 K 因子 <span class="chip">排序层 · §3</span></h2>
+  <p class="subtitle">常数 K 让连续发布的评分像过山车。Logistic 衰减 K 让 μ 平滑。</p>
+
+  <h3>公式吃透</h3>
+  $$
+    K(\text{streak}) = K_{\min} +
+      \frac{K_{\max} - K_{\min}}{1 + \exp\!\big(\lambda (\text{streak} - \theta)\big)}
+  $$
+  <p>参数解读：</p>
+  <ul class="points">
+    <li><code>K_max=32, K_min=4</code>：Elo 约定，保证早期快速学、晚期稳定。</li>
+    <li><code>θ=5</code>：衰减拐点，5 连胜之后 K 正好到中点。</li>
+    <li><code>λ=0.7</code>：陡峭度；太大过渡太急，太小基本没衰减。</li>
+  </ul>
+
+  <div class="trio">
+    <figure>
+      <span class="tag before">BEFORE</span>
+      <img src="images/03_dynamic_k_before.png" alt="constant">
+      <figcaption>常数 K=32，评分轨迹剧烈振荡。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag after">AFTER</span>
+      <img src="images/03_dynamic_k_after.png" alt="logistic">
+      <figcaption>Logistic 衰减：连胜越多 K 越小。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag gain">GAIN</span>
+      <img src="images/03_dynamic_k_gain.png" alt="gain">
+      <figcaption>20 次仿真平均：评分带宽（波动幅度）降低 ≈40%。</figcaption>
+    </figure>
+  </div>
+
+  <div class="gif-block">
+    <img src="images/03_dynamic_k_gif.gif" alt="k update">
+    <div class="cap">动态：λ / θ 逐步调整，K 柱状图整体形态变化。</div>
+  </div>
+
+  <div class="sre-card">
+    <h4>SRE 控制方案</h4>
+    <ul class="points">
+      <li><b>触发条件</b>：服务一天内发布 &gt; 3 次（hot-release）时 <code>K=K(streak)</code> 全量启用。</li>
+      <li><b>配置</b>：<code>config.dynamic_k.theta</code> 调发布节奏容忍度。</li>
+      <li><b>监控</b>：<code>gan_service_confidence</code> 应平滑变化；若方差突增，检查 K 是否没生效。</li>
+    </ul>
+  </div>
+
+  <div class="metrics">
+    <div><strong>文件：</strong><code>gan_matchmaking/dynamic_k.py</code></div>
+    <div><strong>入口：</strong><code>DynamicK.k(streak) / delta_rating</code></div>
+    <div><strong>单测：</strong><code>tests/test_dynamic_k.py</code></div>
+    <div><strong>指标影响：</strong><code>gan_service_confidence</code> 平滑性</div>
+  </div>
+</section>
+
+<!-- =========================================================== -->
+<section class="module" id="m6">
+  <h2>6. Handicap 风险调整 <span class="chip">排序层 · §6</span></h2>
+  <p class="subtitle">把"发布成功的朴素期望"用一个 Penalty 项拉回 50/50。连续成功 → 降低期望胜率，连续失败 → 给软对手。</p>
+
+  <h3>公式吃透</h3>
+  $$
+    E_A = \frac{1}{1 + 10^{(R_B - R_A + \text{Penalty}) / 400}}
+  $$
+  <p>Penalty 定义：</p>
+  $$
+    P = P_{\max}\!\left(1 - \frac{1}{1 + \text{win}/\tau}\right)
+      - P_{\max}\!\left(1 - \frac{1}{1 + \text{loss}/\tau}\right)
+  $$
+  <p>性质：</p>
+  <ul class="points">
+    <li>$\text{win}=\text{loss}=0$ → $P=0$，退化为标准 Elo。</li>
+    <li>纯连胜 → $P \to P_{\max}$，相当于系统"高估"对手 $P_{\max}$ 分。</li>
+    <li>纯连败 → $P \to -P_{\max}$，等同于送软对手。</li>
+  </ul>
+
+  <div class="trio">
+    <figure>
+      <span class="tag before">BEFORE</span>
+      <img src="images/06_handicap_before.png" alt="plain elo">
+      <figcaption>标准 Elo，强者永远碾压，熵低。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag after">AFTER</span>
+      <img src="images/06_handicap_after.png" alt="handicap">
+      <figcaption>Penalty 四档下 S 曲线横向平移，50% 区间扩大。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag gain">GAIN</span>
+      <img src="images/06_handicap_gain.png" alt="entropy">
+      <figcaption>60 次发布的平均"对局信息熵"明显上升。</figcaption>
+    </figure>
+  </div>
+
+  <div class="gif-block">
+    <img src="images/06_handicap_gif.gif" alt="shift">
+    <div class="cap">动态：streak 增长时 S 曲线横向缓慢右移。</div>
+  </div>
+
+  <div class="sre-card">
+    <h4>SRE 控制方案</h4>
+    <ul class="points">
+      <li><b>critical-tier 服务</b>：始终启用 Handicap，连续 3 次成功自动"加惩"进入 CANARY。</li>
+      <li><b>连败保护</b>：连败 ≥ 2 时给最软的候选 → 和 <a href="#m8">Cox Survival</a> 的 alarm 分支互斥保护。</li>
+      <li><b>配置</b>：<code>max_penalty=200, tau=3</code>。生产建议 <code>tau=5</code>，避免早熟。</li>
+    </ul>
+  </div>
+
+  <div class="metrics">
+    <div><strong>文件：</strong><code>gan_matchmaking/handicap.py</code></div>
+    <div><strong>入口：</strong><code>HandicapElo.expected_win / update</code></div>
+    <div><strong>单测：</strong><code>tests/test_handicap.py</code></div>
+  </div>
+</section>
+
+<!-- =========================================================== -->
+<section class="module" id="m7">
+  <h2>7. 对局信息熵 <span class="chip">排序层 · §7</span></h2>
+  <p class="subtitle">把 20 个候选金丝雀按熵排序，只留下真能带来信息的那几个。</p>
+
+  <h3>公式吃透</h3>
+  $$
+    H(p) = -p \log_2 p - (1 - p)\log_2(1 - p),
+    \quad M^{*} = \arg\max_{M} H\big(p_{\text{win}}(M)\big)
+  $$
+  <p>为什么 $p \approx 0.5$ 最有信息：</p>
+  <ul class="points">
+    <li>$p=0$ 或 $p=1$ 时 $H=0$，结果已定，金丝雀没学到新东西。</li>
+    <li>$p=0.5$ 时 $H=1$ bit，结果完全不可预测，每次观测都是新信息。</li>
+    <li>bit 作为单位和 logit / log-likelihood 同量纲，可以直接叠加到 EOMM 的决策打分。</li>
+  </ul>
+
+  <div class="trio">
+    <figure>
+      <span class="tag before">BEFORE</span>
+      <img src="images/07_entropy_before.png" alt="raw">
+      <figcaption>20 个候选无序，有的一眼碾压、有的毫无信息。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag after">AFTER</span>
+      <img src="images/07_entropy_after.png" alt="sorted">
+      <figcaption>按 H(p) 排序，阈值 τ=0.9 筛出 informative 子集（绿色）。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag gain">GAIN</span>
+      <img src="images/07_entropy_gain.png" alt="gain">
+      <figcaption>被保留候选的"平均惊讶度"（surprise per canary）大幅提升。</figcaption>
+    </figure>
+  </div>
+
+  <div class="gif-block">
+    <img src="images/07_entropy_gif.gif" alt="threshold sweep">
+    <div class="cap">动态：阈值 τ 从 0 扫到 0.99，每一步实时标记被剔除的候选。</div>
+  </div>
+
+  <div class="sre-card">
+    <h4>SRE 控制方案</h4>
+    <ul class="points">
+      <li><b>τ=0.9</b> 是默认值；对发布节奏快的服务应下调（允许略不公平的快速验证）。</li>
+      <li><b>fallback</b>：若所有候选 $H &lt; \tau$，取 argmax $H$ 候选，避免返回空集。</li>
+      <li><b>可观测性</b>：<code>trace.stages.entropy.fallback_used=true</code> 表示用了兜底，要关注。</li>
+    </ul>
+  </div>
+
+  <div class="metrics">
+    <div><strong>文件：</strong><code>gan_matchmaking/entropy_match.py</code></div>
+    <div><strong>入口：</strong><code>EntropyMatcher.find_best_match / is_acceptable</code></div>
+    <div><strong>单测：</strong><code>tests/test_entropy_match.py</code></div>
+    <div><strong>配置：</strong><code>config.entropy.min_entropy</code></div>
+  </div>
+</section>
+
+<!-- =========================================================== -->
+<section class="module" id="m2">
+  <h2>2. EOMM 留存优化 <span class="chip">风险层 · §2</span></h2>
+  <p class="subtitle">把"下一次发布后你是否还愿意再来"建模成 $P(\text{Retain}\mid M, H_t)$ 并对候选集合做 argmax。</p>
+
+  <h3>公式吃透</h3>
+  $$
+    M^{*} = \arg\max_{M \in \mathcal{M}} \mathbb{E}\big[ P(\text{Retain} \mid M, H_t) \big]
+  $$
+  <p>$H_t$：服务历史（连胜/连败/平均间隔）；$M$：候选发布配置（canary fraction、回滚预算…）。</p>
+  <p>工程化：<code>RetentionModel</code> 用 logistic 回归 + 在线梯度下降。冷启动时权重 = 0，回退到规则引擎。</p>
+
+  <div class="trio">
+    <figure>
+      <span class="tag before">BEFORE</span>
+      <img src="images/02_eomm_before.png" alt="greedy">
+      <figcaption>贪心选最高胜率，踩在留存曲线的峭壁外。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag after">AFTER</span>
+      <img src="images/02_eomm_after.png" alt="eomm">
+      <figcaption>按"历史桶"分别 argmax，每个桶定位到留存峰。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag gain">GAIN</span>
+      <img src="images/02_eomm_gain.png" alt="lift">
+      <figcaption>500 次发布累计留存 EOMM 比贪心高 ~105%。</figcaption>
+    </figure>
+  </div>
+
+  <div class="gif-block">
+    <img src="images/02_eomm_gif.gif" alt="bandit">
+    <div class="cap">动态：logistic 权重 $w$ 在线学习，50 步后曲线逼近真实留存。</div>
+  </div>
+
+  <div class="sre-card">
+    <h4>SRE 控制方案</h4>
+    <ul class="points">
+      <li><b>SRE 版"留存"</b>：下一次发布仍在 SLO 预算内的概率（即 error budget 不被烧穿）。</li>
+      <li><b>探索 ε</b>：默认 0；线上可设 <code>0.05</code> 以小概率尝试非 argmax 配置收集数据。</li>
+      <li><b>训练</b>：每周基于 <code>observations</code> 表重新 <code>fit</code>；未训练前保留规则打分。</li>
+      <li><b>防"喂糖"</b>：EOMM 的目标必须上游被熵过滤器把关，否则会退化成"只送软对手"。</li>
+    </ul>
+  </div>
+
+  <div class="metrics">
+    <div><strong>文件：</strong><code>gan_matchmaking/eomm.py</code></div>
+    <div><strong>入口：</strong><code>EOMMMatcher.best(history, candidates)</code></div>
+    <div><strong>单测：</strong><code>tests/test_eomm.py</code></div>
+    <div><strong>配置：</strong><code>config.eomm.epsilon / lr / iters</code></div>
+  </div>
+</section>
+
+<!-- =========================================================== -->
+<section class="module" id="m8">
+  <h2>8. Cox 流失生存分析 <span class="chip">风险层 · §8</span></h2>
+  <p class="subtitle">预测"距离下一次事故还有多少时间"，把连败 / 预算消耗等特征变成一个风险概率。</p>
+
+  <h3>公式吃透</h3>
+  $$
+    h(t \mid X) = h_0(t) \exp(\beta^{\top} X),
+    \qquad
+    S(t \mid X) = \exp\!\left(-\int_0^t h(u \mid X)\,du\right)
+  $$
+  <p>$\beta$ 用 Breslow 偏似然最大化：</p>
+  $$
+    \ell(\beta) = \sum_{i:\ e_i=1} \Bigg[\beta^{\top} x_i
+       - \log\!\sum_{j \in \mathcal{R}(t_i)} \exp(\beta^{\top} x_j)\Bigg]
+  $$
+  <p>$\mathcal{R}(t_i)$ 是"在 $t_i$ 之前还没发生事故"的风险集。我们实现用 numpy 做梯度上升。</p>
+
+  <div class="trio">
+    <figure>
+      <span class="tag before">BEFORE</span>
+      <img src="images/08_survival_before.png" alt="flat">
+      <figcaption>常数风险，所有服务同一条曲线，失去分层能力。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag after">AFTER</span>
+      <img src="images/08_survival_after.png" alt="cox">
+      <figcaption>按 loss_streak 分层的 $S(t|X)$ 曲线；连败越多掉得越快。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag gain">GAIN</span>
+      <img src="images/08_survival_gain.png" alt="ll">
+      <figcaption>同一批数据下 log-likelihood 显著提升，说明模型"解释力"更强。</figcaption>
+    </figure>
+  </div>
+
+  <div class="gif-block">
+    <img src="images/08_survival_gif.gif" alt="curve steepen">
+    <div class="cap">动态：loss_streak 从 0 增到 9，曲线快速下弯。</div>
+  </div>
+
+  <div class="sre-card">
+    <h4>SRE 控制方案</h4>
+    <ul class="points">
+      <li><b>门槛</b>：<code>warn_threshold=0.3, alarm_threshold=0.6</code>。</li>
+      <li><b>ALARM 分支</b>：+ loss_streak ≥ 2 → ROLLBACK；否则 HOLD。</li>
+      <li><b>特征选择</b>：<code>[loss_streak, win_streak, 1-μ, σ, canary_fraction, 1-budget]</code>。</li>
+      <li><b>未训练 fallback</b>：logistic 启发式，偏保守；见 <code>ADR-0005</code>。</li>
+    </ul>
+  </div>
+
+  <div class="metrics">
+    <div><strong>文件：</strong><code>gan_matchmaking/survival.py</code></div>
+    <div><strong>入口：</strong><code>CoxModel.fit / ChurnRiskMonitor.predict</code></div>
+    <div><strong>单测：</strong><code>tests/test_survival.py</code></div>
+    <div><strong>配置：</strong><code>config.survival.*</code></div>
+  </div>
+</section>
+
+<!-- =========================================================== -->
+<section class="module" id="m9">
+  <h2>9. Minimax 博弈 <span class="chip">博弈层 · §9</span></h2>
+  <p class="subtitle">当"加新特性"和"保可靠性"利益冲突时，把决策转化为一个零和博弈，求混合策略纳什均衡。</p>
+
+  <h3>公式吃透</h3>
+  $$ \min_{y \in Y} \max_{x \in X} U(x, y) = \max_{x \in X} \min_{y \in Y} U(x, y) = v. $$
+  <p>用线性规划直接求：</p>
+  $$
+    \begin{aligned}
+      \max\ & v \\
+      \text{s.t.}\ & U^{\top} x \ge v \mathbf{1}, \\
+                   & \mathbf{1}^{\top} x = 1, \ x \ge 0
+    \end{aligned}
+  $$
+  <p>行玩家（SRE 发布决策者）和列玩家（潜在失败模式）同时解出 $x^{\ast}, y^{\ast}, v$。</p>
+
+  <div class="trio">
+    <figure>
+      <span class="tag before">BEFORE</span>
+      <img src="images/09_minimax_bp_before.png" alt="pure">
+      <figcaption>纯策略"总选 Rock"，最坏支付 = -1（被克）。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag after">AFTER</span>
+      <img src="images/09_minimax_bp_after.png" alt="nash">
+      <figcaption>Nash 混合策略各 1/3，最坏支付 = 0。</figcaption>
+    </figure>
+    <figure>
+      <span class="tag gain">GAIN</span>
+      <img src="images/09_minimax_bp_gain.png" alt="hist">
+      <figcaption>50 个扰动版本上，Nash 的最坏支付分布显著优于纯策略。</figcaption>
+    </figure>
+  </div>
+
+  <div class="gif-block">
+    <img src="images/09_minimax_bp_gif.gif" alt="fictitious play">
+    <div class="cap">动态：Fictitious Play 40 步收敛到均匀混合策略。</div>
+  </div>
+
+  <div class="sre-card">
+    <h4>SRE 控制方案</h4>
+    <ul class="points">
+      <li><b>应用场景</b>：feature flag 冲突（A 组要上、B 组要稳）、多 region 路由分配、预算划分。</li>
+      <li><b>LP 求解</b>：<code>scipy.optimize.linprog(method='highs')</code>，万级策略仍 &lt;10ms。</li>
+      <li><b>证据</b>：价值 $v$ 写入 trace，作为"博弈均衡估计"上报仪表盘。</li>
+    </ul>
+  </div>
+
+  <div class="metrics">
+    <div><strong>文件：</strong><code>gan_matchmaking/minimax_bp.py</code></div>
+    <div><strong>入口：</strong><code>zero_sum_nash(U)</code></div>
+    <div><strong>单测：</strong><code>tests/test_minimax_bp.py</code></div>
+  </div>
+</section>
+
+<!-- =========================================================== -->
+<section class="module" id="pipeline">
+  <h2>10. SelfIterationPipeline <span class="chip">装配</span></h2>
+  <p class="subtitle">七阶段管线把以上九件套串起来，外面包裹 per-service lock / 熔断 / shadow 模式 / 持久化 / 指标。</p>
+
+  <h3>调用路径</h3>
+  <pre><code>decide(ctx)
+ ├── circuit_breaker.allow?           → 否则 ESCALATE (fail fast)
+ ├── per_service_lock(service_id)     → 同服务串行
+ │    ├── _decide_locked(ctx)
+ │    │    ├── guards: freeze_window / budget_exhausted
+ │    │    ├── stage.pca        ← 遥测降维
+ │    │    ├── stage.synergy    ← GNN 依赖图
+ │    │    ├── stage.adjusted_probs ← DynamicK + Handicap
+ │    │    ├── stage.entropy    ← 熵过滤
+ │    │    ├── stage.eomm       ← 留存 argmax
+ │    │    ├── stage.risk       ← Cox survival
+ │    │    └── _resolve_decision → GO/CANARY/HOLD/ROLLBACK/ESCALATE
+ │    └── breaker.record_success/failure
+ └── _shadow_wrap(decision)           ← shadow / advisory / off
+</code></pre>
+
+  <h3>Trace 示例</h3>
+  <p>每次 <code>decide()</code> 返回一个完整可序列化的 trace，包含每阶段的中间状态，便于事后回溯：</p>
+  <pre><code>{
+  "kind": "canary",
+  "risk_level": "warn",
+  "risk_prob": 0.31,
+  "confidence": 0.94,
+  "rationale": ["eomm: picked canary-25pct (score=0.71)",
+                "risk=WARN → CANARY only"],
+  "trace": {
+    "stages": {
+      "pca":        { "fused": 0.95, "hidden_norm": 1e-6 },
+      "synergy":    { "n_dependencies": 1, "score": 0.0 },
+      "adjusted_probs": { "penalty": 80.0, "probs": [...], "k_factor": 28.9 },
+      "entropy":    { "entropies": [...], "acceptable_idx": [1], "fallback_used": true },
+      "eomm":       { "chosen_id": "canary-25pct", "chosen_score": 0.71 },
+      "risk":       { "features": [...], "prob": 0.31, "level": "warn" }
+    }
+  }
+}</code></pre>
+
+  <div class="sre-card">
+    <h4>SRE 自迭代闭环</h4>
+    <ol class="points" style="padding-left: 20px;">
+      <li><b>观察</b>：每次发布写 <code>observe_release()</code> → SQLite + metrics。</li>
+      <li><b>估计</b>：TrueSkill/PCA/GNN 增量更新 $\mu,\sigma,z,h_i$。</li>
+      <li><b>决策</b>：下次发布前 <code>decide()</code> 返回完整 trace + 推荐策略。</li>
+      <li><b>审计</b>：trace 落地，可通过 <code>runbooks/reproduce-decision.md</code> 100% 复现。</li>
+      <li><b>再训练</b>：每周基于 observations 表重新 fit Cox / RetentionModel。</li>
+    </ol>
+  </div>
+
+  <div class="warn-card">
+    <b>Shadow → Advisory → Enforce</b>：新上线默认 <code>shadow_mode=shadow</code>，所有非 HOLD 决策都降级为 HOLD 但仍打日志，观察两周。之后切到 <code>advisory</code>，操作员手动 confirm。再过两周切 <code>off</code>，真正 enforce。
+  </div>
+</section>
+
+<!-- =========================================================== -->
+<section class="module" id="ref">
+  <h2>附录 · 模块 ↔ 公式 ↔ 代码 ↔ 单测</h2>
+  <table class="ref">
+    <thead>
+      <tr><th>#</th><th>机制</th><th>公式</th><th>代码</th><th>单测</th><th>GIF</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>TrueSkill</td>
+          <td>$\mu'=\mu+\frac{\sigma^2}{\sigma^2+\beta^2}(r-\mu)$</td>
+          <td><code>trueskill.py</code></td>
+          <td><code>test_trueskill.py</code></td>
+          <td><a href="images/01_trueskill_gif.gif">01</a></td></tr>
+      <tr><td>2</td><td>EOMM</td>
+          <td>$\max\ \mathbb{E}[P(\text{Retain}\mid M,H_t)]$</td>
+          <td><code>eomm.py</code></td>
+          <td><code>test_eomm.py</code></td>
+          <td><a href="images/02_eomm_gif.gif">02</a></td></tr>
+      <tr><td>3</td><td>Dynamic K</td>
+          <td>$K = K_{\min}+\frac{K_{\max}-K_{\min}}{1+e^{\lambda(s-\theta)}}$</td>
+          <td><code>dynamic_k.py</code></td>
+          <td><code>test_dynamic_k.py</code></td>
+          <td><a href="images/03_dynamic_k_gif.gif">03</a></td></tr>
+      <tr><td>4</td><td>PCA</td>
+          <td>$X^{\top}X v = \lambda v$</td>
+          <td><code>pca_hidden.py</code></td>
+          <td><code>test_pca_hidden.py</code></td>
+          <td><a href="images/04_pca_hidden_gif.gif">04</a></td></tr>
+      <tr><td>5</td><td>GNN</td>
+          <td>$h^{(l+1)}=\mathrm{ReLU}(Wh+\sum A h U)$</td>
+          <td><code>gnn_synergy.py</code></td>
+          <td><code>test_gnn_synergy.py</code></td>
+          <td><a href="images/05_gnn_synergy_gif.gif">05</a></td></tr>
+      <tr><td>6</td><td>Handicap</td>
+          <td>$E_A = 1/(1+10^{(\Delta R+P)/400})$</td>
+          <td><code>handicap.py</code></td>
+          <td><code>test_handicap.py</code></td>
+          <td><a href="images/06_handicap_gif.gif">06</a></td></tr>
+      <tr><td>7</td><td>Entropy</td>
+          <td>$H(p)=-p\log_2 p-(1-p)\log_2(1-p)$</td>
+          <td><code>entropy_match.py</code></td>
+          <td><code>test_entropy_match.py</code></td>
+          <td><a href="images/07_entropy_gif.gif">07</a></td></tr>
+      <tr><td>8</td><td>Cox Survival</td>
+          <td>$h(t\mid X)=h_0(t)e^{\beta^{\top}X}$</td>
+          <td><code>survival.py</code></td>
+          <td><code>test_survival.py</code></td>
+          <td><a href="images/08_survival_gif.gif">08</a></td></tr>
+      <tr><td>9</td><td>Minimax</td>
+          <td>$\min_y\max_x U = \max_x\min_y U$</td>
+          <td><code>minimax_bp.py</code></td>
+          <td><code>test_minimax_bp.py</code></td>
+          <td><a href="images/09_minimax_bp_gif.gif">09</a></td></tr>
+      <tr><td>10</td><td>Pipeline</td>
+          <td>九件套组合</td>
+          <td><code>sre/self_iteration.py</code></td>
+          <td><code>test_sre_self_iteration.py</code></td>
+          <td><span style="color:var(--muted)">—</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="warn-card">
+    免责声明：本知识库对外部文章的数学思想做了学术性复现，用于 SRE 决策工程的落地实验，<b>不代表</b>任何游戏厂商或云厂商的生产参数。
+  </div>
+</section>
+
+</main>
+</div>
+
+<footer>
+  gan-matchmaking knowledge base · 源：<code>docs/knowledge_base.html</code>，图：<code>docs/generate_figures.py</code>
+</footer>
+
+<script>
+  const links = document.querySelectorAll('nav.toc a');
+  const targets = Array.from(links).map(a => document.querySelector(a.getAttribute('href')));
+  function onScroll() {
+    const top = window.scrollY + 120;
+    let active = targets[0];
+    for (const t of targets) if (t && t.offsetTop <= top) active = t;
+    links.forEach(a => a.classList.toggle('active',
+      a.getAttribute('href') === '#' + (active ? active.id : '')));
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+</script>
+</body>
+</html>

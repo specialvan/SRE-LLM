@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gan-matchmaking-config
+  labels:
+    app.kubernetes.io/name: gan-matchmaking
+    app.kubernetes.io/component: decider
+data:
+  # Mirrors the JSON shape consumed by gan_matchmaking.core.load_config.
+  config.json: |
+    {
+      "seed": 0,
+      "observability": {
+        "log_level": "INFO",
+        "log_sink": "stderr",
+        "emit_metrics": true,
+        "service_name": "gan-matchmaking"
+      },
+      "survival": {
+        "horizon_hours": 24.0,
+        "warn_threshold": 0.3,
+        "alarm_threshold": 0.6
+      },
+      "entropy": {
+        "min_entropy": 0.9
+      },
+      "handicap": {
+        "max_penalty": 200.0,
+        "tau": 3.0
+      }
+    }

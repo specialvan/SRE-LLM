@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gan-matchmaking
+  labels:
+    app.kubernetes.io/name: gan-matchmaking
+    app.kubernetes.io/component: decider
+spec:
+  # Keep a single replica per SQLite state file. For >1 replica use an external
+  # store (ADR-0006, future) and scale horizontally.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gan-matchmaking
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gan-matchmaking
+        app.kubernetes.io/component: decider
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /metrics
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: decider
+          image: ghcr.io/<your-org>/gan-matchmaking:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: GAN_HOST
+              value: "0.0.0.0"
+            - name: GAN_PORT
+              value: "8080"
+            - name: GAN_CONFIG
+              value: /etc/gan/config.json
+            - name: GAN_STATE_DB
+              value: /state/state.sqlite
+            - name: PYTHONHASHSEED
+              value: "0"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+          volumeMounts:
+            - name: config
+              mountPath: /etc/gan
+              readOnly: true
+            - name: state
+              mountPath: /state
+      volumes:
+        - name: config
+          configMap:
+            name: gan-matchmaking-config
+        - name: state
+          persistentVolumeClaim:
+            claimName: gan-matchmaking-state
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gan-matchmaking-state
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gan-matchmaking
+  labels:
+    app.kubernetes.io/name: gan-matchmaking
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: gan-matchmaking
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

@@ -1,0 +1,49 @@
+# Runbook · Reproduce a decision byte-for-byte
+
+**When to use**: Post-incident review. You have a `Decision.trace` and
+need to confirm the pipeline would return the same decision given the
+same inputs.
+
+## Preconditions
+
+- Git SHA of the pipeline at decision time (from the deploy manifest).
+- The `trace` dict (or its JSONL export).
+- The config JSON used at decision time.
+
+## Steps
+
+1. Check out the pipeline at that commit:
+   ```
+   git checkout <sha>
+   pip install -e .
+   ```
+
+2. Export a deterministic environment:
+   ```
+   set PYTHONHASHSEED=0
+   set GAN_SEED=<config.seed>
+   ```
+
+3. Reconstruct the `ReleaseContext` from the trace (`trace.stages.*` plus
+   the input feature vectors).
+
+4. Call the pipeline with the exact same config:
+   ```python
+   from gan_matchmaking.core import load_config
+   from gan_matchmaking.sre import SelfIterationPipeline
+   cfg = load_config("path/to/config.json")
+   pipeline = SelfIterationPipeline(config=cfg)
+   decision = pipeline.decide(reconstructed_ctx)
+   ```
+
+5. Compare `decision.kind`, `decision.risk_level`, `decision.chosen.id`
+   against the archived `Decision`. They must match bit-for-bit.
+
+## If they don't match
+
+- Double-check the config SHA and the commit SHA — even a whitespace
+  config diff re-seeds the SeedManager.
+- Look for *shared-registry* test pollution: if two pipelines run in the
+  same process and share `default_registry`, metrics snapshot may differ
+  but the `Decision` should still match.
+- File a bug with both traces attached.

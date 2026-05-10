@@ -1,0 +1,48 @@
+# Nightly training job. Reads observations from the shared state volume,
+# fits Cox / RetentionModel, and writes the resulting artefacts back.
+# The decider pods pick them up on next restart (future: hot-reload hook).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gan-matchmaking-train
+  labels:
+    app.kubernetes.io/name: gan-matchmaking
+    app.kubernetes.io/component: training
+spec:
+  schedule: "0 2 * * *"  # 02:00 UTC daily
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+          containers:
+            - name: trainer
+              image: ghcr.io/<your-org>/gan-matchmaking:latest
+              imagePullPolicy: IfNotPresent
+              command: ["python", "-m", "gan_matchmaking.training"]
+              args:
+                - --state-db=/state/state.sqlite
+                - --output-dir=/state/training_artifacts
+                - --what=all
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "256Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "768Mi"
+              volumeMounts:
+                - name: state
+                  mountPath: /state
+          volumes:
+            - name: state
+              persistentVolumeClaim:
+                claimName: gan-matchmaking-state
