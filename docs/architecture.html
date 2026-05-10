@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>auto-decide 路 Detailed Architecture</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --fg:#1b1d22; --fg-soft:#4a4e57; --fg-mute:#767a82;
+  --bg:#fbfbfa; --bg-card:#fff; --bg-code:#272b33;
+  --bg-note:#fff9e6; --bg-warn:#ffefe6; --bg-ok:#eaf7ec; --bg-sre:#eef2ff; --bg-contract:#f3eef9;
+  --accent:#0b6b58; --accent2:#2a4ab0; --rule:#e5e2dc; --link:#1249a7;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.72}
+body{display:grid;grid-template-columns:300px minmax(0,1fr);min-height:100vh}
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;border-right:1px solid var(--rule);padding:20px 18px;background:var(--bg-card);font-size:13.5px}
+nav.toc h1{font-size:15px;margin:0 0 4px}
+nav.toc .sub{color:var(--fg-mute);font-size:11.5px;margin-bottom:14px}
+nav.toc ol{list-style:none;padding:0;margin:0;counter-reset:toc}
+nav.toc ol li{counter-increment:toc;margin:2px 0}
+nav.toc ol>li>a::before{content:counters(toc,".") "  ";color:var(--fg-mute);font-variant-numeric:tabular-nums}
+nav.toc ol ol{padding-left:14px;border-left:1px dashed var(--rule);margin:2px 0 6px}
+nav.toc a{color:var(--fg-soft);text-decoration:none;display:block;padding:2px 6px;border-radius:4px}
+nav.toc a:hover{background:#e3e9f8;color:var(--accent2)}
+main{padding:44px clamp(24px,5vw,56px);max-width:1160px}
+h1.title{font-size:32px;line-height:1.2;margin:0 0 4px;letter-spacing:-0.01em}
+h1.title small{display:block;font-weight:normal;color:var(--fg-mute);font-size:14px;margin-top:4px}
+.meta{color:var(--fg-mute);font-size:13px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:10px 0;margin:20px 0 28px;display:flex;flex-wrap:wrap;gap:14px}
+h2{font-size:24px;margin-top:52px;padding-top:14px;border-top:2px solid var(--fg);letter-spacing:-0.01em}
+h3{font-size:19px;margin-top:34px;color:var(--accent2)}
+h4{font-size:15.5px;margin-top:24px;color:var(--fg)}
+p,li{color:var(--fg-soft)}
+code{font-family:var(--mono);background:#f4f1ec;padding:1px 6px;border-radius:4px;font-size:0.92em}
+pre{background:var(--bg-code);color:#e3e7ee;padding:14px 16px;border-radius:8px;overflow-x:auto;line-height:1.55;font-size:12.5px;margin:14px 0}
+pre code{background:transparent;color:inherit;padding:0}
+table{border-collapse:collapse;margin:16px 0;width:100%;font-size:13.5px}
+table th,table td{border-bottom:1px solid var(--rule);padding:7px 10px;text-align:left;vertical-align:top}
+table th{background:#f4ece0;font-weight:600}
+table tr:last-child td{border-bottom:1px solid var(--fg)}
+a{color:var(--link)}
+hr{border:none;border-top:1px solid var(--rule);margin:24px 0}
+figure{margin:24px 0}
+figure figcaption{font-size:12.5px;color:var(--fg-mute);text-align:center;margin-top:6px}
+figure svg{display:block;margin:0 auto;max-width:100%;height:auto;background:var(--bg-card);border:1px solid var(--rule);border-radius:8px}
+.callout{border-left:4px solid var(--accent);background:var(--bg-ok);padding:11px 16px;margin:14px 0;border-radius:0 8px 8px 0}
+.callout.note{border-color:#b08800;background:var(--bg-note)}
+.callout.warn{border-color:#d07000;background:var(--bg-warn)}
+.callout.sre{border-color:var(--accent2);background:var(--bg-sre)}
+.callout.contract{border-color:#5a2a9d;background:var(--bg-contract)}
+.callout .tag{font-size:10.5px;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;color:var(--fg);display:block;margin-bottom:3px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.module-table td:first-child,.req-table td:first-child,.task-table td:first-child{font-weight:700;color:var(--fg)}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;letter-spacing:0.05em;background:#d8ece6;color:var(--accent);margin-right:4px}
+.mono{font-family:var(--mono)}
+@media(max-width:900px){body{grid-template-columns:1fr}nav.toc{position:relative;height:auto;border-right:none;border-bottom:1px solid var(--rule)}.grid-2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="toc">
+  <h1>auto-decide architecture</h1>
+  <div class="sub">architecture / requirements / task breakdown / refine</div>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#requirements">Requirements</a></li>
+    <li><a href="#tasks">Task Breakdown</a></li>
+    <li><a href="#refine">Refine</a></li>
+    <li><a href="#refs">References</a></li>
+  </ol>
+  <hr>
+  <p style="font-size:12px;color:var(--fg-mute);margin:0">
+    -> <a href="./knowledge-base.html">knowledge-base.html</a><br>
+    -> <a href="./codex-handoff.md">codex-handoff.md</a><br>
+    -> <a href="./deep-dive.html">deep-dive.html</a><br>
+    -> <a href="./equations-digest.html">equations-digest.html</a><br>
+    -> <a href="./sre-adaptation.html">sre-adaptation.html</a>
+  </p>
+</nav>
+
+<main>
+<h1 class="title">auto-decide Detailed Architecture
+  <small>把现有数学骨架整理成可执行的架构、需求、任务拆分和 refine 路线</small>
+</h1>
+<div class="meta">
+  <span>scope: <code>auto_decide/</code> + <code>docs/</code></span>
+  <span>focus: architecture / requirements / task breakdown / refine</span>
+  <span>target readers: implementer / reviewer / SRE</span>
+</div>
+
+<div id="overview" class="callout note">
+<span class="tag">What this is</span>
+这是一张“能开工”的架构图，不是摘要。
+它回答四个问题：
+1. 系统有哪些稳定层和边界；
+2. 每层必须满足什么需求；
+3. 这些需求如何拆成任务；
+4. 哪些点需要按指标持续 refine。
+</div>
+
+<h2 id="architecture">1 · Architecture</h2>
+
+<p>当前系统遵循一个固定原则：<strong>名义建议可以智能，硬边界必须可证</strong>。
+因此架构被切成三类层次：</p>
+
+<ul>
+  <li><strong>Sense / model layer</strong>：`graph.py`、`dynamics.py`、`potential.py`、`game.py`、`reachable.py`，负责把场景、状态、不确定性和未来可达性表示出来。</li>
+  <li><strong>Safety layer</strong>：`lyapunov.py`、`cbf.py`、`invariant.py`，负责把“能不能过”和“能否持续稳定”从智能建议里剥离出来。</li>
+  <li><strong>Orchestration layer</strong>：`planner.py`，把所有东西串成唯一入口，并把 `trace` 变成全系统的真相源。</li>
+</ul>
+
+<figure>
+<svg viewBox="0 0 1100 430" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .box{fill:#fff;stroke:#767a82;stroke-width:1.2;rx:10}
+      .core{fill:#eaf7ec;stroke:#0b6b58;stroke-width:1.4;rx:10}
+      .gate{fill:#fff9e6;stroke:#b08800;stroke-width:1.4;rx:10}
+      .out{fill:#eef2ff;stroke:#2a4ab0;stroke-width:1.4;rx:10}
+      .txt{font:bold 12px -apple-system;fill:#1b1d22}
+      .sub{font:11px -apple-system;fill:#767a82}
+    </style>
+    <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a4e57"/>
+    </marker>
+  </defs>
+
+  <rect class="box" x="20" y="40" width="150" height="74" rx="10"/>
+  <text class="txt" x="95" y="66" text-anchor="middle">Signals</text>
+  <text class="sub" x="95" y="85" text-anchor="middle">telemetry / goal / belief</text>
+  <text class="sub" x="95" y="102" text-anchor="middle">graph input</text>
+
+  <rect class="core" x="220" y="40" width="150" height="74" rx="10"/>
+  <text class="txt" x="295" y="66" text-anchor="middle">graph.py</text>
+  <text class="sub" x="295" y="85" text-anchor="middle">E-01 ~ E-05</text>
+  <text class="sub" x="295" y="102" text-anchor="middle">intent-weighted DAG</text>
+
+  <rect class="core" x="420" y="40" width="150" height="74" rx="10"/>
+  <text class="txt" x="495" y="66" text-anchor="middle">dynamics.py</text>
+  <text class="sub" x="495" y="85" text-anchor="middle">E-06 ~ E-10</text>
+  <text class="sub" x="495" y="102" text-anchor="middle">state / RK4 / clamp</text>
+
+  <rect class="core" x="620" y="40" width="150" height="74" rx="10"/>
+  <text class="txt" x="695" y="66" text-anchor="middle">potential.py</text>
+  <text class="sub" x="695" y="85" text-anchor="middle">E-11 ~ E-16</text>
+  <text class="sub" x="695" y="102" text-anchor="middle">soft guidance only</text>
+
+  <rect class="box" x="820" y="40" width="150" height="74" rx="10"/>
+  <text class="txt" x="895" y="66" text-anchor="middle">nominal policy</text>
+  <text class="sub" x="895" y="85" text-anchor="middle">GradientPolicy / NN</text>
+  <text class="sub" x="895" y="102" text-anchor="middle">not trusted yet</text>
+
+  <rect class="gate" x="220" y="170" width="150" height="74" rx="10"/>
+  <text class="txt" x="295" y="196" text-anchor="middle">lyapunov.py</text>
+  <text class="sub" x="295" y="215" text-anchor="middle">E-17 ~ E-20</text>
+  <text class="sub" x="295" y="232" text-anchor="middle">stability monitor</text>
+
+  <rect class="gate" x="420" y="170" width="150" height="74" rx="10"/>
+  <text class="txt" x="495" y="196" text-anchor="middle">reachable.py</text>
+  <text class="sub" x="495" y="215" text-anchor="middle">E-21 ~ E-22</text>
+  <text class="sub" x="495" y="232" text-anchor="middle">capacity / dead zone</text>
+
+  <rect class="gate" x="620" y="170" width="150" height="74" rx="10"/>
+  <text class="txt" x="695" y="196" text-anchor="middle">game.py</text>
+  <text class="sub" x="695" y="215" text-anchor="middle">E-23 ~ E-25</text>
+  <text class="sub" x="695" y="232" text-anchor="middle">belief / derating</text>
+
+  <rect class="gate" x="820" y="170" width="150" height="74" rx="10"/>
+  <text class="txt" x="895" y="196" text-anchor="middle">cbf.py</text>
+  <text class="sub" x="895" y="215" text-anchor="middle">E-26 ~ E-33</text>
+  <text class="sub" x="895" y="232" text-anchor="middle">hard safety gate</text>
+
+  <rect class="gate" x="420" y="300" width="150" height="74" rx="10"/>
+  <text class="txt" x="495" y="326" text-anchor="middle">invariant.py</text>
+  <text class="sub" x="495" y="345" text-anchor="middle">E-34 ~ E-35</text>
+  <text class="sub" x="495" y="362" text-anchor="middle">finite-step fallback</text>
+
+  <rect class="out" x="620" y="300" width="150" height="74" rx="10"/>
+  <text class="txt" x="695" y="326" text-anchor="middle">planner.py</text>
+  <text class="sub" x="695" y="345" text-anchor="middle">single entry</text>
+  <text class="sub" x="695" y="362" text-anchor="middle">trace + metrics</text>
+
+  <rect class="out" x="820" y="300" width="150" height="74" rx="10"/>
+  <text class="txt" x="895" y="326" text-anchor="middle">Outputs</text>
+  <text class="sub" x="895" y="345" text-anchor="middle">u_safe / trace.jsonl</text>
+  <text class="sub" x="895" y="362" text-anchor="middle">metrics / fallback</text>
+
+  <path d="M170,77 L215,77" stroke="#333" marker-end="url(#a1)"/>
+  <path d="M370,77 L415,77" stroke="#333" marker-end="url(#a1)"/>
+  <path d="M570,77 L615,77" stroke="#333" marker-end="url(#a1)"/>
+  <path d="M770,77 L815,77" stroke="#333" marker-end="url(#a1)"/>
+
+  <path d="M895,114 L895,165" stroke="#333" marker-end="url(#a1)"/>
+  <path d="M895,244 L895,295" stroke="#333" marker-end="url(#a1)"/>
+  <path d="M370,207 L415,207" stroke="#333" marker-end="url(#a1)"/>
+  <path d="M570,207 L615,207" stroke="#333" marker-end="url(#a1)"/>
+  <path d="M770,207 L815,207" stroke="#333" marker-end="url(#a1)"/>
+  <path d="M570,337 L615,337" stroke="#333" marker-end="url(#a1)"/>
+  <path d="M770,337 L815,337" stroke="#333" marker-end="url(#a1)"/>
+
+  <rect class="box" x="20" y="300" width="320" height="74" rx="10"/>
+  <text class="txt" x="180" y="325" text-anchor="middle">Verification loop</text>
+  <text class="sub" x="180" y="344" text-anchor="middle">tests / examples / benchmark / schema</text>
+  <text class="sub" x="180" y="361" text-anchor="middle">all modules must leave trace evidence</text>
+
+  <path d="M180,300 L180,258" stroke="#2a4ab0" stroke-dasharray="4 3" marker-end="url(#a1)"/>
+</svg>
+<figcaption>系统静态架构。软建议和硬边界分层，`planner.py` 是唯一北向入口，`trace` 是唯一真相源。</figcaption>
+</figure>
+
+<h3>1.1 Runtime view</h3>
+
+<figure>
+<svg viewBox="0 0 1080 270" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .b{fill:#fff;stroke:#767a82;stroke-width:1.2;rx:8}
+      .g{fill:#eaf7ec;stroke:#0b6b58;stroke-width:1.3;rx:8}
+      .y{fill:#fff9e6;stroke:#b08800;stroke-width:1.3;rx:8}
+      .o{fill:#eef2ff;stroke:#2a4ab0;stroke-width:1.3;rx:8}
+      .t{font:bold 12px -apple-system;fill:#1b1d22}
+      .s{font:11px -apple-system;fill:#767a82}
+      .m{font:10px ui-monospace;fill:#4a4e57}
+    </style>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a4e57"/>
+    </marker>
+  </defs>
+
+  <rect class="b" x="20" y="40" width="130" height="70" rx="8"/>
+  <text class="t" x="85" y="66" text-anchor="middle">observation</text>
+  <text class="s" x="85" y="85" text-anchor="middle">state / graph / belief</text>
+  <text class="m" x="85" y="102" text-anchor="middle">input snapshot</text>
+
+  <rect class="g" x="190" y="40" width="130" height="70" rx="8"/>
+  <text class="t" x="255" y="66" text-anchor="middle">graph.update</text>
+  <text class="s" x="255" y="85" text-anchor="middle">E-01~E-05</text>
+  <text class="m" x="255" y="102" text-anchor="middle">rebuild edges</text>
+
+  <rect class="g" x="360" y="40" width="130" height="70" rx="8"/>
+  <text class="t" x="425" y="66" text-anchor="middle">nominal</text>
+  <text class="s" x="425" y="85" text-anchor="middle">potential / policy</text>
+  <text class="m" x="425" y="102" text-anchor="middle">u_nn</text>
+
+  <rect class="y" x="530" y="40" width="130" height="70" rx="8"/>
+  <text class="t" x="595" y="66" text-anchor="middle">CBF filter</text>
+  <text class="s" x="595" y="85" text-anchor="middle">feasible set fold</text>
+  <text class="m" x="595" y="102" text-anchor="middle">u_cbf</text>
+
+  <rect class="y" x="700" y="40" width="130" height="70" rx="8"/>
+  <text class="t" x="765" y="66" text-anchor="middle">T_inv</text>
+  <text class="s" x="765" y="85" text-anchor="middle">Lyapunov + fallback</text>
+  <text class="m" x="765" y="102" text-anchor="middle">u_safe</text>
+
+  <rect class="o" x="870" y="40" width="180" height="70" rx="8"/>
+  <text class="t" x="960" y="66" text-anchor="middle">dynamics.step</text>
+  <text class="s" x="960" y="85" text-anchor="middle">state propagation</text>
+  <text class="m" x="960" y="102" text-anchor="middle">next_state</text>
+
+  <rect class="o" x="360" y="150" width="300" height="70" rx="8"/>
+  <text class="t" x="510" y="176" text-anchor="middle">trace / metrics</text>
+  <text class="s" x="510" y="195" text-anchor="middle">V, dV_dt, min_dist, status, cbf_status</text>
+  <text class="m" x="510" y="212" text-anchor="middle">single source of truth</text>
+
+  <path d="M150,75 L185,75" stroke="#333" marker-end="url(#a2)"/>
+  <path d="M320,75 L355,75" stroke="#333" marker-end="url(#a2)"/>
+  <path d="M490,75 L525,75" stroke="#333" marker-end="url(#a2)"/>
+  <path d="M660,75 L695,75" stroke="#333" marker-end="url(#a2)"/>
+  <path d="M830,75 L865,75" stroke="#333" marker-end="url(#a2)"/>
+  <path d="M255,110 L510,145" stroke="#5a2a9d" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+  <path d="M595,110 L510,145" stroke="#5a2a9d" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+  <path d="M765,110 L510,145" stroke="#5a2a9d" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+  <path d="M960,110 L510,145" stroke="#5a2a9d" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+</svg>
+<figcaption>运行时序。名义策略只负责建议，`CBF` 和 `T_inv` 负责收敛到可行域，`trace` 负责留痕。</figcaption>
+</figure>
+
+<h3>1.2 Boundary contract</h3>
+
+<table class="module-table">
+  <thead>
+    <tr><th>Layer</th><th>Module</th><th>Responsibility</th><th>Not responsible for</th><th>Primary outputs</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Discrete sensing</td><td><code>graph.py</code></td><td>Intent-weighted dependency graph</td><td>Trajectory planning or control</td><td>edges / adjacency</td></tr>
+    <tr><td>Continuous state</td><td><code>dynamics.py</code></td><td>State propagation under bicycle model</td><td>Safety proof or policy choice</td><td>next_state / feasibility</td></tr>
+    <tr><td>Soft guidance</td><td><code>potential.py</code></td><td>Attraction / repulsion / interaction gradients</td><td>Hard safety enforcement</td><td>flow direction</td></tr>
+    <tr><td>Stability monitor</td><td><code>lyapunov.py</code></td><td>Velocity-tracking energy and decay check</td><td>Distance safety or dead-zone proof</td><td>V / dV_dt</td></tr>
+    <tr><td>Capacity estimate</td><td><code>reachable.py</code></td><td>Forward reachable set and dead zone heuristic</td><td>Exact reachability proof</td><td>hull / dead zone flag</td></tr>
+    <tr><td>Safety gate</td><td><code>cbf.py</code></td><td>Fold nominal action into safe set</td><td>Policy learning</td><td>u_safe / violations</td></tr>
+    <tr><td>Invariant operator</td><td><code>invariant.py</code></td><td>Lyapunov relaxation and fallback brake</td><td>Global path optimization</td><td>status / trace</td></tr>
+    <tr><td>Orchestration</td><td><code>planner.py</code></td><td>Single-entry execution pipeline</td><td>Any direct bypass to executor</td><td>next_state / trace</td></tr>
+    <tr><td>Domain adaptation</td><td><code>sre-adaptation.html</code></td><td>Map patterns to SRE vocabulary</td><td>Rewrite the math core</td><td>P-01 ~ P-09 patterns</td></tr>
+  </tbody>
+</table>
+
+<div class="callout sre">
+<span class="tag">Design law</span>
+<strong>Soft suggestion and hard boundary must stay separated.</strong>
+`PotentialField` / nominal policy only gives direction; `CBF` / `T_inv` owns feasibility; `planner` owns the only outbound control path.
+</div>
+
+<h2 id="requirements">2 · Requirements</h2>
+
+<p>要求分两层：<strong>功能要求</strong>描述系统必须做什么，<strong>非功能要求</strong>描述它必须以什么质量做。
+所有要求都要能落回代码、测试和 trace。</p>
+
+<h3>2.1 Functional requirements</h3>
+
+<table class="req-table">
+  <thead>
+    <tr><th>ID</th><th>Requirement</th><th>Mapped module</th><th>Acceptance</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>FR-01</td><td>Build a time-varying intent graph from scene observations.</td><td><code>graph.py</code></td><td>Edge weights increase when distance shrinks and conflict grows; graph stays directed.</td></tr>
+    <tr><td>FR-02</td><td>Propagate ego state with jerk-driven bicycle dynamics and clamp the friction envelope.</td><td><code>dynamics.py</code></td><td>Straight motion is numerically stable; <code>|a| ≤ μg</code> always holds.</td></tr>
+    <tr><td>FR-03</td><td>Produce a soft nominal direction from the composite potential field.</td><td><code>potential.py</code></td><td>Goal pulls, obstacles repel, interaction term adds pressure only.</td></tr>
+    <tr><td>FR-04</td><td>Expose a Lyapunov monitor for velocity tracking stability.</td><td><code>lyapunov.py</code></td><td><code>dV_dt ≤ 0</code> in cruising; trace exposes <code>V</code> and <code>dV_dt</code>.</td></tr>
+    <tr><td>FR-05</td><td>Approximate forward reachable set and detect dead zones.</td><td><code>reachable.py</code></td><td>Hull grows with horizon; unavoidable collision triggers dead-zone flag.</td></tr>
+    <tr><td>FR-06</td><td>Filter nominal action through CBF constraints into the nearest feasible command.</td><td><code>cbf.py</code></td><td>Unsafe nominal action is converted to safer action or fallback brake.</td></tr>
+    <tr><td>FR-07</td><td>Wrap the filtered action in <code>T_inv</code> with relaxation and bounded fallback.</td><td><code>invariant.py</code></td><td>Finite steps only; no exception leak; emergency brake always feasible.</td></tr>
+    <tr><td>FR-08</td><td>Expose a single-step planner entry that emits control and trace.</td><td><code>planner.py</code></td><td>No external caller can bypass <code>T_inv</code> and call executor directly.</td></tr>
+    <tr><td>FR-09</td><td>Expose trace and metrics suitable for automated review and offline debugging.</td><td><code>planner.py</code> + docs</td><td>Trace schema contains state, control, stability, safety and status fields.</td></tr>
+    <tr><td>FR-10</td><td>Provide a migration seam to SRE vocabulary without changing the math core.</td><td><code>sre-adaptation.html</code></td><td>Each pattern can be mapped to a named SRE concept.</td></tr>
+  </tbody>
+</table>
+
+<h3>2.2 Non-functional requirements</h3>
+
+<table class="req-table">
+  <thead>
+    <tr><th>ID</th><th>Requirement</th><th>Target</th><th>Why it matters</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>NF-01</td><td>Single-entry control plane</td><td>100% of outbound controls from <code>planner.step()</code></td><td>Prevents safety bypass</td></tr>
+    <tr><td>NF-02</td><td>Bounded latency</td><td>P99 of one cycle within budget</td><td>Keeps control loop real-time</td></tr>
+    <tr><td>NF-03</td><td>Deterministic fallback</td><td><code>Control(0, -jerk_max)</code> always available</td><td>Guarantees progress under failure</td></tr>
+    <tr><td>NF-04</td><td>Observability</td><td>Trace and metrics emitted every step</td><td>Supports review and SRE operations</td></tr>
+    <tr><td>NF-05</td><td>Parameter governance</td><td>Physics / tuning / safety parameters separated</td><td>Stops accidental model mixing</td></tr>
+    <tr><td>NF-06</td><td>Unit consistency</td><td>Seconds, meters, radians only; no mixed scales</td><td>Prevents silent math bugs</td></tr>
+    <tr><td>NF-07</td><td>Module independence</td><td>Each module independently testable</td><td>Enables incremental refinement</td></tr>
+    <tr><td>NF-08</td><td>Docs parity</td><td>Formula / code / test mapping kept current</td><td>Makes Codex review machine-readable</td></tr>
+  </tbody>
+</table>
+
+<div class="callout contract">
+<span class="tag">Traceability</span>
+需求不是单独写的，它必须能回到：
+`FORMULA_MAP.md` 的公式编号、
+`tests/` 的测试名字、
+`trace.jsonl` 的字段、
+以及 `sre-adaptation.html` 的跨域映射。
+</div>
+
+<h2 id="tasks">3 · Task Breakdown</h2>
+
+<p>任务拆分按“先稳骨架，再补边界，再装配，再迁移”的顺序做。
+这样可以避免把所有不确定性一次性叠加到同一条 PR 上。</p>
+
+<table class="task-table">
+  <thead>
+    <tr><th>Phase</th><th>Task</th><th>Depends on</th><th>Deliverable</th><th>Refine lever</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>P0</td><td>Freeze types, units and public API.</td><td>none</td><td><code>types.py</code> and contract docs</td><td>Reduce shape drift</td></tr>
+    <tr><td>P1</td><td>Finish graph and dynamics as stable front-end models.</td><td>P0</td><td>Graph update, clamp, RK4, feasibility tests</td><td>Fix unit and direction errors</td></tr>
+    <tr><td>P2</td><td>Wire potential, Lyapunov, reachable and game layers.</td><td>P1</td><td>Nominal policy + stability monitor + dead-zone heuristic</td><td>Separate soft and hard constraints</td></tr>
+    <tr><td>P3</td><td>Ship CBF and T_inv as the hard safety path.</td><td>P2</td><td>Safe control filter with bounded fallback</td><td>Tighten safety margin and relative degree handling</td></tr>
+    <tr><td>P4</td><td>Assemble planner and trace schema.</td><td>P3</td><td>Single-entry `step()` with JSONL trace</td><td>Make review and replay deterministic</td></tr>
+    <tr><td>P5</td><td>Build demos and regression benches.</td><td>P4</td><td>Intersection demo and structural-vs-e2e benchmark</td><td>Observe real failure modes</td></tr>
+    <tr><td>P6</td><td>Map the same skeleton to SRE.</td><td>P5</td><td>`sre-adaptation.html` / future `sre_control/` package</td><td>Translate patterns, not math</td></tr>
+  </tbody>
+</table>
+
+<h3>3.1 Critical path</h3>
+<ol>
+  <li><code>types.py</code> -> <code>graph.py</code> -> <code>dynamics.py</code></li>
+  <li><code>potential.py</code> -> <code>lyapunov.py</code> -> <code>reachable.py</code></li>
+  <li><code>game.py</code> -> <code>cbf.py</code> -> <code>invariant.py</code></li>
+  <li><code>planner.py</code> -> <code>trace</code> -> demo / benchmark / CI</li>
+  <li><code>sre-adaptation.html</code> as the migration seam, not the blocker</li>
+</ol>
+
+<h3>3.2 Parallelizable side work</h3>
+<ul>
+  <li>Update docs and formula index in parallel with unit tests.</li>
+  <li>Prepare trace schema and benchmark scenarios while core safety layers mature.</li>
+  <li>Draft SRE mappings early so the adapter does not drift from the math core.</li>
+</ul>
+
+<div class="callout warn">
+<span class="tag">Ordering rule</span>
+不要先优化 nominal policy 再补硬边界。
+先把 `CBF` / `T_inv` 的下界做稳，再把智能部分放进去，否则 refine 的方向会被错误建议污染。
+</div>
+
+<h2 id="refine">4 · Refine</h2>
+
+<p>Refine 不是“把参数调大调小”这么简单，而是一个围绕指标、失败模式和边界合同的循环。</p>
+
+<figure>
+<svg viewBox="0 0 920 250" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .r1{fill:#eef2ff;stroke:#2a4ab0;stroke-width:1.3}
+      .r2{fill:#eaf7ec;stroke:#0b6b58;stroke-width:1.3}
+      .r3{fill:#fff9e6;stroke:#b08800;stroke-width:1.3}
+      .r4{fill:#f3eef9;stroke:#5a2a9d;stroke-width:1.3}
+      .lbl{font:bold 12px -apple-system;fill:#1b1d22}
+      .sub{font:11px -apple-system;fill:#767a82}
+    </style>
+    <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a4e57"/>
+    </marker>
+  </defs>
+  <rect class="r1" x="20" y="50" width="190" height="90" rx="10"/>
+  <text class="lbl" x="115" y="76" text-anchor="middle">1. instrument</text>
+  <text class="sub" x="115" y="96" text-anchor="middle">trace / metrics / tests</text>
+  <text class="sub" x="115" y="114" text-anchor="middle">measure the real drift</text>
+
+  <rect class="r2" x="245" y="50" width="190" height="90" rx="10"/>
+  <text class="lbl" x="340" y="76" text-anchor="middle">2. diagnose</text>
+  <text class="sub" x="340" y="96" text-anchor="middle">which layer broke?</text>
+  <text class="sub" x="340" y="114" text-anchor="middle">module / boundary / unit</text>
+
+  <rect class="r3" x="470" y="50" width="190" height="90" rx="10"/>
+  <text class="lbl" x="565" y="76" text-anchor="middle">3. tighten</text>
+  <text class="sub" x="565" y="96" text-anchor="middle">contract / margin / horizon</text>
+  <text class="sub" x="565" y="114" text-anchor="middle">fix the smallest safe boundary</text>
+
+  <rect class="r4" x="695" y="50" width="205" height="90" rx="10"/>
+  <text class="lbl" x="797" y="76" text-anchor="middle">4. verify</text>
+  <text class="sub" x="797" y="96" text-anchor="middle">pytest / demo / benchmark</text>
+  <text class="sub" x="797" y="114" text-anchor="middle">only then publish the change</text>
+
+  <path d="M210,95 L240,95" stroke="#333" marker-end="url(#a3)"/>
+  <path d="M435,95 L465,95" stroke="#333" marker-end="url(#a3)"/>
+  <path d="M660,95 L690,95" stroke="#333" marker-end="url(#a3)"/>
+  <path d="M797,142 C 797,195 115,195 115,150" stroke="#333" fill="none" marker-end="url(#a3)"/>
+  <text class="sub" x="470" y="210" text-anchor="middle">refine loop: measure -> isolate -> tighten -> re-run</text>
+</svg>
+<figcaption>Refine 回路。每次只改最小边界，并用 trace / tests 证明改动有效。</figcaption>
+</figure>
+
+<h3>4.1 Symptom -> refine target</h3>
+
+<table>
+  <thead>
+    <tr><th>Symptom</th><th>Refine target</th><th>Typical move</th><th>Expected effect</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Penetration or near-penetration</td><td><code>cbf.py</code> / barrier model</td><td>Increase safety margin, fix relative degree, raise <code>h_dot</code> horizon</td><td>Fewer safety violations</td></tr>
+    <tr><td>Too many emergency brakes</td><td><code>game.py</code> + nominal policy</td><td>Refine belief-derived margin, improve nominal prediction</td><td>Lower false alarms while staying safe</td></tr>
+    <tr><td>Stability check often fails</td><td><code>lyapunov.py</code> / <code>invariant.py</code></td><td>Keep V as pure speed-tracking term; relax jerk step size</td><td>More stable cruising</td></tr>
+    <tr><td>Planner latency too high</td><td><code>cbf.py</code> search strategy</td><td>Replace grid search with true QP, cache invariants</td><td>Lower P99 latency</td></tr>
+    <tr><td>Trace missing or ambiguous</td><td><code>planner.py</code> + schema</td><td>Lock fields, add JSON schema, add regression</td><td>Review becomes deterministic</td></tr>
+    <tr><td>Bypass risk appears</td><td>API boundary</td><td>Enforce single entry and static grep rules</td><td>No silent hard-constraint bypass</td></tr>
+    <tr><td>SRE mapping feels forced</td><td><code>sre-adaptation.html</code></td><td>Translate mechanism, not surface labels</td><td>Migration remains faithful</td></tr>
+  </tbody>
+</table>
+
+<h3>4.2 Refine priorities</h3>
+<ol>
+  <li><strong>Keep hard constraints hard.</strong> Do not smooth away `CBF` or `T_inv` into losses.</li>
+  <li><strong>Improve the approximation order next.</strong> Move from heuristic grid to real QP only after the boundary is trusted.</li>
+  <li><strong>Wire dynamic uncertainty last.</strong> Belief-based derating should widen or shrink margin, not replace the gate.</li>
+  <li><strong>Refine observability continuously.</strong> Trace fields are part of the contract, not a debug afterthought.</li>
+  <li><strong>Refine by scenario.</strong> Rain, high speed, close obstacle, non-cooperative agent, and OOD intent should each have a dedicated regression.</li>
+</ol>
+
+<div class="callout sre">
+<span class="tag">Refine rule for SRE transfer</span>
+Port the pattern, not the metaphor.
+If the auto-decide side says "CBF", the SRE side should say "admission controller";
+if the auto-decide side says "Lyapunov", the SRE side should say "bounded burn rate";
+if the auto-decide side says "T_inv", the SRE side should say "change guard".
+</div>
+
+<h2 id="refs">5 · References</h2>
+
+<ul>
+  <li><a href="./knowledge-base.html">knowledge-base.html</a> - overview, SRE review and codex checklist</li>
+  <li><a href="./codex-handoff.md">codex-handoff.md</a> - current state, risk surface and next-step handoff</li>
+  <li><a href="./deep-dive.html">deep-dive.html</a> - module-by-module deep dive and failure matrices</li>
+  <li><a href="./equations-digest.html">equations-digest.html</a> - 35 equations, code anchors and pitfalls</li>
+  <li><a href="./sre-adaptation.html">sre-adaptation.html</a> - P-01 ~ P-09 SRE migration patterns</li>
+  <li><a href="../auto_decide/planner.py">auto_decide/planner.py</a> - single-entry orchestration</li>
+  <li><a href="../auto_decide/cbf.py">auto_decide/cbf.py</a> - hard boundary filter</li>
+  <li><a href="../auto_decide/invariant.py">auto_decide/invariant.py</a> - T_inv operator</li>
+</ul>
+
+<div class="callout note">
+<span class="tag">Codex-friendly note</span>
+这个架构页已经把“什么是架构、什么是需求、什么是任务、怎么 refine”拆成独立可读的对象。
+后续如果要继续深挖，优先补的是：`trace schema`、`true QP`、`dynamic belief margin`、`SRE control plane` 四块。
+</div>
+
+<hr>
+<p style="color:var(--fg-mute);font-size:12px;text-align:center;margin-top:28px;">
+auto-decide detailed architecture - v0.1 - architecture / requirements / task breakdown / refine
+</p>
+
+</main>
+</body>
+</html>

@@ -32,6 +32,8 @@
 - [docs/FORMULA_MAP.md](./docs/FORMULA_MAP.md) — 公式 ↔ 代码对照表
 - [docs/DESIGN.md](./docs/DESIGN.md) — 设计说明
 - [docs/knowledge-base.html](./docs/knowledge-base.html) — **总览知识库**（SRE 评审报告 + Codex checklist）
+- [docs/architecture.html](./docs/architecture.html) — **详细架构**（architecture / requirements / task breakdown / refine）
+- [docs/codex-handoff.md](./docs/codex-handoff.md) — **Codex 交接单**（当前状态 / 风险面 / 下一步）
 - [docs/deep-dive.html](./docs/deep-dive.html) — **算法级深度拆解**（数据结构、逐行伪代码、失败矩阵、系统不变式）
 - [docs/equations-digest.html](./docs/equations-digest.html) — **方程吃透手册**（E-01~E-35 · 每一条公式的推导 / 等价变形 / 陷阱 / SRE 对位）
 - [docs/sre-adaptation.html](./docs/sre-adaptation.html) — **工程能力→SRE 迁移**（9 个命名模式 + 接口骨架 + 采用路线）
