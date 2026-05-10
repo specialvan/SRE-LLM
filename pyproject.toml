@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "attention-residuals"
+version = "0.1.0"
+description = "Engineering implementation of Kimi's Attention Residuals — explicit vertical self-attention over layer history."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "attention-residuals contributors" }]
+dependencies = [
+    "torch>=2.0",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+include = ["attention_residuals*"]
+exclude = ["tests*", "examples*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
