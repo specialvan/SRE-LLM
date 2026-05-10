@@ -20,6 +20,7 @@ import numpy as np
 from ..core.errors import DataError
 from ..persistence import Observation, PipelineStore
 from ..survival import CoxModel
+from ..sre.artifacts import build_metadata, save_cox_artifact
 
 
 @dataclass
@@ -29,6 +30,8 @@ class CoxTrainingReport:
     services: int = 0
     beta: List[float] = field(default_factory=list)
     output_path: Optional[str] = None
+    artifact_version: Optional[str] = None
+    metadata_path: Optional[str] = None
 
     def as_dict(self) -> dict:
         return {
@@ -37,6 +40,8 @@ class CoxTrainingReport:
             "services": self.services,
             "beta": self.beta,
             "output_path": self.output_path,
+            "artifact_version": self.artifact_version,
+            "metadata_path": self.metadata_path,
         }
 
 
@@ -100,13 +105,25 @@ def train_cox_from_store(
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    np_path = output_dir / "cox_beta.npz"
-    baseline_t = model._baseline_t if model._baseline_t is not None else []
-    baseline_H = model._baseline_H if model._baseline_H is not None else []
-    np.savez(np_path,
-             beta=np.asarray(model.beta, dtype=float),
-             baseline_t=np.asarray(baseline_t, dtype=float),
-             baseline_H=np.asarray(baseline_H, dtype=float))
+    metadata = build_metadata(
+        "cox",
+        source_window={
+            "n_observations": len(observations),
+            "n_events": n_events,
+            "services": len({o.service_id for o in observations}),
+        },
+        config={
+            "min_events": min_events,
+        },
+        extra={"feature_dim": int(X.shape[1])},
+    )
+    np_path = save_cox_artifact(
+        output_dir,
+        model,
+        metadata,
+        weights_filename="cox_beta.npz",
+        metadata_filename="cox_artifact.json",
+    )
 
     beta_list = [] if model.beta is None else [float(v) for v in model.beta]
     report = CoxTrainingReport(
@@ -115,6 +132,8 @@ def train_cox_from_store(
         services=len({o.service_id for o in observations}),
         beta=beta_list,
         output_path=str(np_path),
+        artifact_version=metadata.version,
+        metadata_path=str(output_dir / "cox_artifact.json"),
     )
     (output_dir / "cox_report.json").write_text(
         json.dumps(report.as_dict(), ensure_ascii=False, indent=2),

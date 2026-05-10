@@ -11,7 +11,7 @@ Modules:
 - :mod:`protocols` — Protocols/ABCs the domain layer speaks against
 """
 
-from .config import AppConfig, load_config
+from .config import AppConfig, ArtifactsConfig, load_config
 from .errors import (
     GanError,
     ConfigError,
@@ -33,7 +33,7 @@ from .protocols import (
 
 __all__ = [
     # config
-    "AppConfig", "load_config",
+    "AppConfig", "ArtifactsConfig", "load_config",
     # errors
     "GanError", "ConfigError", "DataError", "NumericError",
     "PolicyViolationError", "UnsafeDecisionError",

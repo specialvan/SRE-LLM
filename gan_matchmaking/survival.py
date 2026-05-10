@@ -105,7 +105,15 @@ class CoxModel:
     def partial_hazard(self, X: np.ndarray) -> np.ndarray:
         if self.beta is None:
             raise RuntimeError("CoxModel not fit yet")
-        return np.exp(np.asarray(X, dtype=float) @ self.beta)
+        X = np.asarray(X, dtype=float)
+        beta = np.asarray(self.beta, dtype=float)
+        if X.ndim == 1:
+            X = X.reshape(1, -1)
+        if X.shape[1] != beta.shape[0]:
+            n = min(X.shape[1], beta.shape[0])
+            X = X[:, :n]
+            beta = beta[:n]
+        return np.exp(X @ beta)
 
     def cumulative_hazard(self, X: np.ndarray, t: float) -> np.ndarray:
         if self._baseline_t is None or self._baseline_H is None:
@@ -148,6 +156,14 @@ class ChurnRiskMonitor:
             # outside the SRE pipeline (e.g. ad-hoc notebooks) still work.
             n = min(len(feats), len(default_weights))
             logit = float(np.dot(default_weights[:n], feats[:n])) - 1.0
+            return 1.0 / (1.0 + float(np.exp(-logit)))
+        if self.model._baseline_t is None or self.model._baseline_H is None:
+            feats = np.asarray(features, dtype=float)
+            beta = np.asarray(self.model.beta, dtype=float)
+            n = min(len(feats), len(beta))
+            if n <= 0:
+                return 0.5
+            logit = float(np.dot(feats[:n], beta[:n]))
             return 1.0 / (1.0 + float(np.exp(-logit)))
         s = float(self.model.survival(X, self.horizon_hours)[0])
         return 1.0 - s

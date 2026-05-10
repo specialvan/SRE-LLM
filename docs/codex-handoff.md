@@ -2,120 +2,96 @@
 
 ## 当前状态
 - 当前分支：`gan-session`
-- 远端：`origin`
-- 当前目标：把 matchmaking / rating / decision 这条链收拢成可审计、可回放、可训练、可灰度的 SRE 自迭代控制面
-- 当前仓库已有：HTTP 服务、SQLite 持久化、离线训练脚本、Prometheus text metrics 输出
-- 当前工作区仍有一组未提交的 artifact 版本化改动，核心方向是把 runtime artifact 变成一等公民
+- 当前方向：把 matchmaking / rating / decision 方案稳定成可审计、可训练、可回放的 SRE 决策流水线
+- 现状：九个机制的语义映射、架构拆解、模块契约、状态生命周期、实施路线图、ADR 已经成体系
+- 最新进展：runtime artifact 版本化已经接入在线决策链路，`Decision.artifact_version`、SQLite 决策审计表、训练产物元数据、runtime hydrate 都已打通
 
-## 已完成主线
-1. `docs/architecture.md`
-   - 说明整体架构、模块分层、需求、任务拆分与下一步收敛点
-2. `docs/module-contracts.md`
-   - 按模块说明输入、输出、失败模式、成熟度
-3. `docs/state-lifecycle.md`
-   - 拆解 service / model / decision / breaker / shadow 的状态机
-4. `docs/implementation-roadmap.md`
-   - 把架构映射成 phase 与 PR 顺序
-5. `docs/adr/0006-runtime-artifact-versioning.md`
-   - 把 retention / Cox 的 runtime artifact 版本化正式定为架构决策
-6. `README.md`
-   - 已接入上述架构文档入口
+## 机制地图
+| 数学机制 | SRE 映射 | 代码位置 |
+|---|---|---|
+| TrueSkill | 服务可靠性评分，维护 `mu / sigma` | `gan_matchmaking/trueskill.py`，`sre/self_iteration.py` |
+| EOMM | 发布策略选择，偏向保留/稳定 | `gan_matchmaking/eomm.py`，`training/retention.py`，`sre/artifacts.py` |
+| Dynamic K | 连续成功后的调参衰减 | `gan_matchmaking/dynamic_k.py` |
+| PCA | 观测压缩，提取异常模式 | `gan_matchmaking/pca_hidden.py`，`sre/self_iteration.py` |
+| GNN | 依赖关系与 blast radius 分析 | `gan_matchmaking/gnn_synergy.py`，`sre/self_iteration.py` |
+| Handicap | 风险折损后的胜率估计 | `gan_matchmaking/handicap.py` |
+| Entropy | 过滤“过于确定”的候选 | `gan_matchmaking/entropy_match.py`，`sre/self_iteration.py` |
+| Cox Survival | 故障/流失风险预警 | `gan_matchmaking/survival.py`，`training/cox.py`，`sre/artifacts.py` |
+| Minimax / BP | SLO 与稳定性之间的策略张力 | `gan_matchmaking/minimax_bp.py`，当前仍偏研究态 |
 
-## 当前代码地图
+## 生产化模块
+### 已经接近生产形态
+- `core/`
+  - 配置、错误类型、指标、日志、seed 管理都比较完整
+- `persistence/`
+  - SQLite / memory 双实现
+  - 决策审计表已支持 `artifact_version`
+- `service/`
+  - HTTP boundary 已可用
+  - 健康检查、准备就绪、观测写入、决策查询都齐了
+- `sre/self_iteration.py`
+  - 主决策链路可运行
+  - 已接 runtime artifact hydrate
+  - 已把决策落回存储
+- `training/`
+  - 已能从 store 训练 Cox / Retention，并输出权重 + 元数据
 
-### 1. 控制面与领域
-- `gan_matchmaking/sre/self_iteration.py`
-  - 这是主决策循环，负责验证、分段打分、policy resolution、shadow 边界与 trace 产出
-  - 当前已引入 `RuntimeArtifactBundle` / `load_runtime_artifacts` / `build_match_config` / `build_history_vector`
-  - 但 artifact hydration 还没有完全贯穿到决策 trace 和最终 decision 记录
-- `gan_matchmaking/sre/domain.py`
-  - `Decision` 已新增 `artifact_version`
-  - `Decision.to_dict()` 已输出该字段
-- `gan_matchmaking/sre/shadow.py`
-  - 只负责 off / shadow / advisory 的边界改写，不负责模型切换
-
-### 2. Runtime artifact 桥接
-- `gan_matchmaking/sre/artifacts.py`
-  - 新增 runtime artifact 元数据、版本计算、保存 / 加载、bundle 组合
-  - 提供 `ArtifactMetadata`、`RetentionArtifact`、`CoxArtifact`、`RuntimeArtifactBundle`
-  - 这是后续灰度发布 / 回滚 / 回放时的关键桥梁
-- `gan_matchmaking/core/config.py`
-  - 新增 `ArtifactsConfig`
-  - 允许在配置层指定 artifact 目录、文件名和 metadata 文件名
-- `gan_matchmaking/core/__init__.py`
-  - 已导出 `ArtifactsConfig`
-
-### 3. 持久化
-- `gan_matchmaking/persistence/sqlite.py`
-  - `decisions` 表已加 `artifact_version`
-  - 迁移已加入 schema migrations
-  - 决策落库已支持版本字段
-
-### 4. 训练
-- `gan_matchmaking/training/retention.py`
-  - 离线产出 `retention_weights.npz`
-- `gan_matchmaking/training/cox.py`
-  - 离线产出 `cox_beta.npz`
-- 训练链已经能产出 artifact，但还没有完整的“加载最新模型 -> 灰度切换 -> 回写效果 -> 再训练”闭环
-
-### 5. 服务与观测
-- `gan_matchmaking/service/app.py`
-  - 已有 `/v1/decide`、`/v1/observe`、`/healthz`、`/readyz`、`/metrics`
-  - 目前是服务内暴露指标，还没有主动接外部 Prometheus / Alertmanager / Grafana / 日志上下文
-
-## 当前缺口
-
-### 1. 真实数据接入层
-- 现在训练和 observe 主要吃手工 / 样例输入
-- 缺少从外部发布记录、告警、时序指标自动构造 `ReleaseContext` / `Observation` 的采集器
-
-### 2. 现有监控系统适配层
-- 现在只有 `/metrics` 暴露
-- 还没有从 Prometheus / Alertmanager / Grafana / 日志系统主动拉上下文
-
-### 3. 在线学习闭环
-- 训练脚本能产出 `.npz`
-- 但 pipeline 还没有完整的 rollout 机制：
-  - 加载最新模型
-  - 灰度切换
-  - 回写效果
-  - 再训练
+### 仍偏研究态
+- `minimax_bp.py`
+  - 更像解释性辅助层，不是主生产路径
+- `gnn_synergy.py`
+  - 现在是轻量图推理，不是完整图服务
+- `EOMM / Cox` 的特征空间仍需要继续统一和校准
+- replay corpus 还没有成为一等资产
 
 ## 风险与边界
-1. `artifact_version` 已进领域对象和数据库，但 pipeline 里还没有真正把它写进每次决策的 trace / emit 路径
-2. `SelfIterationPipeline` 仍然默认构造 `RetentionModel()` / `CoxModel()`，artifact hydration 还没完全接管 runtime
-3. 目前没有 collector 层，外部世界和 `ReleaseContext` 之间仍是手工拼接
-4. 没有独立的 rollout controller / registry，因此还不能做“新模型先 shadow、再 canary、再 promote、再 rollback”
-5. replay corpus 还没固化成一等资产，回归更多是单元测试而不是端到端灰度回放
+1. **训练/运行特征不完全同构**
+   - Cox 训练和 runtime 现在能降级兼容，但语义上还没完全统一
+   - 这是最需要继续补的边界
 
-## 下一步建议
-1. 先把 `load_runtime_artifacts()` 真正接入 `SelfIterationPipeline.__post_init__`，并把 `artifact_version` 写入 `Decision.trace`
-2. 再补采集器层，把 release records、Prometheus、Alertmanager、Grafana、日志系统统一映射成 `EvidenceEnvelope` / `ReleaseContext`
-3. 然后实现 rollout controller：
-   - `bootstrap`
-   - `shadow`
-   - `advisory`
-   - `canary`
-   - `promote`
-   - `rollback`
-4. 最后补 replay corpus：
-   - happy path
-   - fallback path
-   - escalation path
+2. **artifact 与 fallback 的切换要可见**
+   - 线上必须能看出当前是 artifact 路径还是 bootstrap 路径
+   - `trace["artifacts"]` 是主入口
 
-## 接手顺序
-1. 先读 `docs/architecture.md`
-2. 再读 `docs/module-contracts.md`
-3. 再读 `docs/state-lifecycle.md`
-4. 再看 `gan_matchmaking/sre/artifacts.py`
-5. 最后看 `gan_matchmaking/sre/self_iteration.py`
+3. **决策审计和幂等性**
+   - `correlation_id` 不能乱复用
+   - 熔断短路场景要避免重复主键
 
-## 需要继续盯住的文件
-- `gan_matchmaking/sre/self_iteration.py`
-- `gan_matchmaking/sre/artifacts.py`
-- `gan_matchmaking/core/config.py`
-- `gan_matchmaking/sre/domain.py`
-- `gan_matchmaking/persistence/sqlite.py`
-- `gan_matchmaking/service/app.py`
-- `gan_matchmaking/training/cox.py`
-- `gan_matchmaking/training/retention.py`
+4. **SQLite 仍是单进程友好，不是跨进程协调方案**
+   - 真要多实例并发，需要外部 lease / lock
+
+5. **shadow / advisory 模式不能丢 trace**
+   - 这两种模式是可观察性工具，不是“悄悄改结果”
+
+## 可迁移抽象
+这套方案可以抽象成一条通用的 SRE 控制回路：
+
+1. **信号采集**
+   - 业务 / 依赖 / 观测 / 历史
+2. **压缩与评分**
+   - PCA / TrueSkill / Handicap / Synergy
+3. **风险门控**
+   - Entropy / Cox / freeze / budget / breaker
+4. **策略选择**
+   - EOMM / rule table / fallback
+5. **审计落盘**
+   - trace + decision + artifact_version
+6. **离线再训练**
+   - observation log -> artifact -> runtime hydrate
+
+这个结构可以迁移到发布控制、容量调度、故障分流、巡检节流、告警降噪、回滚决策等场景。
+
+## 下一步
+1. 把 Cox / EOMM 的训练特征空间彻底对齐，消掉“能跑但不够同构”的边角
+2. 给 runtime artifact 增加更强的校验与 manifest
+3. 建 golden replay corpus，覆盖 happy path / fallback / rollback / escalation
+4. 给多实例部署补外部锁或 lease
+5. 把 `PR-REQUIREMENTS.md` 继续收敛成可执行的 phase 任务单
+
+## 交接建议
+- 下一位先读 `docs/architecture.md`
+- 然后读 `docs/module-contracts.md`
+- 再看 `docs/state-lifecycle.md`
+- 最后看 `sre/self_iteration.py` 和 `sre/artifacts.py`
+
+这会比从数学模块倒着看更快进入真实控制面。

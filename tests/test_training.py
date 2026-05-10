@@ -41,7 +41,10 @@ def test_train_cox_from_memory_store(tmp_path):
     assert report.n_events >= 3
     assert len(report.beta) == 2
     assert report.output_path.endswith("cox_beta.npz")
+    assert report.artifact_version
+    assert report.metadata_path.endswith("cox_artifact.json")
     assert (tmp_path / "cox_beta.npz").exists()
+    assert (tmp_path / "cox_artifact.json").exists()
     assert (tmp_path / "cox_report.json").exists()
 
 
@@ -65,3 +68,6 @@ def test_train_retention_from_sqlite_store(tmp_path):
     # slack (the model does gradient descent with a fixed step size).
     assert report.loss_end <= report.loss_start + 0.1
     assert (tmp_path / "retention_weights.npz").exists()
+    assert (tmp_path / "retention_artifact.json").exists()
+    assert report.artifact_version
+    assert report.metadata_path.endswith("retention_artifact.json")

@@ -1,10 +1,14 @@
 """Integration & property tests for :class:`SelfIterationPipeline`."""
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from gan_matchmaking.core import AppConfig, MetricsRegistry
+from gan_matchmaking.core.config import ArtifactsConfig
 from gan_matchmaking.core.errors import DataError
+from gan_matchmaking.eomm import RetentionModel
+from gan_matchmaking.survival import CoxModel
 from gan_matchmaking.sre import (
     Decision,
     DecisionKind,
@@ -13,6 +17,11 @@ from gan_matchmaking.sre import (
     RiskLevel,
     SelfIterationPipeline,
     Service,
+)
+from gan_matchmaking.sre.artifacts import (
+    build_metadata,
+    save_cox_artifact,
+    save_retention_artifact,
 )
 
 
@@ -46,6 +55,8 @@ def test_decision_returns_valid_decision_for_healthy_service():
     assert 0.0 <= decision.confidence <= 1.0
     assert "stages" in decision.trace
     assert {"pca", "synergy", "adjusted_probs", "entropy", "eomm", "risk"} <= decision.trace["stages"].keys()
+    assert decision.artifact_version == "bootstrap"
+    assert decision.trace["artifacts"]["version"] == "bootstrap"
 
 
 def test_freeze_window_forces_hold():
@@ -149,3 +160,42 @@ def test_deterministic_decision_under_same_config():
     assert d1.chosen and d2.chosen
     assert d1.chosen.id == d2.chosen.id
     assert d1.risk_level == d2.risk_level
+
+
+def test_pipeline_hydrates_runtime_artifacts(tmp_path):
+    retention_model = RetentionModel()
+    retention_model.weights = np.array([0.2, -0.1, 0.05, 0.01, 0.3, -0.2, 0.15, 0.04], dtype=float)
+    retention_model.bias = -0.2
+    retention_meta = build_metadata(
+        "retention",
+        source_window={"n_samples": 12, "n_observations": 18},
+        config={"lr": 0.05, "iters": 200},
+        build_id="test-build",
+    )
+    save_retention_artifact(tmp_path, retention_model, retention_meta)
+
+    cox_model = CoxModel(
+        beta=np.array([0.9, -0.4], dtype=float),
+        _baseline_t=np.array([1.0, 10.0], dtype=float),
+        _baseline_H=np.array([0.1, 0.25], dtype=float),
+    )
+    cox_meta = build_metadata(
+        "cox",
+        source_window={"n_observations": 18, "n_events": 6},
+        config={"min_events": 3},
+        build_id="test-build",
+    )
+    save_cox_artifact(tmp_path, cox_model, cox_meta)
+
+    cfg = AppConfig(artifacts=ArtifactsConfig(directory=str(tmp_path)))
+    pipeline = SelfIterationPipeline(config=cfg, metrics=MetricsRegistry())
+
+    assert pipeline.artifacts.version == f"retention@{retention_meta.version}+cox@{cox_meta.version}"
+    assert pipeline.eomm.model.bias == pytest.approx(retention_model.bias)
+    assert np.allclose(pipeline.eomm.model.weights, retention_model.weights)
+    assert np.allclose(pipeline.risk.model.beta, cox_model.beta)
+
+    decision = pipeline.decide(_ctx())
+    assert decision.artifact_version == pipeline.artifacts.version
+    assert decision.trace["artifacts"]["version"] == pipeline.artifacts.version
+    assert decision.trace["stages"]["eomm"]["source"] == "artifact"

@@ -126,6 +126,7 @@ class Decision:
     confidence: float          # 0..1, roughly ``mu - alpha * sigma``
     rationale: List[str]       # human-readable reasoning tokens
     trace: Dict[str, Any]      # full structured trace for audit
+    artifact_version: Optional[str] = None
     correlation_id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
 
     def to_dict(self) -> Dict[str, Any]:
@@ -136,6 +137,7 @@ class Decision:
             "risk_prob": self.risk_prob,
             "confidence": self.confidence,
             "rationale": list(self.rationale),
+            "artifact_version": self.artifact_version,
             "correlation_id": self.correlation_id,
             "trace": self.trace,
         }

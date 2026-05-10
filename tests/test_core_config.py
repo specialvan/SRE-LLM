@@ -8,6 +8,7 @@ import pytest
 from gan_matchmaking.core import ConfigError, load_config
 from gan_matchmaking.core.config import (
     AppConfig,
+    ArtifactsConfig,
     DynamicKConfig,
     HandicapConfig,
     SurvivalConfig,
@@ -26,6 +27,13 @@ def test_load_from_mapping():
     assert cfg.dynamic_k.k_max == 40.0
     assert cfg.dynamic_k.k_min == 2.0
     assert cfg.seed == 7
+
+
+def test_load_artifacts_block():
+    cfg = load_config({"artifacts": {"directory": "training_artifacts",
+                                     "cox_filename": "cox_beta.npz"}})
+    assert cfg.artifacts.directory == "training_artifacts"
+    assert cfg.artifacts.cox_filename == "cox_beta.npz"
 
 
 def test_load_from_json_file(tmp_path):
@@ -53,6 +61,11 @@ def test_invalid_handicap():
 def test_invalid_survival_thresholds():
     with pytest.raises(ConfigError):
         SurvivalConfig(warn_threshold=0.9, alarm_threshold=0.2)
+
+
+def test_invalid_artifacts_directory():
+    with pytest.raises(ConfigError):
+        ArtifactsConfig(directory=" ")
 
 
 def test_unknown_key_rejected():

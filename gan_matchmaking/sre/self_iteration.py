@@ -34,6 +34,7 @@ Error handling policy
 from __future__ import annotations
 
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -62,6 +63,12 @@ from ..handicap import HandicapElo
 from ..pca_hidden import HiddenScoreExtractor
 from ..survival import ChurnRiskMonitor, CoxModel
 from ..trueskill import TrueSkillRater
+from .artifacts import (
+    RuntimeArtifactBundle,
+    build_history_vector,
+    build_match_config,
+    load_runtime_artifacts,
+)
 from .circuit import BreakerState, CircuitBreaker
 from .domain import (
     Decision,
@@ -154,6 +161,7 @@ class SelfIterationPipeline:
     synergy_graph: SynergyGraph = field(init=False)
     synergy_gnn: SynergyGNN = field(init=False)
     pca: HiddenScoreExtractor = field(init=False)
+    artifacts: RuntimeArtifactBundle = field(init=False)
     _services: Dict[str, Service] = field(default_factory=dict, init=False)
     _service_locks: PerServiceLock = field(default_factory=PerServiceLock,
                                            init=False)
@@ -208,6 +216,16 @@ class SelfIterationPipeline:
         self.synergy_graph = SynergyGraph()
         self.pca = HiddenScoreExtractor(n_components=2)
 
+        art_cfg = self.config.artifacts
+        self.artifacts = load_runtime_artifacts(
+            art_cfg.directory,
+            retention_filename=art_cfg.retention_filename,
+            retention_metadata_filename=art_cfg.retention_metadata_filename,
+            cox_filename=art_cfg.cox_filename,
+            cox_metadata_filename=art_cfg.cox_metadata_filename,
+        )
+        self._hydrate_runtime_artifacts()
+
         # Normalise shadow mode (allow plain strings from config).
         self.shadow_mode = _coerce_shadow(self.shadow_mode)
 
@@ -243,6 +261,13 @@ class SelfIterationPipeline:
             label_names=("suppressed_kind",),
         )
 
+        if self.artifacts.fitted:
+            self.logger.info(
+                "artifacts.loaded",
+                artifact_version=self.artifacts.version,
+                fitted=self.artifacts.fitted,
+            )
+
         # Hydrate from store if one is provided.
         if self.store is not None:
             for sid in self.store.services.list_ids():
@@ -260,6 +285,61 @@ class SelfIterationPipeline:
                 for pid in (a, b):
                     if pid not in self.synergy_graph.players:
                         self.synergy_graph.players.append(pid)
+
+    def _hydrate_runtime_artifacts(self) -> None:
+        """Load fitted runtime weights into the online models when available."""
+        retention = self.artifacts.retention
+        if retention is not None:
+            try:
+                weights = np.asarray(retention.weights, dtype=float)
+                if weights.shape == self.eomm.model.weights.shape:
+                    self.eomm.model.weights = weights
+                    self.eomm.model.bias = float(retention.bias)
+                else:
+                    self.logger.warning(
+                        "artifacts.retention.shape_mismatch",
+                        expected_shape=list(self.eomm.model.weights.shape),
+                        got_shape=list(weights.shape),
+                    )
+            except Exception as exc:
+                self.logger.warning(
+                    "artifacts.retention.degraded",
+                    error_type=type(exc).__name__,
+                )
+
+        cox = self.artifacts.cox
+        if cox is not None:
+            try:
+                beta = np.asarray(cox.beta, dtype=float)
+                if beta.ndim == 1 and beta.size > 0:
+                    self.risk.model.beta = beta
+                    self.risk.model._baseline_t = np.asarray(cox.baseline_t, dtype=float)
+                    self.risk.model._baseline_H = np.asarray(cox.baseline_H, dtype=float)
+                else:
+                    self.logger.warning(
+                        "artifacts.cox.shape_mismatch",
+                        expected_dim="1d+",
+                        got_shape=list(beta.shape),
+                    )
+            except Exception as exc:
+                self.logger.warning(
+                    "artifacts.cox.degraded",
+                    error_type=type(exc).__name__,
+                )
+
+    def _recent_observations_for_service(self, service_id: str,
+                                         limit: int = 32) -> List[Observation]:
+        if self.store is None:
+            return []
+        try:
+            return self.store.observations.recent_observations(service_id, limit=limit)
+        except Exception as exc:
+            self.logger.warning(
+                "artifacts.recent_observations.degraded",
+                service_id=service_id,
+                error_type=type(exc).__name__,
+            )
+            return []
 
     # ------------------------------------------------------------------
     # Public API
@@ -380,9 +460,9 @@ class SelfIterationPipeline:
                     ctx.service,
                     ["circuit_breaker=open → ESCALATE"],
                     trace,
-                    ctx.correlation_id or "circuit-open",
+                    ctx.correlation_id or f"circuit-open-{uuid.uuid4().hex[:16]}",
                 )
-                return self._shadow_wrap(decision)
+                return self._finalize_decision(decision)
 
         with self._service_locks.acquire(ctx.service.id):
             try:
@@ -402,8 +482,7 @@ class SelfIterationPipeline:
             breaker.record_success()
             self._update_breaker_metric(breaker)
 
-        # Shadow mode gate — rewrite enforcement at the boundary.
-        return self._shadow_wrap(decision)
+        return self._finalize_decision(decision)
 
     def _decide_locked(self, ctx: ReleaseContext) -> Decision:
 
@@ -415,7 +494,10 @@ class SelfIterationPipeline:
                 freeze_window=ctx.freeze_window,
             )
 
-            trace: Dict[str, Any] = {"stages": {}}
+            trace: Dict[str, Any] = {
+                "stages": {},
+                "artifacts": self.artifacts.as_trace(),
+            }
             rationale: List[str] = []
 
             # --- Guard clauses ------------------------------------------------
@@ -570,12 +652,71 @@ class SelfIterationPipeline:
                     trace: Dict[str, Any]) -> tuple[ReleaseCandidate, List[str]]:
         """Pick the candidate most likely to preserve the error budget.
 
-        Because the full retention model would need training data, we use a
-        rule-based linear scoring here. Keeping the structure so it can be
-        swapped for a fitted :class:`RetentionModel`.
+        When fitted retention weights are available we use the runtime artifact
+        and a seeded epsilon-greedy matcher. Otherwise we fall back to the
+        conservative linear heuristic that keeps the pipeline usable during
+        bootstrap.
         """
         with span(self.logger, "stage.eomm") as s:
             notes: List[str] = []
+            recent_observations = self._recent_observations_for_service(ctx.service.id)
+            history = build_history_vector(
+                ctx.service,
+                recent_observations=recent_observations,
+                error_budget_remaining=ctx.error_budget_remaining,
+            )
+            used_artifact = self.artifacts.retention is not None
+            candidate_scores: List[Dict[str, Any]] = []
+
+            if used_artifact:
+                try:
+                    candidate_pairs = [
+                        (i, ctx.candidates[i], build_match_config(ctx.service, ctx.candidates[i]))
+                        for i in acceptable_idx
+                    ]
+                    rng = self.seed_manager.python(f"eomm:{ctx.service.id}")
+                    chosen_cfg = self.eomm.best(
+                        history,
+                        [cfg for _, _, cfg in candidate_pairs],
+                        rng=rng,
+                    )
+                    for i, candidate, cfg in candidate_pairs:
+                        score = float(self.eomm.model.prob(history, cfg))
+                        candidate_scores.append({
+                            "candidate_id": candidate.id,
+                            "score": score,
+                            "strategy": candidate.strategy,
+                        })
+                    best_idx = next(
+                        i for i, _, cfg in candidate_pairs if cfg == chosen_cfg
+                    )
+                    chosen = ctx.candidates[best_idx]
+                    best_score = next(
+                        item["score"] for item in candidate_scores
+                        if item["candidate_id"] == chosen.id
+                    )
+                    notes.append(
+                        f"eomm: artifact-picked {chosen.id} (p_retain={best_score:.3f})"
+                    )
+                    trace["stages"]["eomm"] = {
+                        "source": "artifact",
+                        "artifact_version": self.artifacts.retention.metadata.version,
+                        "chosen_id": chosen.id,
+                        "chosen_score": best_score,
+                        "acceptable_idx": acceptable_idx,
+                        "history": history,
+                        "candidate_scores": candidate_scores,
+                    }
+                    self._record_latency("eomm", s)
+                    return chosen, notes
+                except Exception as exc:
+                    used_artifact = False
+                    self.m_stage_failures.inc(labels={"stage": "eomm"})
+                    self.logger.warning(
+                        "stage.eomm.degraded",
+                        error_type=type(exc).__name__,
+                    )
+
             best_idx = acceptable_idx[0]
             best_score = -float("inf")
             for i in acceptable_idx:
@@ -586,15 +727,24 @@ class SelfIterationPipeline:
                     + 0.2 * (ctx.service.mu - 0.99) * 10 # reliable services can be bolder
                     - 0.3 * (1 - ctx.error_budget_remaining)
                 )
+                candidate_scores.append({
+                    "candidate_id": c.id,
+                    "score": score,
+                    "strategy": c.strategy,
+                })
                 if score > best_score:
                     best_score = score
                     best_idx = i
             chosen = ctx.candidates[best_idx]
             notes.append(f"eomm: picked {chosen.id} (score={best_score:.3f})")
             trace["stages"]["eomm"] = {
+                "source": "fallback",
+                "artifact_used": used_artifact,
                 "chosen_id": chosen.id,
                 "chosen_score": best_score,
                 "acceptable_idx": acceptable_idx,
+                "history": history,
+                "candidate_scores": candidate_scores,
             }
             self._record_latency("eomm", s)
             return chosen, notes
@@ -693,6 +843,7 @@ class SelfIterationPipeline:
             confidence=confidence,
             rationale=rationale,
             trace=trace,
+            artifact_version=self.artifacts.version,
             correlation_id=correlation_id,
         )
         self.m_decisions.inc(labels={"kind": kind.value, "risk_level": risk_level.value})
@@ -704,7 +855,14 @@ class SelfIterationPipeline:
             confidence=confidence,
             service_id=service.id,
             chosen_id=chosen.id if chosen else None,
+            artifact_version=self.artifacts.version,
         )
+        return decision
+
+    def _finalize_decision(self, decision: Decision) -> Decision:
+        decision = self._shadow_wrap(decision)
+        if self.store is not None:
+            self.store.observations.record_decision(decision)
         return decision
 
     def _record_latency(self, stage: str, span_obj) -> None:

@@ -6,7 +6,7 @@ that also succeeds.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Optional
 
@@ -15,6 +15,7 @@ import numpy as np
 from ..core.errors import DataError
 from ..eomm import RetentionModel, _features as _eomm_features
 from ..persistence import Observation, PipelineStore
+from ..sre.artifacts import build_metadata, save_retention_artifact
 from ..sre.domain import ReleaseCandidate, ReleaseContext, Service
 
 
@@ -25,6 +26,8 @@ class RetentionTrainingReport:
     loss_start: float = 0.0
     loss_end: float = 0.0
     output_path: Optional[str] = None
+    artifact_version: Optional[str] = None
+    metadata_path: Optional[str] = None
 
     def as_dict(self) -> dict:
         return {
@@ -33,6 +36,8 @@ class RetentionTrainingReport:
             "loss_start": self.loss_start,
             "loss_end": self.loss_end,
             "output_path": self.output_path,
+            "artifact_version": self.artifact_version,
+            "metadata_path": self.metadata_path,
         }
 
 
@@ -130,10 +135,29 @@ def train_retention_from_store(
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    np_path = output_dir / "retention_weights.npz"
-    np.savez(np_path,
-             weights=np.asarray(model.weights, dtype=float),
-             bias=np.asarray([model.bias], dtype=float))
+    metadata = build_metadata(
+        "retention",
+        source_window={
+            "n_observations": len(observations),
+            "n_samples": len(histories),
+            "positive_rate": float(y.mean()),
+            "horizon_hours": horizon_hours,
+        },
+        config={
+            "horizon_hours": horizon_hours,
+            "min_samples": min_samples,
+            "lr": lr,
+            "iters": iters,
+        },
+        extra={"feature_dim": int(X0.shape[1])},
+    )
+    np_path = save_retention_artifact(
+        output_dir,
+        model,
+        metadata,
+        weights_filename="retention_weights.npz",
+        metadata_filename="retention_artifact.json",
+    )
 
     report = RetentionTrainingReport(
         n_samples=len(histories),
@@ -141,6 +165,8 @@ def train_retention_from_store(
         loss_start=loss_start,
         loss_end=loss_end,
         output_path=str(np_path),
+        artifact_version=metadata.version,
+        metadata_path=str(output_dir / "retention_artifact.json"),
     )
     (output_dir / "retention_report.json").write_text(
         json.dumps(report.as_dict(), ensure_ascii=False, indent=2),

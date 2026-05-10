@@ -114,6 +114,13 @@ _MIGRATIONS: List[Tuple[int, str, str]] = [
             ON decisions (kind, created_at);
         """,
     ),
+    (
+        5,
+        "add_decision_artifact_version",
+        """
+        ALTER TABLE decisions ADD COLUMN artifact_version TEXT;
+        """,
+    ),
 ]
 
 
@@ -165,6 +172,18 @@ class _SqliteConnection:
             for version, name, ddl in _MIGRATIONS:
                 if version in applied:
                     continue
+                if version == 5:
+                    cols = {
+                        row["name"]
+                        for row in self._conn.execute("PRAGMA table_info(decisions)")
+                    }
+                    if "artifact_version" in cols:
+                        self._conn.execute(
+                            "INSERT INTO schema_migrations(version, name, applied_at) "
+                            "VALUES (?, ?, ?)",
+                            (version, name, time.time()),
+                        )
+                        continue
                 # ``executescript`` issues an implicit COMMIT, so we run the
                 # statement list ourselves and wrap it in an explicit
                 # transaction for atomicity.
@@ -328,13 +347,14 @@ class SQLiteObservationRepository(ObservationRepository):
         with self._c.transaction() as c:
             c.execute(
                 "INSERT INTO decisions(correlation_id, kind, risk_level, risk_prob, "
-                "confidence, chosen_id, rationale_json, trace_json, created_at) "
-                "VALUES(?,?,?,?,?,?,?,?,?) "
+                "confidence, chosen_id, artifact_version, rationale_json, trace_json, created_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?) "
                 "ON CONFLICT(correlation_id) DO UPDATE SET "
                 " kind=excluded.kind, risk_level=excluded.risk_level, "
                 " risk_prob=excluded.risk_prob, confidence=excluded.confidence, "
-                " chosen_id=excluded.chosen_id, rationale_json=excluded.rationale_json, "
-                " trace_json=excluded.trace_json, created_at=excluded.created_at",
+                " chosen_id=excluded.chosen_id, artifact_version=excluded.artifact_version, "
+                " rationale_json=excluded.rationale_json, trace_json=excluded.trace_json, "
+                " created_at=excluded.created_at",
                 (
                     decision.correlation_id,
                     decision.kind.value,
@@ -342,6 +362,7 @@ class SQLiteObservationRepository(ObservationRepository):
                     float(decision.risk_prob),
                     float(decision.confidence),
                     decision.chosen.id if decision.chosen else None,
+                    decision.artifact_version,
                     json.dumps(decision.rationale, ensure_ascii=False),
                     json.dumps(decision.trace, ensure_ascii=False, default=str),
                     time.time(),

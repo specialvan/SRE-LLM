@@ -131,6 +131,20 @@ class ObservabilityConfig:
             raise ConfigError("invalid log_level", details={"log_level": self.log_level})
 
 
+@dataclass(frozen=True)
+class ArtifactsConfig:
+    directory: Optional[str] = None
+    retention_filename: str = "retention_weights.npz"
+    retention_metadata_filename: str = "retention_artifact.json"
+    cox_filename: str = "cox_beta.npz"
+    cox_metadata_filename: str = "cox_artifact.json"
+
+    def __post_init__(self) -> None:
+        if self.directory is not None and not str(self.directory).strip():
+            raise ConfigError("directory must be non-empty when provided",
+                              details={"directory": self.directory})
+
+
 # ---------------------------------------------------------------------------
 # Top-level application config
 # ---------------------------------------------------------------------------
@@ -144,6 +158,7 @@ class AppConfig:
     survival: SurvivalConfig = field(default_factory=SurvivalConfig)
     gnn: GNNConfig = field(default_factory=GNNConfig)
     observability: ObservabilityConfig = field(default_factory=ObservabilityConfig)
+    artifacts: ArtifactsConfig = field(default_factory=ArtifactsConfig)
     seed: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -204,6 +219,7 @@ def load_config(path_or_mapping: Any | None = None) -> AppConfig:
         "survival": SurvivalConfig,
         "gnn": GNNConfig,
         "observability": ObservabilityConfig,
+        "artifacts": ArtifactsConfig,
     }
     for key, cls in mapping.items():
         if key in raw and raw[key] is not None:

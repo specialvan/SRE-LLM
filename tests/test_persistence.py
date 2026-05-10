@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,7 @@ from gan_matchmaking.persistence import (
     SQLitePipelineStore,
 )
 from gan_matchmaking.sre import (
+    DecisionKind,
     ReleaseCandidate,
     ReleaseContext,
     SelfIterationPipeline,
@@ -202,9 +204,12 @@ def test_pipeline_hydrates_from_store(tmp_path):
             rollback_budget_seconds=180, expected_success=0.995,
         )
         ctx = ReleaseContext(service=loaded, candidates=[candidate],
-                             dependencies=["dep-x"])
+                             dependencies=["dep-x"],
+                             correlation_id="dec-1")
         decision = pipeline.decide(ctx)
         assert decision is not None
+        assert decision.artifact_version == "bootstrap"
+        assert decision.trace["artifacts"]["version"] == "bootstrap"
 
         # Observing a release must persist the rating.
         pipeline.observe_release("svc-h", success=True,
@@ -223,3 +228,14 @@ def test_pipeline_hydrates_from_store(tmp_path):
         assert obs[0].correlation_id == "obs-1"
     finally:
         s3.close()
+
+    with sqlite3.connect(path) as conn:
+        row = conn.execute(
+            "SELECT kind, artifact_version, correlation_id FROM decisions WHERE correlation_id = ?",
+            ("dec-1",),
+        ).fetchone()
+        assert row is not None
+        assert row[0] in {DecisionKind.CANARY.value, DecisionKind.GO.value,
+                          DecisionKind.HOLD.value, DecisionKind.ROLLBACK.value,
+                          DecisionKind.ESCALATE.value}
+        assert row[1] == "bootstrap"

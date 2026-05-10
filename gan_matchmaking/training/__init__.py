@@ -13,7 +13,8 @@ Entry points
   pairs (previous → next).
 
 Both functions return a training report for auditability and keep the
-fitted artefacts on disk as NumPy ``.npz`` files.
+fitted artefacts on disk as NumPy ``.npz`` files with adjacent JSON
+metadata for runtime versioning.
 """
 
 from .cox import train_cox_from_store
