@@ -143,6 +143,20 @@ def test_adaptive_combiner_respects_floor_even_after_learning():
     assert np.isclose(w_combiner.sum(), 1.0, atol=1e-6)
 
 
+def test_adaptive_combiner_preserves_static_bias_under_learning():
+    signals = [
+        SignalSpec("fast", bias=0.5),
+        SignalSpec("budget", bias=-0.25),
+    ]
+    ac = AdaptiveCombiner(signals, query_dim=1)
+    q = np.array([1.0])
+    vals = [np.array([1.0]), np.array([0.0])]
+    ac.step(q, vals, observed_losses=np.array([1.0, 0.0]))
+    expected = np.array([0.5, -0.25]) + ac.learner.logits()
+    actual = np.array([s.bias for s in ac.combiner.signals])
+    assert np.allclose(actual, expected)
+
+
 def test_adaptive_records_capture_regret_bound_growth():
     signals = [SignalSpec("a"), SignalSpec("b")]
     ac = AdaptiveCombiner(signals, query_dim=1)

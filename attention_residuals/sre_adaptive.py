@@ -209,6 +209,7 @@ class AdaptiveCombiner:
             )
             for s in signals
         ]
+        self._static_biases = [float(s.bias) for s in signals]
         # The combiner's *own* bias on each spec will be overwritten
         # per-tick with (static_bias + learner_logit).
         self.combiner = WeightedConvexCombiner(
@@ -247,10 +248,10 @@ class AdaptiveCombiner:
         # Inject the learner's logits as additional bias — without
         # rewriting the combiner's core invariants.
         logits = self.learner.logits()
-        for spec, lg in zip(self.combiner.signals, logits):
+        for spec, base_bias, lg in zip(self.combiner.signals, self._static_biases, logits):
             # We respect the operator-provided static bias and stack the
             # learner bias on top.
-            spec.bias = float(lg)
+            spec.bias = float(base_bias + lg)
 
         weights_before = self.learner.weights()
         action, a = self.combiner.combine(query, values)

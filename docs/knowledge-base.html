@@ -87,6 +87,7 @@
 
   figure{ margin: 22px 0; padding: 18px; border: 1px solid var(--rule); background: #fbfaf5; border-radius: 8px; }
   figure svg{ display:block; margin: 0 auto; max-width: 100%; height: auto; }
+  figure img{ display:block; margin: 0 auto; max-width: 100%; height: auto; border-radius: 6px; }
   figcaption{ margin-top: 10px; font-size: 13.5px; color: var(--mute); text-align: center; font-family: var(--serif); }
 
   table{ width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px;}
@@ -157,6 +158,7 @@
     <li><a href="#s20"><span class="n">20</span>🧬 七个方程 · 每个方程一条原语</a></li>
     <li><a href="#s21"><span class="n">21</span>🔒 自学习 SafetyEnvelope · 外壳闭环</a></li>
     <li><a href="#appendix"><span class="n">A</span>附录 · 公式索引 / FAQ</a></li>
+    <li><a href="#s22"><span class="n">22</span>数据变化收益 GIF 路 learned vs baseline</a></li>
   </ol>
 </aside>
 
@@ -2697,6 +2699,38 @@ new_lo = clip(new_lo, hard_lo, hard_hi)</div>
   <p class="note">
     <b>测试覆盖</b>：<code>tests/test_sre_self_envelope.py</code> 32 个用例，全部验证上述六大不变量 + 边界条件。
     <br/><b>Demo</b>：<code>examples/demo_self_learning_envelope.py</code> 一条命令、六大不变量全部打印实证。
+  </p>
+</section>
+
+<!-- ========================= 22 数据变化收益 GIF ========================= -->
+<section id="s22">
+  <h2><span class="tag">22</span>数据变化收益 GIF 路 learned envelope vs baseline</h2>
+  <p class="lead">
+    这一段把自学习外壳的收益从公式层拉回到可见轨迹：baseline 继续按原始 proposal 执行；
+    learned 路径先经过 envelope，再把 action 送进 plant。随着 UNSAFE 证据累积，边界会收紧，越界次数也会下降。
+  </p>
+
+  <figure>
+    <img src="assets/self_learning_envelope.gif" alt="Self-learning SafetyEnvelope replay showing baseline vs learned queue, action bounds, and tightening after unsafe evidence" />
+    <figcaption>Learned envelope 收紧后，baseline 继续 overshoot，而 learned 路径把动作压回更窄、更可审计的区间。</figcaption>
+  </figure>
+
+  <table>
+    <thead>
+      <tr><th>指标</th><th>baseline</th><th>learned</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>unsafe 计数</td><td>30</td><td>15</td></tr>
+      <tr><td>首次 tighten</td><td colspan="2">tick 83</td></tr>
+      <tr><td>最终 high bound</td><td colspan="2">+2.55</td></tr>
+      <tr><td>收益</td><td colspan="2">unsafe 减少 15 次，且 clip 记录可直接进入 audit trail</td></tr>
+    </tbody>
+  </table>
+
+  <p class="note">
+    这个 GIF 对应的是 <code>docs/assets/self_learning_envelope.gif</code>，由
+    <code>attention_residuals.sre_self_envelope</code> 的回放脚本导出。
+    它不是“更漂亮的图”，而是为了把 self-learning envelope 的工程收益明确钉在时间轴上。
   </p>
 </section>
 
