@@ -170,6 +170,11 @@ A short list for codex-style reviews. Each item has a concrete file:
 
 ## 6. Further reading
 
+- [`docs/architecture.md`](docs/architecture.md) — architecture, requirements, task breakdown, and refinement targets.
+- [`docs/codex-handoff.md`](docs/codex-handoff.md) — handoff summary for the next Codex pass.
+- [`docs/state-lifecycle.md`](docs/state-lifecycle.md) — service, model, decision, breaker, and shadow state machines.
+- [`docs/module-contracts.md`](docs/module-contracts.md) — module-level ownership, fallback, and readiness matrix.
+- [`docs/implementation-roadmap.md`](docs/implementation-roadmap.md) — phase-by-phase delivery map and PR sequence.
 - [`PR-REQUIREMENTS.md`](PR-REQUIREMENTS.md) — per-PR delivery plan.
 - [`docs/knowledge_base.html`](docs/knowledge_base.html) — 单页数学知识库，每机制四图（before / after / gain / gif）+ SRE 控制方案参考。
 - [`docs/adr/`](docs/adr/) — architecture decisions with rationale.
