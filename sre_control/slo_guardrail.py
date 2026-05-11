@@ -75,13 +75,28 @@ class SLOGuardrail:
         safe = self._filter.filter(proposal)
         cone_margin_after = pointing_cone_constraint(
             safe, self._filter.n_hat, self._filter.theta_max)
+        cone_violated = cone_margin_before < -1e-4
+        magnitude_violated = magnitude_before > self.magnitude_cap
+        projection_distance = float(np.linalg.norm(proposal - safe))
+        events = []
+        if cone_violated or magnitude_violated:
+            events.append({
+                "stage": "SLOGuardrail",
+                "kind": "unsafe_proposal_projected",
+                "detail": "proposal violated cone or magnitude constraints",
+                "safe_action": "execute only the projected action",
+            })
 
         return {
             "proposal":               proposal.tolist(),
             "approved":               safe.tolist(),
-            "cone_violated_before":   cone_margin_before < -1e-4,
-            "magnitude_violated_before": magnitude_before > self.magnitude_cap,
+            "cone_violated_before":   cone_violated,
+            "magnitude_violated_before": magnitude_violated,
             "cone_margin_before":     cone_margin_before,
             "cone_margin_after":      cone_margin_after,
-            "projection_distance":    float(np.linalg.norm(proposal - safe)),
+            "projection_distance":    projection_distance,
+            "local_states":           ["candidate", "projected", "approved"]
+                                      if projection_distance > 1e-9
+                                      else ["candidate", "approved"],
+            "events":                 events,
         }

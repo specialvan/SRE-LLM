@@ -90,6 +90,8 @@ def test_sre_stack_survives_missing_sensor_readings():
     )
 
     assert entry["state"]["signals"][0]["used"] is False
+    assert any(event["kind"] == "missing_sensor"
+               for event in entry["state"]["events"])
     assert entry["runtime"]["degraded"] is True
     assert "DEGRADED_OBSERVE" in entry["runtime"]["states"]
     assert any(event["kind"] == "missing_sensor"

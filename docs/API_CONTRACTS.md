@@ -118,6 +118,7 @@ Contract:
 - `approve` 必须把 proposal 投影到可行集。
 - 可行集由 cone + magnitude floor/ceiling 组成。
 - `audit` 必须返回可审查的违例信息。
+- `audit["events"]` 必须在发生投影时报告本地 failure trace。
 
 State:
 
@@ -145,6 +146,7 @@ Contract:
 - 每个 sensor 都提供 `h / H / R`。
 - `step` 要能跳过缺失传感器。
 - 输出的 covariance 应该还能被用来做告警。
+- `step()["events"]` 必须报告缺失传感器等本地观测降级。
 
 State:
 
@@ -222,6 +224,7 @@ Contract:
 - 输出必须满足每实例 box 约束。
 - residual 要可报告。
 - 如果 exact matching 不可能，优先给出最小残差解。
+- `info["events"]` 必须报告 box 饱和或残差无法清零的情况。
 
 State:
 
@@ -297,11 +300,11 @@ Counter-example:
 | `PoolCapacityPlanner` | `tests/test_sre_control.py` | keep-alive floor and capacity cap |
 | `CanaryScheduler` | `tests/test_sre_control.py` | trust region grows/shrinks correctly |
 | `TopologyState` | `tests/test_sre_control.py` | quaternion norm stays stable |
-| `SLOGuardrail` | `tests/test_sre_control.py` | cone and magnitude projection work |
-| `SignalFusion` | `tests/test_sre_control.py` | fusion converges under noisy observations |
+| `SLOGuardrail` | `tests/test_sre_control.py` | cone projection works and local projection events are visible |
+| `SignalFusion` | `tests/test_sre_control.py` | fusion converges and missing sensors are marked locally |
 | `PredictiveAutoscaler` | `tests/test_sre_control.py` | forecast growth triggers scaling |
 | `FastTrafficSwitcher` | `tests/test_sre_control.py` | target share is reached under rate limits |
-| `WeightedLoadBalancer` | `tests/test_sre_control.py` | demand is matched without saturating |
+| `WeightedLoadBalancer` | `tests/test_sre_control.py` | demand is matched without false saturation events |
 | `SREControlStack` | `tests/test_contracts.py` | trace stays JSON-serializable and runtime degradation states are visible |
 
 ---

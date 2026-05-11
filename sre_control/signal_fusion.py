@@ -88,12 +88,24 @@ class SignalFusion:
         """
         self._ekf.predict(None, dt)
         fused_trace = []
+        events = []
+        local_states = ["predict"]
         for signal, z in readings:
             if z is None:
                 fused_trace.append({"signal": signal.name, "used": False})
+                if "skip_update" not in local_states:
+                    local_states.append("skip_update")
+                events.append({
+                    "stage": "SignalFusion",
+                    "kind": "missing_sensor",
+                    "detail": f"{signal.name} reading was absent in this tick",
+                    "safe_action": "skip update and keep posterior prediction",
+                })
                 continue
             z = np.asarray(z, dtype=float)
             self._ekf.update(z, signal.h, signal.H, signal.R)
+            if "update" not in local_states:
+                local_states.append("update")
             fused_trace.append({
                 "signal": signal.name, "used": True,
                 "residual": float(np.linalg.norm(z - signal.h(self._ekf.x))),
@@ -103,6 +115,8 @@ class SignalFusion:
             "x": self._ekf.x.copy().tolist(),
             "P_trace": float(np.trace(self._ekf.P)),
             "signals": fused_trace,
+            "local_states": local_states,
+            "events": events,
         }
 
     # ------------------------------------------------------------------

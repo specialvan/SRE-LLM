@@ -196,7 +196,7 @@ entry["runtime"] = {
 }
 ```
 
-When a module degrades, the stack appends the matching `DEGRADED_*` state and an event:
+When a module degrades, the adapter should emit a local event first, and the stack should append the matching `DEGRADED_*` state while carrying that event upward:
 
 ```python
 {
@@ -206,6 +206,14 @@ When a module degrades, the stack appends the matching `DEGRADED_*` state and an
     "safe_action": "...",
 }
 ```
+
+Current local event emitters:
+
+| Adapter | Local field | Event kinds |
+|---|---|---|
+| `SignalFusion.step()` | `trace["events"]` | `missing_sensor` |
+| `SLOGuardrail.audit()` | `audit["events"]` | `unsafe_proposal_projected` |
+| `WeightedLoadBalancer.allocate()` | `info["events"]` | `bounded_ls_residual` |
 
 This is intentionally coarse. It is a review trace, not a full production incident timeline.
 

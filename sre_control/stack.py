@@ -90,12 +90,7 @@ class SREControlStack:
         if any(not signal_trace.get("used", False)
                for signal_trace in fuse_trace["signals"]):
             runtime_states.append("DEGRADED_OBSERVE")
-            runtime_events.append(self._event(
-                stage="SignalFusion",
-                kind="missing_sensor",
-                detail="one or more readings were absent in this tick",
-                safe_action="keep posterior prediction and avoid bypassing guardrails",
-            ))
+            runtime_events.extend(fuse_trace.get("events", []))
 
         # 2) Plan replicas via MPC autoscaler
         runtime_states.append("PLANNING")
@@ -134,12 +129,7 @@ class SREControlStack:
         safe_action = np.array(audit["approved"])
         if (audit["cone_violated_before"]
                 or audit["magnitude_violated_before"]):
-            runtime_events.append(self._event(
-                stage="SLOGuardrail",
-                kind="unsafe_proposal_projected",
-                detail="proposal violated cone or magnitude constraints",
-                safe_action="execute only the projected action",
-            ))
+            runtime_events.extend(audit.get("events", []))
 
         # 5) Allocate — weighted load balancer
         runtime_states.append("ALLOCATING")
@@ -151,12 +141,7 @@ class SREControlStack:
         )
         if any(alloc_info["saturation"]) or residual_active:
             runtime_states.append("DEGRADED_ALLOCATE")
-            runtime_events.append(self._event(
-                stage="WeightedLoadBalancer",
-                kind="bounded_ls_residual",
-                detail="box constraints or residuals were active",
-                safe_action="report residual instead of pretending exact matching",
-            ))
+            runtime_events.extend(alloc_info.get("events", []))
 
         runtime_states.append("EXECUTING")
 

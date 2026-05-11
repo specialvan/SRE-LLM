@@ -65,12 +65,34 @@ class WeightedLoadBalancer:
         res = lsq_linear(A, b, bounds=(lb, ub))
         shares = res.x
         realised = A @ shares
+        saturation = [bool((shares[i] >= ub[i] - 1e-6)
+                           or (shares[i] <= lb[i] + 1e-6))
+                      for i in range(len(self.instances))]
+        rps_residual = float(abs(realised[0] - rps_demand))
+        zone_residual = np.abs(realised[1:] - zone_target).tolist()
+        residual_active = (
+            rps_residual > 1e-6
+            or any(z > 1e-6 for z in zone_residual)
+        )
+        events = []
+        if any(saturation) or residual_active:
+            events.append({
+                "stage": "WeightedLoadBalancer",
+                "kind": "bounded_ls_residual",
+                "detail": "box constraints or residuals were active",
+                "safe_action": "report residual instead of pretending exact matching",
+            })
+        local_states = ["solve_ls"]
+        if any(saturation):
+            local_states.append("saturate")
+        if residual_active:
+            local_states.append("report_residual")
         info = {
-            "rps_residual":   float(abs(realised[0] - rps_demand)),
-            "zone_residual":  np.abs(realised[1:] - zone_target).tolist(),
-            "saturation":     [bool((shares[i] >= ub[i] - 1e-6)
-                                    or (shares[i] <= lb[i] + 1e-6))
-                                for i in range(len(self.instances))],
+            "rps_residual":   rps_residual,
+            "zone_residual":  zone_residual,
+            "saturation":     saturation,
             "cost":           float(res.cost),
+            "local_states":   local_states,
+            "events":         events,
         }
         return shares, info

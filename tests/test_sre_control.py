@@ -72,6 +72,9 @@ def test_guardrail_projects_into_cone_and_ball():
     audit = guard.audit([900, 900, 0])     # very off-axis + within ball
     assert audit["cone_violated_before"] is True
     assert audit["cone_margin_after"] >= -1e-3
+    assert "projected" in audit["local_states"]
+    assert any(event["kind"] == "unsafe_proposal_projected"
+               for event in audit["events"])
 
 
 def test_guardrail_honours_magnitude_cap():
@@ -110,6 +113,27 @@ def test_signal_fusion_converges_to_truth():
         fusion.step(dt=1.0, readings=[(sig, z)])
     err = np.linalg.norm(fusion.state[0:2] - truth[0:2])
     assert err < 30.0
+
+
+def test_signal_fusion_marks_missing_sensor_as_local_event():
+    fusion = SignalFusion(
+        x0=np.array([1000.0, 25.0, 0.3]),
+        P0=np.diag([200**2, 10**2, 0.2**2]),
+        Q=np.diag([10.0, 0.5, 0.01]),
+        x_ref=np.array([1000.0, 25.0, 0.3]),
+        theta=0.2,
+    )
+    sig = Signal(
+        name="metrics",
+        h=lambda x: x[0:2],
+        H=lambda x: np.array([[1, 0, 0], [0, 1, 0]]),
+        R=np.diag([50**2, 4**2]),
+    )
+    trace = fusion.step(dt=1.0, readings=[(sig, None)])
+    assert trace["signals"][0]["used"] is False
+    assert "skip_update" in trace["local_states"]
+    assert any(event["kind"] == "missing_sensor"
+               for event in trace["events"])
 
 
 # ---------------------------------------------------------------------------
@@ -152,3 +176,5 @@ def test_balancer_matches_demand_without_saturating():
     assert info["rps_residual"] < 1e-6
     # Should not hit any box
     assert not any(info["saturation"])
+    assert info["local_states"] == ["solve_ls"]
+    assert info["events"] == []
