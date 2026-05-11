@@ -89,3 +89,43 @@ benchmark metrics 是 trace 的聚合层。
 - trace 解释单步动作为什么被改写。
 - metrics 解释一组场景里的总体收益和代价。
 - 可视化页应该优先读取 metrics JSON，而不是手写收益数字。
+
+
+## Schema Evolution（AI-04）
+
+benchmark metrics JSON 的演进规则与 [trace-schema.md § Schema Evolution](./trace-schema.md#schema-evolutionai-04) 同构，要点复述如下：
+
+### 版本号含义
+
+当前 `schema_version = "benchmark.metrics.v1"`。
+
+- **v1.x**：可以新增 summary 指标、新增 `deltas` 项、扩 enum —— 只要下游忽略未知字段仍能工作即可。
+- **v2**：删除指标、改指标单位、改 summary 结构 —— 必须显式 bump。
+
+### 下游读取契约
+
+可视化面板 / CI 脚本 / reviewer dashboard 必须：
+
+1. 先 `assert payload["schema_version"].startswith("benchmark.metrics.v1")`；
+2. 不识别的 MAJOR（比如 `v2`）直接 abort with clear error，不要猜；
+3. 对 summary 里未知指标静默跳过。
+
+### 违反举例
+
+- ❌ 把 `planner_emergency_rate` 从 `[0, 1]` 比例改为 `[0, 100]` 百分数而不 bump；
+- ❌ 把 `scenarios` 从数组改成对象而不 bump；
+- ❌ 删除 `cbf_status_counts` 字段（哪怕只是"换成另一个名字"）而不 bump。
+
+### 实施要求
+
+每次 bump 必须同步：
+
+1. `examples/compare_e2e_vs_structural.py::build_metrics_payload` 的 `schema_version` 字符串；
+2. 本文件的字段表；
+3. 新增 `tests/test_benchmark_metrics.py` 里验证 schema_version 的断言；
+4. `docs/V2_Knowledge/state.json` 的 `code.contracts.benchmark_metrics_schema`；
+5. PR 描述里附下游迁移说明。
+
+### INV-C-BENCH
+
+该章节即 [INV-C-BENCH](./claude-review/03-invariants-catalog.md#inv-c-bench) 的具体化。

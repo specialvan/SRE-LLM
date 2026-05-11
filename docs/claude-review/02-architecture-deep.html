@@ -1,0 +1,993 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>auto-decide · Deeper Architecture (Claude Review)</title>
+<script>
+window.MathJax = { tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] }, svg: { fontCache: 'global' } };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+:root{
+  --fg:#1a1d22; --fg-soft:#4a4e57; --fg-mute:#767a82;
+  --bg:#fbfbfa; --bg-card:#fff; --bg-code:#252932;
+  --bg-ok:#eaf7ec; --bg-warn:#ffefe6; --bg-note:#fff9e6;
+  --bg-crit:#ffe3dd; --bg-sre:#eef2ff; --bg-contract:#f3eef9;
+  --accent:#0b6b58; --accent2:#2a4ab0; --accent-warn:#b04018; --accent-m:#903030;
+  --rule:#e5e2dc; --link:#1249a7;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.7}
+body{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:100vh}
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;border-right:1px solid var(--rule);padding:20px 16px;background:var(--bg-card);font-size:13px}
+nav.toc h1{font-size:14px;margin:0 0 2px}
+nav.toc .sub{color:var(--fg-mute);font-size:11.5px;margin-bottom:14px}
+nav.toc ol{list-style:none;padding:0;margin:0;counter-reset:toc}
+nav.toc ol li{counter-increment:toc;margin:1px 0}
+nav.toc ol>li>a::before{content:counters(toc,".") "  ";color:var(--fg-mute);font-variant-numeric:tabular-nums;font-size:0.9em}
+nav.toc ol ol{padding-left:12px;border-left:1px dashed var(--rule);margin:1px 0 5px}
+nav.toc a{color:var(--fg-soft);text-decoration:none;display:block;padding:1px 5px;border-radius:3px;font-size:12.5px}
+nav.toc a:hover{background:#e4ece8;color:var(--accent)}
+main{padding:42px clamp(22px,5vw,56px);max-width:1100px}
+h1.title{font-size:30px;line-height:1.2;margin:0 0 4px;letter-spacing:-0.01em}
+h1.title small{display:block;font-weight:normal;color:var(--fg-mute);font-size:14px;margin-top:4px}
+.meta{color:var(--fg-mute);font-size:13px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:10px 0;margin:18px 0 28px;display:flex;flex-wrap:wrap;gap:14px}
+h2{font-size:22px;margin-top:46px;padding-top:12px;border-top:2px solid var(--fg);letter-spacing:-0.01em}
+h3{font-size:17px;margin-top:30px;color:var(--accent2)}
+h4{font-size:14.5px;margin-top:20px;color:var(--fg)}
+h5{font-size:12px;margin:14px 0 4px;color:var(--fg-soft);text-transform:uppercase;letter-spacing:0.06em;font-weight:700}
+p,li{color:var(--fg-soft)}
+code{font-family:var(--mono);background:#f4f1ec;padding:1px 6px;border-radius:3px;font-size:0.9em}
+pre{background:var(--bg-code);color:#e3e7ee;padding:12px 14px;border-radius:7px;overflow-x:auto;font-size:12.5px;margin:12px 0}
+pre code{background:transparent;color:inherit;padding:0}
+.callout{border-left:4px solid var(--accent);background:var(--bg-ok);padding:11px 15px;margin:12px 0;border-radius:0 7px 7px 0}
+.callout.warn{border-color:#d07000;background:var(--bg-warn)}
+.callout.crit{border-color:var(--accent-warn);background:var(--bg-crit)}
+.callout.note{border-color:#b08800;background:var(--bg-note)}
+.callout.sre{border-color:var(--accent2);background:var(--bg-sre)}
+.callout.contract{border-color:#5a2a9d;background:var(--bg-contract)}
+.callout .tag{font-size:10.5px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:var(--fg);display:block;margin-bottom:3px}
+figure{margin:22px 0}
+figure figcaption{font-size:12.5px;color:var(--fg-mute);text-align:center;margin-top:6px}
+figure svg{display:block;margin:0 auto;max-width:100%;height:auto;background:#fff;border:1px solid var(--rule);border-radius:7px}
+table{border-collapse:collapse;margin:14px 0;width:100%;font-size:13px}
+table th,table td{border-bottom:1px solid var(--rule);padding:7px 10px;text-align:left;vertical-align:top}
+table th{background:#f4ece0;font-weight:600}
+table tr:last-child td{border-bottom:1px solid var(--fg)}
+a{color:var(--link)}
+hr{border:none;border-top:1px solid var(--rule);margin:22px 0}
+.matrix td,.matrix th{text-align:center;font-size:12.5px;padding:6px 8px}
+.matrix .hit{background:#eaf7ec;color:var(--accent);font-weight:700}
+.matrix .miss{color:var(--fg-mute)}
+.matrix .neg{background:#ffe3dd;color:var(--accent-warn);font-weight:700}
+.tag-pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.05em;background:#e4ece8;color:var(--accent);margin-right:4px}
+@media(max-width:900px){body{grid-template-columns:1fr}nav.toc{position:relative;height:auto;border-right:none;border-bottom:1px solid var(--rule)}}
+</style>
+</head>
+<body>
+<nav class="toc">
+  <h1>Deeper Architecture</h1>
+  <div class="sub">Claude review · 补现 architecture.html 未覆盖的视角</div>
+  <ol>
+    <li><a href="#intro">1. 这份文档的定位</a></li>
+    <li><a href="#typeflow">2. 类型流 · 谁生产谁消费</a></li>
+    <li><a href="#scenario-matrix">3. 场景 × 模块 激活矩阵</a></li>
+    <li><a href="#failure-tree">4. 失败决策树</a></li>
+    <li><a href="#budget">5. 时延与失败预算</a></li>
+    <li><a href="#eq-arch">6. 方程与架构的交叉视图</a></li>
+    <li><a href="#state-machine">7. T_inv 状态机完整版</a></li>
+    <li><a href="#bench-loop">8. Benchmark → Architecture → Refine 的闭环</a></li>
+    <li><a href="#codex-mental">9. Codex 心智模型</a></li>
+  </ol>
+  <hr>
+  <p style="font-size:12px;color:var(--fg-mute);margin:0">
+    ← <a href="./README.md">Claude Review Pack</a><br>
+    → <a href="../architecture.html">架构现状 architecture.html</a><br>
+    → <a href="../deep-dive.html">算法深拆 deep-dive.html</a>
+  </p>
+</nav>
+<main>
+
+<h1 class="title">auto-decide · Deeper Architecture
+  <small>5 张 architecture.html 里没画的视图 · 给 Codex 架构理解加颗粒度</small>
+</h1>
+<div class="meta">
+  <span>Reviewer: Claude Opus 4.7</span>
+  <span>对象：Codex 下一轮开工前的架构深度</span>
+  <span>关系：补 <a href="../architecture.html">architecture.html</a> 的 5 类视图</span>
+</div>
+
+<h2 id="intro">1 · 这份文档的定位</h2>
+
+<p>Codex 上一轮新增的 <code>architecture.html</code> 已经覆盖了：<strong>静态层次图 / runtime 时序 / Requirements / Task Breakdown / Refine loop</strong>。但架构评审里，<strong>有 5 种视图它没覆盖</strong>，也是下一轮继续深挖时必然要补的：</p>
+
+<ol>
+  <li><strong>类型流图</strong>（谁产出谁消费什么数据类型）；</li>
+  <li><strong>场景 × 模块激活矩阵</strong>（哪个场景触发哪个模块）；</li>
+  <li><strong>失败决策树</strong>（出故障时从哪个症状回推到哪个模块）；</li>
+  <li><strong>时延与失败预算</strong>（每个阶段的 P50/P99 + 失败率红线）；</li>
+  <li><strong>Benchmark 驱动的 refine 闭环</strong>（benchmark JSON 如何回到架构图）。</li>
+</ol>
+
+<div class="callout note">
+<span class="tag">作用</span>
+这 5 张视图的目的是：当 Codex 下一轮遇到 "<em>emergency_rate 降不下来</em>" 或 "<em>新加一类 barrier 应该怎么接</em>" 时，可以不需要读全部代码，就从视图上定位到要改的边界。
+</div>
+
+<h2 id="typeflow">2 · 类型流 · 谁生产谁消费</h2>
+
+<p>架构图展示"模块",但真正的"钢筋"是数据类型。下图把 9 个模块 + trace 契约按<strong>数据类型的产出/消费</strong>重新画一次。</p>
+
+<figure>
+<svg viewBox="0 0 1040 560" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .mod{fill:#eaf7ec;stroke:#0b6b58;stroke-width:1.4;rx:8}
+      .gate{fill:#fff9e6;stroke:#b08800;stroke-width:1.4;rx:8}
+      .type{fill:#eef2ff;stroke:#2a4ab0;stroke-width:1.1;rx:4}
+      .trace{fill:#f3eef9;stroke:#5a2a9d;stroke-width:1.3;rx:8}
+      .t{font:bold 12px -apple-system;fill:#1a1d22}
+      .s{font:10.5px -apple-system;fill:#4a4e57}
+      .m{font:10.5px ui-monospace,Menlo;fill:#4a4e57}
+      .edge{stroke:#333;stroke-width:1;fill:none}
+      .edge-type{stroke:#2a4ab0;stroke-width:1;fill:none;stroke-dasharray:3 2}
+      .grp{font:bold 12px -apple-system;fill:#4a4e57;text-transform:uppercase;letter-spacing:0.06em}
+    </style>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333"/>
+    </marker>
+    <marker id="at" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2a4ab0"/>
+    </marker>
+  </defs>
+
+  <!-- Types row -->
+  <text class="grp" x="20" y="25">Core Types · types.py</text>
+  <rect class="type" x="20" y="38" width="120" height="44"/>
+  <text class="t" x="80" y="56" text-anchor="middle">State</text>
+  <text class="m" x="80" y="74" text-anchor="middle">(px,py,ψ,v,a,μ)</text>
+
+  <rect class="type" x="150" y="38" width="120" height="44"/>
+  <text class="t" x="210" y="56" text-anchor="middle">Control</text>
+  <text class="m" x="210" y="74" text-anchor="middle">(steer, jerk)</text>
+
+  <rect class="type" x="280" y="38" width="160" height="44"/>
+  <text class="t" x="360" y="56" text-anchor="middle">VehicleParams (frozen)</text>
+  <text class="m" x="360" y="74" text-anchor="middle">L, v_max, jerk_max, ...</text>
+
+  <rect class="type" x="450" y="38" width="130" height="44"/>
+  <text class="t" x="515" y="56" text-anchor="middle">Node / Edge</text>
+  <text class="m" x="515" y="74" text-anchor="middle">graph.py types</text>
+
+  <rect class="type" x="590" y="38" width="140" height="44"/>
+  <text class="t" x="660" y="56" text-anchor="middle">Obstacle / Manifold</text>
+  <text class="m" x="660" y="74" text-anchor="middle">dynamics.py</text>
+
+  <rect class="type" x="740" y="38" width="140" height="44"/>
+  <text class="t" x="810" y="56" text-anchor="middle">BeliefState</text>
+  <text class="m" x="810" y="74" text-anchor="middle">game.py</text>
+
+  <rect class="type" x="890" y="38" width="130" height="44"/>
+  <text class="t" x="955" y="56" text-anchor="middle">BarrierFunction</text>
+  <text class="m" x="955" y="74" text-anchor="middle">cbf.py protocol</text>
+
+  <!-- Sense / model layer -->
+  <text class="grp" x="20" y="115">Sense / Model</text>
+  <rect class="mod" x="20" y="128" width="180" height="60"/>
+  <text class="t" x="110" y="150" text-anchor="middle">graph.py</text>
+  <text class="s" x="110" y="168" text-anchor="middle">InteractionIntentGraph</text>
+  <text class="m" x="110" y="183" text-anchor="middle">consumes: Node · produces: edges</text>
+
+  <rect class="mod" x="220" y="128" width="180" height="60"/>
+  <text class="t" x="310" y="150" text-anchor="middle">dynamics.py</text>
+  <text class="s" x="310" y="168" text-anchor="middle">BicycleModel + Manifold</text>
+  <text class="m" x="310" y="183" text-anchor="middle">(State, Control) → State</text>
+
+  <rect class="mod" x="420" y="128" width="180" height="60"/>
+  <text class="t" x="510" y="150" text-anchor="middle">potential.py</text>
+  <text class="s" x="510" y="168" text-anchor="middle">PotentialField</text>
+  <text class="m" x="510" y="183" text-anchor="middle">State → flow_direction ∈ ℝ²</text>
+
+  <rect class="mod" x="620" y="128" width="180" height="60"/>
+  <text class="t" x="710" y="150" text-anchor="middle">game.py</text>
+  <text class="s" x="710" y="168" text-anchor="middle">WorstCaseGame</text>
+  <text class="m" x="710" y="183" text-anchor="middle">BeliefState → margin_m</text>
+
+  <rect class="mod" x="820" y="128" width="200" height="60"/>
+  <text class="t" x="920" y="150" text-anchor="middle">reachable.py</text>
+  <text class="s" x="920" y="168" text-anchor="middle">ReachableSet + DeadZoneDetector</text>
+  <text class="m" x="920" y="183" text-anchor="middle">State → hull, dead_zone bool</text>
+
+  <!-- Safety layer -->
+  <text class="grp" x="20" y="215">Safety Gates</text>
+  <rect class="gate" x="20" y="228" width="180" height="60"/>
+  <text class="t" x="110" y="250" text-anchor="middle">lyapunov.py</text>
+  <text class="s" x="110" y="268" text-anchor="middle">StabilityMonitor</text>
+  <text class="m" x="110" y="283" text-anchor="middle">(State, Control) → (bool, dV/dt)</text>
+
+  <rect class="gate" x="220" y="228" width="180" height="60"/>
+  <text class="t" x="310" y="250" text-anchor="middle">cbf.py</text>
+  <text class="s" x="310" y="268" text-anchor="middle">CBFQPFilter</text>
+  <text class="m" x="310" y="283" text-anchor="middle">(State, u_nom) → u_cbf</text>
+
+  <rect class="gate" x="420" y="228" width="180" height="60"/>
+  <text class="t" x="510" y="250" text-anchor="middle">invariant.py</text>
+  <text class="s" x="510" y="268" text-anchor="middle">ControlInvariantOperator</text>
+  <text class="m" x="510" y="283" text-anchor="middle">(State, u_nn) → u_safe</text>
+
+  <!-- Orchestration / trace -->
+  <text class="grp" x="20" y="315">Orchestration</text>
+  <rect class="mod" x="20" y="328" width="380" height="70"/>
+  <text class="t" x="210" y="352" text-anchor="middle">planner.py · StructuralPlanner</text>
+  <text class="s" x="210" y="370" text-anchor="middle">step(State, Graph, dt, step_index)</text>
+  <text class="m" x="210" y="388" text-anchor="middle">→ (State_next, Control, trace_dict)</text>
+
+  <rect class="trace" x="420" y="328" width="220" height="70"/>
+  <text class="t" x="530" y="352" text-anchor="middle">trace.py</text>
+  <text class="s" x="530" y="370" text-anchor="middle">build_trace_record(...)</text>
+  <text class="m" x="530" y="388" text-anchor="middle">schema_version v1.0 · JSON-safe</text>
+
+  <!-- Output types -->
+  <text class="grp" x="20" y="425">Output contracts</text>
+  <rect class="type" x="20" y="438" width="160" height="42"/>
+  <text class="t" x="100" y="456" text-anchor="middle">u_safe ∈ 𝒰</text>
+  <text class="m" x="100" y="472" text-anchor="middle">→ executor</text>
+
+  <rect class="type" x="200" y="438" width="200" height="42"/>
+  <text class="t" x="300" y="456" text-anchor="middle">trace_dict (JSON-safe)</text>
+  <text class="m" x="300" y="472" text-anchor="middle">→ trace.jsonl / metrics JSON</text>
+
+  <rect class="type" x="420" y="438" width="260" height="42"/>
+  <text class="t" x="550" y="456" text-anchor="middle">benchmark.metrics.v1 JSON</text>
+  <text class="m" x="550" y="472" text-anchor="middle">→ architecture dashboards</text>
+
+  <!-- Key edges (types consumed) -->
+  <path class="edge-type" d="M80,82 C 80,110 110,125 110,128" marker-end="url(#at)"/>
+  <path class="edge-type" d="M80,82 C 80,115 310,120 310,128" marker-end="url(#at)"/>
+  <path class="edge-type" d="M210,82 C 210,110 310,120 310,128" marker-end="url(#at)"/>
+  <path class="edge-type" d="M360,82 C 360,105 400,125 360,128" marker-end="url(#at)"/>
+  <path class="edge-type" d="M515,82 C 515,105 110,160 200,188" marker-end="url(#at)" stroke-dasharray="2 4" opacity="0.35"/>
+  <path class="edge-type" d="M660,82 C 660,105 920,125 920,128" marker-end="url(#at)"/>
+  <path class="edge-type" d="M810,82 C 810,105 710,125 710,128" marker-end="url(#at)"/>
+  <path class="edge-type" d="M955,82 C 955,200 310,220 310,228" marker-end="url(#at)"/>
+
+  <!-- module edges -->
+  <path class="edge" d="M200,158 L218,158" marker-end="url(#a)"/>
+  <path class="edge" d="M400,158 L418,158" marker-end="url(#a)"/>
+  <path class="edge" d="M600,158 L618,158" marker-end="url(#a)"/>
+  <path class="edge" d="M800,158 L818,158" marker-end="url(#a)"/>
+
+  <path class="edge" d="M110,188 L110,225" marker-end="url(#a)"/>
+  <path class="edge" d="M310,188 L310,225" marker-end="url(#a)"/>
+  <path class="edge" d="M510,188 L510,225" marker-end="url(#a)"/>
+  <path class="edge" d="M710,188 L710,225" marker-end="url(#a)"/>
+
+  <path class="edge" d="M200,258 L218,258" marker-end="url(#a)"/>
+  <path class="edge" d="M400,258 L418,258" marker-end="url(#a)"/>
+
+  <path class="edge" d="M310,288 L310,328" marker-end="url(#a)"/>
+  <path class="edge" d="M510,288 L340,328" marker-end="url(#a)"/>
+  <path class="edge" d="M110,288 L260,328" marker-end="url(#a)"/>
+
+  <path class="edge" d="M400,363 L420,363" marker-end="url(#a)"/>
+
+  <path class="edge" d="M210,398 L100,438" marker-end="url(#a)"/>
+  <path class="edge" d="M530,398 L300,438" marker-end="url(#a)"/>
+  <path class="edge" d="M530,398 L550,438" marker-end="url(#a)"/>
+
+  <!-- legend -->
+  <rect x="20" y="510" width="1000" height="36" fill="#fff" stroke="#e5e2dc" rx="6"/>
+  <rect class="type" x="32" y="520" width="16" height="16"/><text class="m" x="56" y="532">core types</text>
+  <rect class="mod" x="140" y="520" width="16" height="16"/><text class="m" x="164" y="532">model/sense layer</text>
+  <rect class="gate" x="260" y="520" width="16" height="16"/><text class="m" x="284" y="532">safety gate</text>
+  <rect class="trace" x="360" y="520" width="16" height="16"/><text class="m" x="384" y="532">trace contract</text>
+  <line x1="460" y1="528" x2="490" y2="528" class="edge-type"/><text class="m" x="498" y="532">type flow (shape consumed)</text>
+  <line x1="680" y1="528" x2="710" y2="528" class="edge"/><text class="m" x="718" y="532">runtime call</text>
+</svg>
+<figcaption>图 2 · 类型流架构图。蓝色虚线 = 数据类型的生产/消费关系；黑色实线 = 运行时调用。trace.py 作为横切契约把所有状态聚合成 JSON。</figcaption>
+</figure>
+
+<div class="callout contract">
+<span class="tag">关键洞察</span>
+<code>VehicleParams</code> 是 <strong>frozen dataclass</strong>，这意味着它是<em>全局常量注入</em>——任何模块拿到同一个 <code>params</code> 对象都是只读的。如果下一轮有场景需要"一个 planner 多种车型"，必须在 <code>StructuralPlanner</code> 里显式持有多个 params，不能在运行时 mutate。
+</div>
+
+<h2 id="scenario-matrix">3 · 场景 × 模块激活矩阵</h2>
+
+<p>不同场景激活的模块集合差异很大。这张表明确"哪一类 PR 要关心哪些模块"——下一轮加 barrier 或 nominal policy 时按这个矩阵找影响面。</p>
+
+<table class="matrix">
+  <thead>
+    <tr>
+      <th rowspan="2">场景</th>
+      <th colspan="4">Model / Sense</th>
+      <th colspan="3">Safety Gate</th>
+      <th>Orchestration</th>
+    </tr>
+    <tr>
+      <th>graph</th><th>potential</th><th>game</th><th>reachable</th>
+      <th>lyapunov</th><th>cbf</th><th>invariant</th>
+      <th>planner</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>✅ 直线巡航 · 无障碍</td>
+      <td class="miss">—</td>
+      <td class="hit">✓</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="hit">✓</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="hit">✓</td>
+    </tr>
+    <tr>
+      <td>✅ 静态障碍避让</td>
+      <td class="miss">—</td>
+      <td class="hit">✓</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="hit">✓</td>
+      <td class="hit">✓</td>
+      <td class="hit">✓</td>
+    </tr>
+    <tr>
+      <td>⚠️ 低 μ 湿路</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="hit">✓</td>
+      <td class="hit">✓</td>
+      <td class="hit">✓</td>
+      <td class="hit">✓</td>
+      <td class="hit">✓</td>
+    </tr>
+    <tr>
+      <td>⚠️ 前车急刹（可规避）</td>
+      <td class="miss">—</td>
+      <td class="hit">✓</td>
+      <td class="miss">—</td>
+      <td class="hit">✓</td>
+      <td class="miss">—</td>
+      <td class="hit">✓</td>
+      <td class="hit">✓</td>
+      <td class="hit">✓</td>
+    </tr>
+    <tr>
+      <td>🚨 前车急刹（不可规避）</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="neg">✓(dead)</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="neg">✓(fb)</td>
+      <td class="hit">✓</td>
+    </tr>
+    <tr>
+      <td>⚠️ 路口意图不确定</td>
+      <td class="hit">✓</td>
+      <td class="hit">✓</td>
+      <td class="hit">✓</td>
+      <td class="miss">—</td>
+      <td class="hit">✓</td>
+      <td class="hit">✓</td>
+      <td class="hit">✓</td>
+      <td class="hit">✓</td>
+    </tr>
+    <tr>
+      <td>🚨 感知意图 flicker</td>
+      <td class="neg">✓(抖)</td>
+      <td class="neg">✓(抖)</td>
+      <td class="hit">✓</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+    </tr>
+    <tr>
+      <td>⚠️ μ 感知错误</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="neg">✓(乐观)</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+    </tr>
+    <tr>
+      <td>⚠️ <code>target_speed</code> 跳变</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="neg">✓(跳)</td>
+      <td class="miss">—</td>
+      <td class="neg">✓(relax)</td>
+      <td class="hit">✓</td>
+    </tr>
+    <tr>
+      <td>⚠️ <strong>当前 benchmark</strong></td>
+      <td class="miss">—</td>
+      <td class="hit">✓</td>
+      <td class="miss">—</td>
+      <td class="miss">—</td>
+      <td class="neg">✓(V↑)</td>
+      <td class="neg">✓(fb 23%)</td>
+      <td class="neg">✓(eb 42%)</td>
+      <td class="hit">✓</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><span class="tag-pill" style="background:#eaf7ec;color:var(--accent)">✓</span> 激活并表现健康 ·
+<span class="tag-pill" style="background:#ffe3dd;color:var(--accent-warn)">neg</span> 激活但表现异常 · <span class="tag-pill" style="background:#fff;color:var(--fg-mute);border:1px dashed var(--rule)">—</span> 不激活</p>
+
+<div class="callout crit">
+<span class="tag">Benchmark 行的信号</span>
+当前 benchmark 场景同时触发 lyapunov/cbf/invariant 三层矫正，这与 "直线巡航" 的应然状态（三层都只轻触）相差很大。对比 "静态障碍避让" 行：应该只有 cbf+invariant 激活，lyapunov 应保持 non-increasing 而非被 T_inv 反复松弛。
+</div>
+
+<h2 id="failure-tree">4 · 失败决策树</h2>
+
+<p>出故障时怎么从"症状"倒推到"改哪里"。每个叶节点都指向一个具体模块 + 参数 + finding ID。</p>
+
+<figure>
+<svg viewBox="0 0 1100 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .root{fill:#fbfbf0;stroke:#b08800;stroke-width:1.5;rx:10}
+      .branch{fill:#fff;stroke:#767a82;stroke-width:1.1;rx:8}
+      .leaf-mod{fill:#eaf7ec;stroke:#0b6b58;stroke-width:1.3;rx:6}
+      .leaf-policy{fill:#f3eef9;stroke:#5a2a9d;stroke-width:1.3;rx:6}
+      .leaf-bad{fill:#ffe3dd;stroke:#b04018;stroke-width:1.3;rx:6}
+      .t{font:bold 12px -apple-system;fill:#1a1d22}
+      .s{font:10.5px -apple-system;fill:#4a4e57}
+      .m{font:10px ui-monospace,Menlo;fill:#4a4e57}
+    </style>
+    <marker id="ae" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#767a82"/>
+    </marker>
+  </defs>
+
+  <rect class="root" x="420" y="20" width="260" height="56" rx="10"/>
+  <text class="t" x="550" y="44" text-anchor="middle">症状出现</text>
+  <text class="s" x="550" y="62" text-anchor="middle">(benchmark / demo / 实车 trace)</text>
+
+  <!-- branch 1: collision -->
+  <rect class="branch" x="20" y="120" width="180" height="60"/>
+  <text class="t" x="110" y="142" text-anchor="middle">A · 发生碰撞</text>
+  <text class="m" x="110" y="160" text-anchor="middle">min_dist &lt; 0</text>
+
+  <!-- A leaves -->
+  <rect class="leaf-mod" x="20" y="220" width="180" height="68"/>
+  <text class="t" x="110" y="244" text-anchor="middle">A1 · CBF 放行</text>
+  <text class="s" x="110" y="260" text-anchor="middle">cbf_status='nom_ok' + 撞</text>
+  <text class="m" x="110" y="276" text-anchor="middle">→ 升级 braking barrier</text>
+
+  <rect class="leaf-mod" x="20" y="300" width="180" height="68"/>
+  <text class="t" x="110" y="324" text-anchor="middle">A2 · dead zone</text>
+  <text class="s" x="110" y="340" text-anchor="middle">reachable 应标记但没标</text>
+  <text class="m" x="110" y="356" text-anchor="middle">→ 补 DeadZone 触发点</text>
+
+  <rect class="leaf-bad" x="20" y="380" width="180" height="68"/>
+  <text class="t" x="110" y="404" text-anchor="middle">A3 · μ 高估</text>
+  <text class="s" x="110" y="420" text-anchor="middle">a_brk(μ) 乐观</text>
+  <text class="m" x="110" y="436" text-anchor="middle">→ 加 μ derating</text>
+
+  <!-- branch 2: emergency rate high -->
+  <rect class="branch" x="220" y="120" width="200" height="60"/>
+  <text class="t" x="320" y="142" text-anchor="middle">B · emergency_rate 高</text>
+  <text class="m" x="320" y="160" text-anchor="middle">当前：42.5%</text>
+
+  <rect class="leaf-policy" x="220" y="220" width="200" height="68"/>
+  <text class="t" x="320" y="244" text-anchor="middle">B1 · nominal 与 CBF 冲突</text>
+  <text class="s" x="320" y="260" text-anchor="middle">cbf_status='fallback_brake' 高</text>
+  <text class="m" x="320" y="276" text-anchor="middle">→ F-P0-02 / AI-02</text>
+
+  <rect class="leaf-mod" x="220" y="300" width="200" height="68"/>
+  <text class="t" x="320" y="324" text-anchor="middle">B2 · Lyapunov 震荡</text>
+  <text class="s" x="320" y="340" text-anchor="middle">target_speed 跳变</text>
+  <text class="m" x="320" y="356" text-anchor="middle">→ rate limiter 到 v*</text>
+
+  <rect class="leaf-mod" x="220" y="380" width="200" height="68"/>
+  <text class="t" x="320" y="404" text-anchor="middle">B3 · T_inv 松弛不足</text>
+  <text class="s" x="320" y="420" text-anchor="middle">relax_steps=8 不够</text>
+  <text class="m" x="320" y="436" text-anchor="middle">→ 调 relax_steps/γ</text>
+
+  <!-- branch 3: fallback high -->
+  <rect class="branch" x="440" y="120" width="220" height="60"/>
+  <text class="t" x="550" y="142" text-anchor="middle">C · CBF fallback_brake 高</text>
+  <text class="m" x="550" y="160" text-anchor="middle">当前：23.1%</text>
+
+  <rect class="leaf-policy" x="440" y="220" width="220" height="68"/>
+  <text class="t" x="550" y="244" text-anchor="middle">C1 · nominal 激进</text>
+  <text class="s" x="550" y="260" text-anchor="middle">要求 jerk &gt; 0 但物理不行</text>
+  <text class="m" x="550" y="276" text-anchor="middle">→ 同 B1，升级 nominal</text>
+
+  <rect class="leaf-mod" x="440" y="300" width="220" height="68"/>
+  <text class="t" x="550" y="324" text-anchor="middle">C2 · barrier 相对度错误</text>
+  <text class="s" x="550" y="340" text-anchor="middle">只用 DistanceBarrier</text>
+  <text class="m" x="550" y="356" text-anchor="middle">→ 补 BrakingDistanceBarrier</text>
+
+  <rect class="leaf-mod" x="440" y="380" width="220" height="68"/>
+  <text class="t" x="550" y="404" text-anchor="middle">C3 · 网格搜索太粗</text>
+  <text class="s" x="550" y="420" text-anchor="middle">coarse=11,fine=21 可能找不到可行</text>
+  <text class="m" x="550" y="436" text-anchor="middle">→ 换真 QP (OSQP)</text>
+
+  <!-- branch 4: latency -->
+  <rect class="branch" x="680" y="120" width="180" height="60"/>
+  <text class="t" x="770" y="142" text-anchor="middle">D · 单帧耗时超预算</text>
+  <text class="m" x="770" y="160" text-anchor="middle">P99 &gt; 15 ms</text>
+
+  <rect class="leaf-mod" x="680" y="220" width="180" height="68"/>
+  <text class="t" x="770" y="244" text-anchor="middle">D1 · CBF 网格爆炸</text>
+  <text class="s" x="770" y="260" text-anchor="middle">barrier 数 &gt; 10</text>
+  <text class="m" x="770" y="276" text-anchor="middle">→ 换 QP</text>
+
+  <rect class="leaf-mod" x="680" y="300" width="180" height="68"/>
+  <text class="t" x="770" y="324" text-anchor="middle">D2 · 图 O(n²)</text>
+  <text class="s" x="770" y="340" text-anchor="middle">n &gt; 300</text>
+  <text class="m" x="770" y="356" text-anchor="middle">→ KD-tree 剪枝</text>
+
+  <rect class="leaf-mod" x="680" y="380" width="180" height="68"/>
+  <text class="t" x="770" y="404" text-anchor="middle">D3 · trace IO 阻塞</text>
+  <text class="s" x="770" y="420" text-anchor="middle">同步写 JSONL</text>
+  <text class="m" x="770" y="436" text-anchor="middle">→ 异步队列</text>
+
+  <!-- branch 5: trace broken -->
+  <rect class="branch" x="880" y="120" width="200" height="60"/>
+  <text class="t" x="980" y="142" text-anchor="middle">E · trace 字段缺失/无法解析</text>
+  <text class="m" x="980" y="160" text-anchor="middle">JSONL load 失败</text>
+
+  <rect class="leaf-mod" x="880" y="220" width="200" height="68"/>
+  <text class="t" x="980" y="244" text-anchor="middle">E1 · schema_version 不符</text>
+  <text class="s" x="980" y="260" text-anchor="middle">新增模块没过 trace 合约</text>
+  <text class="m" x="980" y="276" text-anchor="middle">→ 走 build_trace_record</text>
+
+  <rect class="leaf-mod" x="880" y="300" width="200" height="68"/>
+  <text class="t" x="980" y="324" text-anchor="middle">E2 · 非有限数</text>
+  <text class="s" x="980" y="340" text-anchor="middle">_jsonable 未覆盖新类型</text>
+  <text class="m" x="980" y="356" text-anchor="middle">→ 扩 _jsonable 测试</text>
+
+  <rect class="leaf-mod" x="880" y="380" width="200" height="68"/>
+  <text class="t" x="980" y="404" text-anchor="middle">E3 · enum 不匹配</text>
+  <text class="s" x="980" y="420" text-anchor="middle">status 值超集</text>
+  <text class="m" x="980" y="436" text-anchor="middle">→ F-P1-02 / AI-03b</text>
+
+  <!-- edges from root -->
+  <path d="M445,78 L110,118" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M490,78 L320,118" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M550,78 L550,118" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M610,78 L770,118" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M655,78 L980,118" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+
+  <!-- branch to leaves -->
+  <path d="M110,180 L110,218" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M110,288 L110,298" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M110,368 L110,378" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M320,180 L320,218" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M320,288 L320,298" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M320,368 L320,378" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M550,180 L550,218" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M550,288 L550,298" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M550,368 L550,378" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M770,180 L770,218" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M770,288 L770,298" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M770,368 L770,378" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M980,180 L980,218" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M980,288 L980,298" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+  <path d="M980,368 L980,378" stroke="#767a82" fill="none" marker-end="url(#ae)"/>
+</svg>
+<figcaption>图 4 · 失败决策树。上层五个分支 = 5 类症状，每个有 3 个叶节点指向具体模块/参数。紫色叶 = 需要升级 nominal policy；红色叶 = 感知上游问题；绿色叶 = 数学/参数问题。</figcaption>
+</figure>
+
+<div class="callout contract">
+<span class="tag">怎么用这棵树</span>
+出问题 → 找根因 → 找到叶节点 → 按叶节点的箭头改。
+<strong>最关键的观察</strong>：B1 和 C1 都指向 "升级 nominal policy"，这说明当前 benchmark 的两个异常指标（emergency_rate / fallback_rate）<strong>同源</strong>，一次升级就能同时解决。
+</div>
+
+<h2 id="budget">5 · 时延与失败预算</h2>
+
+<p>每个阶段都有<strong>时延预算</strong>和<strong>失败率预算</strong>两组数字。实测值放在右边，让 Codex 一眼看出哪一段超了。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th rowspan="2">阶段</th>
+      <th colspan="2">时延预算</th>
+      <th colspan="2">失败率预算</th>
+      <th rowspan="2">实测（本轮 benchmark · n=20）</th>
+    </tr>
+    <tr>
+      <th>P50 目标</th>
+      <th>P99 目标</th>
+      <th>SLI</th>
+      <th>红线</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>graph.update</code></td>
+      <td>&lt; 0.5 ms</td>
+      <td>&lt; 1 ms</td>
+      <td><code>intent_flicker_rate</code></td>
+      <td>&lt; 2 Hz</td>
+      <td>未测（benchmark 不含动态 agent）</td>
+    </tr>
+    <tr>
+      <td><code>nominal</code> (GradientPolicy)</td>
+      <td>&lt; 0.5 ms</td>
+      <td>&lt; 1 ms</td>
+      <td><code>policy_conflict_rate</code></td>
+      <td>&lt; 5%</td>
+      <td style="color:var(--accent-warn)">~73.5%（被 CBF 修正）</td>
+    </tr>
+    <tr>
+      <td><code>CBFQPFilter.filter</code></td>
+      <td>&lt; 3 ms</td>
+      <td>&lt; 6 ms</td>
+      <td><code>cbf_fallback_rate</code></td>
+      <td>&lt; 5%</td>
+      <td style="color:var(--accent-warn)"><strong>23.1%</strong></td>
+    </tr>
+    <tr>
+      <td><code>T_inv.apply</code></td>
+      <td>&lt; 1 ms</td>
+      <td>&lt; 2 ms</td>
+      <td><code>planner_emergency_rate</code></td>
+      <td>&lt; 0.5%</td>
+      <td style="color:var(--accent-warn)"><strong>42.5%</strong></td>
+    </tr>
+    <tr>
+      <td><code>dynamics.step</code></td>
+      <td>&lt; 0.1 ms</td>
+      <td>&lt; 0.2 ms</td>
+      <td><code>a_clamped_rate</code></td>
+      <td>&lt; 10%</td>
+      <td>未单独测</td>
+    </tr>
+    <tr>
+      <td><code>trace write</code></td>
+      <td>&lt; 0.1 ms</td>
+      <td>&lt; 0.5 ms</td>
+      <td><code>trace_drop_rate</code></td>
+      <td>= 0%</td>
+      <td>0（同步写，未做异步化）</td>
+    </tr>
+    <tr style="background:#f4ece0">
+      <td><strong>单帧合计</strong></td>
+      <td><strong>&lt; 5 ms</strong></td>
+      <td><strong>&lt; 15 ms</strong></td>
+      <td>—</td>
+      <td>—</td>
+      <td><strong>~5.1 ms</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout note">
+<span class="tag">观察</span>
+<strong>时延全部达标</strong>，<strong>失败率三条红线全超</strong>。这是典型的"架子搭对了，但 policy 还不聪明"模式——性能不是瓶颈，policy 设计才是。
+</div>
+
+<h2 id="eq-arch">6 · 方程与架构的交叉视图</h2>
+
+<p>35 个方程分布在架构里的哪几层？哪些方程<strong>穿越层</strong>？这张表让 Codex 改代码时知道"动某个方程会波及哪几层"。</p>
+
+<table>
+  <thead>
+    <tr><th>方程 ID</th><th>所属层</th><th>是否穿层</th><th>改动影响面</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>E-01 ~ E-05 · 图</td><td>Sense</td><td>否</td><td>只影响 graph.py · 下游自动受益</td></tr>
+    <tr><td>E-06 ~ E-10 · 动力学</td><td>Sense + Safety</td><td>✓ 穿层</td><td>同时影响 dynamics、CBF（h_dot 评估）、Lyapunov（dV/dt）—— 改 f(x,u) 需要同时回归三处测试</td></tr>
+    <tr><td>E-11 ~ E-16 · 势能</td><td>Sense（软建议）</td><td>否</td><td>只影响 potential.py 和 GradientPolicy</td></tr>
+    <tr><td>E-17 ~ E-20 · Lyapunov</td><td>Safety</td><td>否</td><td>只影响 lyapunov.py → T_inv 自动受益</td></tr>
+    <tr><td>E-21 ~ E-22 · 可达集</td><td>Safety（事件驱动）</td><td>否</td><td>不在主环 · 可独立演进</td></tr>
+    <tr><td>E-23 ~ E-25 · 博弈</td><td>Sense → Safety</td><td>✓ 穿层</td><td>game.py 改 r_buf 后，要重建 CBF barriers（见 planner.__post_init__）</td></tr>
+    <tr><td>E-26 ~ E-28 · CBF 通用</td><td>Safety</td><td>否</td><td>改 α 只影响 cbf.py</td></tr>
+    <tr><td>E-29 ~ E-32 · 距离 / 刹车 barrier</td><td>Safety（深度绑定动力学）</td><td>✓ 穿层</td><td>barrier 依赖 dynamics.step 做 h_dot · 改 dynamics 会间接影响 barrier 行为</td></tr>
+    <tr><td>E-33 ~ E-34 · QP</td><td>Safety</td><td>否</td><td>换 QP solver 只影响 cbf.py · 但要同步更新 P-02 Deadline 预算</td></tr>
+    <tr><td>E-35 · T_inv</td><td>Safety（装配）</td><td>✓ 穿层</td><td>T_inv 是 CBF+Lyapunov+dynamics 的合成 · 改它要 regression 三处</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+<span class="tag">穿层方程的 review 守则</span>
+E-06~E-10 / E-23~E-25 / E-29~E-32 / E-35 这 4 组是<strong>跨层方程</strong>。PR 若修改其中任意一条，<strong>评审者必须要求回归多模块测试</strong>，不能只看改动所在文件。这是一个 Codex checklist 里应该显式写的规则（AI-11）。
+</div>
+
+<h2 id="state-machine">7 · T<sub>inv</sub> 状态机完整版</h2>
+
+<p>Codex 在 handoff 里只列了 3 种 status（F-P1-02 来源），实际实现里有 5 种，加上 CBF 子层的 3 种 cbf_status，组合有意义的共 11 种 <code>(status, cbf_status)</code> 对。下图画齐。</p>
+
+<figure>
+<svg viewBox="0 0 1060 560" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .ok{fill:#eaf7ec;stroke:#0b6b58;stroke-width:1.4;rx:8}
+      .relax{fill:#fff9e6;stroke:#b08800;stroke-width:1.4;rx:8}
+      .fail{fill:#ffe3dd;stroke:#b04018;stroke-width:1.4;rx:8}
+      .neutral{fill:#fff;stroke:#767a82;stroke-width:1.2;rx:8}
+      .t{font:bold 12px -apple-system;fill:#1a1d22}
+      .s{font:11px -apple-system;fill:#4a4e57}
+      .m{font:10.5px ui-monospace,Menlo;fill:#4a4e57}
+      .edge{stroke:#333;stroke-width:1;fill:none}
+      .edge-r{stroke:#b04018;stroke-width:1;fill:none;stroke-dasharray:4 3}
+    </style>
+    <marker id="ax" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333"/>
+    </marker>
+    <marker id="axr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b04018"/>
+    </marker>
+  </defs>
+
+  <!-- entry -->
+  <rect class="neutral" x="440" y="20" width="180" height="50" rx="8"/>
+  <text class="t" x="530" y="44" text-anchor="middle">u_nn 进入</text>
+  <text class="m" x="530" y="60" text-anchor="middle">T_inv.apply(state, u_nn)</text>
+
+  <!-- CBF layer -->
+  <text class="t" x="20" y="100" fill="#b08800">① CBF 子层</text>
+  <rect class="ok" x="20" y="120" width="180" height="60"/>
+  <text class="t" x="110" y="142" text-anchor="middle">cbf_status = nom_ok</text>
+  <text class="s" x="110" y="158" text-anchor="middle">u_nom 直接满足所有 barrier</text>
+  <text class="m" x="110" y="174" text-anchor="middle">u_cbf = u_nom · 零矫正</text>
+
+  <rect class="relax" x="220" y="120" width="180" height="60"/>
+  <text class="t" x="310" y="142" text-anchor="middle">cbf_status = qp_ok</text>
+  <text class="s" x="310" y="158" text-anchor="middle">网格搜到可行非平凡解</text>
+  <text class="m" x="310" y="174" text-anchor="middle">u_cbf ≠ u_nom（已矫正）</text>
+
+  <rect class="fail" x="420" y="120" width="180" height="60"/>
+  <text class="t" x="510" y="142" text-anchor="middle">cbf_status = fallback_brake</text>
+  <text class="s" x="510" y="158" text-anchor="middle">网格无可行 · 退化刹停</text>
+  <text class="m" x="510" y="174" text-anchor="middle">u_cbf = (0, −j_max)</text>
+
+  <!-- Lyapunov check -->
+  <text class="t" x="20" y="230" fill="#2a4ab0">② Lyapunov 检查 + 松弛循环</text>
+
+  <rect class="ok" x="20" y="250" width="160" height="56"/>
+  <text class="t" x="100" y="272" text-anchor="middle">status = stable</text>
+  <text class="s" x="100" y="288" text-anchor="middle">dV/dt ≤ −γV</text>
+  <text class="m" x="100" y="302" text-anchor="middle">最佳出口</text>
+
+  <rect class="relax" x="200" y="250" width="160" height="56"/>
+  <text class="t" x="280" y="272" text-anchor="middle">status = relaxed_exp</text>
+  <text class="s" x="280" y="288" text-anchor="middle">松弛 k 次后 ≤ −γV</text>
+  <text class="m" x="280" y="302" text-anchor="middle">次优出口</text>
+
+  <rect class="relax" x="380" y="250" width="160" height="56"/>
+  <text class="t" x="460" y="272" text-anchor="middle">status = relaxed</text>
+  <text class="s" x="460" y="288" text-anchor="middle">松弛后 dV/dt ≤ τ</text>
+  <text class="m" x="460" y="302" text-anchor="middle">普通 Lyapunov</text>
+
+  <rect class="ok" x="560" y="250" width="180" height="56"/>
+  <text class="t" x="650" y="272" text-anchor="middle">status = non_increasing</text>
+  <text class="s" x="650" y="288" text-anchor="middle">|dV/dt| ≤ τ</text>
+  <text class="m" x="650" y="302" text-anchor="middle">边缘稳定（允许）</text>
+
+  <rect class="fail" x="760" y="250" width="160" height="56"/>
+  <text class="t" x="840" y="272" text-anchor="middle">status = emergency_brake</text>
+  <text class="s" x="840" y="288" text-anchor="middle">松弛 N 次仍不行</text>
+  <text class="m" x="840" y="302" text-anchor="middle">u_safe = (0, −j_max)</text>
+
+  <!-- combined outcomes -->
+  <text class="t" x="20" y="360" fill="#4a4e57">③ 11 种 (status, cbf_status) 对的语义</text>
+  <g transform="translate(20,375)" font-family="-apple-system">
+    <text y="15" class="t" fill="#0b6b58">健康组合（下一轮理想比例 ≥ 80%）</text>
+    <text y="32" class="m">  (stable, nom_ok)                       名义命令已满足 Lyapunov + barrier</text>
+    <text y="48" class="m">  (stable, qp_ok)                        CBF 轻度矫正 · Lyapunov 过</text>
+    <text y="64" class="m">  (non_increasing, nom_ok)               匀速巡航 · V ≈ 0</text>
+
+    <text y="88" class="t" fill="#b08800">松弛组合（下一轮理想比例 ≤ 15%）</text>
+    <text y="105" class="m">  (relaxed_exp, nom_ok/qp_ok)            Lyapunov 松弛到指数衰减</text>
+    <text y="121" class="m">  (relaxed, nom_ok/qp_ok)                Lyapunov 松弛到非增</text>
+    <text y="137" class="m">  (non_increasing, qp_ok)                CBF 矫正后 V 边缘</text>
+
+    <text y="161" class="t" fill="#b04018">降级组合（下一轮理想比例 ≤ 5% · 当前 42.5% 🚨）</text>
+    <text y="178" class="m">  (emergency_brake, nom_ok)              nominal 本身没问题，Lyapunov 松弛耗尽</text>
+    <text y="194" class="m">  (emergency_brake, qp_ok)               CBF 找到解但 Lyapunov 不行</text>
+    <text y="210" class="m">  (emergency_brake, fallback_brake)      两层都失败 · 最严重</text>
+
+    <text y="234" class="t" fill="#767a82">异常组合（绝不应出现）</text>
+    <text y="251" class="m">  (stable/relaxed*, fallback_brake)       逻辑矛盾：CBF 已退化还能稳定 · 一定是 bug</text>
+  </g>
+
+  <!-- arrows from entry -->
+  <path class="edge" d="M470,70 L110,118" marker-end="url(#ax)"/>
+  <path class="edge" d="M530,70 L310,118" marker-end="url(#ax)"/>
+  <path class="edge" d="M590,70 L510,118" marker-end="url(#ax)"/>
+
+  <!-- cbf -> lyapunov -->
+  <path class="edge" d="M110,180 L100,248" marker-end="url(#ax)"/>
+  <path class="edge" d="M110,180 L280,248" marker-end="url(#ax)"/>
+  <path class="edge" d="M310,180 L280,248" marker-end="url(#ax)"/>
+  <path class="edge" d="M310,180 L460,248" marker-end="url(#ax)"/>
+  <path class="edge" d="M510,180 L650,248" marker-end="url(#ax)"/>
+  <path class="edge" d="M510,180 L840,248" marker-end="url(#ax)"/>
+  <path class="edge-r" d="M310,180 L840,248" marker-end="url(#axr)"/>
+  <path class="edge-r" d="M110,180 L840,248" marker-end="url(#axr)"/>
+</svg>
+<figcaption>图 7 · T_inv 完整状态机与 11 种组合的语义分类。红色虚线 = 异常降级路径。benchmark 中 42.5% emergency 说明有大量 (emergency_brake, fallback_brake) 组合。</figcaption>
+</figure>
+
+<div class="callout contract">
+<span class="tag">契约化建议</span>
+下一轮 Codex 应在 <code>auto_decide/trace.py</code> 里把<strong>"禁止的 11 种组合"</strong>（stable/relaxed* 与 fallback_brake 同时出现）作为 <strong>invariant assertion</strong>。这样未来任何 planner 重构引入 bug，单元测试会先挂。详见 AI-12。
+</div>
+
+<h2 id="bench-loop">8 · Benchmark → Architecture → Refine 的闭环</h2>
+
+<p>Codex 新加的 <code>benchmark-metrics.md</code> 很好，但没连回 architecture.html 的 refine 循环。下图展示这个闭环应该长什么样。</p>
+
+<figure>
+<svg viewBox="0 0 1060 380" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .b1{fill:#eaf7ec;stroke:#0b6b58;stroke-width:1.4;rx:8}
+      .b2{fill:#eef2ff;stroke:#2a4ab0;stroke-width:1.4;rx:8}
+      .b3{fill:#fff9e6;stroke:#b08800;stroke-width:1.4;rx:8}
+      .b4{fill:#f3eef9;stroke:#5a2a9d;stroke-width:1.4;rx:8}
+      .store{fill:#fff;stroke:#767a82;stroke-width:1.3;rx:8}
+      .t{font:bold 12.5px -apple-system;fill:#1a1d22}
+      .s{font:11px -apple-system;fill:#4a4e57}
+      .m{font:10.5px ui-monospace,Menlo;fill:#4a4e57}
+      .edge{stroke:#333;stroke-width:1.2;fill:none}
+      .edge-d{stroke:#5a2a9d;stroke-width:1;fill:none;stroke-dasharray:3 3}
+    </style>
+    <marker id="abl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333"/>
+    </marker>
+    <marker id="abd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5a2a9d"/>
+    </marker>
+  </defs>
+
+  <rect class="b1" x="30" y="40" width="200" height="72"/>
+  <text class="t" x="130" y="62" text-anchor="middle">① Instrument</text>
+  <text class="s" x="130" y="80" text-anchor="middle">compare_e2e_vs_structural</text>
+  <text class="m" x="130" y="98" text-anchor="middle">--metrics-out metrics.json</text>
+
+  <rect class="store" x="260" y="40" width="200" height="72"/>
+  <text class="t" x="360" y="62" text-anchor="middle">📄 metrics.json</text>
+  <text class="s" x="360" y="80" text-anchor="middle">benchmark.metrics.v1</text>
+  <text class="m" x="360" y="98" text-anchor="middle">schema_version · summaries · deltas</text>
+
+  <rect class="b2" x="490" y="40" width="200" height="72"/>
+  <text class="t" x="590" y="62" text-anchor="middle">② Diagnose</text>
+  <text class="s" x="590" y="80" text-anchor="middle">失败决策树（§4）</text>
+  <text class="m" x="590" y="98" text-anchor="middle">症状 → 模块 + 参数</text>
+
+  <rect class="b3" x="720" y="40" width="200" height="72"/>
+  <text class="t" x="820" y="62" text-anchor="middle">③ Tighten</text>
+  <text class="s" x="820" y="80" text-anchor="middle">改最小边界 + 保持 SLO</text>
+  <text class="m" x="820" y="98" text-anchor="middle">不放宽硬约束</text>
+
+  <rect class="b4" x="260" y="180" width="430" height="80"/>
+  <text class="t" x="475" y="204" text-anchor="middle">④ Verify &amp; Publish</text>
+  <text class="s" x="475" y="222" text-anchor="middle">pytest · 再跑 benchmark · 对比 metrics.json 差值 · 更新 architecture</text>
+  <text class="m" x="475" y="240" text-anchor="middle">deltas.planner_emergency_rate_reduction 必须 &gt; 0</text>
+
+  <rect class="b2" x="30" y="290" width="420" height="60"/>
+  <text class="t" x="240" y="312" text-anchor="middle">📊 architecture.html 里嵌入 metrics fetch</text>
+  <text class="m" x="240" y="330" text-anchor="middle">fetch(metrics.json) → 自动标注 refine 目标</text>
+
+  <rect class="b4" x="480" y="290" width="420" height="60"/>
+  <text class="t" x="690" y="312" text-anchor="middle">📘 docs/claude-review/08-benchmark-log.md</text>
+  <text class="m" x="690" y="330" text-anchor="middle">每轮 review 保留上一轮 metrics 做对比基线</text>
+
+  <path class="edge" d="M230,76 L258,76" marker-end="url(#abl)"/>
+  <path class="edge" d="M460,76 L488,76" marker-end="url(#abl)"/>
+  <path class="edge" d="M690,76 L718,76" marker-end="url(#abl)"/>
+  <path class="edge" d="M820,112 L820,160 L690,180" marker-end="url(#abl)"/>
+  <path class="edge" d="M360,260 C 360,280 130,100 130,112" marker-end="url(#abl)" fill="none"/>
+
+  <path class="edge-d" d="M360,112 L240,288" marker-end="url(#abd)"/>
+  <path class="edge-d" d="M475,260 L690,288" marker-end="url(#abd)"/>
+</svg>
+<figcaption>图 8 · 完整 refine 闭环。紫色虚线 = JSON 数据驱动；实线 = 工作流。benchmark 不只是跑一次，metrics.json 必须落到 architecture.html 与历史基线里。</figcaption>
+</figure>
+
+<div class="callout sre">
+<span class="tag">建议落地</span>
+下一轮建议实现两个小东西，让闭环真正转起来：
+<ol>
+  <li><code>artifacts/benchmark-metrics.json</code> 由 CI 自动刷新（见 <a href="./06-suggested-patches/02-benchmark-ci.md">patch 02</a>）；</li>
+  <li><code>docs/claude-review/08-benchmark-log.md</code> 每轮 review 追加一段 diff，形成历史基线。</li>
+</ol>
+</div>
+
+<h2 id="codex-mental">9 · Codex 心智模型</h2>
+
+<p>最后给 Codex 一个<strong>一页的心智模型</strong>。下一轮开工前先默念一遍：</p>
+
+<figure>
+<svg viewBox="0 0 1000 480" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .zone1{fill:#eaf7ec;stroke:#0b6b58;stroke-width:1.5;rx:10}
+      .zone2{fill:#fff9e6;stroke:#b08800;stroke-width:1.5;rx:10}
+      .zone3{fill:#ffe3dd;stroke:#b04018;stroke-width:1.5;rx:10}
+      .zone4{fill:#eef2ff;stroke:#2a4ab0;stroke-width:1.5;rx:10}
+      .t{font:bold 15px -apple-system;fill:#1a1d22}
+      .s{font:12px -apple-system;fill:#4a4e57}
+      .m{font:11px ui-monospace,Menlo;fill:#4a4e57}
+      .h{font:bold 11px -apple-system;fill:#1a1d22;text-transform:uppercase;letter-spacing:0.08em}
+    </style>
+  </defs>
+
+  <!-- Soft zone -->
+  <rect class="zone1" x="30" y="20" width="440" height="200"/>
+  <text class="h" x="50" y="45" fill="#0b6b58">🟢 软建议区 · 可以"聪明"</text>
+  <text class="t" x="50" y="75">GradientPolicy / MPC / NN / imitation learning</text>
+  <text class="s" x="50" y="100">这里是 Codex 可以放开手脚做优化的地方。</text>
+  <text class="s" x="50" y="118">这里的 bug 不直接影响安全，只影响舒适度与效率。</text>
+  <text class="m" x="50" y="142">• 优化目标：让 emergency_rate 降下来</text>
+  <text class="m" x="50" y="160">• 手段：让 nominal 自己预测 barrier 约束</text>
+  <text class="m" x="50" y="178">• 可以引入 ML · 可以引入参数学习</text>
+  <text class="m" x="50" y="196">• 输出：只是 u_nn，永远不等于 u_safe</text>
+
+  <!-- Hard zone -->
+  <rect class="zone2" x="510" y="20" width="460" height="200"/>
+  <text class="h" x="530" y="45" fill="#b08800">🟡 硬约束区 · 只能"可证"</text>
+  <text class="t" x="530" y="75">CBFQPFilter / Lyapunov / T_inv / Manifold clamp</text>
+  <text class="s" x="530" y="100">这里的所有改动都必须附数学证明或严格回归。</text>
+  <text class="s" x="530" y="118">不允许为了"demo 好看"放宽。</text>
+  <text class="m" x="530" y="142">• 硬约束以不等式进入搜索 · 不写成 loss</text>
+  <text class="m" x="530" y="160">• 改 α/γ/reaction τ 必须附 benchmark 对比</text>
+  <text class="m" x="530" y="178">• fallback Control(0,−j_max) 永远可达 · 不要改</text>
+  <text class="m" x="530" y="196">• 相对度分析必须写在 PR 描述里</text>
+
+  <!-- Do-not zone -->
+  <rect class="zone3" x="30" y="240" width="440" height="220"/>
+  <text class="h" x="50" y="265" fill="#b04018">🔴 禁区 · 越过一步就回退 PR</text>
+  <text class="s" x="50" y="290">下列操作一律视为"降低安全"：</text>
+  <text class="m" x="50" y="312">✗ 为了降 emergency_rate 调宽 cbf_alpha</text>
+  <text class="m" x="50" y="330">✗ 为了降 fallback_rate 缩 game.base_buffer</text>
+  <text class="m" x="50" y="348">✗ 把 Lyapunov V 加回"距离项"（第一版坑）</text>
+  <text class="m" x="50" y="366">✗ 直接调用 dynamics.step 绕过 planner.step</text>
+  <text class="m" x="50" y="384">✗ 把 CBF 硬约束改成 penalty 加到 loss 里</text>
+  <text class="m" x="50" y="402">✗ 让 fallback 返回除刹停之外的 Control</text>
+  <text class="m" x="50" y="420">✗ 删除 trace 字段（只允许新增）</text>
+  <text class="m" x="50" y="438">✗ 改 VehicleParams 的 frozen 属性</text>
+
+  <!-- Contract zone -->
+  <rect class="zone4" x="510" y="240" width="460" height="220"/>
+  <text class="h" x="530" y="265" fill="#2a4ab0">🔵 契约区 · 需要 schema 演进</text>
+  <text class="s" x="530" y="290">改这些需要 bump schema 并更新文档：</text>
+  <text class="m" x="530" y="312">trace.py · schema_version 控制 JSONL 形状</text>
+  <text class="m" x="530" y="330">benchmark-metrics.md · schema_version v1 → v2</text>
+  <text class="m" x="530" y="348">types.State · 改字段会波及所有 9 模块</text>
+  <text class="m" x="530" y="366">Control · 改字段会波及 dynamics + CBF</text>
+  <text class="m" x="530" y="384">planner.step 返回值 · API 契约</text>
+  <text class="m" x="530" y="402">invariant.py status 枚举 · 见 F-P1-02</text>
+  <text class="s" x="530" y="430">任一变更必须附：</text>
+  <text class="m" x="530" y="448">• schema 迁移脚本  • 下游适配 • 回归测试</text>
+</svg>
+<figcaption>图 9 · Codex 心智模型。绿区随便优化 · 黄区严谨改 · 红区绝对禁止 · 蓝区走 schema 演进。</figcaption>
+</figure>
+
+<div class="callout crit">
+<span class="tag">最后一句</span>
+<strong>上一轮 Codex 做得好的地方，是把架构、契约、测试这三层的"钢筋"搭完了。这一轮的任务是让"聪明的那一端"不要再每两步就踩钢筋。方向在绿区，不要去动黄红蓝三区。</strong>
+</div>
+
+<hr>
+<p style="color:var(--fg-mute);font-size:12px;text-align:center;margin-top:26px">
+auto-decide · Deeper Architecture · Claude Review v1 · 相关：<a href="./README.md">README</a> · <a href="./01-findings.md">Findings</a> · <a href="./05-action-items.md">Action Items</a>
+</p>
+
+</main>
+</body>
+</html>

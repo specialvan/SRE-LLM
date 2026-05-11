@@ -11,6 +11,17 @@ and reports collision rate, comfort (jerk RMS), and mean compute time.
    with the pure end-to-end policy would be blurred. The §2.2 "dead
    zone" detector is the right tool for that kind of scenario.
 
+.. note::
+   **Sanctioned INV-G2 exception (AI-09).**
+   :func:`_pure_e2e_step` intentionally calls ``dyn.step`` directly to
+   establish a baseline *without* CBF / T_inv guarding. This is the
+   only sanctioned caller of ``dynamics.step`` outside of
+   ``auto_decide/{cbf,lyapunov,reachable,invariant,planner}.py``.
+   Any static-analysis (e.g. ``scripts/check_invariants.py`` from
+   [AI-11]) must whitelist this file. Do not copy this pattern into
+   production code paths — the whole point of the benchmark is to
+   *prove* the guarded pipeline is safer.
+
 Run::
 
     python -m examples.compare_e2e_vs_structural
@@ -69,9 +80,16 @@ def _pure_e2e_step(policy: GradientPolicy, state: State,
                    graph: InteractionIntentGraph,
                    dyn: BicycleModel, dt: float
                    ) -> Tuple[State, Control]:
-    """Unfiltered policy — directly apply the nominal command."""
+    """Unfiltered policy — directly apply the nominal command.
+
+    .. warning::
+       Sanctioned **INV-G2** bypass (AI-09): this is the *only* function
+       outside ``auto_decide.{planner,cbf,lyapunov,reachable,invariant}``
+       that calls ``dyn.step`` directly. It exists solely to produce the
+       baseline row in the benchmark. See module docstring.
+    """
     u = policy(state, graph)
-    return dyn.step(state, u, dt), u
+    return dyn.step(state, u, dt), u  # noqa: INV-G2 intentional baseline bypass
 
 
 def run_scenario(scn: Scenario, structural: bool, horizon: int = 100,

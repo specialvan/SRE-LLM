@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Claude Review · Executive Summary</title>
+<style>
+:root{
+  --fg:#1a1d22; --fg-soft:#4a4e57; --fg-mute:#767a82;
+  --bg:#fbfbfa; --bg-card:#fff;
+  --bg-ok:#eaf7ec; --bg-warn:#ffefe6; --bg-note:#fff9e6;
+  --bg-crit:#ffe3dd; --bg-sre:#eef2ff;
+  --accent:#0b6b58; --accent2:#2a4ab0; --accent-warn:#b04018;
+  --rule:#e5e2dc; --link:#1249a7;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.7}
+main{max-width:1040px;margin:0 auto;padding:40px clamp(24px,5vw,56px)}
+h1{font-size:30px;letter-spacing:-0.01em;margin:0 0 4px}
+h1 small{display:block;font-size:14px;color:var(--fg-mute);font-weight:normal;margin-top:4px}
+.meta{color:var(--fg-mute);font-size:13px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:10px 0;margin:18px 0 28px;display:flex;flex-wrap:wrap;gap:14px}
+h2{font-size:22px;margin-top:42px;padding-top:12px;border-top:2px solid var(--fg)}
+h3{font-size:17px;margin-top:26px;color:var(--accent2)}
+p,li{color:var(--fg-soft)}
+code{font-family:var(--mono);background:#f4f1ec;padding:1px 6px;border-radius:3px;font-size:0.9em}
+pre{background:#252932;color:#e3e7ee;padding:12px 14px;border-radius:7px;overflow-x:auto;font-size:12.5px;margin:12px 0}
+pre code{background:transparent;color:inherit;padding:0}
+.verdict{display:flex;gap:16px;margin:20px 0 28px;flex-wrap:wrap}
+.verdict .card{flex:1 1 280px;border:1px solid var(--rule);border-radius:10px;padding:16px 18px;background:#fff}
+.verdict .card h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-mute)}
+.verdict .card .v{font-size:22px;font-weight:700;color:var(--fg)}
+.verdict .card .sub{color:var(--fg-soft);font-size:13px;margin-top:4px}
+.verdict .card.ok{border-left:5px solid var(--accent)}
+.verdict .card.crit{border-left:5px solid var(--accent-warn);background:var(--bg-crit)}
+.callout{border-left:4px solid var(--accent);background:var(--bg-ok);padding:11px 15px;margin:12px 0;border-radius:0 7px 7px 0}
+.callout.warn{border-color:#d07000;background:var(--bg-warn)}
+.callout.crit{border-color:var(--accent-warn);background:var(--bg-crit)}
+.callout.sre{border-color:var(--accent2);background:var(--bg-sre)}
+.callout .tag{font-size:10.5px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:var(--fg);display:block;margin-bottom:3px}
+table{border-collapse:collapse;margin:14px 0;width:100%;font-size:13.5px}
+table th,table td{border-bottom:1px solid var(--rule);padding:7px 10px;text-align:left;vertical-align:top}
+table th{background:#f4ece0;font-weight:600}
+table tr:last-child td{border-bottom:1px solid var(--fg)}
+figure{margin:22px 0}
+figure figcaption{font-size:12.5px;color:var(--fg-mute);text-align:center;margin-top:6px}
+figure svg{display:block;margin:0 auto;max-width:100%;height:auto;background:#fff;border:1px solid var(--rule);border-radius:7px}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.05em;background:var(--bg-ok);color:var(--accent);margin-right:4px}
+.pill.p0{background:var(--bg-crit);color:var(--accent-warn)}
+.pill.p1{background:var(--bg-warn);color:#a04518}
+.pill.p2{background:var(--bg-note);color:#9a7800}
+a{color:var(--link)}
+hr{border:none;border-top:1px solid var(--rule);margin:22px 0}
+</style>
+</head>
+<body>
+<main>
+
+<h1>Claude Review · Executive Summary
+  <small>auto-decide-session · f0070c0..f7eae3f · 5 commits / 14 files / +1675 / −36</small>
+</h1>
+<div class="meta">
+  <span>Reviewer: Claude Opus 4.7</span>
+  <span>Date: 2026-05-12</span>
+  <span>对象：Codex 上一轮交付</span>
+  <span>评级：<strong style="color:var(--accent)">APPROVED WITH FOLLOW-UPS</strong></span>
+</div>
+
+<div class="verdict">
+  <div class="card ok">
+    <h4>Tests</h4>
+    <div class="v">19 / 19</div>
+    <div class="sub">全部通过，新增 6 个（trace · benchmark · CBF 两个扩展）</div>
+  </div>
+  <div class="card ok">
+    <h4>trace 契约</h4>
+    <div class="v">v1.0</div>
+    <div class="sub">schema_version 固化 · JSONL 严格可解析 · inf/NaN 清洗</div>
+  </div>
+  <div class="card ok">
+    <h4>碰撞率（结构化）</h4>
+    <div class="v">0 %</div>
+    <div class="sub">20 场景 · 相对 E2E 30%，降 ∞×</div>
+  </div>
+  <div class="card crit">
+    <h4>emergency_brake 率</h4>
+    <div class="v">42.5 %</div>
+    <div class="sub">SLO &lt; 0.5% · 超 <strong>86×</strong> · 详见 P0-01</div>
+  </div>
+</div>
+
+<h2>1 · 一图看懂本轮变动</h2>
+
+<figure>
+<svg viewBox="0 0 1000 520" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .grp{fill:#fff;stroke:#767a82;stroke-width:1.1}
+      .new{fill:#eaf7ec;stroke:#0b6b58;stroke-width:1.4}
+      .doc{fill:#eef2ff;stroke:#2a4ab0;stroke-width:1.2}
+      .test{fill:#fff9e6;stroke:#b08800;stroke-width:1.2}
+      .risk{fill:#ffe3dd;stroke:#b04018;stroke-width:1.3}
+      .t{font:bold 13px -apple-system,sans-serif;fill:#1a1d22}
+      .s{font:11px -apple-system,sans-serif;fill:#767a82}
+      .m{font:10px ui-monospace,Menlo;fill:#4a4e57}
+      .tag{font:bold 10px -apple-system;fill:#1a1d22;text-transform:uppercase;letter-spacing:0.05em}
+    </style>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333"/>
+    </marker>
+  </defs>
+
+  <text class="tag" x="20" y="28" fill="#0b6b58">新增能力</text>
+  <rect class="new" x="20" y="40" width="230" height="74" rx="10"/>
+  <text class="t" x="135" y="64" text-anchor="middle">auto_decide/trace.py</text>
+  <text class="s" x="135" y="82" text-anchor="middle">TRACE_SCHEMA_VERSION = "1.0"</text>
+  <text class="m" x="135" y="100" text-anchor="middle">build_trace_record + _jsonable</text>
+
+  <rect class="new" x="270" y="40" width="260" height="74" rx="10"/>
+  <text class="t" x="400" y="64" text-anchor="middle">compare_e2e_vs_structural CLI</text>
+  <text class="s" x="400" y="82" text-anchor="middle">--n --seed --horizon --dt --metrics-out</text>
+  <text class="m" x="400" y="100" text-anchor="middle">benchmark.metrics.v1 JSON</text>
+
+  <rect class="new" x="550" y="40" width="240" height="74" rx="10"/>
+  <text class="t" x="670" y="64" text-anchor="middle">CBF tests (+2)</text>
+  <text class="s" x="670" y="82" text-anchor="middle">barrier inflate / low-μ brake</text>
+  <text class="m" x="670" y="100" text-anchor="middle">E-30, E-32 覆盖</text>
+
+  <rect class="test" x="810" y="40" width="170" height="74" rx="10"/>
+  <text class="t" x="895" y="64" text-anchor="middle">test_trace.py +</text>
+  <text class="t" x="895" y="82" text-anchor="middle">test_benchmark_metrics.py</text>
+  <text class="m" x="895" y="100" text-anchor="middle">R2 / R5 accept</text>
+
+  <text class="tag" x="20" y="148" fill="#2a4ab0">新增文档</text>
+  <rect class="doc" x="20" y="160" width="230" height="68" rx="10"/>
+  <text class="t" x="135" y="182" text-anchor="middle">docs/architecture.html</text>
+  <text class="s" x="135" y="200" text-anchor="middle">architecture / requirements /</text>
+  <text class="m" x="135" y="216" text-anchor="middle">task / refine · 3 SVGs</text>
+
+  <rect class="doc" x="270" y="160" width="260" height="68" rx="10"/>
+  <text class="t" x="400" y="182" text-anchor="middle">docs/trace-schema.md</text>
+  <text class="s" x="400" y="200" text-anchor="middle">JSONL contract v1.0</text>
+
+  <rect class="doc" x="550" y="160" width="240" height="68" rx="10"/>
+  <text class="t" x="670" y="182" text-anchor="middle">docs/benchmark-metrics.md</text>
+  <text class="s" x="670" y="200" text-anchor="middle">metrics JSON schema</text>
+
+  <rect class="doc" x="810" y="160" width="170" height="68" rx="10"/>
+  <text class="t" x="895" y="182" text-anchor="middle">codex-handoff.md</text>
+  <text class="s" x="895" y="200" text-anchor="middle">+467 / -102 lines</text>
+  <text class="m" x="895" y="216" text-anchor="middle">9 modules + 35 eqs</text>
+
+  <text class="tag" x="20" y="264" fill="#b04018">Review 发现的风险</text>
+
+  <rect class="risk" x="20" y="276" width="300" height="100" rx="10"/>
+  <text class="t" x="170" y="300" text-anchor="middle">P0 · SLO 违约未告警</text>
+  <text class="s" x="35" y="322">planner_emergency_rate = 42.5%</text>
+  <text class="s" x="35" y="340">cbf_fallback_rate = 23.1%</text>
+  <text class="s" x="35" y="358">SLO 承诺分别是 &lt; 0.5% / &lt; 5%</text>
+  <text class="m" x="35" y="374">→ 需要 test_benchmark_metrics 设阈值</text>
+
+  <rect class="risk" x="340" y="276" width="300" height="100" rx="10"/>
+  <text class="t" x="490" y="300" text-anchor="middle">P0 · GradientPolicy 与 CBF 不匹配</text>
+  <text class="s" x="355" y="322">当前 nominal 频繁违反 Lyapunov</text>
+  <text class="s" x="355" y="340">每 2 步就有 1 步进 emergency</text>
+  <text class="s" x="355" y="358">0% 碰撞是"刹停兜底"的结果</text>
+  <text class="m" x="355" y="374">→ 需升级为 barrier-aware policy</text>
+
+  <rect class="risk" x="660" y="276" width="320" height="100" rx="10"/>
+  <text class="t" x="820" y="300" text-anchor="middle">P1 · 文档 / 契约漂移</text>
+  <text class="s" x="675" y="322">architecture.html title 乱码 "路"</text>
+  <text class="s" x="675" y="340">T_inv status 实际 5 种 · 文档列 3 种</text>
+  <text class="s" x="675" y="358">summaizer/ 拼写错 · 归属未定</text>
+  <text class="m" x="675" y="374">→ 小修即可</text>
+
+  <text class="tag" x="20" y="414" fill="#0b6b58">保持的核心不变式</text>
+  <rect class="grp" x="20" y="426" width="960" height="74" rx="10"/>
+  <text class="s" x="500" y="448" text-anchor="middle">① planner.step() 仍是唯一北向入口（静态 grep 核实）  ·  ② dynamics.step 在 CBF/Lyapunov/planner 三处内部使用 + benchmark 故意 bypass（符合 INV-G2）</text>
+  <text class="s" x="500" y="466" text-anchor="middle">③ fallback Control(0, −j_max) 永远可行  ·  ④ schema_version 未破坏  ·  ⑤ 没有把 CBF 硬约束软化为 loss</text>
+  <text class="m" x="500" y="486" text-anchor="middle">→ 架构纪律过关 · 剩下是"把 nominal 升级到能被硬约束信任"</text>
+</svg>
+<figcaption>图 1 · 本轮 5 个 commit 的能力增量、文档增量与 review 揭露的风险。</figcaption>
+</figure>
+
+<h2>2 · 同时有这三种真相</h2>
+
+<table>
+  <thead><tr><th>维度</th><th>绿灯</th><th>黄灯</th><th>红灯</th></tr></thead>
+  <tbody>
+    <tr><td>测试</td><td>19/19 · 新增 6 个</td><td>—</td><td>—</td></tr>
+    <tr><td>契约</td><td>trace v1.0 · benchmark v1 · 链接无断</td><td>T_inv status 文档列表不全</td><td>—</td></tr>
+    <tr><td>安全（碰撞率）</td><td>0%（20 场景）</td><td>—</td><td>—</td></tr>
+    <tr><td>可用性（emergency/fallback 率）</td><td>—</td><td>—</td><td>42.5% / 23.1%，远超 SLO</td></tr>
+    <tr><td>架构纪律</td><td>唯一入口未破 · 硬约束未软化</td><td>architecture.html 完成度中等</td><td>—</td></tr>
+    <tr><td>文档</td><td>+1200 行深度有价值</td><td>title mojibake · summaizer/ 拼写</td><td>—</td></tr>
+  </tbody>
+</table>
+
+<div class="callout crit">
+<span class="tag">核心结论</span>
+<strong>"0 碰撞率"不是系统本体表现好，而是 emergency_brake 兜底生效 + 场景刻意避开 dead zone 的结果。</strong><br>
+下一轮绝对不能走"调宽 CBF alpha / 缩小 game.base_buffer 来降低 emergency 率"这条捷径——那会把碰撞率带回来。<br>
+正确方向是把 <code>GradientPolicy</code> 换成 <em>barrier-aware</em> 的 MPC 或学习到的策略。
+</div>
+
+<h2>3 · 下一轮最优先做的 5 件事</h2>
+
+<table>
+  <thead><tr><th>ID</th><th>优先级</th><th>内容</th><th>完成标志</th></tr></thead>
+  <tbody>
+    <tr><td>AI-01</td><td><span class="pill p0">P0</span></td><td>把 <code>planner_emergency_rate</code> 与 <code>cbf_fallback_rate</code> 写进 <code>test_benchmark_metrics.py</code> 作为红线断言</td><td>CI 会拦截"为了好看而调宽 CBF"</td></tr>
+    <tr><td>AI-02</td><td><span class="pill p0">P0</span></td><td>把 <code>GradientPolicy</code> 升级为 <code>BarrierAwareMPC</code> 或最简单的 "predict-then-brake" 启发式</td><td>benchmark 下 <code>emergency_rate &lt; 10%</code> 且碰撞率 &lt; 0.5%</td></tr>
+    <tr><td>AI-03</td><td><span class="pill p1">P1</span></td><td>修 <code>architecture.html</code> title · 锁 T_inv 5 种 status · 明确 <code>summaizer/</code> 去留</td><td>文档漂移清零</td></tr>
+    <tr><td>AI-04</td><td><span class="pill p1">P1</span></td><td>把 trace 与 benchmark 两个 JSON schema 的字段向后兼容策略写进 <code>trace-schema.md</code> 与 <code>benchmark-metrics.md</code></td><td>"如何安全地加字段/删字段"有正式规定</td></tr>
+    <tr><td>AI-05</td><td><span class="pill p2">P2</span></td><td>把 benchmark metrics JSON 在 <code>architecture.html</code> 里可视化出来，不再手填 "0%"</td><td>architecture 有一张基于 JSON 的自动图</td></tr>
+  </tbody>
+</table>
+
+<p>完整 action items 在 <a href="./05-action-items.md">05-action-items.md</a>，共 14 条。每条都有验收标准与建议实现骨架。</p>
+
+<h2>4 · 给 Codex 的交接一句话</h2>
+
+<div class="callout sre">
+<span class="tag">必读</span>
+<strong>不要通过放宽硬约束来降低 fallback 率。</strong>要做的是让"聪明的那一端"（nominal policy）变得更聪明——它应该<em>预测</em> CBF 会怎么矫正自己，并主动避开冲突，而不是每次被 CBF 拦下。详细 do / don't 见 <a href="./07-codex-directives.md">07-codex-directives.md</a>。
+</div>
+
+<hr>
+<p style="color:var(--fg-mute);font-size:12px;text-align:center;margin-top:30px">
+Claude Review · Executive Summary · v1 · 全量内容见本目录其他文件
+</p>
+
+</main>
+</body>
+</html>

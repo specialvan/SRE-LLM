@@ -8,3 +8,9 @@ build/
 .pytest_cache/
 .coverage
 trace.jsonl
+
+# AI-03c · local artifacts / non-repo content
+.local-artifacts/
+summaizer/
+summarizer/
+artifacts/

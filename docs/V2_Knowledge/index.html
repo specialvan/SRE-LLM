@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>auto-decide · V2 Knowledge Hub</title>
+<link rel="stylesheet" href="./_style.css">
+<style>
+/* page-specific extras for the hero */
+.hero{padding:40px 0 16px;border-bottom:1px solid var(--rule);margin-bottom:32px}
+.hero h1{font-size:38px}
+.hero .lede{font-size:15px;color:var(--fg-soft);max-width:800px;margin-top:8px}
+.pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:#0b6b58;margin-right:4px;animation:pulse 1.8s infinite}
+.pulse.red{background:#b04018}
+@keyframes pulse{0%{opacity:1}50%{opacity:0.3}100%{opacity:1}}
+.quickstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:18px 0 10px}
+.stat{border:1px solid var(--rule);border-radius:8px;padding:14px 16px;background:#fff}
+.stat .num{font-size:26px;font-weight:700;color:var(--fg)}
+.stat .lbl{font-size:11.5px;color:var(--fg-mute);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px}
+.stat.ok{border-left:4px solid #0b6b58}
+.stat.crit{border-left:4px solid #b04018}
+.stat.info{border-left:4px solid #2a4ab0}
+.flow-box{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:16px 0}
+.flow-col{border:1px solid var(--rule);border-radius:8px;padding:14px 16px;background:#fff;position:relative}
+.flow-col h4{margin-top:0;font-size:13px;text-transform:uppercase;letter-spacing:0.06em}
+.flow-col ol{padding-left:20px;margin:6px 0 0;font-size:12.5px}
+.flow-col li{margin:3px 0}
+.quicklink{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.quicklink a{border:1px solid var(--rule);background:#fff;padding:6px 12px;border-radius:999px;font-size:12.5px;text-decoration:none;color:var(--accent-v2)}
+.quicklink a:hover{background:var(--bg-v2);border-color:var(--accent-v2)}
+</style>
+</head>
+<body>
+
+<div class="banner">
+  <span class="left">V2 Knowledge Hub · auto-decide</span>
+  <span class="right">
+    <a href="./state.json">state.json</a>
+    <a href="./01-current-state.html">当前状态</a>
+    <a href="./02-agent-triage.html">agent 分流</a>
+    <a href="./03-doc-graph.html">文档地图</a>
+    <a href="./CHANGELOG.md">CHANGELOG</a>
+  </span>
+</div>
+
+<main>
+
+<section class="hero">
+  <h1>auto-decide 知识库 V2</h1>
+  <p class="lede">给任何一个新接手的 agent（人 / Codex / 其它 LLM）<strong>一个入口</strong>。
+    你不需要翻 4 份文档 —— 从本页的"agent 分流" 或"5 分钟速览" 开始即可。
+    <span style="color:#b04018;"><span class="pulse red"></span>当前主线：<strong>benchmark 揭示结构化链路 SLO 违约，已给出 14 条可执行 action items</strong>。</span></p>
+
+  <div class="quickstats">
+    <div class="stat ok">
+      <div class="num">19 / 19</div>
+      <div class="lbl">pytest 全绿</div>
+    </div>
+    <div class="stat ok">
+      <div class="num">0 %</div>
+      <div class="lbl">结构化链路碰撞率（n=50 baseline）</div>
+    </div>
+    <div class="stat crit">
+      <div class="num">42.2 %</div>
+      <div class="lbl">emergency_brake 率 (SLO &lt; 0.5%)</div>
+    </div>
+    <div class="stat info">
+      <div class="num">10 / 14</div>
+      <div class="lbl">Action items 待 Codex 执行（4 已由 Claude 清理）</div>
+    </div>
+  </div>
+</section>
+
+<h2 id="start">1 · 5 分钟速览</h2>
+
+<p>auto-decide 把一篇自动驾驶论文（《决策动力学——李雅普诺夫硬约束下的不确定性导航》）系统性落地为可运行代码 + 完整评审知识栈。
+核心主张是 <strong>"聪明"的神经网络/MPC 与"可靠"的物理不变量必须解耦</strong>，通过结构化控制链路（CBF → T_inv → planner）保证任何聪明策略都不能绕过安全门。</p>
+
+<div class="flow-box">
+  <div class="flow-col">
+    <h4 style="color:#0b6b58">🟢 已完成</h4>
+    <ol>
+      <li>论文 35 个方程全部落地为代码</li>
+      <li>trace v1.0 / benchmark.metrics.v1 两个契约</li>
+      <li>9 个模块的完整 pre/post 合约</li>
+      <li>29 条不变式目录</li>
+      <li>Claude review pack · 12 findings</li>
+      <li>14 条 action items · 5 个可 cherry-pick patch</li>
+      <li>🆕 AI-03a/c/04/09 · Claude 亲手清理（4/14）</li>
+      <li>🆕 canonical benchmark baseline（n=50 seed=0）</li>
+      <li>🆕 schema 演进策略（trace + benchmark）</li>
+    </ol>
+  </div>
+  <div class="flow-col">
+    <h4 style="color:#b08800">🟡 进行中 / 剩余</h4>
+    <ol>
+      <li><strong>AI-01</strong>：benchmark SLO 红线断言（xfail strict）</li>
+      <li><strong>AI-02</strong>：PredictiveBrakePolicy 升级（P0 主线）</li>
+      <li>AI-03b：锁 status 枚举</li>
+      <li>AI-05 ~ AI-14：8 个 P2/P3</li>
+    </ol>
+  </div>
+  <div class="flow-col">
+    <h4 style="color:#b04018">🔴 已知风险</h4>
+    <ol>
+      <li>emergency_rate = 42.2%（vs SLO 0.5%）</li>
+      <li>cbf_fallback_rate = 22.7%（vs SLO 5%）</li>
+      <li>GradientPolicy 与 CBF 结构性不匹配</li>
+      <li>benchmark canonical config 已固化，便于对比</li>
+    </ol>
+  </div>
+</div>
+
+<h2 id="agent-routing">2 · 你是什么角色？按角色走不同路径</h2>
+
+<p>点下面对应的行直接跳到专属流程。完整分流在 <a href="./02-agent-triage.html">agent-triage</a>。</p>
+
+<div class="role-row">
+  <div class="who">👷 下一轮 Codex</div>
+  <div class="what">
+    <strong>目标</strong>：完成 P0 action items。<br>
+    <strong>路径</strong>：
+    <a href="./02-agent-triage.html#codex">角色详情</a> →
+    <a href="../claude-review/07-codex-directives.md">directives</a> →
+    <a href="../claude-review/05-action-items.md">action items</a> →
+    按 PR 序列逐条推进。
+  </div>
+</div>
+
+<div class="role-row">
+  <div class="who">🔍 Review Agent（类 Claude）</div>
+  <div class="what">
+    <strong>目标</strong>：审视 Codex 下一轮提交。<br>
+    <strong>路径</strong>：
+    <a href="./02-agent-triage.html#reviewer">角色详情</a> →
+    <a href="../claude-review/03-invariants-catalog.md">不变式目录</a> →
+    <a href="../claude-review/04-contracts-catalog.md">契约目录</a> →
+    <a href="../claude-review/07-codex-directives.md">directives（审查清单依据）</a>。
+  </div>
+</div>
+
+<div class="role-row">
+  <div class="who">🏗️ SRE / 平台迁移 Agent</div>
+  <div class="what">
+    <strong>目标</strong>：把 auto-decide 的结构智能搬到 SRE。<br>
+    <strong>路径</strong>：
+    <a href="./02-agent-triage.html#sre">角色详情</a> →
+    <a href="../sre-adaptation.html">sre-adaptation.html</a>（9 模式） →
+    <a href="../equations-digest.html#bridge">方程 ↔ SRE 对位</a>。
+  </div>
+</div>
+
+<div class="role-row">
+  <div class="who">🧠 研究 / 算法 Agent</div>
+  <div class="what">
+    <strong>目标</strong>：理解论文数学结构并验证实现。<br>
+    <strong>路径</strong>：
+    <a href="./02-agent-triage.html#researcher">角色详情</a> →
+    <a href="../equations-digest.html">35 方程手册</a> →
+    <a href="../deep-dive.html">算法深拆</a> →
+    <a href="../FORMULA_MAP.md">公式↔代码映射</a>。
+  </div>
+</div>
+
+<div class="role-row">
+  <div class="who">📊 Observability / 数据 Agent</div>
+  <div class="what">
+    <strong>目标</strong>：消费 trace 与 benchmark 数据。<br>
+    <strong>路径</strong>：
+    <a href="./02-agent-triage.html#observability">角色详情</a> →
+    <a href="../trace-schema.md">trace-schema</a> →
+    <a href="../benchmark-metrics.md">benchmark-metrics</a> →
+    <code>state.json</code>。
+  </div>
+</div>
+
+<h2 id="doc-layout">3 · 文档分布（按功能）</h2>
+
+<p>全部文档分三层：</p>
+
+<div class="card-grid">
+  <div class="card">
+    <div class="tag-row"><span class="badge v2">V2 入口</span></div>
+    <h4>📘 V2_Knowledge/（本目录）</h4>
+    <p>统一入口层。给新接手 agent 读的第一份文档。</p>
+    <p><code>index.html</code> · <code>01-current-state.html</code> · <code>02-agent-triage.html</code> · <code>03-doc-graph.html</code> · <code>state.json</code> · <code>CHANGELOG.md</code></p>
+  </div>
+  <div class="card">
+    <div class="tag-row"><span class="badge crit">最新 review</span></div>
+    <h4>🔴 claude-review/（评审包）</h4>
+    <p>本轮 Claude 的 review 产出。包含 findings、action items、patch、directives。</p>
+    <p><code>README.md</code> · <code>00-executive-summary</code> · <code>01-findings</code> · <code>02-architecture-deep</code> · <code>03-invariants-catalog</code> · <code>04-contracts-catalog</code> · <code>05-action-items</code> · <code>06-suggested-patches/</code> · <code>07-codex-directives</code></p>
+  </div>
+  <div class="card">
+    <div class="tag-row"><span class="badge info">历史知识</span></div>
+    <h4>📚 docs/（长期知识库）</h4>
+    <p>论文结构、方程、架构、trace 契约等长期价值知识。</p>
+    <p><code>knowledge-base</code> · <code>deep-dive</code> · <code>equations-digest</code> · <code>sre-adaptation</code> · <code>architecture</code> · <code>trace-schema</code> · <code>benchmark-metrics</code> · <code>FORMULA_MAP</code> · <code>DESIGN</code> · <code>codex-handoff</code></p>
+  </div>
+</div>
+
+<h2 id="quick-actions">4 · 快速动作</h2>
+
+<h3>4.1 我想马上看到最紧急的事</h3>
+<div class="quicklink">
+  <a href="../claude-review/00-executive-summary.html">00-executive-summary.html</a>
+  <a href="../claude-review/01-findings.md#f-p0-01">F-P0-01</a>
+  <a href="../claude-review/01-findings.md#f-p0-02">F-P0-02</a>
+  <a href="../claude-review/05-action-items.md#ai-02">AI-02 PredictiveBrakePolicy</a>
+</div>
+
+<h3>4.2 我要修 bug / 做 action item</h3>
+<div class="quicklink">
+  <a href="../claude-review/05-action-items.md">05-action-items.md</a>
+  <a href="../claude-review/06-suggested-patches/">06-suggested-patches/</a>
+  <a href="../claude-review/07-codex-directives.md">07-directives</a>
+</div>
+
+<h3>4.3 我要审查 Codex 提交</h3>
+<div class="quicklink">
+  <a href="../claude-review/03-invariants-catalog.md">29 条不变式</a>
+  <a href="../claude-review/04-contracts-catalog.md">9 模块合约</a>
+  <a href="../claude-review/07-codex-directives.md">DO / DON'T</a>
+</div>
+
+<h3>4.4 我要理解代码</h3>
+<div class="quicklink">
+  <a href="../deep-dive.html">deep-dive</a>
+  <a href="../equations-digest.html">方程手册</a>
+  <a href="../FORMULA_MAP.md">FORMULA_MAP</a>
+  <a href="../architecture.html">architecture</a>
+</div>
+
+<h3>4.5 我要跑代码 / 看 demo</h3>
+
+<pre><code># 安装
+pip install -r requirements.txt
+
+# 运行测试
+pytest -q                                                      # 19 tests
+
+# 跑 demo
+python -m examples.demo_intersection                           # 产出 trace.jsonl
+
+# 跑 benchmark（当前 SLO 违约，详见 AI-01/AI-02）
+python -m examples.compare_e2e_vs_structural --n 20 \
+    --metrics-out artifacts/metrics.json</code></pre>
+
+<h2 id="stability">5 · 契约稳定性承诺</h2>
+
+<div class="callout v2">
+<span class="tag">对下游 agent 的承诺</span>
+下列接口在未经过显式 <code>schema_version</code> bump 之前保持向后兼容：
+<ul>
+  <li><code>auto_decide.trace.TRACE_SCHEMA_VERSION = "1.0"</code></li>
+  <li><code>benchmark.metrics.v1</code></li>
+  <li><code>planner.step()</code> 的返回值形状</li>
+  <li><code>VehicleParams</code> 字段（frozen dataclass）</li>
+  <li><code>PLANNER_STATUS_VALUES</code> / <code>CBF_STATUS_VALUES</code> 的枚举集合（完成 AI-03b 后）</li>
+</ul>
+只允许新增字段，不允许删除或改变已有字段语义。违反此承诺是 P0 级别。
+</div>
+
+<h2 id="footer">6 · 联系 / 元信息</h2>
+
+<dl class="kv-grid">
+  <dt>知识库版本</dt><dd>V2 · 2026-05-12</dd>
+  <dt>前序</dt><dd>v1 = <a href="../knowledge-base.html">knowledge-base.html</a>（首次评审）</dd>
+  <dt>生成 agent</dt><dd>Claude Opus 4.7（Review & Knowledge Pack round）</dd>
+  <dt>机器可读状态</dt><dd><a href="./state.json">state.json</a>（本轮所有结构化元数据）</dd>
+  <dt>CHANGELOG</dt><dd><a href="./CHANGELOG.md">v1 → v2 差异</a></dd>
+</dl>
+
+<hr>
+<p style="font-size:12px;color:var(--fg-mute);text-align:center">
+V2 Knowledge Hub · 本页为所有 agent 的唯一推荐入口<br>
+下一轮 review 会在此追加 round-3 章节，并保留 v2 快照
+</p>
+
+</main>
+</body>
+</html>

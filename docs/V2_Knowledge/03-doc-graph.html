@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>auto-decide · Documentation Graph</title>
+<link rel="stylesheet" href="./_style.css">
+</head>
+<body>
+
+<div class="banner">
+  <span class="left">V2 Knowledge Hub · Documentation Graph</span>
+  <span class="right">
+    <a href="./index.html">← 回到 index</a>
+    <a href="./01-current-state.html">当前状态</a>
+    <a href="./02-agent-triage.html">agent 分流</a>
+  </span>
+</div>
+
+<main>
+
+<h1>Documentation Graph · 全部文档的关系地图
+  <small>把 V2_Knowledge / claude-review / docs 三个层次的 33 份文件画成一张图</small>
+</h1>
+<div class="meta">
+  <span>V2 · 2026-05-12</span>
+  <span>文档总数 33</span>
+  <span>代码总数 19 py + 13 test</span>
+</div>
+
+<h2 id="sitemap">1 · 整体文档地图</h2>
+
+<p>按"谁引用谁"的方向画。实线 = 显式链接/引用；虚线 = 概念依赖；</p>
+
+<figure>
+<svg viewBox="0 0 1100 720" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .v2{fill:#f0f7ff;stroke:#144a84;stroke-width:1.6;rx:8}
+      .rev{fill:#ffe3dd;stroke:#b04018;stroke-width:1.5;rx:8}
+      .docs{fill:#eaf7ec;stroke:#0b6b58;stroke-width:1.3;rx:8}
+      .code{fill:#fff9e6;stroke:#b08800;stroke-width:1.3;rx:8}
+      .contract{fill:#f3eef9;stroke:#5a2a9d;stroke-width:1.3;rx:8}
+      .data{fill:#fff;stroke:#767a82;stroke-width:1.2;rx:6;stroke-dasharray:4 3}
+      .t{font:bold 12px -apple-system;fill:#1a1d22}
+      .s{font:10.5px -apple-system;fill:#4a4e57}
+      .m{font:10px ui-monospace,Menlo;fill:#4a4e57}
+      .edge{stroke:#333;stroke-width:1;fill:none}
+      .edge-concept{stroke:#5a2a9d;stroke-width:0.8;fill:none;stroke-dasharray:3 3}
+      .grp-tit{font:bold 12px -apple-system;fill:#4a4e57;text-transform:uppercase;letter-spacing:0.06em}
+    </style>
+    <marker id="ax" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333"/>
+    </marker>
+    <marker id="axc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5a2a9d"/>
+    </marker>
+  </defs>
+
+  <!-- V2_Knowledge layer (entry) -->
+  <text class="grp-tit" x="20" y="22">① 统一入口层 · V2_Knowledge/</text>
+  <rect class="v2" x="20" y="32" width="200" height="50"/>
+  <text class="t" x="120" y="54" text-anchor="middle">index.html</text>
+  <text class="s" x="120" y="70" text-anchor="middle">primary entry</text>
+
+  <rect class="v2" x="240" y="32" width="170" height="50"/>
+  <text class="t" x="325" y="54" text-anchor="middle">01-current-state</text>
+  <text class="s" x="325" y="70" text-anchor="middle">状态快照</text>
+
+  <rect class="v2" x="430" y="32" width="170" height="50"/>
+  <text class="t" x="515" y="54" text-anchor="middle">02-agent-triage</text>
+  <text class="s" x="515" y="70" text-anchor="middle">5 角色分流</text>
+
+  <rect class="v2" x="620" y="32" width="170" height="50"/>
+  <text class="t" x="705" y="54" text-anchor="middle">03-doc-graph</text>
+  <text class="s" x="705" y="70" text-anchor="middle">本文档</text>
+
+  <rect class="data" x="810" y="32" width="110" height="50"/>
+  <text class="t" x="865" y="54" text-anchor="middle">state.json</text>
+  <text class="s" x="865" y="70" text-anchor="middle">机器可读</text>
+
+  <rect class="v2" x="940" y="32" width="140" height="50"/>
+  <text class="t" x="1010" y="54" text-anchor="middle">CHANGELOG</text>
+  <text class="s" x="1010" y="70" text-anchor="middle">v1 → v2</text>
+
+  <!-- Claude review layer -->
+  <text class="grp-tit" x="20" y="110">② 本轮 review 层 · docs/claude-review/</text>
+  <rect class="rev" x="20" y="120" width="150" height="50"/>
+  <text class="t" x="95" y="142" text-anchor="middle">README</text>
+  <text class="s" x="95" y="158" text-anchor="middle">入口 + TL;DR</text>
+
+  <rect class="rev" x="190" y="120" width="160" height="50"/>
+  <text class="t" x="270" y="142" text-anchor="middle">00-executive-summary</text>
+  <text class="s" x="270" y="158" text-anchor="middle">一图看懂</text>
+
+  <rect class="rev" x="370" y="120" width="140" height="50"/>
+  <text class="t" x="440" y="142" text-anchor="middle">01-findings</text>
+  <text class="s" x="440" y="158" text-anchor="middle">12 条问题</text>
+
+  <rect class="rev" x="530" y="120" width="160" height="50"/>
+  <text class="t" x="610" y="142" text-anchor="middle">02-architecture-deep</text>
+  <text class="s" x="610" y="158" text-anchor="middle">5 张新视图</text>
+
+  <rect class="rev" x="710" y="120" width="160" height="50"/>
+  <text class="t" x="790" y="142" text-anchor="middle">03-invariants-catalog</text>
+  <text class="s" x="790" y="158" text-anchor="middle">29 条不变式</text>
+
+  <rect class="rev" x="890" y="120" width="150" height="50"/>
+  <text class="t" x="965" y="142" text-anchor="middle">04-contracts</text>
+  <text class="s" x="965" y="158" text-anchor="middle">9 模块合约</text>
+
+  <rect class="rev" x="20" y="184" width="150" height="50"/>
+  <text class="t" x="95" y="206" text-anchor="middle">05-action-items</text>
+  <text class="s" x="95" y="222" text-anchor="middle">14 tasks</text>
+
+  <rect class="rev" x="190" y="184" width="160" height="50"/>
+  <text class="t" x="270" y="206" text-anchor="middle">06-suggested-patches</text>
+  <text class="s" x="270" y="222" text-anchor="middle">5 patch + README</text>
+
+  <rect class="rev" x="370" y="184" width="150" height="50"/>
+  <text class="t" x="445" y="206" text-anchor="middle">07-codex-directives</text>
+  <text class="s" x="445" y="222" text-anchor="middle">DO / DON'T</text>
+
+  <!-- Long-term docs layer -->
+  <text class="grp-tit" x="20" y="270">③ 长期知识层 · docs/</text>
+  <rect class="docs" x="20" y="280" width="150" height="50"/>
+  <text class="t" x="95" y="302" text-anchor="middle">knowledge-base</text>
+  <text class="s" x="95" y="318" text-anchor="middle">v1 总览</text>
+
+  <rect class="docs" x="190" y="280" width="130" height="50"/>
+  <text class="t" x="255" y="302" text-anchor="middle">deep-dive</text>
+  <text class="s" x="255" y="318" text-anchor="middle">9 模块</text>
+
+  <rect class="docs" x="340" y="280" width="150" height="50"/>
+  <text class="t" x="415" y="302" text-anchor="middle">equations-digest</text>
+  <text class="s" x="415" y="318" text-anchor="middle">35 方程</text>
+
+  <rect class="docs" x="510" y="280" width="150" height="50"/>
+  <text class="t" x="585" y="302" text-anchor="middle">sre-adaptation</text>
+  <text class="s" x="585" y="318" text-anchor="middle">9 P-模式</text>
+
+  <rect class="docs" x="680" y="280" width="140" height="50"/>
+  <text class="t" x="750" y="302" text-anchor="middle">architecture</text>
+  <text class="s" x="750" y="318" text-anchor="middle">Codex 产</text>
+
+  <rect class="docs" x="840" y="280" width="140" height="50"/>
+  <text class="t" x="910" y="302" text-anchor="middle">codex-handoff</text>
+  <text class="s" x="910" y="318" text-anchor="middle">交接状态</text>
+
+  <!-- Contracts -->
+  <text class="grp-tit" x="20" y="360">④ 契约层 · docs/</text>
+  <rect class="contract" x="20" y="370" width="150" height="50"/>
+  <text class="t" x="95" y="392" text-anchor="middle">trace-schema</text>
+  <text class="s" x="95" y="408" text-anchor="middle">JSONL v1.0</text>
+
+  <rect class="contract" x="190" y="370" width="170" height="50"/>
+  <text class="t" x="275" y="392" text-anchor="middle">benchmark-metrics</text>
+  <text class="s" x="275" y="408" text-anchor="middle">metrics JSON</text>
+
+  <rect class="contract" x="380" y="370" width="140" height="50"/>
+  <text class="t" x="450" y="392" text-anchor="middle">FORMULA_MAP</text>
+  <text class="s" x="450" y="408" text-anchor="middle">公式↔代码</text>
+
+  <rect class="contract" x="540" y="370" width="130" height="50"/>
+  <text class="t" x="605" y="392" text-anchor="middle">DESIGN</text>
+  <text class="s" x="605" y="408" text-anchor="middle">设计原则</text>
+
+  <rect class="contract" x="690" y="370" width="150" height="50"/>
+  <text class="t" x="765" y="392" text-anchor="middle">PR-REQUIREMENTS</text>
+  <text class="s" x="765" y="408" text-anchor="middle">需求列表</text>
+
+  <!-- code -->
+  <text class="grp-tit" x="20" y="450">⑤ 代码层 · auto_decide/</text>
+  <rect class="code" x="20" y="462" width="150" height="50"/>
+  <text class="t" x="95" y="484" text-anchor="middle">planner.py</text>
+  <text class="s" x="95" y="500" text-anchor="middle">唯一入口</text>
+
+  <rect class="code" x="190" y="462" width="130" height="50"/>
+  <text class="t" x="255" y="484" text-anchor="middle">cbf.py</text>
+
+  <rect class="code" x="340" y="462" width="140" height="50"/>
+  <text class="t" x="410" y="484" text-anchor="middle">invariant.py</text>
+
+  <rect class="code" x="500" y="462" width="130" height="50"/>
+  <text class="t" x="565" y="484" text-anchor="middle">lyapunov.py</text>
+
+  <rect class="code" x="650" y="462" width="130" height="50"/>
+  <text class="t" x="715" y="484" text-anchor="middle">dynamics.py</text>
+
+  <rect class="code" x="800" y="462" width="130" height="50"/>
+  <text class="t" x="865" y="484" text-anchor="middle">trace.py</text>
+
+  <rect class="code" x="950" y="462" width="140" height="50"/>
+  <text class="t" x="1020" y="484" text-anchor="middle">graph / potential / ...</text>
+
+  <!-- data layer -->
+  <text class="grp-tit" x="20" y="545">⑥ 产物层（由代码生成）</text>
+  <rect class="data" x="20" y="556" width="200" height="50"/>
+  <text class="t" x="120" y="578" text-anchor="middle">trace.jsonl</text>
+  <text class="s" x="120" y="594" text-anchor="middle">planner.run 每帧写一行</text>
+
+  <rect class="data" x="240" y="556" width="230" height="50"/>
+  <text class="t" x="355" y="578" text-anchor="middle">artifacts/benchmark-metrics.json</text>
+  <text class="s" x="355" y="594" text-anchor="middle">compare_e2e_vs_structural --metrics-out</text>
+
+  <rect class="data" x="490" y="556" width="180" height="50"/>
+  <text class="t" x="580" y="578" text-anchor="middle">benchmark-log.md</text>
+  <text class="s" x="580" y="594" text-anchor="middle">历次 benchmark 基线</text>
+
+  <!-- Key edges (primary entry flow) -->
+  <!-- V2 index → claude-review/README -->
+  <path class="edge" d="M120,82 L95,118" marker-end="url(#ax)"/>
+  <path class="edge" d="M120,82 L270,118" marker-end="url(#ax)"/>
+  <path class="edge" d="M120,82 L610,118" marker-end="url(#ax)"/>
+
+  <!-- V2 index → docs/ (v1) -->
+  <path class="edge" d="M120,82 L95,278" marker-end="url(#ax)"/>
+  <path class="edge" d="M120,82 L255,278" marker-end="url(#ax)"/>
+  <path class="edge" d="M120,82 L415,278" marker-end="url(#ax)"/>
+  <path class="edge" d="M120,82 L585,278" marker-end="url(#ax)"/>
+
+  <!-- agent-triage → role-specific docs -->
+  <path class="edge-concept" d="M515,82 L95,184" marker-end="url(#axc)"/>
+  <path class="edge-concept" d="M515,82 L270,184" marker-end="url(#axc)"/>
+  <path class="edge-concept" d="M515,82 L445,184" marker-end="url(#axc)"/>
+  <path class="edge-concept" d="M515,82 L585,278" marker-end="url(#axc)"/>
+  <path class="edge-concept" d="M515,82 L415,278" marker-end="url(#axc)"/>
+
+  <!-- claude-review README → everything -->
+  <path class="edge" d="M95,170 L270,140" stroke-dasharray="3 3"/>
+  <path class="edge" d="M95,170 L440,140" stroke-dasharray="3 3"/>
+  <path class="edge" d="M95,170 L95,182" marker-end="url(#ax)"/>
+  <path class="edge" d="M95,170 L270,182" marker-end="url(#ax)"/>
+  <path class="edge" d="M95,170 L445,182" marker-end="url(#ax)"/>
+
+  <!-- findings → action-items / directives -->
+  <path class="edge" d="M440,170 L95,182" marker-end="url(#ax)"/>
+  <path class="edge" d="M440,170 L270,182" marker-end="url(#ax)"/>
+
+  <!-- architecture → v1 docs -->
+  <path class="edge" d="M750,330 L95,330" stroke-dasharray="2 2" opacity="0.3"/>
+
+  <!-- contracts feed code -->
+  <path class="edge-concept" d="M95,420 L95,462" marker-end="url(#axc)"/>
+  <path class="edge-concept" d="M275,420 L120,556" marker-end="url(#axc)"/>
+  <path class="edge-concept" d="M275,420 L355,556" marker-end="url(#axc)"/>
+
+  <!-- code → products -->
+  <path class="edge" d="M95,512 L120,554" marker-end="url(#ax)"/>
+  <path class="edge" d="M95,512 L350,554" marker-end="url(#ax)"/>
+  <path class="edge" d="M865,512 L150,556" marker-end="url(#ax)" opacity="0.3"/>
+
+  <!-- Legend -->
+  <rect x="20" y="640" width="1060" height="60" fill="#fff" stroke="#e5e2dc" rx="6"/>
+  <rect class="v2" x="35" y="652" width="16" height="16"/><text class="s" x="58" y="664">V2 入口</text>
+  <rect class="rev" x="140" y="652" width="16" height="16"/><text class="s" x="163" y="664">本轮 review</text>
+  <rect class="docs" x="260" y="652" width="16" height="16"/><text class="s" x="283" y="664">长期知识</text>
+  <rect class="contract" x="370" y="652" width="16" height="16"/><text class="s" x="393" y="664">契约</text>
+  <rect class="code" x="450" y="652" width="16" height="16"/><text class="s" x="473" y="664">代码</text>
+  <rect class="data" x="530" y="652" width="16" height="16"/><text class="s" x="553" y="664">运行时产物</text>
+  <line x1="640" y1="660" x2="680" y2="660" class="edge"/><text class="s" x="688" y="664">显式引用</text>
+  <line x1="760" y1="660" x2="800" y2="660" class="edge-concept"/><text class="s" x="808" y="664">概念依赖</text>
+  <text class="s" x="900" y="680">共 33 份文档 + 11 个 py 模块 + 5 份测试</text>
+</svg>
+<figcaption>图 1 · auto-decide 全部文档与代码的层次关系。新 agent 应从 ① 进入，按需向下挖。</figcaption>
+</figure>
+
+<h2 id="inventory">2 · 完整文档清单</h2>
+
+<h3 id="inv-v2">V2_Knowledge/ · 6 文件</h3>
+<table>
+  <thead><tr><th>文件</th><th>用途</th><th>目标读者</th></tr></thead>
+  <tbody>
+    <tr><td><a href="./index.html">index.html</a></td><td>统一入口 / landing page</td><td>全部 agent</td></tr>
+    <tr><td><a href="./01-current-state.html">01-current-state.html</a></td><td>一页看清项目健康度</td><td>全部 agent</td></tr>
+    <tr><td><a href="./02-agent-triage.html">02-agent-triage.html</a></td><td>5 角色分流</td><td>全部 agent</td></tr>
+    <tr><td><a href="./03-doc-graph.html">03-doc-graph.html</a></td><td>本文档</td><td>深入了解结构者</td></tr>
+    <tr><td><a href="./state.json">state.json</a></td><td>机器可读状态</td><td>自动化 / CI / agent</td></tr>
+    <tr><td><a href="./CHANGELOG.md">CHANGELOG.md</a></td><td>v1 → v2 差异</td><td>历史追踪</td></tr>
+  </tbody>
+</table>
+
+<h3 id="inv-review">docs/claude-review/ · 14 文件</h3>
+<table>
+  <thead><tr><th>文件</th><th>用途</th><th>目标读者</th></tr></thead>
+  <tbody>
+    <tr><td><a href="../claude-review/README.md">README.md</a></td><td>评审包导航 + TL;DR</td><td>Codex / Reviewer</td></tr>
+    <tr><td><a href="../claude-review/00-executive-summary.html">00-executive-summary.html</a></td><td>5 分钟摘要</td><td>全部</td></tr>
+    <tr><td><a href="../claude-review/01-findings.md">01-findings.md</a></td><td>12 条 finding（2P0/3P1/7P2）</td><td>Codex</td></tr>
+    <tr><td><a href="../claude-review/02-architecture-deep.html">02-architecture-deep.html</a></td><td>5 张深度架构视图</td><td>架构理解</td></tr>
+    <tr><td><a href="../claude-review/03-invariants-catalog.md">03-invariants-catalog.md</a></td><td>29 条不变式</td><td>Reviewer</td></tr>
+    <tr><td><a href="../claude-review/04-contracts-catalog.md">04-contracts-catalog.md</a></td><td>9 模块合约</td><td>Reviewer / 接口变更</td></tr>
+    <tr><td><a href="../claude-review/05-action-items.md">05-action-items.md</a></td><td>14 条任务</td><td>Codex（sprint log）</td></tr>
+    <tr><td><a href="../claude-review/06-suggested-patches/">06-suggested-patches/</a></td><td>5 份 patch 骨架 + README</td><td>Codex</td></tr>
+    <tr><td><a href="../claude-review/07-codex-directives.md">07-codex-directives.md</a></td><td>10 DO + 10 DON'T</td><td>Codex 开工必读</td></tr>
+  </tbody>
+</table>
+
+<h3 id="inv-docs">docs/（长期知识 + 契约） · 11 文件</h3>
+<table>
+  <thead><tr><th>文件</th><th>用途</th><th>所在层</th></tr></thead>
+  <tbody>
+    <tr><td><a href="../knowledge-base.html">knowledge-base.html</a></td><td>v1 总览 · SRE 评审报告 · Codex checklist</td><td>长期知识</td></tr>
+    <tr><td><a href="../deep-dive.html">deep-dive.html</a></td><td>9 模块算法级机制拆解</td><td>长期知识</td></tr>
+    <tr><td><a href="../equations-digest.html">equations-digest.html</a></td><td>35 方程手册</td><td>长期知识</td></tr>
+    <tr><td><a href="../sre-adaptation.html">sre-adaptation.html</a></td><td>9 P-模式 + SRE 迁移骨架</td><td>长期知识</td></tr>
+    <tr><td><a href="../architecture.html">architecture.html</a></td><td>Codex round-1 产出的 Detailed Architecture</td><td>长期知识</td></tr>
+    <tr><td><a href="../codex-handoff.md">codex-handoff.md</a></td><td>交接单（v2 更新后）</td><td>长期知识</td></tr>
+    <tr><td><a href="../trace-schema.md">trace-schema.md</a></td><td>JSONL v1.0 契约</td><td>契约</td></tr>
+    <tr><td><a href="../benchmark-metrics.md">benchmark-metrics.md</a></td><td>metrics JSON 契约</td><td>契约</td></tr>
+    <tr><td><a href="../FORMULA_MAP.md">FORMULA_MAP.md</a></td><td>公式 ↔ 代码 ↔ 测试三元对照</td><td>契约</td></tr>
+    <tr><td><a href="../DESIGN.md">DESIGN.md</a></td><td>设计原则</td><td>长期知识</td></tr>
+    <tr><td><a href="../../PR-REQUIREMENTS.md">PR-REQUIREMENTS.md</a></td><td>PR 级功能需求</td><td>契约</td></tr>
+  </tbody>
+</table>
+
+<h3 id="inv-code">auto_decide/ · 11 个 py 模块</h3>
+<table>
+  <thead><tr><th>文件</th><th>对应方程 ID</th><th>契约</th></tr></thead>
+  <tbody>
+    <tr><td><code>types.py</code></td><td>E-06（State）</td><td>VehicleParams frozen · Control</td></tr>
+    <tr><td><code>graph.py</code></td><td>E-01 ~ E-05</td><td>Node/Edge + update() 重建</td></tr>
+    <tr><td><code>dynamics.py</code></td><td>E-06 ~ E-10</td><td>BicycleModel · Manifold · 双层 clamp</td></tr>
+    <tr><td><code>potential.py</code></td><td>E-11 ~ E-16</td><td>PotentialField · 数值梯度</td></tr>
+    <tr><td><code>lyapunov.py</code></td><td>E-17 ~ E-20</td><td>QuadraticLyapunov（纯速度项）</td></tr>
+    <tr><td><code>reachable.py</code></td><td>E-21 ~ E-22</td><td>采样 + 凸包 + DeadZone</td></tr>
+    <tr><td><code>game.py</code></td><td>E-23 ~ E-25</td><td>BeliefState + WorstCaseGame</td></tr>
+    <tr><td><code>cbf.py</code></td><td>E-26 ~ E-32</td><td>BarrierFunction + CBFQPFilter</td></tr>
+    <tr><td><code>invariant.py</code></td><td>E-33 ~ E-35</td><td>T_inv operator · 5 种 status</td></tr>
+    <tr><td><code>planner.py</code></td><td>装配</td><td>唯一入口 · 生成 trace</td></tr>
+    <tr><td><code>trace.py</code></td><td>横切</td><td>schema_version "1.0"</td></tr>
+  </tbody>
+</table>
+
+<h2 id="lifecycle">3 · 文档生命周期</h2>
+
+<p>这里回答一个常被忽视的问题：**一份文档什么时候该更新 / 淘汰？**</p>
+
+<table>
+  <thead><tr><th>层次</th><th>更新触发</th><th>淘汰条件</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>V2_Knowledge/</td>
+      <td>每轮 review 完成后更新 state.json + 01-current-state</td>
+      <td>当有 V3 时保留为快照（不删）</td>
+    </tr>
+    <tr>
+      <td>claude-review/</td>
+      <td>本轮只读，下一轮建新的 <code>claude-review-v3/</code></td>
+      <td>三轮之后可归档到 <code>archive/</code></td>
+    </tr>
+    <tr>
+      <td>knowledge-base.html / deep-dive / equations-digest</td>
+      <td>代码/方程有重大变化时增量更新</td>
+      <td>不轻易淘汰（长期价值）</td>
+    </tr>
+    <tr>
+      <td>trace-schema / benchmark-metrics / FORMULA_MAP</td>
+      <td>schema bump 时</td>
+      <td>不淘汰（契约）</td>
+    </tr>
+    <tr>
+      <td>codex-handoff.md</td>
+      <td>每轮更新</td>
+      <td>不淘汰（始终是"最新交接"）</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout v2">
+<span class="tag">推荐做法</span>
+每轮 review 建独立子目录（<code>claude-review-v3/</code>, <code>gpt-review-v4/</code>），<strong>不覆盖前轮内容</strong>。
+<code>V2_Knowledge/</code> 作为"最新入口"快照；当前目录升级到 V3 时把现有的移到 <code>V2_Knowledge_archived/</code>。
+</div>
+
+<h2 id="navigation">4 · 不同需求的推荐路径</h2>
+
+<table>
+  <thead><tr><th>需求</th><th>第 1 步</th><th>第 2 步</th><th>第 3 步</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>"我不了解，先看懂项目"</td>
+      <td><a href="./index.html">V2 index</a></td>
+      <td><a href="../knowledge-base.html">knowledge-base v1</a></td>
+      <td><a href="../deep-dive.html">deep-dive</a></td>
+    </tr>
+    <tr>
+      <td>"我要开工"</td>
+      <td><a href="./02-agent-triage.html#codex">agent-triage § Codex</a></td>
+      <td><a href="../claude-review/05-action-items.md">action-items</a></td>
+      <td><a href="../claude-review/06-suggested-patches/">patches</a></td>
+    </tr>
+    <tr>
+      <td>"我要审查"</td>
+      <td><a href="./02-agent-triage.html#reviewer">agent-triage § Reviewer</a></td>
+      <td><a href="../claude-review/03-invariants-catalog.md">不变式目录</a></td>
+      <td><a href="../claude-review/04-contracts-catalog.md">合约目录</a></td>
+    </tr>
+    <tr>
+      <td>"我要理解数学"</td>
+      <td><a href="../equations-digest.html">equations-digest</a></td>
+      <td><a href="../FORMULA_MAP.md">FORMULA_MAP</a></td>
+      <td><a href="../deep-dive.html">deep-dive</a></td>
+    </tr>
+    <tr>
+      <td>"我要消费数据"</td>
+      <td><a href="../trace-schema.md">trace-schema</a></td>
+      <td><a href="../benchmark-metrics.md">benchmark-metrics</a></td>
+      <td><a href="./state.json">state.json</a></td>
+    </tr>
+    <tr>
+      <td>"我要迁移到 SRE"</td>
+      <td><a href="../sre-adaptation.html">sre-adaptation</a></td>
+      <td><a href="../equations-digest.html#bridge">equations § 迁移对位</a></td>
+      <td><a href="../deep-dive.html#sre-hook">deep-dive § SRE 挂钩</a></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+<p style="font-size:12px;color:var(--fg-mute);text-align:center">
+Documentation Graph · V2 Knowledge Hub · 33 文档 + 11 模块 + 产物三层<br>
+图维护策略：每次文档新增/重大重构时更新本图
+</p>
+
+</main>
+</body>
+</html>

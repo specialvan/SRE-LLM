@@ -3,36 +3,73 @@
 > 分支：`auto-decide-session`  
 > 工作目录：`D:\workspace\SRE-LLM\auto-decide`  
 > 范围：架构、需求、任务拆解、方程锚点、SRE 迁移、reviewer 不变式与下一轮 refine  
-> 更新时间：2026-05-11
+> 更新时间：2026-05-12（v2 · Claude review 完成后）
+
+> 🔴 **下一轮开工前请先读 [docs/claude-review/README.md](./claude-review/README.md)**。
+> Claude 的 review 指出了 benchmark 下 `planner_emergency_rate = 42.5%` 严重违反 SLO（应 &lt; 0.5%）——
+> 这是当前最高优先级任务。所有需要做的事都列在 [action items](./claude-review/05-action-items.md) 里，开工按编号走。
+
+## 最新进展 · 2026-05-12 之后
+
+本次迭代没有改代码（19/19 tests 仍绿），但完成了两块"给下一轮 agent 的基础建设"：
+
+**① 完整的 Claude Review Pack**（`docs/claude-review/` · 15 文件 · ~160 KB）
+- 2 个 P0 finding / 3 个 P1 / 7 个 P2；
+- 14 条 action items（AI-01 ~ AI-14）；
+- 5 个可 cherry-pick 的 patch（含完整 `PredictiveBrakePolicy` 实现骨架）；
+- 29 条不变式 · 9 模块 + trace 的完整 pre/post 合约；
+- 5 张新架构视图（类型流 / 场景矩阵 / 失败决策树 / 时延预算 / Codex 心智模型）；
+- Codex 指令清单（10 DO + 10 DON'T + 15 个预期 PR 序列）；
+- **canonical benchmark baseline**（n=50 seed=0，建立在 `08-benchmark-log.md`）。
+
+**② 统一知识库入口**（`docs/V2_Knowledge/`）
+- 给下一轮接手的 agent（人 / Codex / 其它 LLM）提供<strong>一个入口</strong>——不用翻 4 份文档；
+- 含当前进度 state JSON，机器可直接读；
+- 按"5 分钟 / 30 分钟 / 半天 / 长期"分层导航。
+
+**③ Claude 亲手清理 4 项 P1 易改项**（2026-05-12 12:00 补丁）
+- **AI-03a**：`docs/architecture.html` title mojibake `路` → `·` 修复；
+- **AI-03c**：`summaizer/` 目录 → `.local-artifacts/`，`.gitignore` 新增对应条目；
+- **AI-04**：`trace-schema.md` 与 `benchmark-metrics.md` 各加 "Schema Evolution" 节（对应 INV-C-TRACE / INV-C-BENCH）；
+- **AI-09**：`examples/compare_e2e_vs_structural.py` 标注 `_pure_e2e_step` 为 INV-G2 合法例外。
+
+剩余 10 项由下一轮 Codex 推进。P0 仅剩 AI-01 / AI-02；P1 仅剩 AI-03b。
+
+**代码层**：本轮 Codex 交付的 trace / benchmark 契约、CBF 测试矩阵均保留；本轮 Claude 补丁仅涉及 docstring / `.gitignore` / 目录重命名，不改函数行为，19/19 tests 仍绿。
 
 ## 当前状态
 
-auto-decide 已经从“论文公式落地”推进到“可被 Codex / reviewer / SRE 接手的工程知识库”。
+auto-decide 已经从"论文公式落地"推进到"可被 Codex / reviewer / SRE 接手的工程知识库"。
 
-当前主入口：
+当前主入口（按优先级顺序）：
 
-| 文件 | 职责 |
-| --- | --- |
-| [README.md](../README.md) | 工程入口，论文结构和代码模块的一一映射 |
-| [PR-REQUIREMENTS.md](../PR-REQUIREMENTS.md) | 把论文叙述拆成 PR 级功能需求 |
-| [knowledge-base.html](./knowledge-base.html) | SRE + Codex 评审知识库总览 |
-| [architecture.html](./architecture.html) | Detailed Architecture：architecture / requirements / task breakdown / refine |
-| [deep-dive.html](./deep-dive.html) | 9 个核心模块的算法级机制拆解 |
-| [equations-digest.html](./equations-digest.html) | E-01 到 E-35 的方程手册 |
-| [sre-adaptation.html](./sre-adaptation.html) | 自动驾驶机制迁移到 SRE 的模式库 |
-| [FORMULA_MAP.md](./FORMULA_MAP.md) | 公式到代码的追踪地图 |
-| [DESIGN.md](./DESIGN.md) | 设计原则和工程裁剪说明 |
-| [trace-schema.md](./trace-schema.md) | JSONL trace 契约 |
-| [benchmark-metrics.md](./benchmark-metrics.md) | benchmark metrics JSON 契约 |
+| 优先级 | 文件 | 职责 |
+| --- | --- | --- |
+| ⭐ 最高 | [V2_Knowledge/index.html](./V2_Knowledge/index.html) | **V2 知识库统一入口**（为下一轮 agent 设计） |
+| 🔴 高 | [claude-review/README.md](./claude-review/README.md) | Claude 评审包入口，含 action items |
+| 🔴 高 | [claude-review/05-action-items.md](./claude-review/05-action-items.md) | 14 条任务清单（P0/P1/P2） |
+| 🔴 高 | [claude-review/07-codex-directives.md](./claude-review/07-codex-directives.md) | 开工前必读的 DO/DON'T |
+| 高 | [README.md](../README.md) | 工程入口，论文结构和代码模块的一一映射 |
+| 高 | [architecture.html](./architecture.html) | Detailed Architecture |
+| 高 | [trace-schema.md](./trace-schema.md) | JSONL trace 契约 |
+| 高 | [benchmark-metrics.md](./benchmark-metrics.md) | benchmark metrics JSON 契约 |
+| 中 | [knowledge-base.html](./knowledge-base.html) | SRE + Codex 评审知识库总览（v1） |
+| 中 | [deep-dive.html](./deep-dive.html) | 9 个核心模块的算法级机制拆解 |
+| 中 | [equations-digest.html](./equations-digest.html) | E-01 到 E-35 的方程手册 |
+| 中 | [sre-adaptation.html](./sre-adaptation.html) | 自动驾驶机制迁移到 SRE 的模式库 |
+| 参考 | [PR-REQUIREMENTS.md](../PR-REQUIREMENTS.md) | 把论文叙述拆成 PR 级功能需求 |
+| 参考 | [FORMULA_MAP.md](./FORMULA_MAP.md) | 公式到代码的追踪地图 |
+| 参考 | [DESIGN.md](./DESIGN.md) | 设计原则和工程裁剪说明 |
 
 代码侧当前核心事实：
 
 1. `planner.step()` 是唯一北向入口。
 2. `planner.run()` 负责产生 JSONL trace。
-3. `auto_decide/trace.py` 已把 trace 从调试输出提升为稳定契约。
+3. `auto_decide/trace.py` 已把 trace 从调试输出提升为稳定契约（v1.0）。
 4. `CBF -> T_inv -> planner.step()` 是硬安全路径，不能被名义策略绕过。
 5. 软建议、稳定性、屏障约束、兜底降级已经在代码和文档中分层。
 6. `examples/compare_e2e_vs_structural.py` 已支持 `--metrics-out` 输出结构化 benchmark JSON。
+7. **Benchmark 实测揭示 `planner_emergency_rate = 42.5%`，违反 SLO，待 AI-02 修复**。
 
 当前工作区提醒：
 
@@ -490,27 +527,35 @@ review 时按这个顺序看：
 11. benchmark 是否同时报告安全和耗时。
 12. SRE 文档是否迁移机制而不是迁移术语。
 
-## 下一步
+## 下一步（2026-05-12 更新）
 
-最有价值的下一步：
+**最高优先级**（阻断主线）：
 
-1. 继续补 CBF 相对阶和 braking-distance 的近距离 / 高速 / jerk 饱和测试矩阵。
-2. 把 benchmark metrics JSON 接到已有可视化 HTML，而不是手填收益。
-3. 用 `planner_emergency_rate` 追踪结构化链路是否过保守。
-4. 起草 SRE adapter 的输入输出 schema。
-5. 把 SRE adapter 做成只读 advisor：给出 allow / derate / block / rollback suggestion，但不执行生产变更。
+1. **[AI-01](./claude-review/05-action-items.md#ai-01)** · benchmark metrics 红线断言（xfail strict=True 守门）
+2. **[AI-02](./claude-review/05-action-items.md#ai-02)** · 升级 `GradientPolicy` → `PredictiveBrakePolicy`
+   （完整实现骨架见 [patch 01](./claude-review/06-suggested-patches/01-barrier-aware-policy.md)）
 
-## 给下一轮 Codex 的话
+**次高**：
 
-先读：
+3. AI-03a/b/c · 修 architecture.html 乱码 / 锁 status 枚举 / 清理 `summaizer/`
+4. AI-04 · 写 schema 演进策略
 
-1. [README.md](../README.md)
-2. [architecture.html](./architecture.html)
-3. [trace-schema.md](./trace-schema.md)
-4. [equations-digest.html](./equations-digest.html)
-5. [sre-adaptation.html](./sre-adaptation.html)
+**长期**：
 
-再看代码：
+5. AI-05 ~ AI-14 · 文档、CI、测试的补齐（见 [05-action-items.md](./claude-review/05-action-items.md) 完整表）
+
+不再手动维护"下一步"的自由列表——所有事项都在 action items 里，状态由 `.progress.json` 跟踪。
+
+## 给下一轮 Codex 的话（2026-05-12 更新）
+
+**推荐阅读顺序（首次接手）**：
+
+1. [V2_Knowledge/index.html](./V2_Knowledge/index.html) —— 5 分钟概览
+2. [claude-review/00-executive-summary.html](./claude-review/00-executive-summary.html) —— 本轮 review 结论
+3. [claude-review/07-codex-directives.md](./claude-review/07-codex-directives.md) —— 开工前必读的 DO/DON'T
+4. [claude-review/05-action-items.md](./claude-review/05-action-items.md) —— 找到你这轮要做的事
+
+**开工时的代码阅读顺序**（保持不变）：
 
 1. `auto_decide/types.py`
 2. `auto_decide/dynamics.py`
@@ -519,6 +564,17 @@ review 时按这个顺序看：
 5. `auto_decide/planner.py`
 6. `auto_decide/trace.py`
 
-接手时不要先扩新功能。
-先跑测试、读 trace、补失败场景。
-这套项目的核心价值不是“自动驾驶 demo”，而是把不可控智能输出变成可审计、可回放、可迁移的结构化控制链路。
+**不要做**：
+
+- 不要为了降 `emergency_rate` 调宽 `cbf_alpha` 或缩小 `game.base_buffer` —— 详见 [07-codex-directives §DN](./claude-review/07-codex-directives.md#dont-禁令清单)
+- 不要扩新功能在 P0 没完成前
+- 不要跳过 review pack 直奔代码
+
+**做**：
+
+- 按 [action items](./claude-review/05-action-items.md) 的 ID 顺序推进
+- 每个 PR 关闭一个 AI-XX + 对应 finding
+- 跑完 benchmark 后把结果追加到 `docs/claude-review/08-benchmark-log.md`（见 [patch 02](./claude-review/06-suggested-patches/02-benchmark-ci.md)）
+
+这套项目的核心价值不是"自动驾驶 demo"，而是把不可控智能输出变成可审计、可回放、可迁移的结构化控制链路。
+<strong>上一轮搭好了契约和架构，这一轮让"聪明的那一端"配得上这些契约。</strong>

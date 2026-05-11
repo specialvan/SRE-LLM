@@ -41,3 +41,48 @@
 - [`planner.py`](../auto_decide/planner.py)
 - [`architecture.html`](./architecture.html)
 - [`codex-handoff.md`](./codex-handoff.md)
+
+
+## Schema Evolution（AI-04）
+
+trace schema 的演进规则如下，**任何 agent 在修改 `auto_decide/trace.py` 之前必须先读这一节**。
+
+### 版本号含义
+
+`schema_version` 采用 `MAJOR.MINOR`：
+
+- **MINOR bump**（`1.0 → 1.1`）：只允许**新增**字段，或把 optional 字段的取值范围扩大（例如给 `status` 加一个新的枚举值）。所有 v1.x 的读取器必须保持能解析 v1.x 的任何版本（忽略未知字段）。
+- **MAJOR bump**（`1.x → 2.0`）：以下操作之一必须触发 MAJOR：
+  - 删除任何已有字段；
+  - 修改已有字段的类型或单位；
+  - 修改已有字段语义（含 enum 值的含义变更）；
+  - 调整 `state` / `u_nn` / `u_safe` 等固定长度数组的维度；
+  - 把 optional 字段变为 required，或反过来。
+
+### 下游读取器的契约
+
+任何消费 trace 的 agent / 工具（可视化、benchmark 聚合、离线分析）都必须：
+
+1. **第一步读 `schema_version`**；不识别的 MAJOR 必须拒绝解析并记日志，而不是静默忽略。
+2. 对未知字段**静默跳过**（不崩），这是 forward compatibility 的关键。
+3. 不要假设字段顺序。
+
+### 违反举例（不要做）
+
+- ❌ 把 `V` 字段的单位从"能量标量"改为"归一化 0-1"而不 bump MAJOR；
+- ❌ 把 `cbf_violations` 从 `array[float]` 改成 `array[{barrier_id, value}]` 而不 bump MAJOR；
+- ❌ 删除 `min_dist` 字段（哪怕"没人用"）而不 bump MAJOR。
+
+### 实施要求
+
+- 每次 bump 必须同步修改：
+  1. `auto_decide/trace.py::TRACE_SCHEMA_VERSION`；
+  2. 本文件的字段表；
+  3. `docs/codex-handoff.md` 的 "trace 契约" 段；
+  4. `docs/V2_Knowledge/state.json` 的 `code.contracts.trace_schema_version`；
+  5. PR 描述里附"迁移指南"段，说明下游怎么 adapt。
+- MAJOR bump 必须同时保留旧版写入器一段时间（推荐 2 个 review 轮次），便于对照。
+
+### INV-C-TRACE
+
+该章节所描述的规则即 [INV-C-TRACE](./claude-review/03-invariants-catalog.md#inv-c-trace) 的具体化。

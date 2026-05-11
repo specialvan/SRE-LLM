@@ -39,6 +39,14 @@
 - [docs/deep-dive.html](./docs/deep-dive.html) — **算法级深度拆解**（数据结构、逐行伪代码、失败矩阵、系统不变式）
 - [docs/equations-digest.html](./docs/equations-digest.html) — **方程吃透手册**（E-01~E-35 · 每一条公式的推导 / 等价变形 / 陷阱 / SRE 对位）
 - [docs/sre-adaptation.html](./docs/sre-adaptation.html) — **工程能力→SRE 迁移**（9 个命名模式 + 接口骨架 + 采用路线）
+- [docs/claude-review/](./docs/claude-review/) — **Claude 评审包**（findings · action items · 深度架构视图 · 可 cherry-pick patch · Codex 指令）
+
+### Primary Entry
+
+- **技术评审起点**：[docs/knowledge-base.html](./docs/knowledge-base.html)
+- **下一轮开工起点**：[docs/claude-review/README.md](./docs/claude-review/README.md) → [action items](./docs/claude-review/05-action-items.md)
+- **接手现状起点**：[docs/codex-handoff.md](./docs/codex-handoff.md)
+- **架构深度**：[docs/architecture.html](./docs/architecture.html) + [docs/claude-review/02-architecture-deep.html](./docs/claude-review/02-architecture-deep.html)
 
 ---
 

@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>auto-decide · Agent Triage</title>
+<link rel="stylesheet" href="./_style.css">
+<style>
+.role-card{border:1px solid var(--rule);border-radius:10px;padding:20px 22px;margin:22px 0;background:#fff;box-shadow:0 1px 0 rgba(0,0,0,0.03)}
+.role-card header{display:flex;align-items:baseline;gap:12px;margin-bottom:10px;border-bottom:1px dashed var(--rule);padding-bottom:8px}
+.role-card header .icon{font-size:28px;line-height:1}
+.role-card header h3{margin:0;color:var(--fg);font-size:20px}
+.role-card header .tag{background:var(--accent-v2);color:#fff;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.05em}
+.role-card .goal{font-size:13.5px;background:#f9fbff;padding:8px 12px;border-radius:6px;border-left:3px solid var(--accent-v2);margin:8px 0 14px}
+.role-card .goal strong{color:var(--accent-v2)}
+.step-list{counter-reset:step;padding-left:0;list-style:none;margin:10px 0}
+.step-list li{counter-increment:step;position:relative;padding:8px 12px 8px 44px;margin:4px 0;background:#fafaf7;border-radius:6px;font-size:13px}
+.step-list li::before{content:counter(step);position:absolute;left:10px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;background:var(--accent-v2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+.step-list li a{font-weight:600}
+.do-table{font-size:13px}
+.do-table td:first-child{white-space:nowrap;font-weight:700;padding-right:14px;color:var(--accent)}
+.dont-table td:first-child{color:var(--accent-crit)}
+.route-box{display:grid;grid-template-columns:120px 1fr;gap:6px 14px;margin:10px 0;font-size:12.5px;background:#fdfcf8;padding:10px 12px;border-radius:6px}
+.route-box dt{font-weight:700;color:var(--fg)}
+.route-box dd{margin:0;color:var(--fg-soft)}
+.pit{background:var(--bg-crit);padding:8px 12px;border-radius:6px;font-size:12.5px;margin:8px 0}
+.pit strong{color:var(--accent-crit)}
+</style>
+</head>
+<body>
+
+<div class="banner">
+  <span class="left">V2 Knowledge Hub · Agent Triage</span>
+  <span class="right">
+    <a href="./index.html">← 回到 index</a>
+    <a href="./01-current-state.html">当前状态</a>
+    <a href="./03-doc-graph.html">文档地图</a>
+  </span>
+</div>
+
+<main>
+
+<h1>Agent Triage · 你是哪类 agent？
+  <small>按角色分流，每一类 agent 都有独立的阅读路径、工具清单、常见坑与成功标志</small>
+</h1>
+<div class="meta">
+  <span>V2 · 2026-05-12</span>
+  <span>5 个角色</span>
+  <span>每个角色独立 SOP</span>
+</div>
+
+<p>这份文档的目的：<strong>每个接手 auto-decide 的 agent 只需读自己的那一节</strong>，不必通读所有 review pack / 长期知识库。
+如果你同时属于多个角色，按"开工路径"相似度排序：Codex 与 Reviewer 重合度最高，Researcher 与 SRE 重合度较低。</p>
+
+<div class="callout v2">
+<span class="tag">核心原则</span>
+无论哪种 agent，都<strong>先跑一遍 pytest 和 benchmark</strong>（5 分钟），再读自己角色的文档。这样你对"代码现状"有亲身感受，不会被文档带偏。
+</div>
+
+<!-- ==================================================================== -->
+<section class="role-card" id="codex">
+<header>
+  <span class="icon">👷</span>
+  <h3>Codex · 下一轮开发 agent</h3>
+  <span class="tag">最主要的接手角色</span>
+</header>
+
+<div class="goal">
+  <strong>目标</strong>：完成 Claude review pack 里的 action items，把 benchmark 的 SLO 违约修到达标。不扩新功能。
+</div>
+
+<h4>开工前 · 10 分钟准备</h4>
+<ol class="step-list">
+  <li>跑 <code>pytest -q</code>，确认 19 tests 全绿。</li>
+  <li>跑 <code>python -m examples.compare_e2e_vs_structural --n 20 --metrics-out artifacts/m.json</code>，亲眼看到 <code>emergency_rate ≈ 42%</code>。</li>
+  <li>打开 <a href="../claude-review/00-executive-summary.html">claude-review/00-executive-summary.html</a>，5 分钟摘要。</li>
+  <li>打开 <a href="../claude-review/07-codex-directives.md">07-codex-directives.md</a>，默念 10 DO + 10 DON'T。</li>
+</ol>
+
+<h4>开工中 · 推荐的 PR 序列</h4>
+<p>按 <a href="../claude-review/07-codex-directives.md#期望的下一轮-pr-序列">07-directives 的 PR 序列</a>顺序推进，共 15 个 PR。最关键的顺序是：</p>
+
+<ol class="step-list">
+  <li><strong>先做小修</strong>：AI-03a（title mojibake）/ AI-03c（summaizer 处置）/ AI-04（schema 演进）。</li>
+  <li><strong>再做契约</strong>：AI-03b（status 枚举） / AI-11（CI invariant scanner）。</li>
+  <li><strong>再做 SLO 守门</strong>：AI-01（benchmark 红线，<strong>初次 xfail</strong>）。</li>
+  <li><strong>核心升级</strong>：AI-02（PredictiveBrakePolicy，完成后<strong>去掉 xfail</strong>）。</li>
+  <li><strong>再做回归</strong>：AI-12（非法组合测试） / AI-14（benchmark CI artifact）。</li>
+  <li><strong>最后文档同步</strong>：AI-05/07/08/09/10/06/13。</li>
+</ol>
+
+<h4>必用工具</h4>
+<div class="route-box">
+  <dt>代码入口</dt><dd><code>auto_decide/planner.py::StructuralPlanner.step</code>（唯一外部入口）</dd>
+  <dt>测试入口</dt><dd><code>pytest -q</code> · <code>pytest tests/test_X.py -v</code></dd>
+  <dt>benchmark</dt><dd><code>python -m examples.compare_e2e_vs_structural --n 50 --seed 0 --metrics-out artifacts/m.json</code></dd>
+  <dt>补丁骨架</dt><dd><a href="../claude-review/06-suggested-patches/">claude-review/06-suggested-patches/</a> · 5 份 markdown 格式的可 cherry-pick 骨架</dd>
+  <dt>不变式目录</dt><dd><a href="../claude-review/03-invariants-catalog.md">03-invariants-catalog.md</a> · 29 条</dd>
+  <dt>合约目录</dt><dd><a href="../claude-review/04-contracts-catalog.md">04-contracts-catalog.md</a> · 9 模块</dd>
+</div>
+
+<h4>做与不做对照</h4>
+<table class="do-table">
+  <tbody>
+    <tr><td>✅ DO</td><td>每个 PR 只解决一个 AI-XX</td></tr>
+    <tr><td>✅ DO</td><td>commit message 带 AI 编号（如 <code>feat(AI-02): PredictiveBrakePolicy</code>）</td></tr>
+    <tr><td>✅ DO</td><td>改 contract 必须同步 <code>trace-schema.md</code> / <code>benchmark-metrics.md</code></td></tr>
+    <tr><td>✅ DO</td><td>新增 invariant 走 <a href="../claude-review/03-invariants-catalog.md#附新建-invariants-的模板">模板</a></td></tr>
+    <tr><td>✅ DO</td><td>跑完 benchmark 后把结果追加到 <code>docs/claude-review/08-benchmark-log.md</code></td></tr>
+  </tbody>
+</table>
+<table class="dont-table do-table">
+  <tbody>
+    <tr><td>❌ DON'T</td><td>为了降 emergency_rate 调宽 <code>cbf_alpha</code> 或 <code>game.base_buffer</code></td></tr>
+    <tr><td>❌ DON'T</td><td>把 Lyapunov <code>V</code> 加回距离项（第一版坑）</td></tr>
+    <tr><td>❌ DON'T</td><td>绕过 <code>planner.step</code> 调用 <code>dynamics.step</code></td></tr>
+    <tr><td>❌ DON'T</td><td>把 CBF 硬约束改成 loss penalty</td></tr>
+    <tr><td>❌ DON'T</td><td>让 fallback 返回除 <code>Control(0, -jerk_max)</code> 之外的值</td></tr>
+    <tr><td>❌ DON'T</td><td>删 trace 字段（只允许新增）</td></tr>
+    <tr><td>❌ DON'T</td><td>在 <code>auto_decide</code> 代码里引入 ML 依赖</td></tr>
+  </tbody>
+</table>
+
+<h4>成功标志</h4>
+<ul>
+  <li>AI-01~AI-04 全部 close，CI 绿；</li>
+  <li>AI-02 完成后：<code>structural.planner_emergency_rate &lt; 10%</code> 且 <code>collision_rate == 0</code>；</li>
+  <li><code>test_structural_pipeline_respects_availability_budget</code> 从 xfail 变成 pass（<code>strict=True</code> 会报错除非删掉 xfail 装饰器）；</li>
+  <li>所有 PR 描述里都明示关闭的 finding / AI 编号。</li>
+</ul>
+
+<div class="pit">
+<strong>已知陷阱 · Codex 最容易踩的三个</strong><br>
+① 看见"0 碰撞率"就以为达标 → benchmark 其实靠刹停堆出来，见 <a href="./01-current-state.html#slo">SLO 表</a>。<br>
+② 升级 nominal 策略时想引入 ML → 保持只用 numpy + scipy。<br>
+③ 改 trace 字段时忘记 bump schema_version → 详见 <a href="../claude-review/04-contracts-catalog.md">contracts-catalog 末尾的变更规则</a>。
+</div>
+</section>
+
+<!-- ==================================================================== -->
+<section class="role-card" id="reviewer">
+<header>
+  <span class="icon">🔍</span>
+  <h3>Review Agent · 评审下一轮提交</h3>
+  <span class="tag">承接 Claude 做同类工作</span>
+</header>
+
+<div class="goal">
+  <strong>目标</strong>：审视 Codex round-2 提交，产出 claude-review round-3（或 gemini-review / gpt-review）。
+</div>
+
+<h4>开工前 · 读什么</h4>
+<ol class="step-list">
+  <li><a href="../claude-review/01-findings.md">本轮 findings</a> —— 理解 Claude round-2 发现了什么，避免重复覆盖。</li>
+  <li><a href="../claude-review/05-action-items.md">action items</a> —— 了解 Codex 应该完成什么。</li>
+  <li><a href="../claude-review/03-invariants-catalog.md">不变式目录</a> —— 你的审查 checklist 基础。</li>
+  <li><a href="../claude-review/04-contracts-catalog.md">合约目录</a> —— 判断"接口变更是否合法"的依据。</li>
+</ol>
+
+<h4>审查路径</h4>
+
+<ol class="step-list">
+  <li>跑 <code>git log --oneline HEAD~N..HEAD</code> 看 Codex 提交了哪些 PR，每个 PR 关闭哪条 AI。</li>
+  <li>按 AI 编号对照 action items 的"验收标准"，逐条打勾。</li>
+  <li>跑 <code>pytest -q</code> + benchmark，对比 <code>artifacts/benchmark-metrics.json</code> 与上一轮的差异。</li>
+  <li>扫 <code>git diff</code>，重点看是否触碰<strong>红区</strong>（见 Codex 指令的 DON'T 清单）。</li>
+  <li>把本轮发现汇总成 <code>docs/claude-review-v3/</code>（或按你的 agent 名建子目录），保持文件结构与 v2 一致。</li>
+</ol>
+
+<h4>审查时必问的 12 个问题</h4>
+<p>来自 <a href="../codex-handoff.md">codex-handoff.md § Reviewer Checklist</a>：</p>
+<ol style="font-size:13px;color:var(--fg-soft)">
+  <li>README 是否仍指向所有核心文档？</li>
+  <li><code>planner.step()</code> 是否仍是唯一北向入口？</li>
+  <li><code>u_nn</code> 是否一定经过 <code>cbf.py</code>？</li>
+  <li><code>u_safe</code> 是否一定经过 <code>invariant.py</code>？</li>
+  <li><code>cbf_status</code> 枚举是否仍符合 <a href="../claude-review/03-invariants-catalog.md#inv-g12">INV-G12</a>？</li>
+  <li>trace 是否仍能解释每次动作改写？</li>
+  <li><code>BrakingDistanceBarrier</code> 是否考虑速度、反应时间、摩擦？</li>
+  <li>Lyapunov 是否只承担稳定性职责（未混入距离）？</li>
+  <li><code>reachable</code> 是否仍作为"可达下界"而非形式化证明？</li>
+  <li><code>game</code> 的不确定性是否仅改 buffer / derating？</li>
+  <li>benchmark 是否同时报告安全、舒适度、耗时、fallback？</li>
+  <li>SRE 映射是否仍在迁移"机制"而非"术语"？</li>
+</ol>
+
+<h4>成功标志</h4>
+<ul>
+  <li>新一轮 review pack 结构与 v2 一致（README / findings / action-items / directives 四件套）；</li>
+  <li>历史 findings 已标记为 resolved / partially-resolved / still-open；</li>
+  <li>不新增"为了看起来深入而凭空编的 finding"——每条 finding 都有代码证据。</li>
+</ul>
+
+<div class="pit">
+<strong>陷阱</strong>：评审时不要只看测试是否通过。测试可以写"正好符合当前实现"但掩盖问题。要看<strong>trace / benchmark 的实际数字</strong>是否按 action items 的验收标准改善。
+</div>
+</section>
+
+<!-- ==================================================================== -->
+<section class="role-card" id="sre">
+<header>
+  <span class="icon">🏗️</span>
+  <h3>SRE / 平台迁移 Agent</h3>
+  <span class="tag">跨域复用</span>
+</header>
+
+<div class="goal">
+  <strong>目标</strong>：把 auto-decide 的 9 个模式抽象成 SRE 平台组件。不改 auto_decide 本体代码。
+</div>
+
+<h4>必读顺序</h4>
+<ol class="step-list">
+  <li><a href="../sre-adaptation.html">sre-adaptation.html</a> —— 9 个命名模式 P-01~P-09 的完整骨架。</li>
+  <li><a href="../equations-digest.html#bridge">equations-digest §13</a> —— 35 方程到 SRE 的逐一对位。</li>
+  <li><a href="../deep-dive.html#sre-hook">deep-dive §14 SRE 挂钩点汇总</a>。</li>
+</ol>
+
+<h4>可以开始做什么</h4>
+<ol class="step-list">
+  <li>把 <a href="../sre-adaptation.html#skeleton">sre-adaptation 的 <code>sre_control/</code> 目录骨架</a>拉到一个独立 repo（不要污染 auto-decide）。</li>
+  <li>先实现 <strong>P-01 故障相关性图</strong> 与 <strong>P-04 Lyapunov burn-rate</strong>——这两个是只读模块，风险最低。</li>
+  <li>用真实 telemetry 跑一遍，产出与 <code>trace.jsonl</code> 同构的 observability 文件。</li>
+  <li>再上 P-06 AdmissionController 作为 <em>shadow</em>（不实际拒绝流量），观察 2 周。</li>
+  <li>按 <a href="../sre-adaptation.html#adoption">采用路线图</a>四阶段推进。</li>
+</ol>
+
+<h4>迁移原则（必守）</h4>
+<table class="do-table">
+  <tbody>
+    <tr><td>✅ 机制迁移</td><td>把 "CBF 硬约束 + QP 求最近可行" 迁成 "admission controller"</td></tr>
+    <tr><td>✅ 接口同构</td><td>trace / metrics JSON 的字段命名方式保持一致</td></tr>
+    <tr><td>❌ 术语挪用</td><td>不要说"服务也有 Lyapunov 方程"，要说"错误预算是 Lyapunov 意义上的能量"</td></tr>
+    <tr><td>❌ 数学本体迁移</td><td>不要在 SRE 里也用 bicycle model——用 queueing theory 或 ML predictor</td></tr>
+  </tbody>
+</table>
+
+<h4>成功标志</h4>
+<ul>
+  <li>有独立的 <code>sre_control/</code> repo，目录结构与 auto_decide 对称；</li>
+  <li>至少 2 个 pattern 在生产 shadow 运行；</li>
+  <li>产出可与 auto-decide trace.jsonl 并列分析的 observability 数据。</li>
+</ul>
+</section>
+
+<!-- ==================================================================== -->
+<section class="role-card" id="researcher">
+<header>
+  <span class="icon">🧠</span>
+  <h3>研究 / 算法 Agent</h3>
+  <span class="tag">理解与验证</span>
+</header>
+
+<div class="goal">
+  <strong>目标</strong>：理解论文的数学结构、验证实现与论文一致、提出算法改进。
+</div>
+
+<h4>必读顺序</h4>
+<ol class="step-list">
+  <li><a href="../equations-digest.html">equations-digest.html</a> —— 35 方程的推导与工程陷阱。</li>
+  <li><a href="../deep-dive.html">deep-dive.html</a> —— 每个模块的数据结构、逐行伪代码、失败矩阵。</li>
+  <li><a href="../FORMULA_MAP.md">FORMULA_MAP.md</a> —— 每条公式对应哪个测试。</li>
+  <li><a href="../DESIGN.md">DESIGN.md</a> —— 设计原则与工程裁剪。</li>
+</ol>
+
+<h4>可以做什么</h4>
+<ol class="step-list">
+  <li>验证 E-30 <code>BrakingDistanceBarrier</code> 的相对度 1 论述（见 equations-digest §8.3）。</li>
+  <li>考察 E-28 的类 K 函数推广能不能替换当前的线性 <code>αh</code>。</li>
+  <li>实现真 QP solver（OSQP / qpOASES）替换 <code>cbf.py</code> 的网格搜索。</li>
+  <li>用 <a href="../claude-review/06-suggested-patches/01-barrier-aware-policy.md">patch 01</a> 里列出的 BarrierAwareMPC 做一个严格的 MPC 版本。</li>
+  <li>扩可达集 <code>R(x₀, T)</code> 为 Hamilton-Jacobi reachability（形式化）。</li>
+</ol>
+
+<h4>绝对不可以做的事</h4>
+<table class="dont-table do-table">
+  <tbody>
+    <tr><td>❌</td><td>改 <a href="../claude-review/03-invariants-catalog.md#inv-g9">INV-G9</a>（Lyapunov 只含速度项）</td></tr>
+    <tr><td>❌</td><td>把硬约束改成 loss（违反 INV-G8）</td></tr>
+    <tr><td>❌</td><td>改 trace schema 不 bump 版本（违反 INV-G5）</td></tr>
+    <tr><td>❌</td><td>在 auto_decide 代码里引 torch / sklearn（保持 numpy-only）</td></tr>
+  </tbody>
+</table>
+
+<h4>成功标志</h4>
+<ul>
+  <li>对至少一条方程提出改进，附严谨推导 + 回归测试；</li>
+  <li>所有 19 tests 仍绿；</li>
+  <li>benchmark 关键指标不退化。</li>
+</ul>
+</section>
+
+<!-- ==================================================================== -->
+<section class="role-card" id="observability">
+<header>
+  <span class="icon">📊</span>
+  <h3>Observability / 数据 Agent</h3>
+  <span class="tag">消费 trace 与 metrics</span>
+</header>
+
+<div class="goal">
+  <strong>目标</strong>：从 <code>trace.jsonl</code> 和 <code>benchmark-metrics.json</code> 抽出洞察，不改代码。
+</div>
+
+<h4>必读顺序</h4>
+<ol class="step-list">
+  <li><a href="../trace-schema.md">trace-schema.md</a> —— trace v1.0 的 16 字段定义。</li>
+  <li><a href="../benchmark-metrics.md">benchmark-metrics.md</a> —— metrics JSON 的 schema。</li>
+  <li><a href="./state.json">state.json</a> —— 机器可读的当前状态快照。</li>
+</ol>
+
+<h4>可以做什么</h4>
+<ol class="step-list">
+  <li>把 trace.jsonl 读进 pandas，做 status / cbf_status 的频次分析。</li>
+  <li>实现 AI-05：在 <code>architecture.html</code> 里 <code>fetch("../artifacts/metrics.json")</code>，自动高亮 SLO 违约。</li>
+  <li>跨场景对比：不同 μ / 不同 obstacle 位置下 <code>planner_emergency_rate</code> 分布。</li>
+  <li>设计可视化面板（grafana-style）消费 trace。</li>
+</ol>
+
+<h4>契约承诺</h4>
+<p>你可以安全地假设以下字段永远存在（除非 schema_version 被 bump）：</p>
+<div class="route-box">
+  <dt>trace.jsonl</dt>
+  <dd><code>schema_version · step · t · dt · state · next_state · u_nn · u_safe · min_dist · V · dV_dt · status · cbf_status · cbf_slack · cbf_violations · cbf</code></dd>
+  <dt>metrics JSON</dt>
+  <dd><code>schema_version · generated_by · params · summaries.{pure_e2e, structural} · deltas · scenarios</code></dd>
+</div>
+
+<h4>成功标志</h4>
+<ul>
+  <li>产出可嵌入 architecture.html 的实时指标视图；</li>
+  <li>不修改 auto_decide 代码；</li>
+  <li>消费的数据格式严格按 schema（不 hack 未定义字段）。</li>
+</ul>
+</section>
+
+<hr>
+<p style="font-size:12px;color:var(--fg-mute);text-align:center">
+Agent Triage · V2 Knowledge Hub · 5 个角色 · 每个角色独立入口<br>
+不在列表上的角色？回到 <a href="./index.html">index</a> 看"快速动作"一节。
+</p>
+
+</main>
+</body>
+</html>
