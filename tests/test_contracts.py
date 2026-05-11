@@ -128,3 +128,49 @@ def test_sre_stack_carries_canary_local_events_upward():
     assert any(event["kind"] == "rollout_rejected"
                for event in entry["runtime"]["events"])
     json.dumps(entry)
+
+
+
+def test_sre_stack_carries_guardrail_events_upward():
+    stack, metrics = _make_stack()
+
+    entry = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([760.0, 28.0]))],
+        forecast_rps=800.0,
+        current_replicas=6,
+        zone_target=np.array([480.0, 320.0]),
+        # direction is 45 degrees from nominal (>> theta_max_deg=20)
+        nn_proposal=np.array([500.0, 500.0, 0.0]),
+    )
+
+    assert entry["guardrail"]["cone_violated_before"] is True
+    assert "DEGRADED_GUARD" in entry["runtime"]["states"]
+    assert entry["runtime"]["degraded"] is True
+    assert any(event["kind"] == "unsafe_proposal_projected"
+               for event in entry["runtime"]["events"])
+    json.dumps(entry)
+
+
+def test_sre_stack_carries_allocator_events_upward():
+    stack, metrics = _make_stack()
+    # shrink caps so the demand saturates at least one instance
+    stack.balancer = WeightedLoadBalancer(instances=[
+        Instance("east", np.array([1.0, 0.0]), rps_min=1.0, rps_max=50.0),
+        Instance("west", np.array([0.0, 1.0]), rps_min=1.0, rps_max=50.0),
+    ])
+
+    entry = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([760.0, 28.0]))],
+        forecast_rps=800.0,
+        current_replicas=6,
+        zone_target=np.array([200.0, 200.0]),
+        nn_proposal=np.array([300.0, 0.0, 0.0]),
+    )
+
+    assert any(entry["alloc_info"]["saturation"])
+    assert "DEGRADED_ALLOCATE" in entry["runtime"]["states"]
+    assert any(event["kind"] == "bounded_ls_residual"
+               for event in entry["runtime"]["events"])
+    json.dumps(entry)

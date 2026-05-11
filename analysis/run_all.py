@@ -38,7 +38,7 @@ def main() -> None:
     for b in banners:
         print(b)
         print()
-    print(f"All 8 studies finished in {total:.2f}s. Artifacts in analysis/artifacts/.")
+    print(f"All {len(STUDIES)} studies finished in {total:.2f}s. Artifacts in analysis/artifacts/.")
 
     out = Path(__file__).parent / "artifacts" / "SUMMARY.txt"
     out.write_text("\n\n".join(banners), encoding="utf-8")

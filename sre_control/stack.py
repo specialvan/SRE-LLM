@@ -108,6 +108,7 @@ class SREControlStack:
         safe_action = np.array(audit["approved"])
         if (audit["cone_violated_before"]
                 or audit["magnitude_violated_before"]):
+            runtime_states.append("DEGRADED_GUARD")
             runtime_events.extend(audit.get("events", []))
 
         # 5) Allocate — weighted load balancer
