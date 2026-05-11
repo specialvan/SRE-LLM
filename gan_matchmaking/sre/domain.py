@@ -111,6 +111,66 @@ class ReleaseContext:
             raise DataError("error_budget_remaining must be in [0, 1]",
                             details={"value": self.error_budget_remaining})
 
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "ReleaseContext":
+        """Reconstruct a :class:`ReleaseContext` from a JSON-friendly mapping.
+
+        Expected keys
+        -------------
+        ``service`` : mapping (required)
+            Must contain at least ``id``. Defaults applied to ``mu``, ``sigma``,
+            ``win_streak``, ``loss_streak``, ``total_releases``, ``tier``.
+        ``candidates`` : sequence of mapping (required)
+            Each element must contain ``id`` and ``strategy``. The resulting
+            :class:`ReleaseCandidate.service_id` is forced to
+            ``service.id``; any explicit ``service_id`` in the payload is
+            ignored so :meth:`validate` never fails because of a mismatch.
+        ``dependencies`` : sequence of str (optional, default ``[]``)
+        ``error_budget_remaining`` : float (optional, default ``1.0``)
+        ``freeze_window`` : bool (optional, default ``False``)
+        ``telemetry`` : mapping[str, float] (optional)
+        ``correlation_id`` : str (optional)
+
+        Raises
+        ------
+        KeyError
+            When required fields (``service``, ``candidates``, per-candidate
+            ``id`` / ``strategy``) are missing.
+        TypeError / ValueError
+            When numeric fields cannot be parsed.
+        """
+        svc_raw = payload["service"]
+        service = Service(
+            id=str(svc_raw["id"]),
+            mu=float(svc_raw.get("mu", 0.99)),
+            sigma=float(svc_raw.get("sigma", 0.02)),
+            win_streak=int(svc_raw.get("win_streak", 0)),
+            loss_streak=int(svc_raw.get("loss_streak", 0)),
+            total_releases=int(svc_raw.get("total_releases", 0)),
+            tier=str(svc_raw.get("tier", "standard")),
+        )
+        candidates = [
+            ReleaseCandidate(
+                id=str(c["id"]),
+                service_id=service.id,
+                strategy=str(c["strategy"]),
+                canary_fraction=float(c.get("canary_fraction", 0.0)),
+                rollback_budget_seconds=float(c.get("rollback_budget_seconds", 300.0)),
+                expected_success=float(c.get("expected_success", 0.99)),
+                notes=str(c.get("notes", "")),
+            )
+            for c in payload["candidates"]
+        ]
+        return cls(
+            service=service,
+            candidates=candidates,
+            telemetry=payload.get("telemetry"),
+            dependencies=list(payload.get("dependencies", []) or []),
+            error_budget_remaining=float(payload.get("error_budget_remaining", 1.0)),
+            freeze_window=bool(payload.get("freeze_window", False)),
+            correlation_id=payload.get("correlation_id"),
+        )
+
 
 @dataclass
 class Decision:

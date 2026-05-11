@@ -23,12 +23,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable, Dict, Optional, Tuple
 from urllib.parse import urlparse
 
-from ..cli import _ctx_from_dict
 from ..core import AppConfig, MetricsRegistry
 from ..core.errors import GanError
 from ..core.tracing import with_correlation_id
 from ..persistence import PipelineStore
-from ..sre import SelfIterationPipeline
+from ..sre import ReleaseContext, SelfIterationPipeline
 from ..sre.circuit import CircuitBreaker
 
 
@@ -110,7 +109,7 @@ class DecisionApp:
         return 200, {"status": "recorded"}
 
     def handle_decide(self, body: JsonDict) -> Tuple[int, JsonDict]:
-        ctx = _ctx_from_dict(body)
+        ctx = ReleaseContext.from_dict(body)
         decision = self.pipeline.decide(ctx)
         return 200, decision.to_dict()
 

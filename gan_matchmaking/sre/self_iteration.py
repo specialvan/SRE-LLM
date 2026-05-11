@@ -102,7 +102,7 @@ def _sre_risk_level(p: float) -> RiskLevel:
 
 
 def _context_payload(ctx: ReleaseContext) -> Dict[str, Any]:
-    """Return the JSON shape accepted by ``cli._ctx_from_dict``."""
+    """Return the JSON shape accepted by :meth:`ReleaseContext.from_dict`."""
     payload: Dict[str, Any] = {
         "service": ctx.service.as_dict(),
         "candidates": [

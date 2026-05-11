@@ -7,10 +7,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from gan_matchmaking.cli import _ctx_from_dict
 from gan_matchmaking.core import MetricsRegistry, load_config
 from gan_matchmaking.eomm import RetentionModel
-from gan_matchmaking.sre import SelfIterationPipeline
+from gan_matchmaking.sre import ReleaseContext, SelfIterationPipeline
 from gan_matchmaking.sre.artifacts import (
     EOMM_FEATURE_NAMES,
     build_metadata,
@@ -96,7 +95,7 @@ def test_golden_replay_corpus(fixture_path, tmp_path):
 
     cfg = load_config(config_raw)
     pipeline = SelfIterationPipeline(config=cfg, metrics=MetricsRegistry())
-    decision = pipeline.decide(_ctx_from_dict(raw["context"]))
+    decision = pipeline.decide(ReleaseContext.from_dict(raw["context"]))
     payload = decision.to_dict()
     expected = raw["expected"]
 

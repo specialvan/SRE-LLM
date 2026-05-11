@@ -17,7 +17,7 @@ Endpoints
 
 ``POST /v1/decide``
     Return a decision for a candidate set. Body matches
-    :func:`gan_matchmaking.cli._ctx_from_dict`.
+    :meth:`gan_matchmaking.sre.ReleaseContext.from_dict`.
 
 ``GET /v1/services/{id}``
     Return the current rating for one service.

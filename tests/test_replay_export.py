@@ -6,12 +6,11 @@ import json
 import numpy as np
 import pytest
 
-from gan_matchmaking.cli import _ctx_from_dict
 from gan_matchmaking.core import AppConfig, ArtifactsConfig, MetricsRegistry, load_config
 from gan_matchmaking.core.errors import DataError
 from gan_matchmaking.eomm import RetentionModel
 from gan_matchmaking.persistence import SQLitePipelineStore
-from gan_matchmaking.sre import SelfIterationPipeline
+from gan_matchmaking.sre import ReleaseContext, SelfIterationPipeline
 from gan_matchmaking.sre.artifacts import (
     EOMM_FEATURE_NAMES,
     build_metadata,
@@ -101,7 +100,7 @@ def test_export_replay_fixture_from_sqlite_decision(tmp_path):
             metrics=MetricsRegistry(),
             store=store,
         )
-        original = pipeline.decide(_ctx_from_dict(_context_payload()))
+        original = pipeline.decide(ReleaseContext.from_dict(_context_payload()))
     finally:
         store.close()
 
@@ -128,7 +127,7 @@ def test_export_replay_fixture_from_sqlite_decision(tmp_path):
     replay = SelfIterationPipeline(
         config=load_config(fixture["config"]),
         metrics=MetricsRegistry(),
-    ).decide(_ctx_from_dict(fixture["context"]))
+    ).decide(ReleaseContext.from_dict(fixture["context"]))
     assert replay.kind.value == fixture["expected"]["kind"]
     assert (replay.chosen.id if replay.chosen else None) == fixture["expected"]["chosen_id"]
     assert replay.risk_level.value == fixture["expected"]["risk_level"]
@@ -145,7 +144,7 @@ def test_export_fitted_decision_requires_artifact_bundle(tmp_path):
             metrics=MetricsRegistry(),
             store=store,
         )
-        original = pipeline.decide(_ctx_from_dict(_context_payload()))
+        original = pipeline.decide(ReleaseContext.from_dict(_context_payload()))
     finally:
         store.close()
 
@@ -169,7 +168,7 @@ def test_export_fitted_decision_archives_valid_artifact_bundle(tmp_path):
             metrics=MetricsRegistry(),
             store=store,
         )
-        original = pipeline.decide(_ctx_from_dict(_context_payload()))
+        original = pipeline.decide(ReleaseContext.from_dict(_context_payload()))
     finally:
         store.close()
 
@@ -200,6 +199,6 @@ def test_export_fitted_decision_archives_valid_artifact_bundle(tmp_path):
     replay = SelfIterationPipeline(
         config=load_config(config_raw),
         metrics=MetricsRegistry(),
-    ).decide(_ctx_from_dict(fixture["context"]))
+    ).decide(ReleaseContext.from_dict(fixture["context"]))
     assert replay.artifact_version == original.artifact_version
     assert replay.kind.value == fixture["expected"]["kind"]

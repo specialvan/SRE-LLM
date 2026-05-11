@@ -29,38 +29,13 @@ from .sre.replay import export_replay_fixture
 
 
 def _ctx_from_dict(payload: Dict[str, Any]) -> ReleaseContext:
-    """Reconstruct a :class:`ReleaseContext` from JSON-friendly input."""
-    svc_raw = payload["service"]
-    service = Service(
-        id=svc_raw["id"],
-        mu=float(svc_raw.get("mu", 0.99)),
-        sigma=float(svc_raw.get("sigma", 0.02)),
-        win_streak=int(svc_raw.get("win_streak", 0)),
-        loss_streak=int(svc_raw.get("loss_streak", 0)),
-        total_releases=int(svc_raw.get("total_releases", 0)),
-        tier=str(svc_raw.get("tier", "standard")),
-    )
-    candidates = [
-        ReleaseCandidate(
-            id=c["id"],
-            service_id=service.id,
-            strategy=c["strategy"],
-            canary_fraction=float(c.get("canary_fraction", 0.0)),
-            rollback_budget_seconds=float(c.get("rollback_budget_seconds", 300.0)),
-            expected_success=float(c.get("expected_success", 0.99)),
-            notes=c.get("notes", ""),
-        )
-        for c in payload["candidates"]
-    ]
-    return ReleaseContext(
-        service=service,
-        candidates=candidates,
-        telemetry=payload.get("telemetry"),
-        dependencies=list(payload.get("dependencies", [])),
-        error_budget_remaining=float(payload.get("error_budget_remaining", 1.0)),
-        freeze_window=bool(payload.get("freeze_window", False)),
-        correlation_id=payload.get("correlation_id"),
-    )
+    """Deprecated alias for :meth:`ReleaseContext.from_dict`.
+
+    Kept for backwards compatibility with tests and external callers that
+    imported this private helper before it was promoted to the public API.
+    New code should use :meth:`ReleaseContext.from_dict` directly.
+    """
+    return ReleaseContext.from_dict(payload)
 
 
 def _cmd_decide(args: argparse.Namespace) -> int:
