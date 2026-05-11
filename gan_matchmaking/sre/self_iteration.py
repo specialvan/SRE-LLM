@@ -101,6 +101,33 @@ def _sre_risk_level(p: float) -> RiskLevel:
     return RiskLevel.OK
 
 
+def _context_payload(ctx: ReleaseContext) -> Dict[str, Any]:
+    """Return the JSON shape accepted by ``cli._ctx_from_dict``."""
+    payload: Dict[str, Any] = {
+        "service": ctx.service.as_dict(),
+        "candidates": [
+            {
+                "id": c.id,
+                "service_id": c.service_id,
+                "strategy": c.strategy,
+                "canary_fraction": c.canary_fraction,
+                "rollback_budget_seconds": c.rollback_budget_seconds,
+                "expected_success": c.expected_success,
+                "notes": c.notes,
+            }
+            for c in ctx.candidates
+        ],
+        "dependencies": list(ctx.dependencies),
+        "error_budget_remaining": ctx.error_budget_remaining,
+        "freeze_window": ctx.freeze_window,
+    }
+    if ctx.telemetry is not None:
+        payload["telemetry"] = dict(ctx.telemetry)
+    if ctx.correlation_id is not None:
+        payload["correlation_id"] = ctx.correlation_id
+    return payload
+
+
 # ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
@@ -483,6 +510,10 @@ class SelfIterationPipeline:
             )
 
             trace: Dict[str, Any] = {
+                "input": {
+                    "context": _context_payload(ctx),
+                    "config": self.config.to_dict(),
+                },
                 "stages": {},
                 "artifacts": self.artifacts.as_trace(),
             }

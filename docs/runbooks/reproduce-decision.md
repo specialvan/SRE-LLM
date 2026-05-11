@@ -26,8 +26,11 @@ same inputs.
    set GAN_SEED=<config.seed>
    ```
 
-3. Reconstruct the `ReleaseContext` from the trace (`trace.stages.*` plus
-   the input feature vectors).
+3. Reconstruct the `ReleaseContext`.
+   - Newer decisions store the exact replay input under
+     `trace.input.context`.
+   - Older decisions may require manual reconstruction from
+     `trace.stages.*`, the request log, and the input feature vectors.
 
 4. Call the pipeline with the exact same config:
    ```python
@@ -59,6 +62,30 @@ python -m pytest -q tests/test_replay_corpus.py
 
 Add a fixture whenever a post-incident replay exposes a new branch,
 fallback, or policy boundary.
+
+## Export From SQLite Audit
+
+For decisions produced by the current pipeline, the SQLite audit row already
+contains `trace.input.context` and the embedded config snapshot. Export it
+directly into the replay fixture format:
+
+```
+python -m gan_matchmaking.cli export-replay ^
+  --state-db state.sqlite ^
+  --correlation-id <decision-correlation-id> ^
+  --output tests/fixtures/replay/<incident-name>.json ^
+  --name <incident-name>
+```
+
+The exporter is intentionally conservative:
+
+- Bootstrap decisions become standalone fixtures.
+- Fitted-artifact decisions are refused unless
+  `--allow-fitted-artifacts` is passed, because the decision audit table
+  records artifact identity but not model weights.
+- If `trace.input.context` is missing, the row came from an older runtime
+  and must be reconstructed manually before it can be promoted to golden
+  corpus.
 
 ## If they don't match
 

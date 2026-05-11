@@ -8,6 +8,9 @@ import sys
 import pytest
 
 from gan_matchmaking import cli
+from gan_matchmaking.core import AppConfig, MetricsRegistry
+from gan_matchmaking.persistence import SQLitePipelineStore
+from gan_matchmaking.sre import SelfIterationPipeline
 
 
 def _sample_input():
@@ -72,3 +75,37 @@ def test_cli_metrics_output(capsys):
     assert exit_code == 0
     out = capsys.readouterr().out
     assert "gan_decisions_total" in out or "# HELP" in out or out == ""
+
+
+def test_cli_export_replay_writes_fixture(tmp_path, capsys):
+    db_path = tmp_path / "state.sqlite"
+    store = SQLitePipelineStore(db_path)
+    try:
+        pipeline = SelfIterationPipeline(
+            config=AppConfig(),
+            metrics=MetricsRegistry(),
+            store=store,
+        )
+        pipeline.decide(cli._ctx_from_dict(_sample_input()))  # noqa: SLF001
+    finally:
+        store.close()
+
+    out_path = tmp_path / "fixture.json"
+    exit_code = cli.main([
+        "export-replay",
+        "--state-db",
+        str(db_path),
+        "--correlation-id",
+        "cli-trace-1",
+        "--output",
+        str(out_path),
+        "--name",
+        "cli-exported",
+    ])
+    assert exit_code == 0
+    status = json.loads(capsys.readouterr().out)
+    assert status["status"] == "exported"
+    payload = json.loads(out_path.read_text(encoding="utf-8"))
+    assert payload["name"] == "cli-exported"
+    assert payload["context"]["correlation_id"] == "cli-trace-1"
+    assert payload["expected"]["artifact_version"] == "bootstrap"

@@ -133,6 +133,12 @@ python -m bench.latency --quick
 
 # Train Cox + Retention models from persisted observations
 python -m gan_matchmaking.training --state-db state.sqlite
+
+# Export one audited decision as a replay fixture
+python -m gan_matchmaking.cli export-replay \
+  --state-db state.sqlite \
+  --correlation-id <decision-correlation-id> \
+  --output tests/fixtures/replay/<incident-name>.json
 ```
 
 A `Decision` is printed as indented JSON and can be diffed / replayed.

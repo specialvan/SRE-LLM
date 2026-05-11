@@ -4,7 +4,7 @@
 - 当前分支：`gan-session`
 - 当前方向：把 matchmaking / rating / decision 方案稳定成可审计、可训练、可回放的 SRE 决策流水线
 - 现状：九个机制的语义映射、架构拆解、模块契约、状态生命周期、实施路线图、ADR 已经成体系
-- 最新进展：runtime artifact 版本化已经接入在线决策链路，`Decision.artifact_version`、SQLite 决策审计表、训练产物元数据、runtime hydrate 都已打通；golden replay corpus 已覆盖 fallback / fitted artifact / freeze / rollback / escalation；artifact manifest 已校验 feature_names / shape / Cox baseline，不合格会降级为 bootstrap 并写入 trace
+- 最新进展：runtime artifact 版本化已经接入在线决策链路，`Decision.artifact_version`、SQLite 决策审计表、训练产物元数据、runtime hydrate 都已打通；golden replay corpus 已覆盖 fallback / fitted artifact / freeze / rollback / escalation；artifact manifest 已校验 feature_names / shape / Cox baseline，不合格会降级为 bootstrap 并写入 trace；新决策 trace 已记录 `trace.input.context/config`，并新增 SQLite 审计行导出 replay fixture 的工具与 CLI
 
 ## 机制地图
 | 数学机制 | SRE 映射 | 代码位置 |
@@ -22,8 +22,10 @@
 ## Replay Corpus
 - 入口：`tests/fixtures/replay/*.json`
 - 测试：`tests/test_replay_corpus.py`
+- 导出：`python -m gan_matchmaking.cli export-replay --state-db state.sqlite --correlation-id <id> --output tests/fixtures/replay/<name>.json`
 - 覆盖：bootstrap fallback、fitted artifact、freeze hold、budget rollback、unknown strategy escalation
 - 作用：把“可回放”从 runbook 描述推进到可执行回归资产
+- 边界：bootstrap 决策可直接导出成 standalone fixture；fitted artifact 决策默认拒绝导出，除非显式允许并在回放环境提供匹配 artifact bundle
 
 ## 生产化模块
 ### 已经接近生产形态
@@ -39,9 +41,13 @@
   - 主决策链路可运行
   - 已接 runtime artifact hydrate
   - 已把决策落回存储
+  - 已在 trace 中写入可回放输入快照
 - `sre/artifacts.py`
   - 已支持 runtime artifact manifest 校验
   - 校验失败会跳过对应 artifact，并把错误写入 `trace["artifacts"]["validation_errors"]`
+- `sre/replay.py`
+  - 已支持从 SQLite `decisions` 审计行导出 replay fixture
+  - 会识别缺失 `trace.input.context` 的旧审计行，避免伪造不可复现样本
 - `training/`
   - 已能从 store 训练 Cox / Retention，并输出权重 + 元数据
 - `tests/fixtures/replay/`
@@ -69,6 +75,8 @@
 3. **决策审计和幂等性**
    - `correlation_id` 不能乱复用
    - 熔断短路场景要避免重复主键
+   - 只有记录了 `trace.input.context` 的新审计行能自动导出 replay fixture
+   - fitted artifact 决策需要匹配 artifact bundle，否则只能导出“需要外部 artifact”的半成品
 
 4. **SQLite 仍是单进程友好，不是跨进程协调方案**
    - 真要多实例并发，需要外部 lease / lock
@@ -88,16 +96,16 @@
 4. **策略选择**
    - EOMM / rule table / fallback
 5. **审计落盘**
-   - trace + decision + artifact_version
+   - trace + decision + artifact_version + replay fixture export
 6. **离线再训练**
    - observation log -> artifact -> runtime hydrate
 
 这个结构可以迁移到发布控制、容量调度、故障分流、巡检节流、告警降噪、回滚决策等场景。
 
 ## 下一步
-1. 扩展 golden replay corpus，从分支覆盖升级成事故叙事场景
-2. 给 replay 增加从 SQLite 决策审计表导出 fixture 的工具
-3. 给多实例部署补外部锁或 lease
+1. 给多实例部署补外部锁或 lease
+2. 扩展 golden replay corpus，从分支覆盖升级成事故叙事场景
+3. 为 fitted artifact 决策定义 replay promotion 规则：artifact bundle 如何归档、引用和校验
 4. 把 `PR-REQUIREMENTS.md` 继续收敛成可执行的 phase 任务单
 5. 用真实观测数据校准 Cox / Retention 的阈值和学习率
 

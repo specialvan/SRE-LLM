@@ -37,6 +37,7 @@ Goal: make every decision reconstructable.
 - synergy graph persistence
 - decision persistence
 - replay runbook and golden traces
+- SQLite audit-row to replay-fixture exporter
 
 ### Phase 3 - Training and artifact hydration
 
@@ -110,6 +111,7 @@ Goal: make the system easy to review and evolve.
 - maintain runbooks
 - keep readiness and metrics actionable
 - support replay from a single archived decision
+- export replay fixtures from persisted SQLite decisions
 
 ## 4. Risks to Watch
 
@@ -124,6 +126,6 @@ Goal: make the system easy to review and evolve.
 The best next increment is:
 
 1. add external lease / lock guidance for multi-instance deployment
-2. add a replay-fixture exporter from SQLite decision audit rows
-3. expand the replay corpus from branch coverage into incident-style
+2. expand the replay corpus from branch coverage into incident-style
    scenario coverage
+3. add replay promotion rules for fitted-artifact decisions

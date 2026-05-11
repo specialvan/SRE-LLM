@@ -4,6 +4,7 @@ Usage::
 
     python -m gan_matchmaking.cli decide --input context.json [--config cfg.json]
     python -m gan_matchmaking.cli metrics [--config cfg.json]
+    python -m gan_matchmaking.cli export-replay --state-db state.sqlite --correlation-id dec-1
 
 The CLI exists for code review and light integration (airflow / cron).
 Anything complex belongs in :class:`SelfIterationPipeline` directly.
@@ -23,6 +24,7 @@ from .sre import (
     SelfIterationPipeline,
     Service,
 )
+from .sre.replay import export_replay_fixture
 
 
 def _ctx_from_dict(payload: Dict[str, Any]) -> ReleaseContext:
@@ -81,6 +83,31 @@ def _cmd_metrics(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_export_replay(args: argparse.Namespace) -> int:
+    config = None
+    if args.config is not None:
+        config = json.loads(Path(args.config).read_text(encoding="utf-8"))
+    payload = export_replay_fixture(
+        args.state_db,
+        args.correlation_id,
+        output=args.output,
+        config=config,
+        name=args.name,
+        allow_fitted_artifacts=args.allow_fitted_artifacts,
+    )
+    if args.output:
+        json.dump(
+            {"status": "exported", "output": args.output, "name": payload["name"]},
+            sys.stdout,
+            ensure_ascii=False,
+            indent=2,
+        )
+    else:
+        json.dump(payload, sys.stdout, ensure_ascii=False, indent=2)
+    sys.stdout.write("\n")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="gan-matchmaking",
@@ -99,6 +126,27 @@ def build_parser() -> argparse.ArgumentParser:
     p_metrics.add_argument("--config", default=None,
                            help="optional path to AppConfig JSON")
     p_metrics.set_defaults(func=_cmd_metrics)
+
+    p_export = sub.add_parser(
+        "export-replay",
+        help="export one SQLite decision audit row as a replay fixture",
+    )
+    p_export.add_argument("--state-db", required=True,
+                          help="path to the SQLite state db")
+    p_export.add_argument("--correlation-id", required=True,
+                          help="decision correlation_id to export")
+    p_export.add_argument("--output", default=None,
+                          help="optional output JSON path; stdout if omitted")
+    p_export.add_argument("--config", default=None,
+                          help="optional AppConfig JSON to embed in the fixture")
+    p_export.add_argument("--name", default=None,
+                          help="optional fixture name; defaults to correlation_id")
+    p_export.add_argument(
+        "--allow-fitted-artifacts",
+        action="store_true",
+        help="export non-bootstrap decisions that require a matching artifact bundle",
+    )
+    p_export.set_defaults(func=_cmd_export_replay)
     return parser
 
 
