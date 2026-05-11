@@ -123,8 +123,7 @@ Goal: make the system easy to review and evolve.
 
 The best next increment is:
 
-1. turn artifact metadata into a stricter manifest with shape and feature
-   contract validation
-2. add external lease / lock guidance for multi-instance deployment
+1. add external lease / lock guidance for multi-instance deployment
+2. add a replay-fixture exporter from SQLite decision audit rows
 3. expand the replay corpus from branch coverage into incident-style
    scenario coverage

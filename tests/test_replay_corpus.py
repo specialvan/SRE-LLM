@@ -12,10 +12,12 @@ from gan_matchmaking.core import MetricsRegistry, load_config
 from gan_matchmaking.eomm import RetentionModel
 from gan_matchmaking.sre import SelfIterationPipeline
 from gan_matchmaking.sre.artifacts import (
+    EOMM_FEATURE_NAMES,
     build_metadata,
     save_cox_artifact,
     save_retention_artifact,
 )
+from gan_matchmaking.sre.features import RISK_FEATURE_NAMES
 from gan_matchmaking.survival import CoxModel
 
 
@@ -38,6 +40,8 @@ def _write_artifacts(spec: dict, directory: Path, fixture_name: str) -> None:
             "retention",
             source_window={"fixture": fixture_name},
             config={"fixture": fixture_name, "model": "retention"},
+            extra={"feature_dim": len(EOMM_FEATURE_NAMES),
+                   "feature_names": list(EOMM_FEATURE_NAMES)},
             trained_at=1.0,
             build_id="replay-fixture",
         )
@@ -53,6 +57,8 @@ def _write_artifacts(spec: dict, directory: Path, fixture_name: str) -> None:
             "cox",
             source_window={"fixture": fixture_name},
             config={"fixture": fixture_name, "model": "cox"},
+            extra={"feature_dim": len(RISK_FEATURE_NAMES),
+                   "feature_names": list(RISK_FEATURE_NAMES)},
             trained_at=1.0,
             build_id="replay-fixture",
         )

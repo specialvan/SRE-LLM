@@ -19,10 +19,12 @@ from gan_matchmaking.sre import (
     Service,
 )
 from gan_matchmaking.sre.artifacts import (
+    EOMM_FEATURE_NAMES,
     build_metadata,
     save_cox_artifact,
     save_retention_artifact,
 )
+from gan_matchmaking.sre.features import RISK_FEATURE_NAMES
 
 
 def _ctx(**overrides):
@@ -170,12 +172,14 @@ def test_pipeline_hydrates_runtime_artifacts(tmp_path):
         "retention",
         source_window={"n_samples": 12, "n_observations": 18},
         config={"lr": 0.05, "iters": 200},
+        extra={"feature_dim": len(EOMM_FEATURE_NAMES),
+               "feature_names": list(EOMM_FEATURE_NAMES)},
         build_id="test-build",
     )
     save_retention_artifact(tmp_path, retention_model, retention_meta)
 
     cox_model = CoxModel(
-        beta=np.array([0.9, -0.4], dtype=float),
+        beta=np.array([0.9, -0.4, 0.2, 0.1, 0.05, 0.3], dtype=float),
         _baseline_t=np.array([1.0, 10.0], dtype=float),
         _baseline_H=np.array([0.1, 0.25], dtype=float),
     )
@@ -183,6 +187,8 @@ def test_pipeline_hydrates_runtime_artifacts(tmp_path):
         "cox",
         source_window={"n_observations": 18, "n_events": 6},
         config={"min_events": 3},
+        extra={"feature_dim": len(RISK_FEATURE_NAMES),
+               "feature_names": list(RISK_FEATURE_NAMES)},
         build_id="test-build",
     )
     save_cox_artifact(tmp_path, cox_model, cox_meta)
@@ -199,3 +205,26 @@ def test_pipeline_hydrates_runtime_artifacts(tmp_path):
     assert decision.artifact_version == pipeline.artifacts.version
     assert decision.trace["artifacts"]["version"] == pipeline.artifacts.version
     assert decision.trace["stages"]["eomm"]["source"] == "artifact"
+
+
+def test_invalid_artifact_manifest_falls_back(tmp_path):
+    retention_model = RetentionModel()
+    retention_model.weights = np.ones(8, dtype=float)
+    bad_meta = build_metadata(
+        "retention",
+        source_window={"n_samples": 12},
+        config={"lr": 0.05},
+        extra={"feature_dim": 8,
+               "feature_names": ["wrong"] * len(EOMM_FEATURE_NAMES)},
+        build_id="test-build",
+    )
+    save_retention_artifact(tmp_path, retention_model, bad_meta)
+
+    cfg = AppConfig(artifacts=ArtifactsConfig(directory=str(tmp_path)))
+    pipeline = SelfIterationPipeline(config=cfg, metrics=MetricsRegistry())
+    decision = pipeline.decide(_ctx())
+
+    assert pipeline.artifacts.version == "bootstrap"
+    assert decision.artifact_version == "bootstrap"
+    assert decision.trace["artifacts"]["validation_errors"]["retention"]
+    assert decision.trace["stages"]["eomm"]["source"] == "fallback"

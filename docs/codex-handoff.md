@@ -4,7 +4,7 @@
 - 当前分支：`gan-session`
 - 当前方向：把 matchmaking / rating / decision 方案稳定成可审计、可训练、可回放的 SRE 决策流水线
 - 现状：九个机制的语义映射、架构拆解、模块契约、状态生命周期、实施路线图、ADR 已经成体系
-- 最新进展：runtime artifact 版本化已经接入在线决策链路，`Decision.artifact_version`、SQLite 决策审计表、训练产物元数据、runtime hydrate 都已打通；golden replay corpus 已覆盖 fallback / fitted artifact / freeze / rollback / escalation
+- 最新进展：runtime artifact 版本化已经接入在线决策链路，`Decision.artifact_version`、SQLite 决策审计表、训练产物元数据、runtime hydrate 都已打通；golden replay corpus 已覆盖 fallback / fitted artifact / freeze / rollback / escalation；artifact manifest 已校验 feature_names / shape / Cox baseline，不合格会降级为 bootstrap 并写入 trace
 
 ## 机制地图
 | 数学机制 | SRE 映射 | 代码位置 |
@@ -39,6 +39,9 @@
   - 主决策链路可运行
   - 已接 runtime artifact hydrate
   - 已把决策落回存储
+- `sre/artifacts.py`
+  - 已支持 runtime artifact manifest 校验
+  - 校验失败会跳过对应 artifact，并把错误写入 `trace["artifacts"]["validation_errors"]`
 - `training/`
   - 已能从 store 训练 Cox / Retention，并输出权重 + 元数据
 - `tests/fixtures/replay/`
@@ -61,6 +64,7 @@
 2. **artifact 与 fallback 的切换要可见**
    - 线上必须能看出当前是 artifact 路径还是 bootstrap 路径
    - `trace["artifacts"]` 是主入口
+   - 当前 loader 已对 feature contract 做硬校验；坏 artifact 会显式降级
 
 3. **决策审计和幂等性**
    - `correlation_id` 不能乱复用
@@ -91,11 +95,11 @@
 这个结构可以迁移到发布控制、容量调度、故障分流、巡检节流、告警降噪、回滚决策等场景。
 
 ## 下一步
-1. 给 runtime artifact 增加更强的校验与 manifest，显式校验 feature_names / shape / baseline
-2. 扩展 golden replay corpus，从分支覆盖升级成事故叙事场景
-3. 给 replay 增加从 SQLite 决策审计表导出 fixture 的工具
-4. 给多实例部署补外部锁或 lease
-5. 把 `PR-REQUIREMENTS.md` 继续收敛成可执行的 phase 任务单
+1. 扩展 golden replay corpus，从分支覆盖升级成事故叙事场景
+2. 给 replay 增加从 SQLite 决策审计表导出 fixture 的工具
+3. 给多实例部署补外部锁或 lease
+4. 把 `PR-REQUIREMENTS.md` 继续收敛成可执行的 phase 任务单
+5. 用真实观测数据校准 Cox / Retention 的阈值和学习率
 
 ## 交接建议
 - 下一位先读 `docs/architecture.md`

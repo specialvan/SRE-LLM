@@ -21,6 +21,7 @@ from ..persistence import Observation
 from ..survival import CoxModel
 from ..types import MatchConfig, Player, Rating
 from .domain import ReleaseCandidate, Service
+from .features import RISK_FEATURE_NAMES
 
 
 EOMM_FEATURE_NAMES = (
@@ -121,6 +122,7 @@ class CoxArtifact:
 class RuntimeArtifactBundle:
     retention: Optional[RetentionArtifact] = None
     cox: Optional[CoxArtifact] = None
+    validation_errors: Mapping[str, Sequence[str]] = field(default_factory=dict)
 
     @property
     def version(self) -> str:
@@ -141,6 +143,10 @@ class RuntimeArtifactBundle:
             "fitted": self.fitted,
             "retention": None if self.retention is None else self.retention.as_trace(),
             "cox": None if self.cox is None else self.cox.as_trace(),
+            "validation_errors": {
+                key: list(errors)
+                for key, errors in self.validation_errors.items()
+            },
         }
 
 
@@ -251,6 +257,93 @@ def build_history_vector(
         last_duration,
         avg_duration,
     ]
+
+
+def _declared_feature_names(metadata: ArtifactMetadata) -> Optional[list[str]]:
+    names = metadata.extra.get("feature_names")
+    if names is None:
+        return None
+    if not isinstance(names, Sequence) or isinstance(names, (str, bytes)):
+        return []
+    return [str(name) for name in names]
+
+
+def _declared_feature_dim(metadata: ArtifactMetadata) -> Optional[int]:
+    dim = metadata.extra.get("feature_dim")
+    if dim is None:
+        return None
+    try:
+        return int(dim)
+    except (TypeError, ValueError):
+        return -1
+
+
+def validate_retention_artifact(artifact: RetentionArtifact) -> list[str]:
+    """Return manifest/shape issues that make a retention artifact unsafe."""
+    errors: list[str] = []
+    if artifact.metadata.name != "retention":
+        errors.append(f"name={artifact.metadata.name!r} expected 'retention'")
+    if artifact.weights.ndim != 1:
+        errors.append(f"weights.ndim={artifact.weights.ndim} expected 1")
+    if artifact.weights.shape[0] != len(EOMM_FEATURE_NAMES):
+        errors.append(
+            f"weights_dim={artifact.weights.shape[0]} expected {len(EOMM_FEATURE_NAMES)}"
+        )
+    declared_dim = _declared_feature_dim(artifact.metadata)
+    if declared_dim is None:
+        errors.append("manifest.extra.feature_dim missing")
+    elif declared_dim != artifact.weights.shape[0]:
+        errors.append(
+            f"manifest.feature_dim={declared_dim} != weights_dim={artifact.weights.shape[0]}"
+        )
+    declared_names = _declared_feature_names(artifact.metadata)
+    if declared_names is None:
+        errors.append("manifest.extra.feature_names missing")
+    elif declared_names != list(EOMM_FEATURE_NAMES):
+        errors.append("manifest.extra.feature_names mismatch")
+    if not np.isfinite(artifact.weights).all() or not np.isfinite(artifact.bias):
+        errors.append("weights/bias contain non-finite values")
+    return errors
+
+
+def validate_cox_artifact(artifact: CoxArtifact) -> list[str]:
+    """Return manifest/shape issues that make a Cox artifact unsafe."""
+    errors: list[str] = []
+    if artifact.metadata.name != "cox":
+        errors.append(f"name={artifact.metadata.name!r} expected 'cox'")
+    if artifact.beta.ndim != 1:
+        errors.append(f"beta.ndim={artifact.beta.ndim} expected 1")
+    if artifact.beta.shape[0] != len(RISK_FEATURE_NAMES):
+        errors.append(
+            f"beta_dim={artifact.beta.shape[0]} expected {len(RISK_FEATURE_NAMES)}"
+        )
+    declared_dim = _declared_feature_dim(artifact.metadata)
+    if declared_dim is None:
+        errors.append("manifest.extra.feature_dim missing")
+    elif declared_dim != artifact.beta.shape[0]:
+        errors.append(
+            f"manifest.feature_dim={declared_dim} != beta_dim={artifact.beta.shape[0]}"
+        )
+    declared_names = _declared_feature_names(artifact.metadata)
+    if declared_names is None:
+        errors.append("manifest.extra.feature_names missing")
+    elif declared_names != list(RISK_FEATURE_NAMES):
+        errors.append("manifest.extra.feature_names mismatch")
+    if artifact.baseline_t.ndim != 1 or artifact.baseline_H.ndim != 1:
+        errors.append("baseline arrays must be 1-dimensional")
+    elif artifact.baseline_t.shape[0] != artifact.baseline_H.shape[0]:
+        errors.append(
+            f"baseline length mismatch: t={artifact.baseline_t.shape[0]} H={artifact.baseline_H.shape[0]}"
+        )
+    elif artifact.baseline_t.shape[0] <= 0:
+        errors.append("baseline arrays are empty")
+    if (
+        not np.isfinite(artifact.beta).all()
+        or not np.isfinite(artifact.baseline_t).all()
+        or not np.isfinite(artifact.baseline_H).all()
+    ):
+        errors.append("beta/baseline contain non-finite values")
+    return errors
 
 
 def save_retention_artifact(
@@ -367,15 +460,29 @@ def load_runtime_artifacts(
     if directory is None:
         return RuntimeArtifactBundle()
     path = Path(directory)
+    retention = load_retention_artifact(
+        path,
+        weights_filename=retention_filename,
+        metadata_filename=retention_metadata_filename,
+    )
+    cox = load_cox_artifact(
+        path,
+        weights_filename=cox_filename,
+        metadata_filename=cox_metadata_filename,
+    )
+    validation_errors: dict[str, list[str]] = {}
+    if retention is not None:
+        errors = validate_retention_artifact(retention)
+        if errors:
+            validation_errors["retention"] = errors
+            retention = None
+    if cox is not None:
+        errors = validate_cox_artifact(cox)
+        if errors:
+            validation_errors["cox"] = errors
+            cox = None
     return RuntimeArtifactBundle(
-        retention=load_retention_artifact(
-            path,
-            weights_filename=retention_filename,
-            metadata_filename=retention_metadata_filename,
-        ),
-        cox=load_cox_artifact(
-            path,
-            weights_filename=cox_filename,
-            metadata_filename=cox_metadata_filename,
-        ),
+        retention=retention,
+        cox=cox,
+        validation_errors=validation_errors,
     )

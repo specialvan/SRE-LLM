@@ -67,6 +67,10 @@ fallback, or policy boundary.
 - Check `trace.artifacts.version` first. A decision may differ because the
   runtime loaded a different retention / Cox artifact even when the code
   and config are unchanged.
+- If `trace.artifacts.validation_errors` is non-empty, the runtime skipped
+  at least one artifact because its manifest did not match the expected
+  feature contract, shape, or Cox baseline arrays. Re-run with the exact
+  artifact directory or rebuild the artifact from the matching trainer.
 - Look for *shared-registry* test pollution: if two pipelines run in the
   same process and share `default_registry`, metrics snapshot may differ
   but the `Decision` should still match.
