@@ -166,6 +166,10 @@ def summarise_results(name: str, results: List[dict]) -> dict:
         planner_counts.get("emergency_brake", 0) / total_steps
         if total_steps else 0.0
     )
+    planner_best_effort_rate = (
+        planner_counts.get("best_effort", 0) / total_steps
+        if total_steps else 0.0
+    )
     guard_intervention_rate = (
         1.0 - cbf_counts.get("nom_ok", 0) / total_steps
         if total_steps and cbf_counts else 0.0
@@ -182,6 +186,7 @@ def summarise_results(name: str, results: List[dict]) -> dict:
         "guard_intervention_rate": float(guard_intervention_rate),
         "cbf_fallback_rate": float(cbf_fallback_rate),
         "planner_emergency_rate": float(planner_emergency_rate),
+        "planner_best_effort_rate": float(planner_best_effort_rate),
         "cbf_status_counts": dict(cbf_counts),
         "planner_status_counts": dict(planner_counts),
     }
@@ -204,6 +209,7 @@ def print_summary(summary: dict) -> None:
         print(f"  CBF statuses  : {summary['cbf_status_counts']}")
     if summary["planner_status_counts"]:
         print(f"  emergency rate: {summary['planner_emergency_rate']:.2%}")
+        print(f"  best effort   : {summary['planner_best_effort_rate']:.2%}")
         print(f"  planner status: {summary['planner_status_counts']}")
 
 

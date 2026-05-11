@@ -70,6 +70,9 @@ class ControlInvariantOperator:
                 self.stability.manifold, self.stability.target_speed,
             )
 
+        def _cbf_ok(cand: Control) -> bool:
+            return self.cbf._all_barriers_ok(state, cand)
+
         dv = _dv(u)
         info["dV_dt"] = float(dv)
 
@@ -79,30 +82,39 @@ class ControlInvariantOperator:
             return u, info
 
         # Relax toward exponential-decay target; accept the first candidate
-        # that at least achieves dV/dt ≤ 0
+        # that at least achieves dV/dt ≤ 0. The jerk direction follows the
+        # velocity-tracking error: if we are below target speed, increasing
+        # jerk is the only way to unwind negative acceleration.
         best_u, best_dv = u, dv
+        if abs(state.v - self.stability.target_speed) < 1e-6:
+            jerk_direction = -1.0 if state.a > 0 else 1.0
+        else:
+            jerk_direction = -1.0 if state.v > self.stability.target_speed else 1.0
         for step in range(self.relax_steps):
-            new_jerk = max(
-                u.jerk - self.params.jerk_max / self.relax_steps,
-                -self.params.jerk_max,
-            )
+            new_jerk = u.jerk + jerk_direction * self.params.jerk_max / self.relax_steps
+            new_jerk = float(np.clip(new_jerk, -self.params.jerk_max, self.params.jerk_max))
             u = Control(steer=u.steer, jerk=new_jerk)
             dv = _dv(u)
             if dv < best_dv:
                 best_u, best_dv = u, dv
-            if dv <= exp_target + 1e-6:
+            if dv <= exp_target + 1e-6 and _cbf_ok(u):
                 info["dV_dt"] = float(dv)
                 info["status"] = "relaxed_exp"
                 return u, info
-            if dv <= self.tol:
+            if dv <= self.tol and _cbf_ok(u):
                 info["dV_dt"] = float(dv)
                 info["status"] = "relaxed"
                 return u, info
 
         info["dV_dt"] = float(best_dv)
-        if best_dv <= self.tol:
+        if best_dv <= self.tol and _cbf_ok(best_u):
             info["status"] = "relaxed"
             return best_u, info
+
+        if cbf_info.get("status") != "fallback_brake":
+            info["dV_dt"] = float(_dv(u_cbf))
+            info["status"] = "best_effort"
+            return u_cbf, info
 
         # (3) last resort — emergency brake along original heading
         brake = Control(steer=0.0, jerk=-self.params.jerk_max)

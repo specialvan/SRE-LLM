@@ -57,6 +57,7 @@ python -m examples.compare_e2e_vs_structural \
 | `guard_intervention_rate` | float | CBF 非 `nom_ok` 的比例，仅结构化链路有意义 |
 | `cbf_fallback_rate` | float | CBF `fallback_brake` 比例 |
 | `planner_emergency_rate` | float | `T_inv` emergency brake 比例 |
+| `planner_best_effort_rate` | float | CBF 非 fallback 且未触发硬刹停、但 Lyapunov 暂未单调的恢复帧比例 |
 | `cbf_status_counts` | object | CBF 状态计数 |
 | `planner_status_counts` | object | planner / T_inv 状态计数 |
 
@@ -76,11 +77,11 @@ python -m examples.compare_e2e_vs_structural \
 reviewer 至少同时看四类指标：
 
 1. 安全：`collision_rate`、`worst_clearance_m`。
-2. 可用性：`guard_intervention_rate`、`cbf_fallback_rate`、`planner_emergency_rate`。
+2. 可用性：`guard_intervention_rate`、`cbf_fallback_rate`、`planner_emergency_rate`、`planner_best_effort_rate`。
 3. 舒适度：`avg_jerk_rms_mps3`。
 4. 实时性：`mean_step_time_ms`。
 
-如果结构化链路碰撞率低但 `planner_emergency_rate` 很高，说明系统更安全但可能过保守，下一步要调 CBF / T_inv / nominal policy 的边界，而不是只展示“0 碰撞”。
+如果结构化链路碰撞率低但 `planner_emergency_rate` 很高，说明系统更安全但可能过保守，下一步要调 CBF / T_inv / nominal policy 的边界，而不是只展示“0 碰撞”。如果 `planner_best_effort_rate` 很高但 emergency 很低，说明硬兜底减少了，但仍有大量帧处于“CBF 安全、Lyapunov 恢复中”的状态，应作为生产化前的稳定性风险继续收敛。
 
 ## SLO 阈值参考（AI-01）
 
@@ -88,11 +89,12 @@ reviewer 至少同时看四类指标：
 | --- | ---: | ---: | --- |
 | `collision_rate` | 0 | < 10^-6 / mile | P0 回退 PR |
 | `planner_emergency_rate` | <= 10% | < 0.5% | P1 告警，冻结 nominal policy 升级 |
+| `planner_best_effort_rate` | 观测项 | < 5% | P2 告警，继续优化 nominal / T_inv 恢复 |
 | `cbf_fallback_rate` | <= 10% | < 5% | P1 告警，优先修 nominal policy |
 | `mean_step_time_ms` | < 15 ms | < 15 ms P99 | P1 降频或缩小搜索预算 |
 
 Demo 阈值用于自动化测试，生产 SLO 来自 [knowledge-base.html](./knowledge-base.html) 的 SRE 评审口径。
-在 AI-02 完成前，availability SLO 测试应保持 `xfail(strict=True)`；AI-02 完成后必须移除 xfail。
+AI-02 已完成，availability SLO 测试不再允许 `xfail`；后续回退应直接让 CI 失败。
 
 ## 和 Trace 的关系
 

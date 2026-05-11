@@ -13,12 +13,13 @@ from typing import Any, Optional
 
 from .types import Control, State
 
-TRACE_SCHEMA_VERSION = "1.0"
+TRACE_SCHEMA_VERSION = "1.1"
 PLANNER_STATUS_VALUES = frozenset({
     "stable",
     "relaxed_exp",
     "relaxed",
     "non_increasing",
+    "best_effort",
     "emergency_brake",
 })
 CBF_STATUS_VALUES = frozenset({"nom_ok", "qp_ok", "fallback_brake"})

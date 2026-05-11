@@ -4,6 +4,8 @@
 > 适用范围：`auto-decide-session` 分支，当前 review pack + V2_Knowledge 状态。  
 > 当前日期：2026-05-12
 
+> **Codex 进展更新**：AI-01 / AI-02 / AI-03b 已在 2026-05-12 收口。当前 canonical benchmark：`collision_rate=0%`、`planner_emergency_rate=4.18%`、`cbf_fallback_rate=4.82%`，demo SLO 通过；新增观测项 `planner_best_effort_rate=63.76%`，作为下一轮生产化风险。
+
 ## 1. 一句话结论
 
 Claude 没有否定 auto-decide 的工程方向。
@@ -30,19 +32,26 @@ Claude 没有否定 auto-decide 的工程方向。
 | 领域 | 状态 | 说明 |
 | --- | --- | --- |
 | 碰撞安全 | 通过 | canonical benchmark 中 structural collision_rate = 0 |
-| trace 契约 | 通过 | `schema_version = 1.0`，JSONL 严格可解析 |
+| trace 契约 | 通过 | `schema_version = 1.1`，JSONL 严格可解析；v1.1 仅扩展 status enum |
 | benchmark metrics | 通过 | `benchmark.metrics.v1`，已有机器可读输出 |
 | CBF 基础测试 | 通过 | 已覆盖 braking-distance 随速度和低摩擦膨胀 |
 | 文档入口 | 基本通过 | README / V2_Knowledge / claude-review 已建立入口层 |
-| 单元测试 | 通过 | `19 / 19` 绿（Claude review pack 记录） |
+| 单元测试 | 通过 | `27 / 27` 绿（Codex AI-01/02/03b 后） |
 
-### 仍然阻塞的部分
+### 已解除的 P0/P1 阻塞
 
 | 阻塞 | 指标 | 当前值 | 目标 |
 | --- | --- | --- | --- |
-| AI-01 | `planner_emergency_rate` 红线测试 | 尚未固化 | demo 阈值 `<= 10%`，先 xfail |
-| AI-02 | nominal policy 可用性 | emergency ≈ 42% | 降到 `<= 10%` 且碰撞率保持 0 |
-| AI-03b | status 枚举 | 文档/代码未完全封闭 | trace 中枚举常量 + 测试 |
+| AI-01 | `planner_emergency_rate` 红线测试 | ✅ 已固化，无 xfail | demo 阈值 `<= 10%` |
+| AI-02 | nominal policy 可用性 | ✅ emergency = 4.18% | 降到 `<= 10%` 且碰撞率保持 0 |
+| AI-03b | status 枚举 | ✅ 已封闭，含 `best_effort` | trace 中枚举常量 + 测试 |
+
+### 新的剩余风险
+
+| 风险 | 指标 | 当前值 | 下一步 |
+| --- | --- | ---: | --- |
+| Lyapunov 恢复态偏高 | `planner_best_effort_rate` | 63.76% | AI-12 后继续拆分状态组合与 recovery 原因 |
+| CBF fallback 贴近生产阈值 | `cbf_fallback_rate` | 4.82% | AI-14 固化 artifact，后续优化 nominal 前瞻 |
 
 ### 已由 Claude 后处理的项
 
@@ -313,17 +322,15 @@ feat: 引入 PredictiveBrakePolicy 降低 emergency rate
 
 如果下一条指令是“继续”，建议按这个顺序做：
 
-1. 跑 `pytest -q`，确认 Claude 已做的小修没有破坏测试。
-2. 审查 `git status`，确认哪些文件是 Claude review pack / V2 hub。
-3. 提交 Round A：review pack + V2_Knowledge + 已完成小修。
-4. 做 AI-03b：status enum + tests + trace-schema。
-5. 做 AI-01：benchmark SLO xfail + SLO 表。
-6. 做 AI-02：PredictiveBrakePolicy。
-7. 跑 canonical benchmark：
+1. 跑 `pytest -q`，确认 27 tests 全绿。
+2. 跑 canonical benchmark：
    ```bash
    python -m examples.compare_e2e_vs_structural --n 50 --seed 0 --horizon 100 --dt 0.1 --metrics-out .local-artifacts/benchmark-metrics-seed0-n50.json
    ```
-8. 把结果追加到 `docs/claude-review/08-benchmark-log.md`。
+3. 做 AI-11：CI invariant scanner。
+4. 做 AI-12：T_inv / CBF 非法组合测试，包含 `(best_effort, fallback_brake)`。
+5. 做 AI-14：benchmark JSON 固化为 CI artifact。
+6. 把结果追加到 `docs/claude-review/08-benchmark-log.md`。
 
 ## 9. 最小验收线
 
@@ -341,7 +348,7 @@ canonical benchmark:
 docs/claude-review/08-benchmark-log.md 追加 post-AI-02 记录
 ```
 
-其余 P2/P3 是增强项，不应抢 P0 主线。
+这条线已经达到。下一轮的最低线变成：AI-11 / AI-12 / AI-14 至少完成其一，并保持上述 benchmark demo SLO 不回退。
 
 ## 10. 给下一轮 Codex 的提醒
 

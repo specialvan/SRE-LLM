@@ -9,6 +9,28 @@
 **生成 agent**：Claude Opus 4.7（Review & Knowledge Pack round）
 **触发事件**：Codex round-1 完成 trace / benchmark 契约后，Claude 做第一轮深度 review，同时建立统一入口层。
 
+### 2026-05-12（Codex 补丁 · AI-01/AI-02/AI-03b 收口）
+
+Codex 接手 Claude review pack 后关闭 P0 与剩余 P1：
+
+| AI | 类型 | 改动 |
+| --- | --- | --- |
+| AI-01 | 测试守门 | `tests/test_benchmark_metrics.py` 的 availability SLO 断言已启用，移除 `xfail(strict=True)` |
+| AI-02 | 策略升级 | 新增 `auto_decide/policies/PredictiveBrakePolicy`，`StructuralPlanner` 默认包裹 `GradientPolicy` |
+| AI-03b | 契约封闭 | `PLANNER_STATUS_VALUES` / `CBF_STATUS_VALUES` 常量 + strict trace 校验；新增 `best_effort` 恢复态 |
+
+canonical benchmark（n=50 seed=0）更新：
+
+- `collision_rate = 0.00%`；
+- `planner_emergency_rate = 4.18%`（demo SLO 通过，生产 SLO 仍未达）；
+- `cbf_fallback_rate = 4.82%`（demo 与生产告警线通过）；
+- `planner_best_effort_rate = 63.76%`（新观测项，说明恢复态仍偏高）；
+- `mean_step_time_ms = 1.86 ms`；
+- `TRACE_SCHEMA_VERSION = "1.1"`（status enum 扩展，字段集合不变）；
+- 27 / 27 tests 绿。
+
+本补丁不放宽 `cbf_alpha` / `game.base_buffer`，也不把硬约束改成 loss；风险从“硬刹停泛滥”转移为“Lyapunov 恢复态仍多”，下一轮应进入 AI-11 / AI-12 / AI-14。
+
 ### 2026-05-12（12:00 补丁 · 亲手清理 P1 易改项）
 
 Claude 在 V2 发布后同日清理了 4 项与策略无关的 action items，减轻 Codex 下一轮负担：
@@ -26,7 +48,7 @@ Claude 在 V2 发布后同日清理了 4 项与策略无关的 action items，�
 - `state.json` 字段 `action_items.done_by_claude_post_review` 记录已完成；
 - `state.json` `benchmark` 指标用 n=50 的更稳定结果（原 n=20）。
 
-**未触动**：所有 P0 / 剩余 P1 / P2 仍由 Codex 推进。不改算法、不改契约语义。
+**当时未触动**：所有 P0 / 剩余 P1 / P2 仍由 Codex 推进。不改算法、不改契约语义。（见上方 Codex 补丁：AI-01/02/03b 已完成。）
 
 ### 新增（V2 初版）
 
@@ -52,7 +74,7 @@ Claude 在 V2 发布后同日清理了 4 项与策略无关的 action items，�
 3. **agent 分流**：5 个角色 × 独立 SOP，避免通读整个文档栈。
 4. **文档不删**：`knowledge-base.html`（v1 总览）保留，由 V2 index 主动引用；不追求"V2 完全替代 v1"。
 
-### 对应代码状态
+### 对应代码状态（V2 初版基线，已被上方 Codex 补丁刷新）
 
 - 19 / 19 tests 绿；
 - `planner_emergency_rate = 42.5%`（SLO 违约，已生成 AI-02 任务）；

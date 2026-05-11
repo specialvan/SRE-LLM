@@ -97,6 +97,7 @@ def test_planner_status_enum_contents():
         "relaxed_exp",
         "relaxed",
         "non_increasing",
+        "best_effort",
         "emergency_brake",
     })
 

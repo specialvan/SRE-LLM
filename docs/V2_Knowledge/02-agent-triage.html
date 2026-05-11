@@ -66,34 +66,33 @@
 </header>
 
 <div class="goal">
-  <strong>目标</strong>：完成 Claude review pack 里的 action items，把 benchmark 的 SLO 违约修到达标。不扩新功能。
+  <strong>目标</strong>：在 P0/P1 已收口的基础上，把 benchmark / invariant 守门接进 CI，并继续拆解 best_effort 恢复态。不扩新功能。
 </div>
 
 <h4>开工前 · 10 分钟准备</h4>
 <ol class="step-list">
-  <li>跑 <code>pytest -q</code>，确认 19 tests 全绿。</li>
-  <li>跑 <code>python -m examples.compare_e2e_vs_structural --n 20 --metrics-out artifacts/m.json</code>，亲眼看到 <code>emergency_rate ≈ 42%</code>。</li>
-  <li>打开 <a href="../claude-review/00-executive-summary.html">claude-review/00-executive-summary.html</a>，5 分钟摘要。</li>
+  <li>跑 <code>pytest -q</code>，确认 27 tests 全绿。</li>
+  <li>跑 canonical benchmark，重点看 <code>emergency_rate</code>、<code>best_effort_rate</code>、<code>cbf_fallback_rate</code> 三个数。</li>
+  <li>打开 <a href="./01-current-state.html">01-current-state.html</a> 与 <a href="../claude-review/08-benchmark-log.md">08-benchmark-log.md</a>，对齐当前状态。</li>
   <li>打开 <a href="../claude-review/07-codex-directives.md">07-codex-directives.md</a>，默念 10 DO + 10 DON'T。</li>
 </ol>
 
 <h4>开工中 · 推荐的 PR 序列</h4>
-<p>按 <a href="../claude-review/07-codex-directives.md#期望的下一轮-pr-序列">07-directives 的 PR 序列</a>顺序推进，共 15 个 PR。最关键的顺序是：</p>
+<p>AI-01 / AI-02 / AI-03b 已完成。接下来按剩余风险面推进：</p>
 
 <ol class="step-list">
-  <li><strong>先做小修</strong>：AI-03a（title mojibake）/ AI-03c（summaizer 处置）/ AI-04（schema 演进）。</li>
-  <li><strong>再做契约</strong>：AI-03b（status 枚举） / AI-11（CI invariant scanner）。</li>
-  <li><strong>再做 SLO 守门</strong>：AI-01（benchmark 红线，<strong>初次 xfail</strong>）。</li>
-  <li><strong>核心升级</strong>：AI-02（PredictiveBrakePolicy，完成后<strong>去掉 xfail</strong>）。</li>
-  <li><strong>再做回归</strong>：AI-12（非法组合测试） / AI-14（benchmark CI artifact）。</li>
-  <li><strong>最后文档同步</strong>：AI-05/07/08/09/10/06/13。</li>
+  <li><strong>先做 CI invariant</strong>：AI-11（grep-based scanner）。</li>
+  <li><strong>再做状态组合回归</strong>：AI-12（含 <code>best_effort</code> 与 <code>fallback_brake</code> 的非法组合）。</li>
+  <li><strong>再固化 benchmark</strong>：AI-14（JSON artifact + 历史基线）。</li>
+  <li><strong>再接主文档</strong>：AI-05/07/08（metrics、失败树、trace 章节）。</li>
+  <li><strong>最后扫尾</strong>：AI-10/06/13（入口、调试日志、图剪枝测试）。</li>
 </ol>
 
 <h4>必用工具</h4>
 <div class="route-box">
   <dt>代码入口</dt><dd><code>auto_decide/planner.py::StructuralPlanner.step</code>（唯一外部入口）</dd>
   <dt>测试入口</dt><dd><code>pytest -q</code> · <code>pytest tests/test_X.py -v</code></dd>
-  <dt>benchmark</dt><dd><code>python -m examples.compare_e2e_vs_structural --n 50 --seed 0 --metrics-out artifacts/m.json</code></dd>
+  <dt>benchmark</dt><dd><code>python -m examples.compare_e2e_vs_structural --n 50 --seed 0 --horizon 100 --dt 0.1 --metrics-out .local-artifacts/benchmark-metrics-seed0-n50.json</code></dd>
   <dt>补丁骨架</dt><dd><a href="../claude-review/06-suggested-patches/">claude-review/06-suggested-patches/</a> · 5 份 markdown 格式的可 cherry-pick 骨架</dd>
   <dt>不变式目录</dt><dd><a href="../claude-review/03-invariants-catalog.md">03-invariants-catalog.md</a> · 29 条</dd>
   <dt>合约目录</dt><dd><a href="../claude-review/04-contracts-catalog.md">04-contracts-catalog.md</a> · 9 模块</dd>
@@ -123,15 +122,15 @@
 
 <h4>成功标志</h4>
 <ul>
-  <li>AI-01~AI-04 全部 close，CI 绿；</li>
-  <li>AI-02 完成后：<code>structural.planner_emergency_rate &lt; 10%</code> 且 <code>collision_rate == 0</code>；</li>
-  <li><code>test_structural_pipeline_respects_availability_budget</code> 从 xfail 变成 pass（<code>strict=True</code> 会报错除非删掉 xfail 装饰器）；</li>
+  <li>AI-11 / AI-12 / AI-14 close，CI 绿；</li>
+  <li>benchmark artifact 中同时保留 <code>planner_emergency_rate</code> 与 <code>planner_best_effort_rate</code>；</li>
+  <li><code>test_structural_pipeline_respects_availability_budget</code> 保持 pass，不再出现 xfail；</li>
   <li>所有 PR 描述里都明示关闭的 finding / AI 编号。</li>
 </ul>
 
 <div class="pit">
 <strong>已知陷阱 · Codex 最容易踩的三个</strong><br>
-① 看见"0 碰撞率"就以为达标 → benchmark 其实靠刹停堆出来，见 <a href="./01-current-state.html#slo">SLO 表</a>。<br>
+① 看见"0 碰撞率"和 demo emergency SLO 通过就以为达标 → <code>best_effort</code> 仍高，见 <a href="./01-current-state.html#slo">SLO 表</a>。<br>
 ② 升级 nominal 策略时想引入 ML → 保持只用 numpy + scipy。<br>
 ③ 改 trace 字段时忘记 bump schema_version → 详见 <a href="../claude-review/04-contracts-catalog.md">contracts-catalog 末尾的变更规则</a>。
 </div>
@@ -303,7 +302,7 @@
 
 <h4>必读顺序</h4>
 <ol class="step-list">
-  <li><a href="../trace-schema.md">trace-schema.md</a> —— trace v1.0 的 16 字段定义。</li>
+  <li><a href="../trace-schema.md">trace-schema.md</a> —— trace v1.1 的 16 字段定义（v1.1 仅扩展 status enum）。</li>
   <li><a href="../benchmark-metrics.md">benchmark-metrics.md</a> —— metrics JSON 的 schema。</li>
   <li><a href="./state.json">state.json</a> —— 机器可读的当前状态快照。</li>
 </ol>

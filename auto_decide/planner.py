@@ -110,6 +110,13 @@ class StructuralPlanner:
             cbf=self.cbf, stability=self.stability, params=self.params,
             gamma=self.gamma,
         )
+        if isinstance(self.nominal, GradientPolicy):
+            from .policies import PredictiveBrakePolicy
+            self.nominal = PredictiveBrakePolicy(
+                inner=self.nominal,
+                barriers=self.cbf.barriers,
+                dynamics=self.dynamics,
+            )
 
     # ------------------------------------------------------------------
     def step(self, state: State, graph: InteractionIntentGraph,

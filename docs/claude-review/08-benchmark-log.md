@@ -11,6 +11,46 @@
 
 ---
 
+## 2026-05-12 · post-AI-02 · PredictiveBrakePolicy + best_effort recovery
+
+**触发**：Codex 完成 AI-01 / AI-02 / AI-03b；默认 `GradientPolicy` 被 `PredictiveBrakePolicy` 包裹，trace status 枚举锁定并新增 `best_effort`。
+**代码状态**：`auto-decide-session` 分支，27/27 tests 绿；AI-01 的 `xfail(strict=True)` 已移除。
+**命令**：
+```bash
+python -m examples.compare_e2e_vs_structural --n 50 --seed 0 --horizon 100 --dt 0.1 \
+    --metrics-out .local-artifacts/benchmark-metrics-seed0-n50.json
+```
+
+| 指标 | pre-AI-02 baseline | post-AI-02 current | Δ |
+| --- | ---: | ---: | ---: |
+| `collision_rate` | 0.00 % | **0.00 %** | ✅ 持平 |
+| `worst_clearance_m` | +2.92 m | **+3.20 m** | ✅ +0.28 m |
+| `planner_emergency_rate` | 🚨 42.18 % | **4.18 %** | ✅ -38.00 pp，demo SLO 通过 |
+| `planner_best_effort_rate` | — | **63.76 %** | ⚠️ 新观测项，生产化前仍需压降 |
+| `cbf_fallback_rate` | 🚨 22.70 % | **4.82 %** | ✅ -17.88 pp，demo/生产告警线通过 |
+| `guard_intervention_rate` | 25.72 % | **5.08 %** | ✅ -20.64 pp |
+| `avg_jerk_rms_mps3` | 5.30 | **3.88** | ✅ 更平滑 |
+| `mean_step_time_ms` | 4.75 ms | **1.86 ms** | ✅ 仍低于 15 ms |
+
+**Planner status 分布**（total steps = 5000）：
+- `best_effort` = 3188 (63.76%) ⚠️
+- `relaxed` = 1197 (23.94%)
+- `non_increasing` = 399 (7.98%)
+- `emergency_brake` = 209 (4.18%)
+- `stable` = 7 (0.14%)
+
+**CBF status 分布**：
+- `nom_ok` = 4746 (94.92%)
+- `fallback_brake` = 241 (4.82%)
+- `qp_ok` = 13 (0.26%)
+
+**诊断**：
+- AI-02 主目标达成：碰撞率保持 0%，硬 `emergency_brake` 与 CBF fallback 均降到 demo SLO 内；
+- `best_effort` 数量很高，说明车辆在很多帧里已不需要硬刹停，但仍处于 jerk/加速度滞后导致的 Lyapunov 恢复态；
+- 下一轮不应再用单一 `planner_emergency_rate` 判断稳定性，需把 `planner_best_effort_rate` 纳入 production readiness 风险面。
+
+---
+
 ## 2026-05-12 · v2 baseline · pre-AI-02
 
 **触发**：Claude review pack 完成、P1 易改项清理完毕后，作为 AI-02 的对比基线。

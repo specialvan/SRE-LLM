@@ -4,7 +4,7 @@
 
 ## 版本
 
-- `schema_version`: 当前为 `1.0`
+- `schema_version`: 当前为 `1.1`
 
 ## 字段
 
@@ -21,7 +21,7 @@
 | `min_dist` | float | 当前状态下的最小障碍距离 |
 | `V` | float \| null | Lyapunov 值 |
 | `dV_dt` | float \| null | Lyapunov 导数 |
-| `status` | enum \| null | `T_inv.apply` 的状态码之一：<br>`stable`：首次即满足指数衰减目标；<br>`relaxed_exp`：松弛后满足指数衰减目标；<br>`relaxed`：松弛后满足 `dV_dt <= tol`；<br>`non_increasing`：首次即满足 `dV_dt <= tol` 但未达指数衰减；<br>`emergency_brake`：兜底刹停 |
+| `status` | enum \| null | `T_inv.apply` 的状态码之一：<br>`stable`：首次即满足指数衰减目标；<br>`relaxed_exp`：松弛后满足指数衰减目标；<br>`relaxed`：松弛后满足 `dV_dt <= tol`；<br>`non_increasing`：首次即满足 `dV_dt <= tol` 但未达指数衰减；<br>`best_effort`：v1.1 新增；CBF 已给出非 fallback 安全动作，但受 jerk/加速度滞后影响暂时无法满足 Lyapunov 单调，返回当前最优恢复动作；<br>`emergency_brake`：兜底刹停 |
 | `cbf_status` | enum \| null | `CBFQPFilter.filter` 的状态码之一：<br>`nom_ok`：名义命令直接满足所有 barrier；<br>`qp_ok`：网格搜索找到非平凡可行解；<br>`fallback_brake`：搜索失败，退化为刹停 |
 | `cbf_slack` | float \| null | CBF 松弛量 |
 | `cbf_violations` | array[float] | 每个 barrier 的约束值 |
@@ -47,6 +47,11 @@
 ## Schema Evolution（AI-04）
 
 trace schema 的演进规则如下，**任何 agent 在修改 `auto_decide/trace.py` 之前必须先读这一节**。
+
+### 版本历史
+
+- `1.0`：初版 JSONL trace 字段集合。
+- `1.1`：扩展 `status` enum，新增 `best_effort` 恢复态；字段集合不变，v1.x 读取器应保持兼容。
 
 ### 版本号含义
 

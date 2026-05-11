@@ -3,15 +3,25 @@
 > 分支：`auto-decide-session`  
 > 工作目录：`D:\workspace\SRE-LLM\auto-decide`  
 > 范围：架构、需求、任务拆解、方程锚点、SRE 迁移、reviewer 不变式与下一轮 refine  
-> 更新时间：2026-05-12（v2 · Claude review 完成后）
+> 更新时间：2026-05-12（v2 · Codex AI-01/02/03b 收口后）
 
-> 🔴 **下一轮开工前请先读 [docs/claude-review/README.md](./claude-review/README.md)**。
-> Claude 的 review 指出了 benchmark 下 `planner_emergency_rate = 42.5%` 严重违反 SLO（应 &lt; 0.5%）——
-> 这是当前最高优先级任务。所有需要做的事都列在 [action items](./claude-review/05-action-items.md) 里，开工按编号走。
+> 🟡 **下一轮开工前请先读 [docs/V2_Knowledge/01-current-state.html](./V2_Knowledge/01-current-state.html)**。
+> Claude 指出的 P0/P1 已由 Codex 收口：AI-01 SLO 守门、AI-02 PredictiveBrakePolicy、AI-03b status enum 均完成。
+> 当前重点从“硬 emergency 泛滥”转为“`best_effort` 恢复态偏高 + CI 固化”。
 
 ## 最新进展 · 2026-05-12 之后
 
-本次迭代没有改代码（19/19 tests 仍绿），但完成了两块"给下一轮 agent 的基础建设"：
+本次迭代已经从 review pack 进入工程收口，代码与文档同步推进：
+
+**0️⃣ Codex 收口 P0/P1（2026-05-12）**
+- **AI-01**：`tests/test_benchmark_metrics.py` 的 availability SLO 守门启用，移除 `xfail(strict=True)`；
+- **AI-02**：新增 `auto_decide/policies/PredictiveBrakePolicy`，`StructuralPlanner` 默认自动包裹 `GradientPolicy`；
+- **AI-03b**：`auto_decide.trace` 锁定 `PLANNER_STATUS_VALUES` / `CBF_STATUS_VALUES`，`build_trace_record(..., strict=True)` 会拒绝未知枚举；因新增 `best_effort`，trace schema 按规则 bump 到 v1.1；
+- 新增 `planner_best_effort_rate`，把“非硬刹停但 Lyapunov 恢复中”的帧单独暴露出来；
+- `pytest -q`：27 / 27 绿；
+- canonical benchmark（n=50 seed=0）：`collision_rate=0%`、`planner_emergency_rate=4.18%`、`cbf_fallback_rate=4.82%`、`planner_best_effort_rate=63.76%`。
+
+这意味着 demo SLO 已过，但 production readiness 仍要盯住 `best_effort` 和贴近阈值的 CBF fallback。
 
 **① 完整的 Claude Review Pack**（`docs/claude-review/` · 15 文件 · ~160 KB）
 - 2 个 P0 finding / 3 个 P1 / 7 个 P2；
@@ -33,9 +43,9 @@
 - **AI-04**：`trace-schema.md` 与 `benchmark-metrics.md` 各加 "Schema Evolution" 节（对应 INV-C-TRACE / INV-C-BENCH）；
 - **AI-09**：`examples/compare_e2e_vs_structural.py` 标注 `_pure_e2e_step` 为 INV-G2 合法例外。
 
-剩余 10 项由下一轮 Codex 推进。P0 仅剩 AI-01 / AI-02；P1 仅剩 AI-03b。
+剩余 7 项由下一轮 Codex 推进。P0/P1 已清零，优先级转为 AI-11 / AI-12 / AI-14。
 
-**代码层**：本轮 Codex 交付的 trace / benchmark 契约、CBF 测试矩阵均保留；本轮 Claude 补丁仅涉及 docstring / `.gitignore` / 目录重命名，不改函数行为，19/19 tests 仍绿。
+**代码层**：trace / benchmark 契约、CBF 测试矩阵、PredictiveBrakePolicy、status enum strict 校验均保留；`.local-artifacts/` 继续忽略 benchmark 派生产物。
 
 ## 当前状态
 
@@ -65,16 +75,15 @@ auto-decide 已经从"论文公式落地"推进到"可被 Codex / reviewer / SRE
 
 1. `planner.step()` 是唯一北向入口。
 2. `planner.run()` 负责产生 JSONL trace。
-3. `auto_decide/trace.py` 已把 trace 从调试输出提升为稳定契约（v1.0）。
+3. `auto_decide/trace.py` 已把 trace 从调试输出提升为稳定契约（当前 v1.1）。
 4. `CBF -> T_inv -> planner.step()` 是硬安全路径，不能被名义策略绕过。
 5. 软建议、稳定性、屏障约束、兜底降级已经在代码和文档中分层。
 6. `examples/compare_e2e_vs_structural.py` 已支持 `--metrics-out` 输出结构化 benchmark JSON。
-7. **Benchmark 实测揭示 `planner_emergency_rate = 42.5%`，违反 SLO，待 AI-02 修复**。
+7. **Benchmark 实测显示 `planner_emergency_rate` 已从 42.18% 降至 4.18%，但 `planner_best_effort_rate = 63.76%`，生产化前仍需压降/拆解**。
 
 当前工作区提醒：
 
-- `summaizer/` 目录处于未跟踪状态，包含可视化 HTML / zip / gif 素材。
-- 本次 handoff 不纳入该目录，避免把未确认的二进制和派生产物推入仓库。
+- `.local-artifacts/` 已在 `.gitignore` 中，benchmark JSON / 可视化派生产物不入库。
 - 若后续需要提交展示包，应先决定放在 `docs/`、`examples/` 还是 release artifact。
 
 ## 模块梳理
@@ -417,7 +426,7 @@ SRE 迁移时不要说“服务也有 Lyapunov 方程”这种空话。
 - benchmark 既能打印人类可读摘要，也能输出 JSON。
 - JSON 记录参数、两条链路 summary、差值和场景列表。
 - 指标同时覆盖安全、可用性、舒适度和实时性。
-- fallback / emergency 指标不能重复计数成一个模糊比例。
+- fallback / emergency / best_effort 指标不能重复计数成一个模糊比例。
 
 验收：
 
@@ -426,7 +435,7 @@ SRE 迁移时不要说“服务也有 Lyapunov 方程”这种空话。
 
 ## Task Breakdown
 
-### P0：交接稳定化
+### P0：交接稳定化（已完成）
 
 1. 维持 [codex-handoff.md](./codex-handoff.md) 为最新入口。
 2. 所有新文档回链到 README。
@@ -440,12 +449,12 @@ SRE 迁移时不要说“服务也有 Lyapunov 方程”这种空话。
 3. 继续加近距离、高速、jerk 饱和场景。
 4. 把 relative-degree limitation 写进 reviewer checklist。
 
-### P2：benchmark 结构化回归
+### P2：benchmark 结构化回归（进行中）
 
 1. 已扩展 `examples/compare_e2e_vs_structural.py` 的 CLI 参数：`--n`、`--seed`、`--horizon`、`--dt`。
 2. 已支持 `--metrics-out` 输出 JSON。
-3. 已输出 collision rate、clearance、jerk、step time、CBF status、planner status。
-4. 下一步把结果接入可视化 HTML，而不是手填收益。
+3. 已输出 collision rate、clearance、jerk、step time、CBF status、planner status、best_effort rate。
+4. 下一步把结果接入可视化 HTML 和 CI artifact，而不是手填收益。
 
 ### P3：SRE adapter 原型
 
@@ -454,20 +463,21 @@ SRE 迁移时不要说“服务也有 Lyapunov 方程”这种空话。
 3. 先实现只读解释器，不直接执行。
 4. trace 字段复用 auto-decide 的结构思想。
 
-### P4：review pack
+### P4：review pack（已处理）
 
-1. 决定 `summaizer/` 是否作为 release artifact。
-2. 若要入仓，拆出源文件和派生产物。
+1. `summaizer/` 已作为 `.local-artifacts/` 忽略，不作为代码提交资产。
+2. 若后续要入仓，需拆出源文件和派生产物。
 3. 避免同时提交 zip 和解压目录，除非明确需要离线包。
 
 ## Refine
 
 下一轮 refine 不要泛泛补文档，而要围绕四个问题推进：
 
-1. 哪个 hard gate 最容易误判？
-2. 哪个 trace 字段最能解释动作改写？
-3. 哪个 benchmark 场景最能暴露结构版和 e2e 版差异？
-4. 哪个 SRE 模式最适合先落地成只读 advisor？
+1. `best_effort` 是否可以继续细分成“加速度滞后 / CBF 贴边 / nominal 方向错误”？
+2. 哪个 hard gate 最容易误判？
+3. 哪个 trace 字段最能解释动作改写？
+4. 哪个 benchmark 场景最能暴露结构版和 e2e 版差异？
+5. 哪个 SRE 模式最适合先落地成只读 advisor？
 
 推荐循环：
 
@@ -506,6 +516,7 @@ SRE 迁移时不要说“服务也有 Lyapunov 方程”这种空话。
 | 相对阶误用 | 几何 CBF 看起来满足微分条件，但 jerk 系统来不及刹 | braking-distance barrier / 更高阶 CBF / 场景测试 |
 | 低摩擦低估 | 雨雪路面仍按常数刹车 | `a_brake(mu)` 状态相关 |
 | fallback 泛滥 | 系统安全但不可用 | fallback rate 作为 SLI |
+| best_effort 泛滥 | 硬刹停减少，但 Lyapunov 仍长期处于恢复态 | `planner_best_effort_rate` 单独看，AI-12 后细分非法组合 |
 | trace 断链 | reviewer 看不到动作为什么被改写 | schema 测试 + JSONL 回放 |
 | SRE 误迁移 | 名词翻译了，机制没迁移 | 每个模式必须对应 SRE 控制点 |
 | 文档漂移 | 方程、代码、测试不一致 | 每次改动同步 `FORMULA_MAP` / `equations-digest` |
@@ -524,25 +535,23 @@ review 时按这个顺序看：
 8. `Lyapunov` 是否只承担稳定性职责。
 9. `reachable` 是否没有被当作形式化证明。
 10. `game` 的不确定性是否只改变 buffer / derating。
-11. benchmark 是否同时报告安全和耗时。
+11. benchmark 是否同时报告安全、耗时、fallback、emergency、best_effort。
 12. SRE 文档是否迁移机制而不是迁移术语。
 
 ## 下一步（2026-05-12 更新）
 
-**最高优先级**（阻断主线）：
+**已收口**：
 
-1. **[AI-01](./claude-review/05-action-items.md#ai-01)** · benchmark metrics 红线断言（xfail strict=True 守门）
-2. **[AI-02](./claude-review/05-action-items.md#ai-02)** · 升级 `GradientPolicy` → `PredictiveBrakePolicy`
-   （完整实现骨架见 [patch 01](./claude-review/06-suggested-patches/01-barrier-aware-policy.md)）
+1. **[AI-01](./claude-review/05-action-items.md#ai-01)** · benchmark metrics 红线断言已启用（无 xfail）
+2. **[AI-02](./claude-review/05-action-items.md#ai-02)** · `GradientPolicy` 默认升级为 `PredictiveBrakePolicy` 包裹
+3. **[AI-03b](./claude-review/05-action-items.md#ai-03b)** · status enum + strict trace 校验已落地
 
-**次高**：
+**下一轮优先级**：
 
-3. AI-03a/b/c · 修 architecture.html 乱码 / 锁 status 枚举 / 清理 `summaizer/`
-4. AI-04 · 写 schema 演进策略
-
-**长期**：
-
-5. AI-05 ~ AI-14 · 文档、CI、测试的补齐（见 [05-action-items.md](./claude-review/05-action-items.md) 完整表）
+1. **[AI-11](./claude-review/05-action-items.md#ai-11)** · CI invariant scanner
+2. **[AI-12](./claude-review/05-action-items.md#ai-12)** · T_inv / CBF 非法组合测试，补上 `(best_effort, fallback_brake)`
+3. **[AI-14](./claude-review/05-action-items.md#ai-14)** · benchmark JSON 固化为 CI artifact
+4. **AI-05 / AI-07 / AI-08** · 把 metrics、失败树、trace 章节接进主架构文档
 
 不再手动维护"下一步"的自由列表——所有事项都在 action items 里，状态由 `.progress.json` 跟踪。
 
@@ -551,8 +560,8 @@ review 时按这个顺序看：
 **推荐阅读顺序（首次接手）**：
 
 1. [V2_Knowledge/index.html](./V2_Knowledge/index.html) —— 5 分钟概览
-2. [claude-review/00-executive-summary.html](./claude-review/00-executive-summary.html) —— 本轮 review 结论
-3. [claude-review/07-codex-directives.md](./claude-review/07-codex-directives.md) —— 开工前必读的 DO/DON'T
+2. [V2_Knowledge/01-current-state.html](./V2_Knowledge/01-current-state.html) —— 最新 SLO / action item 状态
+3. [claude-review/08-benchmark-log.md](./claude-review/08-benchmark-log.md) —— pre/post AI-02 指标对比
 4. [claude-review/05-action-items.md](./claude-review/05-action-items.md) —— 找到你这轮要做的事
 
 **开工时的代码阅读顺序**（保持不变）：
@@ -561,20 +570,21 @@ review 时按这个顺序看：
 2. `auto_decide/dynamics.py`
 3. `auto_decide/cbf.py`
 4. `auto_decide/invariant.py`
-5. `auto_decide/planner.py`
-6. `auto_decide/trace.py`
+5. `auto_decide/policies/predictive_brake.py`
+6. `auto_decide/planner.py`
+7. `auto_decide/trace.py`
 
 **不要做**：
 
 - 不要为了降 `emergency_rate` 调宽 `cbf_alpha` 或缩小 `game.base_buffer` —— 详见 [07-codex-directives §DN](./claude-review/07-codex-directives.md#dont-禁令清单)
-- 不要扩新功能在 P0 没完成前
+- 不要把 `best_effort` 当作完全健康状态；它是恢复态，不是生产 SLO 通过证明
 - 不要跳过 review pack 直奔代码
 
 **做**：
 
-- 按 [action items](./claude-review/05-action-items.md) 的 ID 顺序推进
+- 按 [action items](./claude-review/05-action-items.md) 的剩余优先级推进（AI-11 → AI-12 → AI-14）
 - 每个 PR 关闭一个 AI-XX + 对应 finding
 - 跑完 benchmark 后把结果追加到 `docs/claude-review/08-benchmark-log.md`（见 [patch 02](./claude-review/06-suggested-patches/02-benchmark-ci.md)）
 
 这套项目的核心价值不是"自动驾驶 demo"，而是把不可控智能输出变成可审计、可回放、可迁移的结构化控制链路。
-<strong>上一轮搭好了契约和架构，这一轮让"聪明的那一端"配得上这些契约。</strong>
+<strong>上一轮搭好了契约和架构，这一轮把 P0/P1 拉过线；下一轮要让这些线进入 CI，并把 best_effort 恢复态拆到 reviewer 能自动检查的粒度。</strong>

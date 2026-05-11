@@ -58,7 +58,7 @@ manifold.min_distance(x) ≥ 0
 **标注**：`AUTO`（静态断言 `VehicleParams`）
 
 ### INV-G5 · trace 契约向后兼容
-**陈述**：`trace.py` 输出的 JSON 对象必须包含以下字段（v1.0）：
+**陈述**：`trace.py` 输出的 JSON 对象必须包含以下字段（v1.x，当前 v1.1）：
 ```
 schema_version, step, t, dt, state, next_state,
 u_nn, u_safe, min_dist, V, dV_dt, status, cbf_status,
@@ -116,9 +116,9 @@ cbf_slack, cbf_violations, cbf
 **标注**：`MANUAL`
 
 ### INV-G12 · status 枚举封闭
-**陈述**：`trace["status"]` ∈ {stable, relaxed_exp, relaxed, non_increasing, emergency_brake}；`trace["cbf_status"]` ∈ {nom_ok, qp_ok, fallback_brake}。
-**守护者**：`invariant.py` / `cbf.py` 返回值。
-**测试**：<strong>缺失</strong> — AI-03b 会补。
+**陈述**：`trace["status"]` ∈ {stable, relaxed_exp, relaxed, non_increasing, best_effort, emergency_brake}；`trace["cbf_status"]` ∈ {nom_ok, qp_ok, fallback_brake}。
+**守护者**：`auto_decide.trace.PLANNER_STATUS_VALUES` / `CBF_STATUS_VALUES` + `invariant.py` / `cbf.py` 返回值。
+**测试**：`test_trace.py::test_planner_status_enum_contents`、`test_trace.py::test_cbf_status_enum_contents`、`strict=True` trace 校验 ✅（AI-03b）。
 **违反后果**：下游 metric 聚合统计漏类。
 **标注**：`AUTO`（新加）
 
@@ -128,8 +128,9 @@ cbf_slack, cbf_violations, cbf
 - (relaxed_exp, fallback_brake)
 - (relaxed, fallback_brake)
 - (non_increasing, fallback_brake)
+- (best_effort, fallback_brake)
 
-原因：CBF 退化为 fallback 时，T_inv 的稳定性检查不应判 "稳定"——因为此时用的是 `Control(0, -j_max)` 而不是名义轨迹上的命令。
+原因：CBF 退化为 fallback 时，T_inv 不应再标成稳定、松弛成功或 `best_effort`——因为此时用的是 `Control(0, -j_max)` 而不是名义轨迹上的命令。
 **守护者**：`invariant.py::apply` 的返回逻辑。
 **测试**：<strong>缺失</strong> — AI-12 会补。
 **违反后果**：trace 统计逻辑矛盾，reviewer 会质疑。
@@ -201,7 +202,7 @@ cbf_slack, cbf_violations, cbf
 **测试**：`test_trace.py` ✅
 
 ### INV-M-TRACE-1 · schema_version 不自动升级
-**陈述**：`TRACE_SCHEMA_VERSION = "1.0"` 在代码里是常量；bump 必须是显式 PR。
+**陈述**：`TRACE_SCHEMA_VERSION = "1.1"` 在代码里是常量；bump 必须是显式 PR。
 **守护者**：`trace.py` 顶部常量。
 
 ### INV-M-TRACE-2 · 向量长度固定

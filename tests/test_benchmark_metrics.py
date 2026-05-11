@@ -2,8 +2,6 @@
 
 import json
 
-import pytest
-
 from examples.compare_e2e_vs_structural import (
     Scenario,
     build_metrics_payload,
@@ -23,7 +21,11 @@ def test_summarise_results_counts_statuses_and_guard_rates():
                 "elapsed_ms": 0.5,
                 "steps": 10,
                 "cbf_status_counts": {"nom_ok": 8, "fallback_brake": 2},
-                "planner_status_counts": {"stable": 7, "emergency_brake": 1},
+                "planner_status_counts": {
+                    "stable": 6,
+                    "best_effort": 1,
+                    "emergency_brake": 1,
+                },
             },
             {
                 "collided": True,
@@ -45,6 +47,7 @@ def test_summarise_results_counts_statuses_and_guard_rates():
     assert summary["guard_intervention_rate"] == 12 / 20
     assert summary["cbf_fallback_rate"] == 2 / 20
     assert summary["planner_emergency_rate"] == 1 / 20
+    assert summary["planner_best_effort_rate"] == 1 / 20
 
 
 def test_build_metrics_payload_is_json_safe():
@@ -83,17 +86,9 @@ def test_build_metrics_payload_is_json_safe():
     json.dumps(payload, allow_nan=False)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "AI-01 + AI-02: current GradientPolicy is not barrier-aware yet. "
-        "Remove this xfail when PredictiveBrakePolicy makes the SLO pass."
-    ),
-)
 def test_structural_pipeline_respects_availability_budget():
     """Demo SLO gate for structural benchmark availability.
 
-    This is intentionally xfail until AI-02 upgrades the nominal policy.
     Do not make it pass by loosening CBF/game/Lyapunov hard constraints.
     """
     payload = run_benchmark(n=20, seed=0, horizon=100, dt=0.1)

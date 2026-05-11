@@ -179,11 +179,12 @@
   - `u_safe: Control`
   - `info: dict`，键 `{"cbf", "V", "dV_dt", "status"}`
 - **POST**：
-  - `info["status"] ∈ {"stable", "relaxed_exp", "relaxed", "non_increasing", "emergency_brake"}`（INV-G12）
+  - `info["status"] ∈ {"stable", "relaxed_exp", "relaxed", "non_increasing", "best_effort", "emergency_brake"}`（INV-G12）
   - 若 `status ∈ {"stable", "relaxed_exp", "relaxed", "non_increasing"}`：`info["dV_dt"] ≤ tol`
+  - 若 `status == "best_effort"`：CBF 已返回非 `fallback_brake` 动作，且该动作没有被 T_inv 替换为硬刹停；`dV_dt` 可能仍暂时为正，必须被 benchmark 作为恢复态观测
   - 若 `status == "emergency_brake"`：`u_safe == Control(0, -jerk_max)`（INV-M-CBF-2 同构）
 - **终止性**：[INV-G7](./03-invariants-catalog.md#inv-g7)，最多 `relax_steps + 1` 次评估
-- **禁止组合**：[INV-G13](./03-invariants-catalog.md#inv-g13) 的 4 种非法 (status, cbf_status) 对
+- **禁止组合**：[INV-G13](./03-invariants-catalog.md#inv-g13) 的 5 种非法 (status, cbf_status) 对
 
 ---
 
@@ -227,7 +228,7 @@
   - `min_dist: float`
 - **OUT**：`dict`，16 个字段，严格 JSON-safe
 - **POST**：
-  - `output["schema_version"] == "1.0"`
+  - `output["schema_version"] == "1.1"`
   - `all(isinstance(x, (int, float, str, list, dict, type(None), bool)) for ...)`
   - inf/NaN 已清洗为 None
 - **INV**：[INV-G5](./03-invariants-catalog.md#inv-g5) · [INV-G6](./03-invariants-catalog.md#inv-g6) · [INV-M-TRACE-2](./03-invariants-catalog.md#inv-m-trace-2)

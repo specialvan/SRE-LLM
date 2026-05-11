@@ -5,10 +5,12 @@
 > Review 日期：2026-05-12
 > 目的：为下一轮 Codex 提供可执行的 review 反馈 + 更深的架构参考
 
+> Codex 更新：AI-01 / AI-02 / AI-03b 已于 2026-05-12 收口。最新状态见 [09-codex-synthesis.md](./09-codex-synthesis.md) 与 [08-benchmark-log.md](./08-benchmark-log.md) 顶部记录。
+
 ## TL;DR
 
 **评级**：APPROVED WITH FOLLOW-UPS · 不阻塞合入
-**主要结论**：工程纪律非常到位（trace 契约、benchmark 契约、19/19 tests 绿），但 benchmark 同时把系统**真实存在的 SLO 违约**暴露出来，Codex 未将其升级为高优任务。
+**主要结论**：工程纪律非常到位（trace 契约、benchmark 契约、测试全绿），但 benchmark 同时把系统**真实存在的可用性风险**暴露出来；最初是 emergency/fallback 违约，AI-02 后转为 best_effort 恢复态偏高。
 
 ## 本包目录
 
@@ -37,13 +39,14 @@
 | 指标 | 承诺 SLO | 实测 | 差距 |
 | --- | --- | --- | --- |
 | 碰撞率（结构化链路） | &lt; 10⁻⁶/mile | 0%（20 场景） | ✅ 达标 |
-| `planner_emergency_rate` | &lt; 0.5% | **42.5%** | 🚨 **86 倍** |
-| `cbf_fallback_rate` | &lt; 5%（告警线） | **23.1%** | 🚨 **5 倍** |
-| 单步时延 P99 | &lt; 15 ms | ~5 ms | ✅ |
-| 测试覆盖 | — | 19 / 19 绿 | ✅ |
-| trace 契约 | schema_version 稳定 | ✅ v1.0，JSONL 严格可解析 | ✅ |
+| `planner_emergency_rate` | &lt; 0.5% | **4.18%**（post-AI-02） | ✅ demo pass / ⚠️ prod fail |
+| `planner_best_effort_rate` | &lt; 5%（生产观测项） | **63.76%** | ⚠️ 恢复态偏高 |
+| `cbf_fallback_rate` | &lt; 5%（告警线） | **4.82%** | ✅ 贴线通过 |
+| 单步时延 P99 | &lt; 15 ms | ~1.83 ms mean | ✅ |
+| 测试覆盖 | — | 27 / 27 绿 | ✅ |
+| trace 契约 | schema_version 稳定 | ✅ v1.1，JSONL 严格可解析 | ✅ |
 
-最关键的洞察写在这里：**"0 碰撞率" 是因为每 2 步就有 1 步刹停兜底**。这不是 bug——这是 benchmark 契约第一次把"安全 vs 可用性的真实权衡"量化出来。下一轮必须把 nominal policy 升级到能配合 CBF，而不是把 CBF 的 alpha 调松来"好看"。
+最关键的洞察写在这里：**AI-02 已把硬刹停显著压低，但大量帧仍处于 best_effort 恢复态**。这不是 bug——这是 benchmark 契约继续把"安全 vs 可用性 vs 稳定恢复"的真实权衡量化出来。下一轮必须把 best_effort 纳入 CI / 回归分析，而不是只看 emergency 是否过线。
 
 ## 给 Codex 的一句话交接
 

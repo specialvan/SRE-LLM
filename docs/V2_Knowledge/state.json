@@ -1,7 +1,7 @@
 {
   "schema_version": "v2_knowledge.state.v1",
-  "generated_at": "2026-05-12T12:00:00Z",
-  "generated_by": "Claude Opus 4.7 (Review & Knowledge Pack round · post-P1-cleanup)",
+  "generated_at": "2026-05-12T17:55:00+08:00",
+  "generated_by": "Codex (AI-01/AI-02/AI-03b implementation round)",
   "project": {
     "name": "auto-decide",
     "branch": "auto-decide-session",
@@ -19,17 +19,18 @@
       "auto_decide/cbf.py",
       "auto_decide/invariant.py",
       "auto_decide/game.py",
+      "auto_decide/policies/predictive_brake.py",
       "auto_decide/planner.py",
       "auto_decide/trace.py"
     ],
-    "tests_total": 19,
-    "tests_passing": 19,
+    "tests_total": 27,
+    "tests_passing": 27,
     "examples": [
       "examples/demo_intersection.py",
       "examples/compare_e2e_vs_structural.py"
     ],
     "contracts": {
-      "trace_schema_version": "1.0",
+      "trace_schema_version": "1.1",
       "benchmark_metrics_schema": "benchmark.metrics.v1",
       "single_entry": "StructuralPlanner.step",
       "fallback_control": "Control(steer=0, jerk=-jerk_max)"
@@ -39,17 +40,18 @@
     "canonical_config": "--n 50 --seed 0 --horizon 100 --dt 0.1",
     "last_run_n": 50,
     "last_run_seed": 0,
-    "last_run_at": "2026-05-12T12:00:00Z",
+    "last_run_at": "2026-05-12T17:55:00+08:00",
     "last_run_artifact": ".local-artifacts/benchmark-metrics-seed0-n50.json",
     "structural": {
-      "collision_rate": 0.0,
-      "planner_emergency_rate": 0.4218,
-      "cbf_fallback_rate": 0.2270,
-      "guard_intervention_rate": 0.2572,
-      "avg_clearance_m": 3.64,
-      "worst_clearance_m": 2.9242,
-      "mean_step_time_ms": 4.7477,
-      "avg_jerk_rms_mps3": 5.30
+      "collision_rate": 0,
+      "planner_emergency_rate": 0.0418,
+      "cbf_fallback_rate": 0.0482,
+      "guard_intervention_rate": 0.0508,
+      "avg_clearance_m": 4.42,
+      "worst_clearance_m": 3.2,
+      "mean_step_time_ms": 1.86,
+      "avg_jerk_rms_mps3": 3.88,
+      "planner_best_effort_rate": 0.6376
     },
     "pure_e2e": {
       "collision_rate": 0.28,
@@ -58,9 +60,10 @@
     },
     "slo_status": {
       "collision_rate": "PASS",
-      "planner_emergency_rate": "FAIL_BY_84x",
-      "cbf_fallback_rate": "FAIL_BY_4.5x",
-      "mean_step_time_ms": "PASS"
+      "planner_emergency_rate": "PASS_DEMO_FAIL_PRODUCTION",
+      "cbf_fallback_rate": "PASS",
+      "mean_step_time_ms": "PASS",
+      "planner_best_effort_rate": "OBSERVE_HIGH"
     }
   },
   "review_state": {
@@ -75,18 +78,39 @@
     },
     "action_items": {
       "total": 14,
-      "done_by_claude_post_review": ["AI-03a", "AI-03c", "AI-04", "AI-09"],
+      "done_by_claude_post_review": [
+        "AI-03a",
+        "AI-03c",
+        "AI-04",
+        "AI-09"
+      ],
       "remaining": {
-        "p0": ["AI-01", "AI-02"],
-        "p1": ["AI-03b"],
-        "p2": ["AI-05", "AI-06", "AI-07", "AI-08", "AI-10", "AI-11", "AI-12"],
-        "p3": ["AI-13", "AI-14"]
+        "p0": [],
+        "p1": [],
+        "p2": [
+          "AI-05",
+          "AI-06",
+          "AI-07",
+          "AI-08",
+          "AI-10",
+          "AI-11",
+          "AI-12"
+        ],
+        "p3": [
+          "AI-13",
+          "AI-14"
+        ]
       },
       "progress_weight": {
-        "completed": 8,
+        "completed": 18,
         "total": 26,
-        "fraction": 0.308
-      }
+        "fraction": 0.692
+      },
+      "done_by_codex": [
+        "AI-01",
+        "AI-02",
+        "AI-03b"
+      ]
     }
   },
   "documents": {
@@ -154,7 +178,7 @@
       "INV-G1 manifold.min_distance >= 0",
       "INV-G2 planner.step is unique executor entry",
       "INV-G4 fallback Control(0, -jerk_max) always feasible",
-      "INV-G5 trace schema v1.0 backward-compatible",
+      "INV-G5 trace schema v1.x backward-compatible",
       "INV-G8 hard constraints stay hard (not penalty)",
       "INV-G9 Lyapunov V is pure speed-tracking (no distance term)"
     ]
@@ -179,11 +203,8 @@
     ]
   },
   "next_round_pr_sequence_remaining": [
-    "PR-AI-03b  feat: lock status enums + assertions",
     "PR-AI-11   ci:   invariant scanner",
-    "PR-AI-01   test: SLO gate (xfail pending AI-02)",
-    "PR-AI-02   feat: PredictiveBrakePolicy + remove xfail",
-    "PR-AI-12   test: forbidden status combinations",
+    "PR-AI-12   test: forbidden status combinations incl. best_effort",
     "PR-AI-14   ci:   benchmark runner & log automation",
     "PR-AI-05   docs: architecture.html consumes metrics.json",
     "PR-AI-07   docs: failure tree + scenario matrix",
@@ -201,8 +222,23 @@
     "2026-05-12T12:00:00Z": {
       "agent": "Claude Opus 4.7",
       "summary": "P1 easy items cleared + baseline benchmark captured.",
-      "action_items_completed": ["AI-03a", "AI-03c", "AI-04", "AI-09"],
+      "action_items_completed": [
+        "AI-03a",
+        "AI-03c",
+        "AI-04",
+        "AI-09"
+      ],
       "baseline_established": "docs/claude-review/08-benchmark-log.md"
+    },
+    "2026-05-12T17:55:00+08:00": {
+      "agent": "Codex",
+      "summary": "AI-01/AI-02/AI-03b completed: SLO gate active, PredictiveBrakePolicy wired, status enums locked; canonical benchmark now passes demo emergency/fallback SLO while best_effort remains high.",
+      "action_items_completed": [
+        "AI-01",
+        "AI-02",
+        "AI-03b"
+      ],
+      "benchmark_current": "docs/claude-review/08-benchmark-log.md#2026-05-12--post-ai-02--predictivebrakepolicy--best_effort-recovery"
     }
   }
 }

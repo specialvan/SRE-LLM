@@ -12,6 +12,7 @@
 .hero .lede{font-size:15px;color:var(--fg-soft);max-width:800px;margin-top:8px}
 .pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:#0b6b58;margin-right:4px;animation:pulse 1.8s infinite}
 .pulse.red{background:#b04018}
+.pulse.amber{background:#b08800}
 @keyframes pulse{0%{opacity:1}50%{opacity:0.3}100%{opacity:1}}
 .quickstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:18px 0 10px}
 .stat{border:1px solid var(--rule);border-radius:8px;padding:14px 16px;background:#fff}
@@ -49,24 +50,28 @@
   <h1>auto-decide 知识库 V2</h1>
   <p class="lede">给任何一个新接手的 agent（人 / Codex / 其它 LLM）<strong>一个入口</strong>。
     你不需要翻 4 份文档 —— 从本页的"agent 分流" 或"5 分钟速览" 开始即可。
-    <span style="color:#b04018;"><span class="pulse red"></span>当前主线：<strong>benchmark 揭示结构化链路 SLO 违约，已给出 14 条可执行 action items</strong>。</span></p>
+    <span style="color:#8a6500;"><span class="pulse amber"></span>当前主线：<strong>P0/P1 已收口，benchmark 进入 best_effort 恢复态与 CI 守门阶段</strong>。</span></p>
 
   <div class="quickstats">
     <div class="stat ok">
-      <div class="num">19 / 19</div>
+      <div class="num">27 / 27</div>
       <div class="lbl">pytest 全绿</div>
     </div>
     <div class="stat ok">
       <div class="num">0 %</div>
       <div class="lbl">结构化链路碰撞率（n=50 baseline）</div>
     </div>
+    <div class="stat info">
+      <div class="num">4.18 %</div>
+      <div class="lbl">emergency_brake 率（demo SLO 通过）</div>
+    </div>
     <div class="stat crit">
-      <div class="num">42.2 %</div>
-      <div class="lbl">emergency_brake 率 (SLO &lt; 0.5%)</div>
+      <div class="num">63.76 %</div>
+      <div class="lbl">best_effort 恢复态（生产化风险）</div>
     </div>
     <div class="stat info">
-      <div class="num">10 / 14</div>
-      <div class="lbl">Action items 待 Codex 执行（4 已由 Claude 清理）</div>
+      <div class="num">7 / 14</div>
+      <div class="lbl">Action items 剩余（P0/P1 = 0）</div>
     </div>
   </div>
 </section>
@@ -81,12 +86,13 @@
     <h4 style="color:#0b6b58">🟢 已完成</h4>
     <ol>
       <li>论文 35 个方程全部落地为代码</li>
-      <li>trace v1.0 / benchmark.metrics.v1 两个契约</li>
+      <li>trace v1.1 / benchmark.metrics.v1 两个契约</li>
       <li>9 个模块的完整 pre/post 合约</li>
       <li>29 条不变式目录</li>
       <li>Claude review pack · 12 findings</li>
       <li>14 条 action items · 5 个可 cherry-pick patch</li>
       <li>🆕 AI-03a/c/04/09 · Claude 亲手清理（4/14）</li>
+      <li>🆕 AI-01/02/03b · Codex 收口（P0/P1 清零）</li>
       <li>🆕 canonical benchmark baseline（n=50 seed=0）</li>
       <li>🆕 schema 演进策略（trace + benchmark）</li>
     </ol>
@@ -94,18 +100,18 @@
   <div class="flow-col">
     <h4 style="color:#b08800">🟡 进行中 / 剩余</h4>
     <ol>
-      <li><strong>AI-01</strong>：benchmark SLO 红线断言（xfail strict）</li>
-      <li><strong>AI-02</strong>：PredictiveBrakePolicy 升级（P0 主线）</li>
-      <li>AI-03b：锁 status 枚举</li>
-      <li>AI-05 ~ AI-14：8 个 P2/P3</li>
+      <li><strong>AI-11</strong>：CI invariant scanner</li>
+      <li><strong>AI-12</strong>：T_inv / CBF 非法组合测试</li>
+      <li><strong>AI-14</strong>：benchmark JSON 固化为 CI artifact</li>
+      <li>AI-05 ~ AI-10 / AI-13：文档可视化与边界测试</li>
     </ol>
   </div>
   <div class="flow-col">
     <h4 style="color:#b04018">🔴 已知风险</h4>
     <ol>
-      <li>emergency_rate = 42.2%（vs SLO 0.5%）</li>
-      <li>cbf_fallback_rate = 22.7%（vs SLO 5%）</li>
-      <li>GradientPolicy 与 CBF 结构性不匹配</li>
+      <li>best_effort_rate = 63.76%（恢复态仍高）</li>
+      <li>emergency_rate = 4.18%（demo pass，production fail）</li>
+      <li>cbf_fallback_rate = 4.82%（贴近 5% 阈值）</li>
       <li>benchmark canonical config 已固化，便于对比</li>
     </ol>
   </div>
@@ -118,7 +124,7 @@
 <div class="role-row">
   <div class="who">👷 下一轮 Codex</div>
   <div class="what">
-    <strong>目标</strong>：完成 P0 action items。<br>
+    <strong>目标</strong>：推进 CI 守门、非法组合测试和 best_effort 风险收敛。<br>
     <strong>路径</strong>：
     <a href="./02-agent-triage.html#codex">角色详情</a> →
     <a href="../claude-review/07-codex-directives.md">directives</a> →
@@ -204,9 +210,9 @@
 <h3>4.1 我想马上看到最紧急的事</h3>
 <div class="quicklink">
   <a href="../claude-review/00-executive-summary.html">00-executive-summary.html</a>
-  <a href="../claude-review/01-findings.md#f-p0-01">F-P0-01</a>
-  <a href="../claude-review/01-findings.md#f-p0-02">F-P0-02</a>
-  <a href="../claude-review/05-action-items.md#ai-02">AI-02 PredictiveBrakePolicy</a>
+  <a href="../claude-review/08-benchmark-log.md">post-AI-02 benchmark</a>
+  <a href="../claude-review/05-action-items.md#ai-11">AI-11 invariant scanner</a>
+  <a href="../claude-review/05-action-items.md#ai-12">AI-12 forbidden combos</a>
 </div>
 
 <h3>4.2 我要修 bug / 做 action item</h3>
@@ -237,14 +243,15 @@
 pip install -r requirements.txt
 
 # 运行测试
-pytest -q                                                      # 19 tests
+pytest -q                                                      # 27 tests
 
 # 跑 demo
 python -m examples.demo_intersection                           # 产出 trace.jsonl
 
-# 跑 benchmark（当前 SLO 违约，详见 AI-01/AI-02）
-python -m examples.compare_e2e_vs_structural --n 20 \
-    --metrics-out artifacts/metrics.json</code></pre>
+# 跑 canonical benchmark（看 emergency / best_effort / CBF fallback）
+python -m examples.compare_e2e_vs_structural --n 50 --seed 0 \
+    --horizon 100 --dt 0.1 \
+    --metrics-out .local-artifacts/benchmark-metrics-seed0-n50.json</code></pre>
 
 <h2 id="stability">5 · 契约稳定性承诺</h2>
 
@@ -252,11 +259,11 @@ python -m examples.compare_e2e_vs_structural --n 20 \
 <span class="tag">对下游 agent 的承诺</span>
 下列接口在未经过显式 <code>schema_version</code> bump 之前保持向后兼容：
 <ul>
-  <li><code>auto_decide.trace.TRACE_SCHEMA_VERSION = "1.0"</code></li>
+  <li><code>auto_decide.trace.TRACE_SCHEMA_VERSION = "1.1"</code></li>
   <li><code>benchmark.metrics.v1</code></li>
   <li><code>planner.step()</code> 的返回值形状</li>
   <li><code>VehicleParams</code> 字段（frozen dataclass）</li>
-  <li><code>PLANNER_STATUS_VALUES</code> / <code>CBF_STATUS_VALUES</code> 的枚举集合（完成 AI-03b 后）</li>
+  <li><code>PLANNER_STATUS_VALUES</code> / <code>CBF_STATUS_VALUES</code> 的枚举集合（AI-03b 已完成，含 <code>best_effort</code>）</li>
 </ul>
 只允许新增字段，不允许删除或改变已有字段语义。违反此承诺是 P0 级别。
 </div>
@@ -266,7 +273,7 @@ python -m examples.compare_e2e_vs_structural --n 20 \
 <dl class="kv-grid">
   <dt>知识库版本</dt><dd>V2 · 2026-05-12</dd>
   <dt>前序</dt><dd>v1 = <a href="../knowledge-base.html">knowledge-base.html</a>（首次评审）</dd>
-  <dt>生成 agent</dt><dd>Claude Opus 4.7（Review & Knowledge Pack round）</dd>
+  <dt>生成 agent</dt><dd>Claude Opus 4.7（Review & Knowledge Pack round）+ Codex AI-01/02/03b 收口补丁</dd>
   <dt>机器可读状态</dt><dd><a href="./state.json">state.json</a>（本轮所有结构化元数据）</dd>
   <dt>CHANGELOG</dt><dd><a href="./CHANGELOG.md">v1 → v2 差异</a></dd>
 </dl>

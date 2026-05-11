@@ -3,14 +3,14 @@
 > 本轮 Review 产出的全部任务，按优先级排序。每条有：ID / Title / Priority / Owner / Depends / 验收标准 / 建议实现路径。
 > Codex 下一轮可直接把这份文件当 sprint log 用。
 
-## 进度快照（2026-05-12 · Claude 亲手清理 P1 易改项后）
+## 进度快照（2026-05-12 · Codex AI-01/02/03b 收口后）
 
 | 状态 | 计数 | 项目 |
 | --- | --- | --- |
-| ✅ done | 4 | AI-03a · AI-03c · AI-04 · AI-09 |
-| 🔄 unassigned | 10 | AI-01 · AI-02 · AI-03b · AI-05 ~ AI-08 · AI-10 ~ AI-14 |
-| **P0 剩余** | **2** | AI-01（SLO 守门） · AI-02（PredictiveBrakePolicy） |
-| **P1 剩余** | **1** | AI-03b（status 枚举） |
+| ✅ done | 7 | AI-01 · AI-02 · AI-03a · AI-03b · AI-03c · AI-04 · AI-09 |
+| 🔄 unassigned | 7 | AI-05 ~ AI-08 · AI-10 ~ AI-14 |
+| **P0 剩余** | **0** | — |
+| **P1 剩余** | **0** | — |
 
 详见 [V2_Knowledge/01-current-state.html](../V2_Knowledge/01-current-state.html) 的 action items 进度表（需同步更新）。
 
@@ -18,10 +18,10 @@
 
 | ID | 标题 | Priority | Depends | Patch |
 | --- | --- | --- | --- | --- |
-| [AI-01](#ai-01) | benchmark metrics 红线断言 | P0 | — | [patch 03](./06-suggested-patches/03-benchmark-assertions.md) |
-| [AI-02](#ai-02) | 升级 nominal policy 到 barrier-aware | P0 | — | [patch 01](./06-suggested-patches/01-barrier-aware-policy.md) |
+| [AI-01](#ai-01) | benchmark metrics 红线断言 | P0 | — | [patch 03](./06-suggested-patches/03-benchmark-assertions.md) ✅ **done 2026-05-12** |
+| [AI-02](#ai-02) | 升级 nominal policy 到 barrier-aware | P0 | — | [patch 01](./06-suggested-patches/01-barrier-aware-policy.md) ✅ **done 2026-05-12** |
 | [AI-03a](#ai-03a) | 修 architecture.html title mojibake | P1 | — | — ✅ **done 2026-05-12** |
-| [AI-03b](#ai-03b) | 锁 T_inv / CBF status 枚举并加 assert | P1 | — | [patch 04](./06-suggested-patches/04-status-enums.md) |
+| [AI-03b](#ai-03b) | 锁 T_inv / CBF status 枚举并加 assert | P1 | — | [patch 04](./06-suggested-patches/04-status-enums.md) ✅ **done 2026-05-12** |
 | [AI-03c](#ai-03c) | 处置 summaizer/ 目录 | P1 | — | — ✅ **done 2026-05-12** |
 | [AI-04](#ai-04) | trace & benchmark schema 演进策略 | P1 | — | — ✅ **done 2026-05-12** |
 | [AI-05](#ai-05) | benchmark metrics JSON 注入 architecture.html | P2 | AI-01 | — |
@@ -40,6 +40,7 @@
 ## AI-01 · benchmark metrics 红线断言
 
 - **Priority**：P0
+- **Status**：✅ done 2026-05-12。`tests/test_benchmark_metrics.py::test_structural_pipeline_respects_availability_budget` 已移除 `xfail(strict=True)`，作为 demo SLO 守门。
 - **Finding**：[F-P0-01](./01-findings.md#f-p0-01)
 - **Why**：当前 benchmark 的 `planner_emergency_rate = 42.5%` 与 `cbf_fallback_rate = 23.1%` 都远超 SLO。没有 CI 断言的话，下一轮 Codex 可能把它调回"好看"。
 - **What**：
@@ -60,6 +61,7 @@
 ## AI-02 · 升级 nominal policy 到 barrier-aware
 
 - **Priority**：P0
+- **Status**：✅ done 2026-05-12。已新增 `auto_decide/policies/PredictiveBrakePolicy` 并在 `StructuralPlanner.__post_init__` 自动包裹默认 `GradientPolicy`；canonical benchmark 达到 demo SLO：`collision_rate=0%`、`planner_emergency_rate=4.18%`、`cbf_fallback_rate=4.82%`。
 - **Finding**：[F-P0-02](./01-findings.md#f-p0-02)
 - **Why**：当前 `GradientPolicy` 与 CBF 结构性不匹配，benchmark 里 42.5% 的命令都触发 emergency。
 - **What**：实现 `auto_decide/policies/barrier_aware.py` 中的 `BarrierAwareMPC` 或 `PredictiveBrakePolicy`（详见 [patch 01](./06-suggested-patches/01-barrier-aware-policy.md)）。
@@ -106,12 +108,14 @@
 ## AI-03b · 锁 T_inv / CBF status 枚举并加 assert
 
 - **Priority**：P1
+- **Status**：✅ done 2026-05-12。`auto_decide.trace` 已定义 `PLANNER_STATUS_VALUES` / `CBF_STATUS_VALUES`，`build_trace_record(..., strict=True)` 会拒绝未知枚举；新增 `best_effort` 用于区分 CBF 非 fallback 的 Lyapunov 恢复帧，并按 schema 规则 bump 到 trace v1.1。
 - **Finding**：[F-P1-02](./01-findings.md#f-p1-02)
 - **What**：
   1. 在 `auto_decide/trace.py` 顶部加：
      ```python
      PLANNER_STATUS_VALUES = frozenset({
-         "stable", "relaxed_exp", "relaxed", "non_increasing", "emergency_brake",
+         "stable", "relaxed_exp", "relaxed", "non_increasing",
+         "best_effort", "emergency_brake",
      })
      CBF_STATUS_VALUES = frozenset({"nom_ok", "qp_ok", "fallback_brake"})
      ```
@@ -271,6 +275,7 @@
           ("relaxed_exp", "fallback_brake"),
           ("relaxed", "fallback_brake"),
           ("non_increasing", "fallback_brake"),
+          ("best_effort", "fallback_brake"),
       }
       for t in traces:
           assert (t["status"], t["cbf_status"]) not in forbidden
@@ -312,7 +317,8 @@
 ```json
 {
   "AI-01": "done",
-  "AI-02": "in_progress",
+  "AI-02": "done",
+  "AI-03b": "done",
   "AI-03a": "done",
   ...
 }
