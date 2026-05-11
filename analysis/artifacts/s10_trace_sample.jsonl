@@ -1,0 +1,10 @@
+{"tick": 0, "t_seconds": 0.0, "stage": "WeightedLoadBalancer", "kind": "bounded_ls_residual", "detail": "box constraints or residuals were active", "safe_action": "report residual instead of pretending exact matching"}
+{"tick": 1, "t_seconds": 5.0, "stage": "WeightedLoadBalancer", "kind": "bounded_ls_residual", "detail": "box constraints or residuals were active", "safe_action": "report residual instead of pretending exact matching"}
+{"tick": 2, "t_seconds": 10.0, "stage": "WeightedLoadBalancer", "kind": "bounded_ls_residual", "detail": "box constraints or residuals were active", "safe_action": "report residual instead of pretending exact matching"}
+{"tick": 3, "t_seconds": 15.0, "stage": "WeightedLoadBalancer", "kind": "bounded_ls_residual", "detail": "box constraints or residuals were active", "safe_action": "report residual instead of pretending exact matching"}
+{"tick": 4, "t_seconds": 20.0, "stage": "WeightedLoadBalancer", "kind": "bounded_ls_residual", "detail": "box constraints or residuals were active", "safe_action": "report residual instead of pretending exact matching"}
+{"tick": 5, "t_seconds": 25.0, "stage": "WeightedLoadBalancer", "kind": "bounded_ls_residual", "detail": "box constraints or residuals were active", "safe_action": "report residual instead of pretending exact matching"}
+{"tick": 6, "t_seconds": 30.0, "stage": "WeightedLoadBalancer", "kind": "bounded_ls_residual", "detail": "box constraints or residuals were active", "safe_action": "report residual instead of pretending exact matching"}
+{"tick": 7, "t_seconds": 35.0, "stage": "WeightedLoadBalancer", "kind": "bounded_ls_residual", "detail": "box constraints or residuals were active", "safe_action": "report residual instead of pretending exact matching"}
+{"tick": 8, "t_seconds": 40.0, "stage": "SignalFusion", "kind": "missing_sensor", "detail": "metrics reading was absent in this tick", "safe_action": "skip update and keep posterior prediction"}
+{"tick": 8, "t_seconds": 40.0, "stage": "WeightedLoadBalancer", "kind": "bounded_ls_residual", "detail": "box constraints or residuals were active", "safe_action": "report residual instead of pretending exact matching"}

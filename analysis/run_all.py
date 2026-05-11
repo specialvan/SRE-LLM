@@ -20,6 +20,7 @@ STUDIES = [
     "analysis.s07_flip_maneuver",
     "analysis.s08_catch_allocation",
     "analysis.s09_sre_stack",
+    "analysis.s10_failure_trace",
 ]
 
 

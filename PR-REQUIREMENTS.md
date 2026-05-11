@@ -1,10 +1,10 @@
 ---
 spec: starship-recovery · PR-level functional requirements
-version: 0.3.2
+version: 0.3.3
 updated: 2026-05-12
 owner: spacex-session
 baseline-commit: cf9c8dc
-head-commit: dd9cd7a
+head-commit: (post-v0.3.3 commit · see git log)
 status-legend:
   - "✅ SHIPPED  · 已实现 · 有测试 + 证据"
   - "🟡 IN-PROG  · 已开工 · 尚未合并"
@@ -16,8 +16,8 @@ invariants:
   - I-3 降级路径对齐：runtime.degraded=True 必然伴随 DEGRADED_* 状态和至少 1 条 event
   - I-4 文档不钉死 HEAD：不得在文档里写"最新 commit = <具体 SHA>"，用"近期日志包含 <关键 commit>"表达
 quality-gates:
-  - pytest tests -q                 # 35 passed
-  - python -m analysis.run_all      # 9 studies finish <3s（待 PR-M-02 合并后 → 10 studies）
+  - pytest tests -q                 # 39 passed
+  - python -m analysis.run_all      # 10 studies finish <4s
   - python -m scripts.build_kb      # 16 assets rebuild
   - python -m examples.demo_sre_loop
   - HTML well-formed (html.parser)
@@ -66,8 +66,8 @@ quality-gates:
 
 | Gate | 命令 | 预期 |
 |---|---|---|
-| 单元测试 | `python -m pytest tests -q` | **35 passed** |
-| 基准证据 | `python -m analysis.run_all` | All 9 studies finish in ~3 s |
+| 单元测试 | `python -m pytest tests -q` | **39 passed** |
+| 基准证据 | `python -m analysis.run_all` | All 10 studies finish in ~3 s |
 | 资产构建 | `python -m scripts.build_kb` | 16 assets rebuilt |
 | 端到端 Demo | `python -m examples.demo_sre_loop` | 12 行 trace 无异常 |
 | PDG Demo | `python -m examples.demo_powered_descent` | 末态位置 ~2e-6 m |
@@ -704,30 +704,32 @@ disallowed: docs/*        ← no runtime code
 
 #### PR-M-02 · Failure-trace before/after · event-level 证据
 
-- **Status**: 🔵 PROPOSED · **优先级提升**（来自 `CODEX_TRIAGE.md §9` 推荐为下一轮首选）
-- **背景**：当前 before/after 证据（9 项）全部在证明"控制效果变好"，但
-  `EVENT_LIFECYCLE.md` 里描述的 brown-out / surge 事件密度还停留在叙事层——没有可复现
-  的 event-level 数值证据。这是可观测性抽象的最后一公里。
-- **范围**：新增 `analysis/s10_failure_trace.py`：
-  1. 在 `analysis/s09_sre_stack.py` 基础上**主动注入故障**：`missing_sensor` ×20 tick、
-     `replica_bound_active` ×10 tick、`unsafe_proposal_projected` ×5 tick。
-  2. 每 tick 收集 `runtime.events` 并按 `kind` 聚合。
-  3. 输出三件证据：
-     - 事件密度随时间曲线 (`docs/assets/s10_event_density.png`)
-     - 事件 kind 共现矩阵（Jaccard）(`docs/assets/s10_cooccurrence.png`)
-     - JSONL 样例 `analysis/artifacts/s10_trace_sample.jsonl`（10 行足够）
-  4. 把 s10 加到 `analysis/run_all.py` 的 STUDIES（→ 10 studies）。
-  5. 把三件证据嵌入 `docs/V2_Knowledge/knowledge-base.html` 的 `#lifecycle` 节。
-- **DoD**：
-  - `python -m analysis.s10_failure_trace` 跑通，产物写入 `analysis/artifacts/` 和
-    `docs/assets/`
-  - `analysis.run_all` 报告 **10 studies finished**
-  - `SUMMARY.txt` 新增一条 `§10 · failure trace` 含事件密度的 before/after 数字
-  - 新产物不破坏 I-2 / I-3 / I-4（尤其不能新增 event kind 也不能钉死 SHA）
-- **反面案例** (counter-example)：不要为了出图去**人为制造不平衡的场景**（例如把 baseline
-  的观测延迟调大）；变量只能是"是否注入事件"本身。
-- **代价评估**：约 150 行 Python + 5 行 HTML 嵌入；跑通需要 ~5 分钟。
-- **依赖**：无前置 PR。可作为下一轮首个原子 commit。
+- **Status**: ✅ SHIPPED (本轮 commit · 见 git log)
+- **背景**：之前 9 项 before/after 证据都在证明"控制效果变好"，但
+  `EVENT_LIFECYCLE.md` 里的 brown-out / surge 事件密度只是叙事。PR-M-02 把它变成
+  可复现的事件级证据。
+- **范围**（实现在 `analysis/s10_failure_trace.py`）：
+  1. 在同一条 300 s 仿真里主动注入三类故障：
+     - `t ∈ [40, 60]` · 丢失 primary sensor reading
+     - `t ∈ [120, 140]` · 收紧 `replicas_max = 18` 强制 MPC 打顶
+     - `t ∈ [220, 230]` · 发出 78° 偏离 nominal 的 NN proposal
+  2. 产出 3 件证据：
+     - `docs/assets/s10_event_density.png` + `V2_Knowledge/assets/` 同步
+     - `docs/assets/s10_cooccurrence.png` + `V2_Knowledge/assets/` 同步
+     - `analysis/artifacts/s10_trace_sample.jsonl`（10 行）
+  3. `analysis.run_all` STUDIES 列表追加 s10（→ 10 studies）。
+  4. `docs/V2_Knowledge/knowledge-base.html` 的 `#lifecycle` 节嵌入两张图。
+- **DoD**（全部达成）：
+  - ✅ `python -m analysis.s10_failure_trace` 跑通；3 件证据写入对应路径
+  - ✅ `analysis.run_all` 报告 **All 10 studies finished**
+  - ✅ `SUMMARY.txt` 新增 `§10 · Failure trace` 条目，带 event_count / distinct_kinds / mttr
+  - ✅ 新产物不破坏 I-2 / I-3 / I-4（无新 event kind，无钉死 SHA）
+  - ✅ 新增 `tests/test_failure_trace.py` 4 条契约测试固化证据可复现
+- **Evidence**：
+  - 文件 `analysis/s10_failure_trace.py`（280 LOC）
+  - 测试 `tests/test_failure_trace.py`（4 条，全通过）
+  - 证据 before=`0 events / 0 kinds`, after=`83 events / 4 kinds`
+  - HTML 更新 `docs/V2_Knowledge/knowledge-base.html` 的 `#lifecycle` 节
 
 #### PR-M-03 · SignalFusion innovation gating
 
@@ -901,6 +903,17 @@ disallowed: docs/*        ← no runtime code
 ---
 
 ## Change Log
+
+### v0.3.3 · 2026-05-12 · Claude Reviewer（自封闭 PR-M-02）
+
+- **PR-M-02 SHIPPED**（本轮同一 commit）：Claude 拉取自己上轮写的 spec，实现
+  `analysis/s10_failure_trace.py` (280 LOC) + `tests/test_failure_trace.py` (4 tests) +
+  3 件证据（density PNG / co-occurrence heatmap / JSONL sample）+ V2_Knowledge 嵌入。
+- **quality gate 升级**：`pytest` 35 → **39 passed**；`analysis.run_all` 9 → **10 studies**。
+- **证据级别升级**：SRE 栈除了"控制效果变好"的 9 条证据，现在多了 1 条"可观测性
+  本身"的数值证据。Before: `0 events` / After: `83 events, 4 distinct kinds`。
+- **反馈循环再证明**：Claude 写 spec → Codex triage → Claude 回填 spec + 写测试 + 补证据。
+  Backlog 的 🔵 条目在两轮里减了 3 条（PR-S-01 / PR-M-01 / PR-M-02）。
 
 ### v0.3.2 · 2026-05-12 · Claude Reviewer（吸收 Codex triage）
 

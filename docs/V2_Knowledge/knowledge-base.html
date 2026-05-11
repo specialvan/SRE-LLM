@@ -637,6 +637,34 @@ make_event(stage, kind, detail, safe_action):
       <tr><td><code>bounded_ls_residual</code> 单独持续</td><td>zone 目标与 geometry 不匹配</td><td>检查 zone_vector 配置</td></tr>
     </tbody>
   </table>
+
+  <h3>事件级证据（§10 Failure trace）</h3>
+  <p>上面的"共现模式"表原本只是叙事，现已由 <code>analysis/s10_failure_trace.py</code>
+  提供可复现的数值证据：在同一条 300 s 仿真里主动注入三类故障窗口，让 stack 的
+  <code>runtime.events</code> 通道真的被喂到每个支柱上。</p>
+
+  <figure>
+    <img src="assets/s10_event_density.png" alt="§10 event density">
+    <figcaption>§10 · 每 tick 的 <code>runtime.events</code> 数量。三条淡色竖带从左到右对应
+      <code>missing_sensor</code>、<code>replica_bound_active</code>、<code>unsafe_proposal_projected</code>
+      注入窗口。窗口内峰值明显高于 baseline。</figcaption>
+  </figure>
+
+  <figure>
+    <img src="assets/s10_cooccurrence.png" alt="§10 co-occurrence heatmap">
+    <figcaption>§10 · 同一 tick 内两种 event kind 共现的 Jaccard 系数。对角线 = 1；
+      关注非对角高值（例如 <code>missing_sensor</code> × <code>bounded_ls_residual</code>），
+      它反映"观测失联后下游是否误报为容量不足"这类组合告警。</figcaption>
+  </figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">Observability OFF</span><span class="m-val">0 events</span></span>
+    <span class="metric after"><span class="m-label">Observability ON</span><span class="m-val">83 events · 4 kinds</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">可追溯的失效轨迹</span></span>
+  </div>
+
+  <p>原始 JSONL 样例见 <code>analysis/artifacts/s10_trace_sample.jsonl</code>；
+  契约测试见 <code>tests/test_failure_trace.py</code>（4 条）。</p>
 </section>
 
 
