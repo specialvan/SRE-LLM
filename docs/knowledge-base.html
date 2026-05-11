@@ -951,7 +951,7 @@ t_per_engine, residual = allocator.allocate(F_demand, tau_demand)</pre>
     runtime  ← adapter events + stack states    runtime-state review trace
     trace    ← {runtime, observe, plan, canary, safe, shares}</div>
 
-  <p class="note"><b>运行态 trace</b>：`SignalFusion.step()`、`SLOGuardrail.audit()`、`WeightedLoadBalancer.allocate()` 已经各自产生本地 <code>events</code>；<code>SREControlStack.step()</code> 负责汇总它们，并补上栈级 <code>DEGRADED_*</code> 状态。</p>
+  <p class="note"><b>运行态 trace</b>：`SignalFusion.step()`、`CanaryScheduler.observe()`、`SLOGuardrail.audit()`、`PredictiveAutoscaler.step()`、`FastTrafficSwitcher.plan()`、`WeightedLoadBalancer.allocate()` 已经各自产生本地 <code>events</code>；<code>SREControlStack.step()</code> 负责汇总它们，并补上栈级 <code>DEGRADED_*</code> 状态。</p>
 
   <h3>端到端示例数据（<code>analysis/s09_sre_stack.py</code>）</h3>
   <p>300 s 合成流量，两次人为事故：t=60-80 s <b>brown-out</b>（延迟 +40 ms，RPS 不涨）、t=180-200 s <b>流量翻倍</b>。比较反应式 HPA vs <code>SREControlStack</code>。</p>

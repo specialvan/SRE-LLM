@@ -4,8 +4,9 @@ import json
 
 import numpy as np
 
-from sre_control import (Instance, PredictiveAutoscaler, Signal, SignalFusion,
-                         SLOGuardrail, SREControlStack, WeightedLoadBalancer)
+from sre_control import (CanaryScheduler, Instance, PredictiveAutoscaler,
+                         Signal, SignalFusion, SLOGuardrail, SREControlStack,
+                         WeightedLoadBalancer)
 
 
 def _make_stack():
@@ -98,4 +99,32 @@ def test_sre_stack_survives_missing_sensor_readings():
                for event in entry["runtime"]["events"])
     assert isinstance(entry["replicas_next"], int)
     assert len(entry["alloc_shares"]) == 2
+    json.dumps(entry)
+
+
+def test_sre_stack_carries_canary_local_events_upward():
+    stack, metrics = _make_stack()
+    stack.canary = CanaryScheduler(
+        slo_error_budget=0.01,
+        eta_init=0.10,
+        eta_min=0.005,
+        eta_max=0.30,
+    )
+
+    entry = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([760.0, 28.0]))],
+        forecast_rps=800.0,
+        current_replicas=6,
+        zone_target=np.array([480.0, 320.0]),
+        nn_proposal=np.array([500.0, 50.0, 10.0]),
+        current_canary_share=0.0,
+        canary_observed_error=0.03,
+    )
+
+    assert entry["canary"]["accepted"] is False
+    assert "freeze" in entry["canary"]["local_states"]
+    assert "DEGRADED_PLAN" in entry["runtime"]["states"]
+    assert any(event["kind"] == "rollout_rejected"
+               for event in entry["runtime"]["events"])
     json.dumps(entry)

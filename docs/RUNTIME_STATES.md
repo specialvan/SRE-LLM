@@ -212,7 +212,10 @@ Current local event emitters:
 | Adapter | Local field | Event kinds |
 |---|---|---|
 | `SignalFusion.step()` | `trace["events"]` | `missing_sensor` |
+| `CanaryScheduler.observe()` | `CanaryStep.events` | `rollout_rejected` |
 | `SLOGuardrail.audit()` | `audit["events"]` | `unsafe_proposal_projected` |
+| `PredictiveAutoscaler.step()` | `last_trace["events"]` | `replica_bound_active` |
+| `FastTrafficSwitcher.plan()` | `info["events"]` | `deadline_exceeded` |
 | `WeightedLoadBalancer.allocate()` | `info["events"]` | `bounded_ls_residual` |
 
 This is intentionally coarse. It is a review trace, not a full production incident timeline.

@@ -23,7 +23,7 @@ and in SRE terms (``J = 1``, ``τ_max = r_max``)::
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import Tuple
 
 import numpy as np
 
@@ -42,7 +42,9 @@ class FastTrafficSwitcher:
 
     # ------------------------------------------------------------------
     def plan(self, share_from: float, share_to: float,
-             dt: float = 0.1) -> Tuple[np.ndarray, np.ndarray, dict]:
+             dt: float = 0.1,
+             deadline_s: float | None = None
+             ) -> Tuple[np.ndarray, np.ndarray, dict]:
         """Return ``(t_grid, share_schedule, info)``.
 
         The switch is expressed as a bang-bang acceleration on the
@@ -80,10 +82,22 @@ class FastTrafficSwitcher:
                 share[i] = (share_from + 0.5 * a * mid * mid
                              + a * mid * s - 0.5 * a * s * s)
 
+        local_states = ["ramp_up", "switch_midpoint", "ramp_down"]
+        events = []
+        if deadline_s is not None and T_min > deadline_s:
+            events.append({
+                "stage": "FastTrafficSwitcher",
+                "kind": "deadline_exceeded",
+                "detail": "minimum-time switch is slower than the incident deadline",
+                "safe_action": "freeze the change or choose a simpler rollback path",
+            })
+
         info = {
             "T_min_seconds":     float(T_min),
             "switch_midpoint_s": float(mid),
             "peak_rate_per_s":   float(abs(a * mid)),
             "final_share":       float(share[-1]),
+            "local_states":      local_states,
+            "events":            events,
         }
         return t, share, info

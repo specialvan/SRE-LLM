@@ -22,8 +22,6 @@ as the replicas approach their hard cap.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
-
 import numpy as np
 
 from starship.mpc import LinearDiscretizer, QuadraticMPC
@@ -50,6 +48,7 @@ class PredictiveAutoscaler:
     q_terminal: float = 100.0
 
     _mpc: QuadraticMPC = field(init=False, repr=False)
+    last_trace: dict = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
         A = np.array([[0.0, 0.0], [0.0, 0.0]])   # zero-order plant
@@ -83,5 +82,28 @@ class PredictiveAutoscaler:
             observed_rps - forecast_rps,
         ])
         u = float(self._mpc.step(err_state)[0])
-        next_replicas = int(round(current_replicas + u))
-        return int(np.clip(next_replicas, self.replicas_min, self.replicas_max))
+        raw_next = int(round(current_replicas + u))
+        next_replicas = int(np.clip(
+            raw_next, self.replicas_min, self.replicas_max))
+        local_states = ["solve"]
+        if raw_next != next_replicas:
+            local_states.append("clip")
+        local_states.append("integerize")
+
+        events = []
+        if next_replicas in (self.replicas_min, self.replicas_max):
+            events.append({
+                "stage": "PredictiveAutoscaler",
+                "kind": "replica_bound_active",
+                "detail": "next replica count is at a hard bound",
+                "safe_action": "return bounded integer replicas",
+            })
+        self.last_trace = {
+            "target_replicas": float(target_replicas),
+            "raw_control": float(u),
+            "raw_next_replicas": int(raw_next),
+            "next_replicas": int(next_replicas),
+            "local_states": local_states,
+            "events": events,
+        }
+        return next_replicas

@@ -46,6 +46,7 @@
 - 更新 `sre_control/stack.py` 的测试引用说明
 - 给 `SREControlStack.step()` 增加 `runtime.states` / `runtime.events`，让降级路径进入 trace
 - 把 `missing_sensor`、`unsafe_proposal_projected`、`bounded_ls_residual` 下沉到 adapter 本地 events
+- 把 `rollout_rejected`、`replica_bound_active`、`deadline_exceeded` 也补成 adapter 本地 events
 - 更新 [ARCHITECTURE.md](./ARCHITECTURE.md) 的契约与运行态索引
 - 更新 [knowledge-base.html](./knowledge-base.html) 的审查入口
 - 刷新 `analysis/artifacts/SUMMARY.txt`
@@ -83,8 +84,8 @@ python -m scripts.build_kb
 ## 下一步
 
 1. 给每个 SRE 适配层再补一个 counter-example
-2. 继续给 `PredictiveAutoscaler`、`CanaryScheduler`、`FastTrafficSwitcher` 补本地 failure trace
-3. 给每个本地 event 增加一条更具体的 counter-example
+2. 给每个本地 event 增加一条更具体的 counter-example
+3. 如果继续工程化，下一步可以把 `PoolCapacityPlanner`、`TopologyState`、`CatchController` 也接入同一套 event schema
 4. 如果继续改知识库，记得重跑 `python -m scripts.build_kb`
 5. 如果继续改分析脚本，记得重跑 `python -m analysis.run_all`
 

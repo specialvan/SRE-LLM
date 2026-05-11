@@ -60,17 +60,6 @@ class SREControlStack:
     trace: List[dict] = field(default_factory=list)
 
     # ------------------------------------------------------------------
-    @staticmethod
-    def _event(stage: str, kind: str, detail: str,
-               safe_action: str) -> dict:
-        return {
-            "stage": stage,
-            "kind": kind,
-            "detail": detail,
-            "safe_action": safe_action,
-        }
-
-    # ------------------------------------------------------------------
     def step(self, dt: float,
              sensor_readings: list,
              forecast_rps: float,
@@ -99,12 +88,7 @@ class SREControlStack:
         if next_replicas in (self.autoscaler.replicas_min,
                              self.autoscaler.replicas_max):
             runtime_states.append("DEGRADED_PLAN")
-            runtime_events.append(self._event(
-                stage="PredictiveAutoscaler",
-                kind="replica_bound_active",
-                detail="next replica count is clipped at a hard bound",
-                safe_action="return bounded integer replicas",
-            ))
+            runtime_events.extend(self.autoscaler.last_trace.get("events", []))
 
         # 3) Canary (optional) with trust-region
         canary_step: Optional[CanaryStep] = None
@@ -116,12 +100,7 @@ class SREControlStack:
                     canary_observed_error)
                 if not canary_step.accepted:
                     runtime_states.append("DEGRADED_PLAN")
-                    runtime_events.append(self._event(
-                        stage="CanaryScheduler",
-                        kind="rollout_rejected",
-                        detail="observed error burned the canary budget",
-                        safe_action="shrink trust region and freeze rollout progress",
-                    ))
+                    runtime_events.extend(canary_step.events)
 
         # 4) SLO guardrail — project the NN proposal onto the feasible set
         runtime_states.append("GUARDING")

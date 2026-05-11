@@ -36,6 +36,9 @@ def test_canary_shrinks_trust_region_on_slo_burn():
     # Trust region should contract
     assert step.trust_region < 0.10
     assert step.accepted is False
+    assert "freeze" in step.local_states
+    assert any(event["kind"] == "rollout_rejected"
+               for event in step.events)
 
 
 def test_canary_grows_trust_region_when_safe():
@@ -151,6 +154,19 @@ def test_autoscaler_responds_to_forecast_growth():
     assert next_r > 5
 
 
+def test_autoscaler_marks_replica_bound_as_local_event():
+    asc = PredictiveAutoscaler(
+        per_replica_rps=100.0, replicas_min=1, replicas_max=10,
+        max_step=5, dt=5.0, horizon=6,
+    )
+    next_r = asc.step(current_replicas=10, observed_rps=1_000,
+                       forecast_rps=3_000)
+    assert next_r == 10
+    assert "integerize" in asc.last_trace["local_states"]
+    assert any(event["kind"] == "replica_bound_active"
+               for event in asc.last_trace["events"])
+
+
 # ---------------------------------------------------------------------------
 # §7 FastTrafficSwitcher
 # ---------------------------------------------------------------------------
@@ -160,6 +176,17 @@ def test_switcher_hits_target_with_zero_residual_rate():
     t, s, info = sw.plan(share_from=1.0, share_to=0.0)
     assert abs(s[-1] - 0.0) < 1e-6
     assert info["T_min_seconds"] > 0
+    assert info["events"] == []
+
+
+def test_switcher_marks_deadline_exceeded_event():
+    sw = FastTrafficSwitcher(rate_max=0.4)
+    _, _, info = sw.plan(share_from=0.0, share_to=1.0,
+                         deadline_s=0.5)
+    assert info["T_min_seconds"] > 0.5
+    assert "switch_midpoint" in info["local_states"]
+    assert any(event["kind"] == "deadline_exceeded"
+               for event in info["events"])
 
 
 # ---------------------------------------------------------------------------

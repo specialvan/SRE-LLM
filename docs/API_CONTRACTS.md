@@ -60,6 +60,7 @@ Contract:
 - `propose` 给出下一步灰度幅度。
 - `observe` 返回 trust region、是否接受、预测误差与观测误差。
 - trust region 必须保持在 `[eta_min, eta_max]` 内。
+- `CanaryStep.events` 必须报告灰度拒绝等本地 failure trace。
 
 State:
 
@@ -173,6 +174,7 @@ Contract:
 - 输出必须是整数副本数。
 - 输出必须在 `[replicas_min, replicas_max]` 内。
 - `forecast_rps` 是决定性输入，不应被隐藏成副作用。
+- `last_trace["events"]` 必须报告副本数打到硬边界的情况。
 
 State:
 
@@ -192,13 +194,14 @@ Counter-example:
 
 Public surface:
 
-- `plan(share_from, share_to, dt=0.1) -> (t_grid, share_schedule, info)`
+- `plan(share_from, share_to, dt=0.1, deadline_s=None) -> (t_grid, share_schedule, info)`
 
 Contract:
 
 - 产出的轨迹应是两阶段 bang-bang 形态。
 - 最终 share 应接近目标 share。
 - 时间长度应反映 rate cap。
+- `info["events"]` 必须在最短切换时间超过 deadline 时报告。
 
 State:
 
@@ -298,12 +301,12 @@ Counter-example:
 | Contract | Test file | What it proves |
 |---|---|---|
 | `PoolCapacityPlanner` | `tests/test_sre_control.py` | keep-alive floor and capacity cap |
-| `CanaryScheduler` | `tests/test_sre_control.py` | trust region grows/shrinks correctly |
+| `CanaryScheduler` | `tests/test_sre_control.py` | trust region adapts and rollout rejection is visible |
 | `TopologyState` | `tests/test_sre_control.py` | quaternion norm stays stable |
 | `SLOGuardrail` | `tests/test_sre_control.py` | cone projection works and local projection events are visible |
 | `SignalFusion` | `tests/test_sre_control.py` | fusion converges and missing sensors are marked locally |
-| `PredictiveAutoscaler` | `tests/test_sre_control.py` | forecast growth triggers scaling |
-| `FastTrafficSwitcher` | `tests/test_sre_control.py` | target share is reached under rate limits |
+| `PredictiveAutoscaler` | `tests/test_sre_control.py` | forecast growth triggers scaling and bound events are visible |
+| `FastTrafficSwitcher` | `tests/test_sre_control.py` | target share is reached and deadline misses are visible |
 | `WeightedLoadBalancer` | `tests/test_sre_control.py` | demand is matched without false saturation events |
 | `SREControlStack` | `tests/test_contracts.py` | trace stays JSON-serializable and runtime degradation states are visible |
 

@@ -13,7 +13,6 @@ matched the prediction — this is exactly the SCP loop.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable
 
 
 @dataclass
@@ -24,6 +23,8 @@ class CanaryStep:
     observed_error_rate: float
     trust_region: float
     accepted: bool
+    local_states: list[str] = field(default_factory=list)
+    events: list[dict] = field(default_factory=list)
 
 
 @dataclass
@@ -76,12 +77,24 @@ class CanaryScheduler:
             rho = 1.0
 
         # Adapt η
+        local_states = ["observe"]
+        events = []
         if rho > self.rho_grow:
             self._eta = min(self.eta_max, self._eta * 1.5)
+            local_states.append("expand")
         elif rho < self.rho_shrink:
             self._eta = max(self.eta_min, self._eta * 0.5)
+            local_states.append("shrink")
 
         accepted = observed_error_rate <= self.slo_error_budget
+        if not accepted:
+            local_states.append("freeze")
+            events.append({
+                "stage": "CanaryScheduler",
+                "kind": "rollout_rejected",
+                "detail": "observed error burned the canary budget",
+                "safe_action": "shrink trust region and freeze rollout progress",
+            })
 
         # If accepted, refit the linear slope
         if accepted and proposed_share - current_share > 1e-6:
@@ -97,4 +110,6 @@ class CanaryScheduler:
             observed_error_rate=observed_error_rate,
             trust_region=self._eta,
             accepted=accepted,
+            local_states=local_states,
+            events=events,
         )
