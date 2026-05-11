@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>GAN Matchmaking · V3 Knowledge Snapshot · 2026-06</title>
+<style>
+  :root {
+    --bg: #fbfbfc; --fg: #1e2430; --muted: #5a6573;
+    --accent: #e03131; --green: #2fa360; --orange: #e67e22;
+    --blue: #3366cc; --card: #ffffff; --border: #e2e5eb;
+  }
+  html { background: var(--bg); color: var(--fg); }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+         "PingFang SC", sans-serif; line-height: 1.65;
+         max-width: 1080px; margin: 32px auto; padding: 0 24px; }
+  header { border-bottom: 2px solid var(--border); padding-bottom: 18px;
+           margin-bottom: 24px; }
+  h1 { margin: 0 0 6px 0; font-size: 28px; }
+  h2 { border-left: 4px solid var(--blue); padding-left: 10px;
+       margin-top: 32px; }
+  h3 { color: var(--blue); }
+  .subtitle { color: var(--muted); font-size: 14px; }
+  .chip { display: inline-block; padding: 2px 9px; font-size: 12px;
+          border-radius: 12px; background: #f0f4fa; color: var(--blue);
+          margin-right: 4px; }
+  .tag { display: inline-block; padding: 2px 8px; font-size: 11px;
+         border-radius: 10px; font-weight: 500; }
+  .tag.p1 { background: #fde2e5; color: var(--accent); }
+  .tag.p2 { background: #fff1da; color: var(--orange); }
+  .tag.p3 { background: #eef2f9; color: var(--muted); }
+  .tag.p4 { background: #e9eef5; color: #7a8596; }
+  .tag.resolved { background: #e6f5ec; color: var(--green); }
+  .tag.open { background: #fde2e5; color: var(--accent); }
+  .tag.pending { background: #fff4d9; color: #a07a00; }
+  .card { background: var(--card); border: 1px solid var(--border);
+          padding: 14px 18px; border-radius: 8px; margin: 12px 0; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr;
+          gap: 14px; margin-top: 14px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+  th, td { border: 1px solid var(--border); padding: 7px 10px;
+           text-align: left; font-size: 14px; }
+  th { background: #f6f8fc; }
+  code { background: #f2f4f8; padding: 1px 6px; border-radius: 3px;
+         font-size: 0.92em; }
+  pre { background: #1e2430; color: #f6f8fc; padding: 14px;
+        border-radius: 6px; overflow-x: auto; font-size: 13px; }
+  .callout { border-left: 4px solid var(--blue); background: #f0f4fa;
+             padding: 10px 14px; margin: 14px 0; border-radius: 4px; }
+  .callout.success { border-color: var(--green); background: #e6f5ec; }
+  .callout.warn { border-color: var(--orange); background: #fff5e6; }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .metrics-row { display: flex; gap: 18px; flex-wrap: wrap;
+    background: #f1f5fb; padding: 12px 16px; border-radius: 6px;
+    font-size: 14px; margin: 14px 0 0 0; }
+  nav a { margin-right: 14px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>V3 Knowledge Snapshot · 2026-06 轮</h1>
+  <p class="subtitle">
+    方案 <b>C+A2</b> · 覆盖 F-005 / F-006 / F-007 / F-008 / F-009 / F-010 ·
+    本快照仅记录本轮差量 · 系统全景仍请看
+    <a href="../V2_Knowledge/knowledge-base.html">V2 快照</a>
+  </p>
+
+  <div class="metrics-row">
+    <span><b>基线 (V2 结尾)：</b>123 passed · p99 1.03 ms</span>
+    <span><b>本轮目标：</b>≥ 135 passed · p99 &lt; 2.5 ms</span>
+    <span><b>本轮状态：</b><span class="tag pending">pending PR</span></span>
+  </div>
+  <nav style="margin-top: 10px;">
+    <a href="#scope">#1 范围</a>
+    <a href="#findings">#2 Findings</a>
+    <a href="#prs">#3 PR 编排</a>
+    <a href="#f005">#4 F-005 合同</a>
+    <a href="#f006">#5 F-006 拆包</a>
+    <a href="#f007">#6 F-007 API</a>
+    <a href="#rules">#7 红线</a>
+    <a href="#dod">#8 DoD</a>
+  </nav>
+</header>
+
+<section id="scope">
+  <h2>1. 本轮范围</h2>
+  <p>2026-05 轮（B+A2）已关闭 F-001 / F-002 / F-003 / F-004。2026-06 延续
+     同一 <code>gan-session</code> 分支，针对剩余 P3 / P4 finding 做工程
+     整洁度收尾：</p>
+  <table>
+    <thead><tr><th>Finding</th><th>级别</th><th>方向</th><th>为什么重要</th></tr></thead>
+    <tbody>
+      <tr><td>F-005</td><td><span class="tag p3">P3</span></td>
+        <td>Rating scaling 合同</td>
+        <td>常数漂移会让已训 retention artifact 与 runtime 悄悄对不上</td></tr>
+      <tr><td>F-006</td><td><span class="tag p3">P3</span></td>
+        <td><code>sre/artifacts.py</code> 488 行拆包</td>
+        <td>可读性 / 导航效率 / F-005 改动面隔离</td></tr>
+      <tr><td>F-007</td><td><span class="tag p3">P3</span></td>
+        <td><code>_ctx_from_dict</code> 晋升公共 API</td>
+        <td>5 个模块跨 <code>_</code> 私有 import，任何 cli 重构都会爆炸</td></tr>
+      <tr><td>F-008</td><td><span class="tag p3">P3</span></td>
+        <td>SQLite migration 规范化</td>
+        <td>v5 特判会被未来 migration 复制，破坏"声明式"承诺</td></tr>
+      <tr><td>F-009</td><td><span class="tag p4">P4</span></td>
+        <td>文档去重</td>
+        <td><code>codex-handoff</code> 与 <code>implementation-roadmap</code> 重叠 30%</td></tr>
+      <tr><td>F-010</td><td><span class="tag p4">P4</span></td>
+        <td>Fixture 命名统一</td>
+        <td>命名风格散乱，新成员找 fixture 费劲</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <b>不在本轮范围：</b>不新增机制 / 不改 <code>Decision</code> 对外字段 /
+    不改 <code>/v1/*</code> API / 不改 <code>trace["stages"]["*"]</code> 语义 /
+    不引入第三方依赖 / 不新增 <code>pragma: no cover</code>
+  </div>
+</section>
+
+<section id="findings">
+  <h2>2. Findings 状态总览</h2>
+  <table>
+    <thead><tr><th>#</th><th>级别</th><th>标题</th><th>轮次</th><th>状态</th></tr></thead>
+    <tbody>
+      <tr><td>F-001</td><td><span class="tag p1">P1</span></td>
+        <td>LeaseRefreshLoop 续租失败静默化</td><td>2026-05 B+A2</td>
+        <td><span class="tag resolved">resolved (704765d)</span></td></tr>
+      <tr><td>F-002</td><td><span class="tag p2">P2</span></td>
+        <td>Shadow rewrite 后 monitor/log 与决策不一致</td><td>2026-05 B+A2</td>
+        <td><span class="tag resolved">resolved (704765d)</span></td></tr>
+      <tr><td>F-003</td><td><span class="tag p2">P2</span></td>
+        <td>trace.input.config 无 allowlist</td><td>2026-05 B+A2</td>
+        <td><span class="tag resolved">resolved (704765d)</span></td></tr>
+      <tr><td>F-004</td><td><span class="tag p3">P3</span></td>
+        <td>ctx.service._deps 隐式 mutation</td><td>2026-05 B+A2</td>
+        <td><span class="tag resolved">resolved (6834ab3)</span></td></tr>
+      <tr><td>F-005</td><td><span class="tag p3">P3</span></td>
+        <td>rating scaling 常数合同</td><td>2026-06 C+A2</td>
+        <td><span class="tag pending">pending PR-fix-05</span></td></tr>
+      <tr><td>F-006</td><td><span class="tag p3">P3</span></td>
+        <td>artifacts.py 488 行拆包</td><td>2026-06 C+A2</td>
+        <td><span class="tag pending">pending PR-fix-06</span></td></tr>
+      <tr><td>F-007</td><td><span class="tag p3">P3</span></td>
+        <td>_ctx_from_dict 跨模块私有 import</td><td>2026-06 C+A2</td>
+        <td><span class="tag pending">pending PR-fix-07</span></td></tr>
+      <tr><td>F-008</td><td><span class="tag p3">P3</span></td>
+        <td>SQLite migration v5 特判</td><td>2026-06 C+A2</td>
+        <td><span class="tag pending">pending PR-fix-08</span></td></tr>
+      <tr><td>F-009</td><td><span class="tag p4">P4</span></td>
+        <td>handoff 与 roadmap 重叠</td><td>2026-06 C+A2</td>
+        <td><span class="tag pending">pending PR-fix-09</span></td></tr>
+      <tr><td>F-010</td><td><span class="tag p4">P4</span></td>
+        <td>replay fixture 命名风格</td><td>2026-06 C+A2</td>
+        <td><span class="tag pending">pending PR-fix-10</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="prs">
+  <h2>3. PR 编排</h2>
+  <p>推荐顺序：<b>07 → 06 → 05 → 08 / 09 / 10</b>（后三可并行）。</p>
+  <pre><code>PR-fix-07 · ReleaseContext.from_dict 公共 API
+  └── 先做：纯加法+替换,后续 PR 若改调用点不会冲突
+
+PR-fix-06 · sre/artifacts/ 拆包
+  └── 机械搬运零行为变更,F-005 基于新结构写
+
+PR-fix-05 · rating scaling 合同
+  └── 依赖 PR-fix-06 的 retention.py 存在
+
+PR-fix-08 · SQLite migration 去特判
+PR-fix-09 · 文档去重 (仅 .md)
+PR-fix-10 · fixture rename (仅测试夹具)</code></pre>
+
+  <table>
+    <thead><tr><th>PR</th><th>依赖</th><th>预计 LOC</th><th>Requirement</th></tr></thead>
+    <tbody>
+      <tr><td>PR-fix-07</td><td>-</td><td>+120</td><td>R-505/506/507</td></tr>
+      <tr><td>PR-fix-06</td><td>-</td><td>+0 / -0 (搬运)</td><td>R-405/406</td></tr>
+      <tr><td>PR-fix-05</td><td>fix-06</td><td>+220</td><td>R-305/306/307/308</td></tr>
+      <tr><td>PR-fix-08</td><td>-</td><td>+80</td><td>R-605/606</td></tr>
+      <tr><td>PR-fix-09</td><td>-</td><td>+0 / -60 (精简)</td><td>R-705</td></tr>
+      <tr><td>PR-fix-10</td><td>-</td><td>+50</td><td>R-710</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="f005">
+  <h2>4. F-005 · Rating scaling 合同 <span class="chip">核心</span></h2>
+
+  <h3>问题</h3>
+  <p><code>_service_player</code> / <code>_candidate_player</code> 用了
+     12 个 inline magic number 把 SRE state 映射到 Elo-scale <code>Player</code>。
+     训练期和运行期都用同一套函数，但函数签名 / 常数之间**没有契约**——
+     改个 <code>18.0</code> 就让所有已训 retention artifact 悄悄失效。</p>
+
+  <h3>合同设计</h3>
+  <div class="card">
+    <b>Step 1:</b> 12 个常数抽到 <code>_RATING_*</code> 模块常量（见
+       <a href="../claude-review/spec-v2/design.md">design.md#f-005</a>）
+  </div>
+  <div class="card">
+    <b>Step 2:</b> <code>_rating_scaling_version()</code> 返回所有常数的
+       SHA-256 前 12 位 hex
+  </div>
+  <div class="card">
+    <b>Step 3:</b> 训练期把 version 写入
+       <code>ArtifactMetadata.extra["rating_scaling_version"]</code>
+  </div>
+  <div class="card">
+    <b>Step 4:</b> 运行期 <code>_hydrate_runtime_artifacts</code>
+       对比 version；不一致则 <span class="tag resolved">downgrade to
+       bootstrap</span> + 发 <code>artifacts.retention.scaling_mismatch</code>
+       WARNING + 标注 <code>trace["artifacts"]["rating_scaling_status"] = "mismatch"</code>
+  </div>
+
+  <h3>测试覆盖</h3>
+  <ul>
+    <li><code>test_rating_scaling_version_is_stable</code> — 多次调用稳定</li>
+    <li><code>test_rating_scaling_version_changes_with_constant</code> —
+        monkeypatch 任意常量必须改变 hash</li>
+    <li><code>test_rating_scaling_contract_snapshot</code> — 字节级
+        (mu, sigma) 快照断言（rel=1e-9）</li>
+    <li><code>test_artifact_version_mismatch_downgrades_to_bootstrap</code> —
+        手工伪造老 artifact 不应被 hydrate</li>
+  </ul>
+
+  <div class="callout warn">
+    <b>评审点：</b>此合同一旦落地，所有改 <code>_RATING_*</code> 常数的
+    PR 都需附"对现有 artifact 影响评估"说明（ADR-0008 强制要求）。
+    snapshot 测试是最后一道闸门。
+  </div>
+</section>
+
+<section id="f006">
+  <h2>5. F-006 · artifacts 包结构</h2>
+  <p>目标结构（每个子文件 ≤ 200 行）：</p>
+  <pre><code>gan_matchmaking/sre/artifacts/
+├── __init__.py     只做 re-export,保证对外路径不变
+├── metadata.py     ArtifactMetadata + _stable_version + _build_id
+├── retention.py    RetentionArtifact + _RATING_* + _rating_scaling_version +
+│                   _service_player + _candidate_player + build_* + EOMM_FEATURE_NAMES
+├── cox.py          CoxArtifact
+└── bundle.py       RuntimeArtifactBundle + load_runtime_artifacts</code></pre>
+  <p><b>硬约束</b>：</p>
+  <ul>
+    <li>不改行为（<code>git diff tests/test_sre_artifacts.py</code> 必须空）</li>
+    <li>外部 import 路径保持：<code>from gan_matchmaking.sre.artifacts import X</code>
+        继续可用</li>
+    <li>每个文件 ≤ 200 行（见 R-405 硬限）</li>
+  </ul>
+</section>
+
+<section id="f007">
+  <h2>6. F-007 · ReleaseContext.from_dict 公共 API</h2>
+
+  <h3>API 形态</h3>
+  <pre><code>@classmethod
+def from_dict(cls, payload: Mapping[str, Any]) -> "ReleaseContext":
+    """Reconstruct a ReleaseContext from a JSON-friendly mapping.
+    Expected keys: service, candidates, [dependencies],
+    [error_budget_remaining], [freeze_window], [telemetry],
+    [correlation_id]."""
+    ...</code></pre>
+
+  <h3>调用点迁移表</h3>
+  <table>
+    <thead><tr><th>文件</th><th>处理</th></tr></thead>
+    <tbody>
+      <tr><td><code>gan_matchmaking/cli.py</code></td>
+        <td><code>_ctx_from_dict</code> 变薄为 alias，加
+            <i>Deprecated</i> docstring</td></tr>
+      <tr><td><code>gan_matchmaking/service/app.py</code></td>
+        <td>改用 <code>ReleaseContext.from_dict</code></td></tr>
+      <tr><td><code>tests/test_replay_corpus.py</code></td>
+        <td>同上</td></tr>
+      <tr><td><code>tests/test_replay_export.py</code></td>
+        <td>同上</td></tr>
+      <tr><td><code>tests/test_cli.py</code></td>
+        <td>保留（测试 alias 本身）</td></tr>
+    </tbody>
+  </table>
+  <p>完成后 <code>grep -rn "_ctx_from_dict" gan_matchmaking/</code> 只应
+     在 <code>cli.py</code> 一处出现。</p>
+</section>
+
+<section id="rules">
+  <h2>7. 本轮红线</h2>
+  <div class="grid">
+    <div class="card">
+      <h4>测试 deterministic</h4>
+      <p>不依赖 <code>sleep</code> / 真实时钟；时间相关用 <code>monkeypatch</code>
+         或 <code>now=lambda: fixed</code>。</p>
+    </div>
+    <div class="card">
+      <h4>日志 JsonLineLogger</h4>
+      <p>任何新增事件走 <code>self.logger.*</code>，禁 <code>print</code> /
+         <code>logging.info</code>。</p>
+    </div>
+    <div class="card">
+      <h4>Metric 基数受控</h4>
+      <p>新增 metric 必须在 <code>__post_init__</code> 注册；label 值来自
+         受限枚举或类名（如 <code>type(exc).__name__</code>）。</p>
+    </div>
+    <div class="card">
+      <h4>API / trace 冻结</h4>
+      <p>不改 <code>/v1/*</code> 路径；不改 <code>Decision</code> 字段；
+         不改 <code>trace["stages"]["*"]</code>；只扩展
+         <code>trace["artifacts"]["rating_scaling_status"]</code>。</p>
+    </div>
+  </div>
+</section>
+
+<section id="dod">
+  <h2>8. Definition of Done</h2>
+  <ol>
+    <li>所有 R-305 ~ R-710 都有测试覆盖且通过</li>
+    <li><code>pytest -q</code> 全绿，目标 <b>≥ 135 passed</b></li>
+    <li><code>bench p99 &lt; 2.5 ms</code></li>
+    <li><code>findings.md</code> 中 F-005 ~ F-010 改为
+        <span class="tag resolved">resolved (commit &lt;sha&gt;)</span></li>
+    <li>新建 <code>docs/adr/0008-artifact-rating-scaling-compat.md</code></li>
+    <li>新建 <code>docs/claude-review/2026-06-spec-completion.md</code></li>
+    <li>本 V3 快照在完成后重标为 <code>closed</code>，下一轮开
+        <code>V4_Knowledge/</code></li>
+  </ol>
+
+  <div class="callout success">
+    <b>交接：</b>所有 PR merge 后回此文件把 "本轮状态" 从
+    <span class="tag pending">pending PR</span> 改为
+    <span class="tag resolved">closed</span>，并把每个 PR 行的
+    <code>pending</code> tag 替换为 <code>resolved (commit &lt;sha&gt;)</code>。
+  </div>
+</section>
+
+<footer style="margin-top: 40px; padding-top: 16px;
+               border-top: 1px solid var(--border);
+               color: var(--muted); font-size: 13px;">
+  V3 快照 · 生成于 2026-05-12 · 下一轮评审请创建
+  <code>docs/V4_Knowledge/</code> · V2 / V3 从本轮起冻结
+</footer>
+
+</body>
+</html>

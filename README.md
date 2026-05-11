@@ -177,6 +177,7 @@ A short list for codex-style reviews. Each item has a concrete file:
 ## 6. Further reading
 
 - [`docs/architecture.md`](docs/architecture.md) — architecture, requirements, task breakdown, and refinement targets.
+- [`docs/V2_Knowledge/knowledge-base.html`](docs/V2_Knowledge/knowledge-base.html) — 单页知识库（2026-05 快照），集成系统全景 / 决策流 / findings / spec 入口。
 - [`docs/codex-handoff.md`](docs/codex-handoff.md) — handoff summary for the next Codex pass.
 - [`docs/sre-control-primitives.md`](docs/sre-control-primitives.md) — reusable SRE control primitives extracted from the nine mechanisms.
 - [`docs/state-lifecycle.md`](docs/state-lifecycle.md) — service, model, decision, breaker, and shadow state machines.

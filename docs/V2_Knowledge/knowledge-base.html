@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>gan-matchmaking · V2 Knowledge Hub</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'],['\\(','\\)']],
+         displayMath: [['$$','$$'],['\\[','\\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  // init later once DOM ready
+  window.addEventListener('DOMContentLoaded', () => {
+    if (window.mermaid) {
+      mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+    }
+  });
+</script>
+<style>
+  :root {
+    --primary: #2f6feb;
+    --primary-dark: #1d4fbf;
+    --accent: #f04e65;
+    --green: #2ca05b;
+    --orange: #f59f3d;
+    --purple: #8950c4;
+    --teal: #1abc9c;
+    --gold: #d4a017;
+    --bg: #f7f9fc;
+    --card: #ffffff;
+    --text: #1f2328;
+    --muted: #586069;
+    --border: #e2e6ec;
+    --code-bg: #0d1117;
+    --code-text: #e6edf3;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+                 "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.65; }
+  header { background: linear-gradient(135deg, #1d4fbf 0%, #8950c4 100%);
+    color: white; padding: 30px 40px; }
+  header h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: 0.5px; }
+  header .sub { margin: 0; opacity: 0.92; font-size: 14px; }
+  header .meta { margin-top: 14px; font-size: 13px; opacity: 0.85;
+    display: flex; gap: 24px; flex-wrap: wrap; }
+  header .meta span b { font-weight: 600; }
+  .layout { display: grid; grid-template-columns: 290px 1fr;
+    max-width: 1480px; margin: 0 auto; }
+  nav.toc { position: sticky; top: 0; align-self: start;
+    max-height: 100vh; overflow-y: auto; padding: 22px 16px;
+    background: var(--card); border-right: 1px solid var(--border);
+    font-size: 13.5px; }
+  nav.toc h2 { font-size: 11px; text-transform: uppercase;
+    color: var(--muted); letter-spacing: 1px; margin: 14px 8px 6px; }
+  nav.toc a { display: block; padding: 5px 10px;
+    color: var(--text); text-decoration: none;
+    border-radius: 6px; margin: 2px 0; }
+  nav.toc a:hover { background: #eef2f9; color: var(--primary); }
+  nav.toc a.active { background: #e3edff; color: var(--primary-dark);
+    font-weight: 600; }
+  main { padding: 28px 40px; max-width: 1080px; }
+  section.mod { background: var(--card);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 24px 28px; margin-bottom: 24px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
+  section.mod h2 { margin-top: 0; font-size: 22px;
+    display: flex; align-items: center; gap: 10px; }
+  section.mod h2 .chip { font-size: 12px; background: #eef2f9;
+    color: var(--primary-dark); padding: 3px 10px;
+    border-radius: 999px; font-weight: 500; }
+  section.mod h3 { font-size: 15px; color: var(--primary-dark);
+    margin: 20px 0 8px; letter-spacing: 0.3px;
+    border-bottom: 1px dashed var(--border); padding-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 14px;
+    margin-top: -6px; margin-bottom: 14px; }
+  pre { background: var(--code-bg); color: var(--code-text);
+    padding: 12px 14px; border-radius: 8px;
+    font-size: 12.5px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  code { background: #eef2f9; color: var(--primary-dark);
+    padding: 2px 6px; border-radius: 4px;
+    font-size: 0.92em;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  pre code { background: none; color: inherit; padding: 0; }
+  table { width: 100%; border-collapse: collapse;
+    font-size: 13.5px; margin: 10px 0; }
+  table th, table td { padding: 8px 10px;
+    border: 1px solid var(--border); text-align: left; }
+  table th { background: #f1f5fb; color: var(--primary-dark); }
+  .mermaid { margin: 16px 0; text-align: center;
+    background: #f9fbff; padding: 12px; border-radius: 8px;
+    border: 1px solid var(--border); }
+  .callout { border-left: 4px solid var(--primary);
+    background: #eef4ff; padding: 10px 14px;
+    border-radius: 0 6px 6px 0; margin: 14px 0; font-size: 14px; }
+  .callout.warn { border-color: var(--orange); background: #fff6eb; }
+  .callout.danger { border-color: var(--accent); background: #fff3f4; }
+  .callout.ok { border-color: var(--green); background: #eefaf3; }
+  .callout h4 { margin: 0 0 6px; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px; margin: 14px 0; }
+  .card { background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; font-size: 13.5px; }
+  .card h4 { margin: 0 0 6px; font-size: 14px;
+    color: var(--primary-dark); }
+  .card .tag { display: inline-block; font-size: 11px;
+    padding: 1px 8px; border-radius: 999px; margin-left: 4px;
+    background: #e3edff; color: var(--primary-dark); }
+  .tag.prod { background: #e6f5ec; color: var(--green); }
+  .tag.mixed { background: #fff3e0; color: var(--orange); }
+  .tag.research { background: #f2e6fa; color: var(--purple); }
+  .tag.p1 { background: #fde2e5; color: var(--accent); }
+  .tag.p2 { background: #fff1da; color: var(--orange); }
+  .tag.p3 { background: #eef2f9; color: var(--muted); }
+  .tag.resolved { background: #e6f5ec; color: var(--green); }
+  .tag.open { background: #fde2e5; color: var(--accent); }
+  .metrics-row { display: flex; gap: 18px; flex-wrap: wrap;
+    background: #f1f5fb; padding: 12px 16px;
+    border-radius: 8px; margin: 12px 0; font-size: 13.5px; }
+  .metrics-row .m-item { min-width: 120px; }
+  .metrics-row .m-item b { display: block;
+    color: var(--primary-dark); font-size: 12px; margin-bottom: 2px; }
+  .metrics-row .m-item .v { font-size: 18px; font-weight: 600; }
+  ul.points { margin: 6px 0 12px; padding-left: 22px; }
+  ul.points li { margin: 3px 0; }
+  .persona-badge { display: inline-block; font-size: 11px;
+    padding: 2px 8px; border-radius: 999px;
+    background: #eef2f9; color: var(--primary-dark);
+    margin-right: 4px; }
+  footer { padding: 28px 40px 60px;
+    color: var(--muted); font-size: 13px; text-align: center; }
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.toc { position: static; max-height: none;
+      border-right: none; border-bottom: 1px solid var(--border); }
+    main { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>gan-matchmaking · V2 Knowledge Hub</h1>
+  <p class="sub">SRE 自迭代决策系统 · 九机制 × 架构 × 评审 × 可执行 spec 的单页快照</p>
+  <div class="meta">
+    <span><b>快照时点：</b>2026-05 · 分支 <code>gan-session</code></span>
+    <span><b>Pytest：</b>123 / 123</span>
+    <span><b>Bench p99：</b>1.03 ms (SLO 50 ms)</span>
+    <span><b>未合入 blocker：</b>0 · B+A2 全部关闭</span>
+    <span><b>上产前必修：</b>F-001 / F-002 / F-003 已 resolved</span>
+  </div>
+</header>
+
+<div class="layout">
+
+<nav class="toc" id="toc">
+  <h2>入口</h2>
+  <a href="#landing">0. 这是什么</a>
+  <a href="#personas">按你是谁跳转</a>
+
+  <h2>一图看懂</h2>
+  <a href="#overview">1. 系统全景</a>
+  <a href="#decision-flow">2. 决策流</a>
+  <a href="#trace-schema">3. Trace schema</a>
+
+  <h2>九机制 → SRE 原语</h2>
+  <a href="#primitives">4. 原语卡片</a>
+  <a href="#mechanism-math">5. 机制公式速查</a>
+
+  <h2>当前状态</h2>
+  <a href="#delivery">6. 交付盘点</a>
+  <a href="#review">7. 最新评审</a>
+  <a href="#spec">8. 可执行 Spec</a>
+  <a href="#patches">9. 补丁草案</a>
+
+  <h2>支撑面</h2>
+  <a href="#state-failure">10. 状态 & 失败域</a>
+  <a href="#artifact">11. Artifact 生命周期</a>
+  <a href="#concurrency">12. 并发 & lease</a>
+  <a href="#observability">13. 可观测性</a>
+  <a href="#governance">14. 治理</a>
+
+  <h2>索引</h2>
+  <a href="#file-map">A. 文件地图</a>
+  <a href="#next-round">B. 下一轮建议</a>
+</nav>
+
+<main>
+
+<!-- ================================================================== -->
+<section class="mod" id="landing">
+  <h2>0. 这是什么 <span class="chip">快照</span></h2>
+  <p class="subtitle">V2 = V1 数学机制复现 + 架构层 + 评审层 + spec 层的组合快照。
+     下一个 agent 拿到这份就能判断该从哪里接手。</p>
+
+  <div class="metrics-row">
+    <div class="m-item"><b>产物</b><div class="v">SRE 决策引擎</div></div>
+    <div class="m-item"><b>交付的决策</b><div class="v">GO · CANARY · HOLD · ROLLBACK · ESCALATE</div></div>
+    <div class="m-item"><b>契约字段</b><div class="v"><code>artifact_version</code> · <code>trace</code> · <code>correlation_id</code></div></div>
+    <div class="m-item"><b>运行形态</b><div class="v">HTTP service + CLI + 定时训练</div></div>
+  </div>
+
+  <h3>V1 → V2 的变化</h3>
+  <ul class="points">
+    <li><b>V1</b>：把王者荣耀 "GAN" 九机制复现成 Python 库，每机制 before/after/gain/gif 四张图</li>
+    <li><b>V2</b>：把那九个机制 <b>映射到 SRE 控制原语</b>，接入 artifact 版本化 / lease / replay / shadow / CI / k8s，形成可审计的发布决策系统</li>
+    <li>V1 的数学说明仍在 <a href="../knowledge_base.html"><code>docs/knowledge_base.html</code></a>，本页承接更"工程 + 运营"的视角</li>
+  </ul>
+</section>
+
+<!-- ================================================================== -->
+<section class="mod" id="personas">
+  <h2>按你是谁跳转</h2>
+
+  <div class="grid">
+    <div class="card">
+      <h4><span class="persona-badge">评审者</span> 10 分钟上手</h4>
+      <ol>
+        <li>读 <a href="#review">#7 最新评审</a> 了解 3 条 blocker</li>
+        <li>读 <a href="#spec">#8 可执行 Spec</a> 看 codex 该做什么</li>
+        <li>抽查 <a href="#trace-schema">#3 Trace schema</a> 判断契约稳不稳</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h4><span class="persona-badge">codex / 开发者</span> 准备开 PR</h4>
+      <ol>
+        <li>读 <a href="#spec">#8 可执行 Spec</a> 里的 tasks checkbox</li>
+        <li>拿 <a href="#patches">#9 补丁草案</a> 直接对着 diff 改</li>
+        <li>跑 <a href="#delivery">#6 交付盘点</a> 末尾的验证命令</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h4><span class="persona-badge">接手架构的人</span> 理解整体形状</h4>
+      <ol>
+        <li>读 <a href="#overview">#1 系统全景</a> 看 C4 context</li>
+        <li>读 <a href="#decision-flow">#2 决策流</a> 看 7 个 stage</li>
+        <li>读 <a href="#state-failure">#10</a>、<a href="#artifact">#11</a>、<a href="#concurrency">#12</a></li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h4><span class="persona-badge">SRE on-call</span> 出问题了找我</h4>
+      <ol>
+        <li>看 <a href="#observability">#13 可观测性</a> 的 metric / log catalog</li>
+        <li>看 <a href="../runbooks/"><code>docs/runbooks/</code></a> 按场景找 runbook</li>
+        <li>看 <a href="#review">#7</a> 里的 F-001，确认不是已知问题</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h4><span class="persona-badge">想理解机制</span> 偏数学背景</h4>
+      <ol>
+        <li>看 <a href="#mechanism-math">#5 机制公式速查</a></li>
+        <li>深入读 <a href="../knowledge_base.html">V1 knowledge_base.html</a></li>
+        <li>对照 <a href="#primitives">#4 原语卡片</a> 看 SRE 映射</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h4><span class="persona-badge">业务方 / 部署方</span> 想调用服务</h4>
+      <ol>
+        <li>看 <a href="#overview">#1</a> 的 HTTP endpoint 列表</li>
+        <li>跑 <code>examples/sre_demo.py</code></li>
+        <li>参考 <code>deploy/kubernetes/</code></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================================================================== -->
+<section class="mod" id="overview">
+  <h2>1. 系统全景 <span class="chip">C4 · context</span></h2>
+
+  <div class="mermaid">
+flowchart LR
+  subgraph ext["外部世界"]
+    direction TB
+    CI["Deploy Automation"]
+    OP["Operator / CLI"]
+    PROM["Prometheus / Loki"]
+  end
+  subgraph core["gan_matchmaking"]
+    direction TB
+    HTTP["HTTP service<br/>/v1/decide /v1/observe<br/>/healthz /readyz /metrics"]
+    CLI["CLI<br/>decide · export-replay"]
+    TRAIN["Training job<br/>Cox + Retention"]
+    PIPE["SelfIterationPipeline"]
+  end
+  subgraph state["State"]
+    direction TB
+    DB[("SQLite<br/>services · observations<br/>synergy · decisions")]
+    ART[("Artifacts<br/>retention.npz + metadata<br/>cox.npz + metadata")]
+  end
+
+  CI -->|"POST /v1/decide"| HTTP
+  OP -->|"CLI"| CLI
+  HTTP --> PIPE
+  CLI --> PIPE
+  PIPE <--> DB
+  PIPE --> ART
+  TRAIN -->|"read obs"| DB
+  TRAIN -->|"write"| ART
+  HTTP -. metrics .-> PROM
+  HTTP -. JSONL logs .-> PROM
+  </div>
+
+  <h3>HTTP 契约一眼</h3>
+  <table>
+    <thead><tr><th>Endpoint</th><th>用途</th><th>契约</th></tr></thead>
+    <tbody>
+      <tr><td><code>POST /v1/decide</code></td><td>主决策入口</td>
+        <td>返回 <code>Decision</code> JSON + <code>X-Correlation-Id</code> 头</td></tr>
+      <tr><td><code>POST /v1/observe</code></td><td>记录一次发布结果</td>
+        <td>持久化 Service 状态 + Observation 行</td></tr>
+      <tr><td><code>GET /v1/services/{id}</code></td><td>读取当前 Service 状态</td>
+        <td>404 表示服务未注册</td></tr>
+      <tr><td><code>GET /healthz</code></td><td>liveness</td>
+        <td>永远 200（进程存活）</td></tr>
+      <tr><td><code>GET /readyz</code></td><td>readiness</td>
+        <td>503 表示 breaker open <em>或</em> lease 不健康（F-001 修后）</td></tr>
+      <tr><td><code>GET /metrics</code></td><td>Prometheus 导出</td>
+        <td>text/plain; version=0.0.4</td></tr>
+    </tbody>
+  </table>
+
+  <h3>边界（不做的事）</h3>
+  <ul class="points">
+    <li>不做 CI/CD 编排，只回答"能不能发"</li>
+    <li>不做告警定义（只发 metric，不定 SLO threshold）</li>
+    <li>不做跨集群一致性——<code>FileLease</code> 是单机护栏，见 <a href="../adr/0007-single-writer-lease-boundary.md">ADR-0007</a></li>
+    <li>不做多租户隔离：一个 pipeline 实例 = 一个产品线</li>
+  </ul>
+</section>
+
+<!-- ================================================================== -->
+<section class="mod" id="decision-flow">
+  <h2>2. 决策流 <span class="chip">7 stages</span></h2>
+  <p class="subtitle"><code>decide(ctx)</code> 一次调用的完整生命周期。这是 review PR 时最常回来查的图。</p>
+
+  <div class="mermaid">
+flowchart TD
+  A([decide ctx]) --> V[validate]
+  V --> B{breaker allow?}
+  B -->|no| ESC[ESCALATE<br/>short-circuit]
+  B -->|yes| L[per-service lock]
+  L --> G{guards}
+  G -->|freeze window| H1[HOLD]
+  G -->|budget<=0| RB[ROLLBACK]
+  G -->|pass| S1[stage.pca]
+  S1 --> S2[stage.synergy]
+  S2 --> S3[stage.adjusted_probs]
+  S3 --> S4[stage.entropy]
+  S4 -->|empty| H2[HOLD]
+  S4 --> S5[stage.eomm<br/>artifact or fallback]
+  S5 --> S6[stage.risk<br/>Cox]
+  S6 --> R[resolve decision kind]
+  R --> E[_emit<br/>build Decision]
+  E --> F[_finalize_decision]
+  F --> SW[shadow wrap]
+  SW --> PUB[publish metric + log]
+  PUB --> PST[persist to SQLite]
+  PST --> OUT([return Decision])
+  </div>
+
+  <h3>7 个 stage 的契约（纯度 / 降级 / 可观测）</h3>
+  <table>
+    <thead><tr><th>Stage</th><th>输入</th><th>关键输出</th><th>降级策略</th></tr></thead>
+    <tbody>
+      <tr><td><code>stage.pca</code></td><td>telemetry</td>
+        <td><code>fused</code>, <code>hidden_norm</code></td>
+        <td>fit 失败 → <code>fused = mu</code></td></tr>
+      <tr><td><code>stage.synergy</code></td><td>依赖图</td>
+        <td><code>score</code></td>
+        <td>图太小 → <code>score = 0</code></td></tr>
+      <tr><td><code>stage.adjusted_probs</code></td><td>streak + 候选</td>
+        <td><code>probs</code>, <code>k_factor</code></td>
+        <td>不降级（极少异常）</td></tr>
+      <tr><td><code>stage.entropy</code></td><td>probs</td>
+        <td><code>acceptable_idx</code>, <code>fallback_used</code></td>
+        <td>空集 → argmax-H 兜底</td></tr>
+      <tr><td><code>stage.eomm</code></td><td>history + 候选</td>
+        <td><code>source = "artifact" | "fallback"</code></td>
+        <td>artifact 异常 → 切 fallback 规则</td></tr>
+      <tr><td><code>stage.risk</code></td><td>6 维风险特征</td>
+        <td><code>prob</code>, <code>level</code></td>
+        <td>Cox 异常 → <code>prob=0.5, level=warn</code></td></tr>
+      <tr><td><code>_resolve_decision</code></td><td>所有上游</td>
+        <td><code>DecisionKind</code></td>
+        <td>纯策略，不允许数值计算</td></tr>
+    </tbody>
+  </table>
+
+  <h3>策略表（<code>_resolve_decision</code> 的心脏）</h3>
+  <pre><code>risk_level == ALARM
+  ├── loss_streak &gt;= 2 → ROLLBACK
+  └── else              → HOLD
+
+risk_level == WARN      → CANARY
+
+risk_level == OK
+  ├── confidence &lt; 0.5                        → CANARY
+  ├── tier==critical && strategy!="canary"     → CANARY (downgrade)
+  ├── strategy == "full"                       → GO
+  ├── strategy == "canary"                     → CANARY
+  ├── strategy ∈ {"shadow","holdback"}         → HOLD
+  └── unknown strategy                         → ESCALATE</code></pre>
+
+  <div class="callout">
+    <h4>关键契约</h4>
+    改这张表的任何一条必须：开 ADR、加 replay fixture、走 shadow→advisory→enforce 推进。
+    参见 <a href="../architecture/08-rollout-and-governance.md">08-rollout-and-governance.md</a>。
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<section class="mod" id="trace-schema">
+  <h2>3. Trace Schema <span class="chip">可审计的字节级契约</span></h2>
+
+  <h3>顶层形状</h3>
+  <pre><code>{
+  "input": {
+    "context": { ... ReleaseContext 公开字段 ... },
+    "config":  { ... AppConfig.to_trace_dict() 结果 ... }  // F-003 后改为 allowlist
+  },
+  "artifacts": {
+    "version": "retention@abc...+cox@def..." | "bootstrap",
+    "fitted": true | false,
+    "retention": { ... metadata ... } | null,
+    "cox":       { ... metadata ... } | null,
+    "validation_errors": { ... }        // manifest 校验失败时出现
+  },
+  "stages": {
+    "pca":            { "fused": float, "hidden_norm": float?, "keys": [...]? },
+    "synergy":        { "n_dependencies": int, "score": float },
+    "adjusted_probs": { "penalty": float, "probs": [float], "k_factor": float },
+    "entropy":        { "entropies": [...], "acceptable_idx": [...],
+                        "min_entropy": float, "fallback_used": bool },
+    "eomm":           { "source": "artifact" | "fallback", ... },
+    "risk":           { "features": [6], "prob": float, "level": "ok"|"warn"|"alarm" }
+  },
+  "shadow_mode": "off" | "shadow" | "advisory",              // 非 off 时出现
+  "shadow_suppressed_kind": "go" | "canary" | ...,           // 仅 shadow 时出现
+  "circuit_breaker": { "state": "closed"|"open"|"half_open", ... }  // 仅短路时出现
+}</code></pre>
+
+  <h3>三路同源</h3>
+  <div class="mermaid">
+flowchart LR
+  DEC[decide return] --> TRACE[Decision.trace]
+  TRACE --> LOG["JSONL log<br/>decide.finished event"]
+  TRACE --> M["Prom counter<br/>gan_decisions_total"]
+  TRACE --> DB["SQLite<br/>decisions.trace_json"]
+  TRACE --> HTTP["HTTP response body"]
+  </div>
+
+  <h3>向后兼容规则</h3>
+  <table>
+    <thead><tr><th>操作</th><th>允许</th><th>程序</th></tr></thead>
+    <tbody>
+      <tr><td>加 trace 字段</td><td>✅</td><td>直接加，更新本文</td></tr>
+      <tr><td>删 trace 字段</td><td>❌（直接）</td><td>先 deprecate 6 个月 + ADR</td></tr>
+      <tr><td>改字段语义</td><td>❌</td><td>必须 ADR + 破坏性通告</td></tr>
+      <tr><td>改字段类型</td><td>❌</td><td>ADR</td></tr>
+      <tr><td>加 metric / log 事件</td><td>✅</td><td>更新 catalog</td></tr>
+      <tr><td>删 metric / log 事件</td><td>❌</td><td>保留 6 个月 + ADR</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <h4>F-003 影响</h4>
+    本轮 spec 会把 <code>trace.input.config</code> 从 <code>AppConfig.to_dict()</code>
+    改为 <code>AppConfig.to_trace_dict()</code>（allowlist）。字段数减少，不算破坏性 —
+    replay 用到的字段都保留。
+  </div>
+</section>
+
+
+<!-- ================================================================== -->
+<section class="mod" id="primitives">
+  <h2>4. 九机制 → SRE 控制原语 <span class="chip">迁移抽象</span></h2>
+  <p class="subtitle">九个机制的 <b>真正工程价值</b> 不是"算法列表"，而是可被其它 SRE 控制面复用的能力目录。</p>
+
+  <div class="grid">
+    <div class="card">
+      <h4>TrueSkill <span class="tag prod">production</span></h4>
+      <b>belief_state_estimator</b>
+      <p>把每次发布结果变成带不确定度的 $(\mu, \sigma)$，不是点估计。</p>
+      <p>Stage: <code>observe_release</code> · 可迁移到服务健康评分、inspection 节流、auto-rollback trust。</p>
+    </div>
+    <div class="card">
+      <h4>EOMM <span class="tag mixed">mixed</span></h4>
+      <b>objective_aware_strategy_ranker</b>
+      <p>按"保留 SLO 目标的期望"对候选策略排序，而非纯预测胜率。</p>
+      <p>Stage: <code>stage.eomm</code> · 可迁移到 rollout 策略、告警路由、remediation 选择。</p>
+    </div>
+    <div class="card">
+      <h4>Dynamic K <span class="tag prod">production</span></h4>
+      <b>adaptive_gain_scheduler</b>
+      <p>连续成功时降低更新步长，防止过度自信。</p>
+      <p>Stage: <code>stage.adjusted_probs</code> · 可迁移到 auto-tuning、自适应 rollout 大小。</p>
+    </div>
+    <div class="card">
+      <h4>PCA <span class="tag prod">production</span></h4>
+      <b>latent_signal_compressor</b>
+      <p>多维 telemetry → 单个可审计的压缩分。</p>
+      <p>Stage: <code>stage.pca</code> · 可迁移到 anomaly pre-filter、alert 聚类、metric bundle 摘要。</p>
+    </div>
+    <div class="card">
+      <h4>GNN <span class="tag mixed">mixed</span></h4>
+      <b>graph_blast_radius_scorer</b>
+      <p>让依赖图和共同发布历史影响本地风险打分。</p>
+      <p>Stage: <code>stage.synergy</code> · 可迁移到依赖感知的发布门、容量变更风险。</p>
+    </div>
+    <div class="card">
+      <h4>Handicap <span class="tag prod">production</span></h4>
+      <b>risk_adjusted_probability_scorer</b>
+      <p>用上下文 penalty 把乐观的胜率拉回"有担心值"。</p>
+      <p>Stage: <code>stage.adjusted_probs</code> · 可迁移到 canary 大小调整、变更风险打分。</p>
+    </div>
+    <div class="card">
+      <h4>Entropy <span class="tag prod">production</span></h4>
+      <b>information_value_gate</b>
+      <p>拒绝"过于确定"的候选（canary 结果已经能预测 = 没信息量）。</p>
+      <p>Stage: <code>stage.entropy</code> · 可迁移到 synthetic check 调度、告警增强决策。</p>
+    </div>
+    <div class="card">
+      <h4>Cox Survival <span class="tag mixed">mixed</span></h4>
+      <b>time_to_incident_forecaster</b>
+      <p>给定特征，估计指定时间窗内出事的概率。</p>
+      <p>Stage: <code>stage.risk</code> · 可迁移到 rollback 时机、freeze window、burn-rate 门控。</p>
+    </div>
+    <div class="card">
+      <h4>Minimax BP <span class="tag research">research</span></h4>
+      <b>adversarial_policy_arbitrator</b>
+      <p>面对对抗性 / 竞争性目标时的均衡求解。</p>
+      <p>Stage: 辅助层 · 目前不在主 hot path，未来用于 feature-vs-SLO 张力仲裁。</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <h4>迁移模板（做其它 SRE 控制回路时用）</h4>
+    先回答这 9 个问题，再选算法：
+    <code>State / Signal / Candidate / Objective / Gate / Horizon / Artifact / Trace / Replay</code>
+    详见 <a href="../sre-control-primitives.md">sre-control-primitives.md §5</a>。
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<section class="mod" id="mechanism-math">
+  <h2>5. 机制公式速查</h2>
+  <p class="subtitle">仅罗列最重要的一条公式 + SRE 解释；数学深度见 <a href="../knowledge_base.html">V1 knowledge_base.html</a>。</p>
+
+  <table>
+    <thead><tr><th>#</th><th>机制</th><th>核心公式</th><th>SRE 读法</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>TrueSkill</td>
+        <td>$\mu' = \mu + \frac{\sigma^2}{\sigma^2+\beta^2}(r-\mu)$</td>
+        <td>服务可靠性的 Kalman 更新</td></tr>
+      <tr><td>2</td><td>EOMM</td>
+        <td>$\max_M\ \mathbb{E}[P(\text{Retain}\mid M, H_t)]$</td>
+        <td>选保留 SLO 目标概率最大的策略</td></tr>
+      <tr><td>3</td><td>Dynamic K</td>
+        <td>$K = K_{\min}+\dfrac{K_{\max}-K_{\min}}{1+e^{\lambda(s-\theta)}}$</td>
+        <td>连胜越多，K 越小 → 更不激进</td></tr>
+      <tr><td>4</td><td>PCA</td>
+        <td>$X^\top X v = \lambda v$</td>
+        <td>遥测降维到可审计的压缩分</td></tr>
+      <tr><td>5</td><td>GNN</td>
+        <td>$h^{(l+1)} = \mathrm{ReLU}(W h^{(l)} + \sum A\, h^{(l)} U)$</td>
+        <td>依赖图上的消息传递</td></tr>
+      <tr><td>6</td><td>Handicap</td>
+        <td>$E_A = \dfrac{1}{1+10^{(\Delta R + P)/400}}$</td>
+        <td>Elo 期望胜率加 penalty 偏置</td></tr>
+      <tr><td>7</td><td>Entropy</td>
+        <td>$H(p) = -p\log_2 p-(1-p)\log_2(1-p)$</td>
+        <td>筛掉信息量不足的候选</td></tr>
+      <tr><td>8</td><td>Cox Survival</td>
+        <td>$h(t\mid X) = h_0(t)\, e^{\beta^\top X}$</td>
+        <td>给定特征的时间窗故障率</td></tr>
+      <tr><td>9</td><td>Minimax</td>
+        <td>$\min_y\max_x U(x,y) = \max_x\min_y U(x,y) = v$</td>
+        <td>对抗性目标的均衡价值</td></tr>
+    </tbody>
+  </table>
+</section>
+
+
+<!-- ================================================================== -->
+<section class="mod" id="delivery">
+  <h2>6. 交付盘点 <span class="chip">gan-session 分支</span></h2>
+
+  <div class="metrics-row">
+    <div class="m-item"><b>代码规模</b><div class="v">~4k LOC · 11 commits</div></div>
+    <div class="m-item"><b>pytest</b><div class="v">105 / 105 ✅</div></div>
+    <div class="m-item"><b>bench p99</b><div class="v">1.73 ms</div></div>
+    <div class="m-item"><b>持久层</b><div class="v">SQLite + in-memory</div></div>
+    <div class="m-item"><b>Docker / k8s</b><div class="v">已就绪</div></div>
+  </div>
+
+  <h3>Phase 进度</h3>
+  <table>
+    <thead><tr><th>Phase</th><th>主题</th><th>状态</th><th>关键 PR</th></tr></thead>
+    <tbody>
+      <tr><td>0</td><td>Control plane hardening</td><td class="tag prod">已完成</td>
+        <td>PR-0-01 ~ PR-0-03</td></tr>
+      <tr><td>1</td><td>Domain pipeline</td><td class="tag prod">已完成</td>
+        <td>PR-1-01 ~ PR-1-03</td></tr>
+      <tr><td>2</td><td>Persistence & replay</td><td class="tag prod">已完成</td>
+        <td>PR-2-01 ~ PR-2-03</td></tr>
+      <tr><td>3</td><td>Training & artifact hydration</td><td class="tag prod">已完成</td>
+        <td>PR-3-01 ~ PR-3-04（含 fitted replay promotion）</td></tr>
+      <tr><td>4</td><td>Runtime surfaces</td><td class="tag prod">已完成</td>
+        <td>PR-4-01 ~ PR-4-03</td></tr>
+      <tr><td>5</td><td>Knowledge & reviewability</td><td class="tag prod">已完成</td>
+        <td>PR-5-01 ~ PR-5-04（SRE 控制原语）</td></tr>
+      <tr><td>6</td><td>Review → spec 可执行化</td><td class="tag prod">已完成</td>
+        <td>本轮 spec · F-001/002/003 resolved · 2026-05-12</td></tr>
+    </tbody>
+  </table>
+
+  <h3>验证命令</h3>
+  <pre><code>cd gan
+pytest -q                            # 期望 105 passed
+python -m bench.latency --quick      # 期望 p99 &lt; 2.5ms
+grep -rn "pragma: no cover" gan_matchmaking/   # 只剩 HTTP catch-all</code></pre>
+</section>
+
+<!-- ================================================================== -->
+<section class="mod" id="review">
+  <h2>7. 最新评审 <span class="chip">2026-05 session</span></h2>
+  <p class="subtitle">结论：<b>merge with the P1 fix, then land 3 follow-up PRs</b>。
+     详见 <a href="../claude-review/2026-05-session-review.md">2026-05-session-review.md</a>。</p>
+
+  <h3>评分</h3>
+  <table>
+    <thead><tr><th>维度</th><th>评分</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>对 PR 需求的交付度</td><td>★★★★★</td><td>PR-5-04 真实落地，其余"已完成"全部核对</td></tr>
+      <tr><td>测试质量</td><td>★★★★☆</td><td>测试验证真实行为；F-001 缺失败注入测试</td></tr>
+      <tr><td>契约 / 边界清晰度</td><td>★★★★★</td><td>3 份新 ADR + 2 份新 runbook + feature contract</td></tr>
+      <tr><td>抽象迁移能力</td><td>★★★★★</td><td>SRE 控制原语目录是最大思想亮点</td></tr>
+      <tr><td>生产鲁棒性</td><td>★★★☆☆</td><td>P1 / P2 上产前必修</td></tr>
+      <tr><td>文档 / 代码比例</td><td>★★★☆☆</td><td>偏重但都是有用文档</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Findings 状态</h3>
+  <table>
+    <thead><tr><th>#</th><th>级别</th><th>标题</th><th>状态</th><th>定位</th></tr></thead>
+    <tbody>
+      <tr><td>F-001</td><td><span class="tag p1">P1 合入前</span></td>
+        <td>LeaseRefreshLoop 续租失败静默化</td>
+        <td><span class="tag resolved">resolved (704765d)</span></td>
+        <td><code>sre/leases.py:228</code></td></tr>
+      <tr><td>F-002</td><td><span class="tag p2">P2 上产前</span></td>
+        <td>Shadow rewrite 后 monitor/log 与决策不一致</td>
+        <td><span class="tag resolved">resolved (704765d)</span></td>
+        <td><code>sre/self_iteration.py:868</code></td></tr>
+      <tr><td>F-003</td><td><span class="tag p2">P2 上产前</span></td>
+        <td>trace.input.config 无 allowlist</td>
+        <td><span class="tag resolved">resolved (704765d)</span></td>
+        <td><code>sre/self_iteration.py:515</code></td></tr>
+      <tr><td>F-004</td><td><span class="tag p3">P3</span></td>
+        <td><code>setattr(ctx.service, "_deps", ...)</code> 副作用</td>
+        <td><span class="tag resolved">resolved (6834ab3)</span></td>
+        <td><code>sre/self_iteration.py:457</code></td></tr>
+      <tr><td>F-005</td><td><span class="tag p3">P3</span></td>
+        <td>rating scaling 硬编码常数</td>
+        <td><span class="tag open">open</span></td>
+        <td><code>sre/artifacts.py::_service_player</code></td></tr>
+      <tr><td>F-006</td><td><span class="tag p3">P3</span></td>
+        <td>artifacts.py 488 行过长</td>
+        <td><span class="tag open">open</span></td><td>-</td></tr>
+      <tr><td>F-007</td><td><span class="tag p3">P3</span></td>
+        <td>_ctx_from_dict 被跨模块私有 import</td>
+        <td><span class="tag open">open</span></td>
+        <td><code>cli.py + service/app.py</code></td></tr>
+      <tr><td>F-008</td><td><span class="tag p3">P3</span></td>
+        <td>SQLite migration v5 特殊分支</td>
+        <td><span class="tag open">open</span></td>
+        <td><code>persistence/sqlite.py::_migrate</code></td></tr>
+      <tr><td>F-009</td><td><span class="tag p3">P3</span></td>
+        <td>handoff 和 roadmap 重叠 30%</td>
+        <td><span class="tag open">open</span></td><td>-</td></tr>
+      <tr><td>F-010</td><td><span class="tag p3">P3</span></td>
+        <td>replay fixture 命名不统一</td>
+        <td><span class="tag open">open</span></td><td>-</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout" style="border-left: 4px solid var(--green); background: #e6f5ec;">
+    <h4>F-001 · 已于 2026-05-12 修复（commit 704765d）</h4>
+    <p><code>LeaseRefreshLoop.__init__</code> 新增 <code>on_failure</code> 回调，
+    <code>DecisionApp</code> 新增 <code>_lease_healthy</code> 事件 +
+    <code>mark_lease_unhealthy</code> 入口，
+    <code>gan_lease_refresh_failures_total</code> 已在 Prometheus 暴露，
+    <code># pragma: no cover</code> 已从 <code>leases.py::_run</code> 移除。</p>
+    <p>验收报告：<a href="../claude-review/2026-05-spec-completion.md">2026-05-spec-completion.md</a>。
+    补丁草案：<a href="../claude-review/patches/F-001-lease-refresh.md">patches/F-001-lease-refresh.md</a>。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<section class="mod" id="spec">
+  <h2>8. 可执行 Spec <span class="chip">B+A2 本轮</span></h2>
+  <p class="subtitle">把 findings 从"问题清单"升级到"codex 读完就能 patch"的颗粒度。</p>
+
+  <h3>Spec 文件</h3>
+  <div class="grid">
+    <div class="card">
+      <h4>requirements.md</h4>
+      <p>EARS-A2 格式的 acceptance criteria。R-001 ~ R-005 (F-001)、R-101 ~ R-105 (F-002)、R-201 ~ R-204 (F-003)。</p>
+      <p><a href="../claude-review/spec/requirements.md"><code>docs/claude-review/spec/requirements.md</code></a></p>
+    </div>
+    <div class="card">
+      <h4>design.md</h4>
+      <p>每条 finding 的组件变更、mermaid 时序、字段新增说明。</p>
+      <p><a href="../claude-review/spec/design.md"><code>docs/claude-review/spec/design.md</code></a></p>
+    </div>
+    <div class="card">
+      <h4>tasks.md</h4>
+      <p>按依赖排序的 checkbox 任务。每勾一格跑一次对应的 verification 命令。</p>
+      <p><a href="../claude-review/spec/tasks.md"><code>docs/claude-review/spec/tasks.md</code></a></p>
+    </div>
+    <div class="card">
+      <h4>verification.md</h4>
+      <p>每条 finding 的验证命令、期望 stdout、metric / log 快照。</p>
+      <p><a href="../claude-review/spec/verification.md"><code>docs/claude-review/spec/verification.md</code></a></p>
+    </div>
+  </div>
+
+  <h3>本轮范围</h3>
+  <ul class="points">
+    <li><b>R-001 ~ R-005</b>（F-001）：Lease refresh 失败必须翻转 <code>/readyz</code> + inc metric + 发 ERROR 日志，且幂等。<code># pragma: no cover</code> 必须删除。</li>
+    <li><b>R-101 ~ R-105</b>（F-002）：Shadow rewrite 后 <code>gan_decisions_total</code> 反映 enforced kind；
+      新增 <code>decide.shadow_rewritten</code> 日志事件；<code>off</code> / <code>advisory</code> 模式不受影响。</li>
+    <li><b>R-201 ~ R-204</b>（F-003）：<code>AppConfig.to_trace_dict()</code> + allowlist；snapshot 测试锁白名单；replay 兼容。</li>
+  </ul>
+
+  <div class="callout ok">
+    <h4>完成标准</h4>
+    <ol>
+      <li>所有 requirements 都有对应测试通过</li>
+      <li>tasks.md 所有 checkbox 勾掉</li>
+      <li>verification.md 所有命令绿</li>
+      <li>findings.md F-001/F-002/F-003 改为 <code>resolved (commit &lt;sha&gt;)</code></li>
+      <li><code>pytest -q</code> 全绿，<code>bench p99 &lt; 2.5ms</code></li>
+      <li>新建 <code>docs/claude-review/2026-05-spec-completion.md</code> 记录收尾</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<section class="mod" id="patches">
+  <h2>9. 补丁草案 <span class="chip">可直接 git apply 的颗粒度</span></h2>
+  <p class="subtitle">每个补丁文件都包含：当前代码锚点（含行号）、目标代码片段、测试函数签名、预计 LOC。</p>
+
+  <div class="grid">
+    <div class="card">
+      <h4>F-001 · LeaseRefreshLoop</h4>
+      <p>给 <code>LeaseRefreshLoop.__init__</code> 加 <code>on_failure</code>，
+         给 <code>DecisionApp</code> 加 <code>_lease_healthy</code> + <code>mark_lease_unhealthy</code>，
+         <code>handle_ready</code> 开头检查。</p>
+      <p>预计 <b>+130 LOC</b>。<a href="../claude-review/patches/F-001-lease-refresh.md">查看完整补丁</a></p>
+    </div>
+    <div class="card">
+      <h4>F-002 · Shadow metric/log 一致</h4>
+      <p>把 <code>_emit</code> 里的 metric inc + log 挪到新的 <code>_publish_decision</code>，
+         在 <code>_finalize_decision</code> 的 shadow_wrap 之后调用。</p>
+      <p>预计 <b>+160 LOC</b>。<a href="../claude-review/patches/F-002-shadow-metric.md">查看完整补丁</a></p>
+    </div>
+    <div class="card">
+      <h4>F-003 · Trace allowlist</h4>
+      <p>在 <code>core/config.py</code> 定义 <code>_TRACE_ALLOWLIST</code>，
+         新增 <code>AppConfig.to_trace_dict()</code>，
+         <code>self_iteration.py:515</code> 一行替换。</p>
+      <p>预计 <b>+165 LOC</b>。<a href="../claude-review/patches/F-003-trace-allowlist.md">查看完整补丁</a></p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================================================================== -->
+<section class="mod" id="state-failure">
+  <h2>10. 状态 &amp; 失败域</h2>
+
+  <h3>持久 vs 临时</h3>
+  <table>
+    <thead><tr><th>状态</th><th>位置</th><th>恢复方式</th></tr></thead>
+    <tbody>
+      <tr><td>Service 可靠性 ($\mu$, $\sigma$)</td><td>SQLite <code>services</code></td><td>启动 hydrate</td></tr>
+      <tr><td>Synergy 图</td><td>SQLite <code>synergy_edges</code></td><td>启动 hydrate</td></tr>
+      <tr><td>决策审计</td><td>SQLite <code>decisions</code></td><td>永久保留</td></tr>
+      <tr><td>观测日志</td><td>SQLite <code>observations</code></td><td>训练源</td></tr>
+      <tr><td>Artifact</td><td>文件系统 <code>training_artifacts/</code></td><td>启动 hydrate 到 model</td></tr>
+      <tr><td>Lease 文件</td><td>本地 FS</td><td>TTL 过期可接管</td></tr>
+      <tr><td>PCA basis</td><td>内存（每次重 fit）</td><td>不持久化</td></tr>
+      <tr><td>Circuit breaker</td><td>内存</td><td>重启重置</td></tr>
+    </tbody>
+  </table>
+
+  <h3>失败域</h3>
+  <div class="mermaid">
+flowchart TD
+  DD["决策域<br/>单 stage 失败"] -.降级.-> X1[单决策退化为 HOLD/CANARY]
+  SD["服务域<br/>单服务状态损坏"] -.降级.-> X2[该服务失败,其他不受影响]
+  PD["进程域<br/>SQLite 损坏/Artifact 无效"] -.降级.-> X3[pod crashloop/bootstrap]
+  ND["节点域<br/>PVC / OOM / 节点宕"] -.降级.-> X4[k8s 迁移 pod]
+  CD["集群域<br/>时钟漂移/网络分区"] -.!!!.-> X5[split-brain 风险<br/>F-001 必修]
+  </div>
+
+  <h3>RTO / RPO</h3>
+  <table>
+    <thead><tr><th>故障</th><th>RTO</th><th>RPO</th></tr></thead>
+    <tbody>
+      <tr><td>Pod restart</td><td>&lt; 30s</td><td>0</td></tr>
+      <tr><td>节点迁移（RWO PVC rebind）</td><td>&lt; 2min</td><td>0</td></tr>
+      <tr><td>Artifact 损坏</td><td>&lt; 30s</td><td>0（降级 bootstrap）</td></tr>
+      <tr><td>Lease 过期未续租</td><td>&lt; TTL (60s)</td><td>潜在 split-brain <span class="tag p1">F-001</span></td></tr>
+      <tr><td>SQLite 损坏</td><td>手动</td><td>到上次备份</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ================================================================== -->
+<section class="mod" id="artifact">
+  <h2>11. Artifact 生命周期</h2>
+
+  <div class="mermaid">
+flowchart LR
+  OBS[(observations)] --> TR[training job]
+  TR --> PKG["Artifact bundle<br/>.npz + metadata.json"]
+  PKG --> VAL{validation}
+  VAL -->|pass| HYD[runtime hydrate<br/>eomm.model + risk.model]
+  VAL -->|fail| BOOT[bootstrap fallback<br/>+ trace.validation_errors]
+  HYD --> DEC[decide]
+  DEC --> TRC[trace.stages.eomm.source=artifact]
+  DEC --> AUDIT["SQLite<br/>decisions.artifact_version"]
+  AUDIT -.replay.-> REG[regression tests]
+  </div>
+
+  <h3>三重校验（manifest 契约）</h3>
+  <ul class="points">
+    <li><b>名称</b>：必须等于 <code>"retention"</code> / <code>"cox"</code></li>
+    <li><b>形状</b>：weights / beta 的 ndim + dim 严格对齐</li>
+    <li><b>契约</b>：<code>extra.feature_names</code> 必须 == <code>EOMM_FEATURE_NAMES</code> / <code>RISK_FEATURE_NAMES</code></li>
+  </ul>
+  <p>任一失败：artifact 被标为 None，<code>trace.artifacts.validation_errors</code> 记录原因，
+     pipeline 不崩溃，走 bootstrap fallback。</p>
+
+  <h3>Feature contract 共享</h3>
+  <pre><code>sre/features.py::RISK_FEATURE_NAMES
+    = ("loss_streak", "win_streak", "unreliability", "sigma",
+       "canary_fraction", "budget_spent")
+              │
+      ┌───────┴───────┐
+      ▼               ▼
+training/cox.py     sre/self_iteration.py
+(build_observation  (build_risk_feature
+ _risk_vector)       _vector)</code></pre>
+  <p>训练和运行共享一份 NAMES，改动会导致 manifest mismatch → hydrate 被拒。</p>
+
+  <h3>Replay promotion 门禁</h3>
+  <p>Bootstrap 决策可直接导出 fixture。Fitted 决策需要：</p>
+  <ol>
+    <li><code>--allow-fitted-artifacts</code></li>
+    <li><code>--artifact-dir</code> 指向 bundle</li>
+    <li><code>--artifact-output-dir</code> 归档目录</li>
+  </ol>
+  <p>导出器会 <code>validate_artifact_bundle</code> + <code>archive_artifact_bundle</code>，
+     写 <code>replay_artifact_manifest.json</code>，fixture 里记 <code>requires_artifact_version</code>。</p>
+</section>
+
+<!-- ================================================================== -->
+<section class="mod" id="concurrency">
+  <h2>12. 并发 &amp; Lease <span class="chip">三层粒度</span></h2>
+
+  <table>
+    <thead><tr><th>粒度</th><th>工具</th><th>防什么</th><th>状态</th></tr></thead>
+    <tbody>
+      <tr><td>线程</td><td><code>PerServiceLock</code> (per service_id RLock)</td>
+        <td>单进程内同服务并发 decide</td>
+        <td><span class="tag prod">production</span></td></tr>
+      <tr><td>进程</td><td><code>FileLease</code> + <code>LeaseRefreshLoop</code></td>
+        <td>同节点多进程踩 SQLite</td>
+        <td><span class="tag prod">F-001 已闭环</span></td></tr>
+      <tr><td>节点</td><td><b>不支持</b>（需外部 DB + 分布式 lease）</td>
+        <td>多 pod 共享 state</td>
+        <td><span class="tag research">未来工作</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3>K8s 部署硬约束（ADR-0007）</h3>
+  <pre><code>spec:
+  replicas: 1             # 硬约束
+  strategy:
+    type: Recreate        # 滚动更新禁止</code></pre>
+
+  <div class="callout warn">
+    <h4>F-001 直接影响这一层</h4>
+    <p>目前 <code>LeaseRefreshLoop</code> 续租失败只写 <code>self.error</code>，
+    无人读取。HTTP server 主循环继续对外服务，另一个 pod 接管 lease 后形成 split-brain。</p>
+    <p>修复后：失败 → <code>/readyz</code> 返 503 → k8s 自动把流量切走 → pod 重启。
+    详见 <a href="#spec">#8 Spec</a> R-001 ~ R-005。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<section class="mod" id="observability">
+  <h2>13. 可观测性 <span class="chip">三件物证</span></h2>
+
+  <p>任何人都能从 <b>metric / log / trace</b> 任意一件追溯到另一件，共同 key 是 <code>correlation_id</code>。</p>
+
+  <h3>Metric catalog</h3>
+  <table>
+    <thead><tr><th>名称</th><th>类型</th><th>Labels</th></tr></thead>
+    <tbody>
+      <tr><td><code>gan_decisions_total</code></td><td>counter</td><td>kind, risk_level</td></tr>
+      <tr><td><code>gan_stage_failures_total</code></td><td>counter</td><td>stage</td></tr>
+      <tr><td><code>gan_shadow_diff_total</code></td><td>counter</td><td>suppressed_kind</td></tr>
+      <tr><td><code>gan_service_confidence</code></td><td>gauge</td><td>service_id</td></tr>
+      <tr><td><code>gan_breaker_state</code></td><td>gauge</td><td>—</td></tr>
+      <tr><td><code>gan_stage_latency_seconds</code></td><td>histogram</td><td>stage</td></tr>
+      <tr><td><code>gan_lease_refresh_failures_total</code></td><td>counter</td><td>reason（<span class="tag p1">F-001 修后</span>）</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Log event catalog</h3>
+  <table>
+    <thead><tr><th>Event</th><th>Level</th><th>Payload 关键</th></tr></thead>
+    <tbody>
+      <tr><td><code>decide.started</code></td><td>INFO</td><td>service_id, n_candidates</td></tr>
+      <tr><td><code>decide.finished</code></td><td>INFO</td><td>kind, risk_level, artifact_version</td></tr>
+      <tr><td><code>decide.short_circuited</code></td><td>WARN</td><td>breaker snapshot</td></tr>
+      <tr><td><code>decide.shadow_rewritten</code></td><td>INFO</td>
+        <td>original_kind, final_kind, correlation_id（<span class="tag p2">F-002 修后</span>）</td></tr>
+      <tr><td><code>span.started / finished / failed</code></td><td>INFO/WARN</td><td>stage 名, elapsed_ms</td></tr>
+      <tr><td><code>artifacts.loaded</code></td><td>INFO</td><td>artifact_version</td></tr>
+      <tr><td><code>artifacts.*.shape_mismatch / degraded</code></td><td>WARN</td><td>expected / got</td></tr>
+      <tr><td><code>stage.*.degraded</code></td><td>WARN</td><td>error_type</td></tr>
+      <tr><td><code>lease.refresh.failed</code></td><td>ERROR</td>
+        <td>lease_path, owner, error_type（<span class="tag p1">F-001 修后</span>）</td></tr>
+    </tbody>
+  </table>
+
+  <h3>告警示例</h3>
+  <pre><code># 决策分布骤变
+rate(gan_decisions_total{kind=~"rollback|hold"}[5m])
+  / ignoring(kind) rate(gan_decisions_total[5m]) &gt; 0.5
+
+# 服务置信骤降
+gan_service_confidence &lt; 0.5
+
+# Breaker 开着
+gan_breaker_state == 2
+
+# Lease 续租失败（F-001 修后启用）
+increase(gan_lease_refresh_failures_total[1m]) &gt; 0</code></pre>
+
+  <div class="callout warn">
+    <h4>F-002 当前暗坑</h4>
+    <p>Shadow 模式下 <code>gan_decisions_total</code> 反映的是 <b>改写前</b> 的 kind，
+       但 caller 拿到和 SQLite 里存的都是改写后。告警 "rollback 次数骤增" 会误触发。
+       修复方案：counter 递增挪到 <code>_shadow_wrap</code> 之后，同时补 <code>decide.shadow_rewritten</code>
+       日志。详见 <a href="#spec">#8 R-101 ~ R-105</a>。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<section class="mod" id="governance">
+  <h2>14. 治理 <span class="chip">rollout &amp; ADR</span></h2>
+
+  <h3>行为变更三档推进</h3>
+  <div class="mermaid">
+flowchart LR
+  A[代码 ready] --> B[shadow 模式<br/>≥ 14 天]
+  B -->|指标健康| C[advisory 模式<br/>≥ 14 天]
+  B -->|指标恶化| R1[回滚配置]
+  C -->|业务方认可| D[enforce off 模式]
+  C -->|反馈问题| R2[回滚配置]
+  </div>
+
+  <h3>ADR 开立触发条件</h3>
+  <table>
+    <thead><tr><th>场景</th><th>要 ADR?</th></tr></thead>
+    <tbody>
+      <tr><td>新增 trace / metric / log 字段</td><td>❌（加 catalog 即可）</td></tr>
+      <tr><td>删除公开字段 / 改字段语义</td><td>✅ 破坏性</td></tr>
+      <tr><td>改失败处理策略（fallback → fail）</td><td>✅</td></tr>
+      <tr><td>引入新依赖（Redis / etcd）</td><td>✅</td></tr>
+      <tr><td>参数调优</td><td>❌（走 runbook）</td></tr>
+    </tbody>
+  </table>
+
+  <h3>现有 ADR</h3>
+  <ul class="points">
+    <li><a href="../adr/0001-why-no-deep-learning-framework.md">ADR-0001</a> · 为什么不引入深度学习框架</li>
+    <li><a href="../adr/0002-decision-enum-over-booleans.md">ADR-0002</a> · Decision enum 而非布尔</li>
+    <li><a href="../adr/0003-layered-structure-core-sre-game.md">ADR-0003</a> · core/sre/game 三层结构</li>
+    <li><a href="../adr/0004-determinism-and-seeding.md">ADR-0004</a> · 确定性与 seeding</li>
+    <li><a href="../adr/0005-fallback-strategy-for-untrained-models.md">ADR-0005</a> · 未训练模型的 fallback</li>
+    <li><a href="../adr/0006-runtime-artifact-versioning.md">ADR-0006</a> · Runtime artifact 版本化</li>
+    <li><a href="../adr/0007-single-writer-lease-boundary.md">ADR-0007</a> · 单写者 lease 边界</li>
+  </ul>
+</section>
+
+<!-- ================================================================== -->
+<section class="mod" id="file-map">
+  <h2>A. 文件地图</h2>
+
+  <h3>代码结构</h3>
+  <pre><code>gan_matchmaking/
+├── core/           infra（config, errors, logging, metrics, tracing, random, protocols）
+├── persistence/    SQLite + memory 双实现
+├── sre/            domain + self_iteration + artifacts + leases + primitives + replay ...
+├── service/        stdlib HTTP server
+├── training/       offline Cox + Retention
+├── 九个机制模块     trueskill.py / eomm.py / ...
+├── cli.py
+bench/              性能基线
+deploy/kubernetes/  ConfigMap · Deployment · CronJob · PVC · Service
+Dockerfile
+.github/workflows/  CI</code></pre>
+
+  <h3>文档地图</h3>
+  <pre><code>docs/
+├── architecture.md              顶层架构总览
+├── module-contracts.md          模块 ownership / fallback / readiness
+├── state-lifecycle.md           五个状态机
+├── sre-control-primitives.md    九机制 → SRE 原语
+├── implementation-roadmap.md    phase 交付时序
+├── codex-handoff.md             交接文档（已更新指向本页）
+├── knowledge_base.html          V1 单页（9 机制公式 + before/after）
+├── architecture/                深度架构（01 ~ 08）
+├── adr/                         ADR-0001 ~ ADR-0007
+├── runbooks/                    on-call SOP
+├── claude-review/               评审资料
+│   ├── 2026-05-session-review.md
+│   ├── findings.md
+│   ├── action-items.md
+│   ├── test-coverage-gaps.md
+│   ├── spec/                    本轮可执行 spec
+│   │   ├── README.md
+│   │   ├── requirements.md      EARS-A2
+│   │   ├── design.md            组件 / 时序
+│   │   ├── tasks.md             checkbox
+│   │   └── verification.md      验证命令
+│   └── patches/                 可 git apply 的代码片段
+│       ├── F-001-lease-refresh.md
+│       ├── F-002-shadow-metric.md
+│       └── F-003-trace-allowlist.md
+└── V2_Knowledge/                本页所在位置
+    ├── README.md
+    └── knowledge-base.html</code></pre>
+</section>
+
+<!-- ================================================================== -->
+<section class="mod" id="next-round">
+  <h2>B. 下一轮建议</h2>
+
+  <h3>本轮之后（按优先级）</h3>
+  <ol>
+    <li><b>F-004</b>：消除 <code>setattr(ctx.service, "_deps", ...)</code> 的副作用泄漏</li>
+    <li><b>F-005 + F-006</b>：把 <code>artifacts.py</code> 拆分 + freeze rating scaling 常数到 metadata</li>
+    <li><b>F-007</b>：把 <code>_ctx_from_dict</code> 晋升到 <code>ReleaseContext.from_dict</code></li>
+    <li><b>F-008</b>：SQLite migration 全部改成 idempotent DDL</li>
+    <li><b>PR-calibrate</b>：用真实观测校准 Cox / Retention 阈值和学习率</li>
+    <li><b>PR-replay-expand</b>：incident-style replay 覆盖 artifact 校验失败、breaker 短路、shadow 切换</li>
+  </ol>
+
+  <h3>更远（需要先决策）</h3>
+  <ul class="points">
+    <li><b>多副本 scale</b>：ADR-0007 的升级路径（Redis lease / PostgreSQL advisory lock / k8s Lease）</li>
+    <li><b>Object storage for artifacts</b>：从本地 PVC 走向 S3 / GCS</li>
+    <li><b>Atomic artifact swap</b>：blue/green artifact 快速回滚</li>
+    <li><b>Artifact signing</b>：build pipeline 签名防止手工篡改</li>
+    <li><b>分布式追踪</b>：当前只有 correlation_id，未来对齐 OpenTelemetry trace_id / span_id</li>
+  </ul>
+
+  <div class="callout">
+    <h4>给下一个 agent 的话</h4>
+    <p>这个项目的"地心引力"不是"加更多机制"，而是 <b>每次闭环都让决策更可审计、更可复现、更可回滚</b>。
+       九个机制是工具，spec + patches + review 的循环才是产品。</p>
+    <p>开新一轮工作前，先看 <a href="../claude-review/">docs/claude-review/</a> 的最新评审是不是闭环了；
+       然后在 <code>docs/V3_Knowledge/</code> 新建下一版快照（V2 本身不再更新）。</p>
+  </div>
+</section>
+
+</main>
+</div>
+
+<footer>
+  gan-matchmaking V2 Knowledge Hub · 生成于 2026-05 · 基于分支
+  <code>gan-session</code> · <a href="../../README.md">返回仓库根</a>
+</footer>
+
+<script>
+  const links = document.querySelectorAll('nav.toc a');
+  const targets = Array.from(links).map(a => {
+    const href = a.getAttribute('href');
+    return href.startsWith('#') ? document.querySelector(href) : null;
+  });
+  function onScroll() {
+    const top = window.scrollY + 140;
+    let active = null;
+    for (const t of targets) {
+      if (t && t.offsetTop <= top) active = t;
+    }
+    links.forEach(a => a.classList.toggle('active',
+      active && a.getAttribute('href') === '#' + active.id));
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+</script>
+</body>
+</html>

@@ -267,6 +267,8 @@ post-incident regression.
 
 See also:
 
+- [`docs/architecture/`](architecture/) — deep-dive专题文档（system context / decision flow / trace schema / state & failure domains / artifact lifecycle / concurrency / observability / rollout governance）
+- [`docs/claude-review/`](claude-review/) — 最新评审报告、findings、action items
 - [`docs/state-lifecycle.md`](state-lifecycle.md)
 - [`docs/module-contracts.md`](module-contracts.md)
 - [`docs/sre-control-primitives.md`](sre-control-primitives.md)

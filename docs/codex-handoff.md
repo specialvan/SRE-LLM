@@ -128,16 +128,56 @@
 - 作用：把 GAN 九机制从“算法列表”提升为可被其它 SRE 控制面复用的能力目录
 
 ## 下一步
-1. 继续扩展 incident-style replay，优先覆盖 artifact validation failure、breaker short-circuit、shadow/advisory rollout transition
-2. 如果目标部署需要多写者，原型化 Kubernetes Lease / PostgreSQL advisory lock / Redis lease 之一
-3. 增加 artifact bundle 存储策略文档：本地 corpus、对象存储、CI 下载缓存如何组织
-4. 把 `PR-REQUIREMENTS.md` 继续收敛成可执行的 phase 任务单
-5. 用真实观测数据校准 Cox / Retention 的阈值和学习率
+1. **✅ B+A2 本轮已关闭** (commits `704765d` + `6834ab3`, 2026-05-12)：F-001 / F-002 / F-003 / F-004 全部 resolved。收尾报告见
+   [`docs/claude-review/2026-05-spec-completion.md`](claude-review/2026-05-spec-completion.md)，
+   `pytest -q` = 123 passed, `bench p99` = 1.03 ms。
+2. **🔵 C+A2 下一轮 spec 已备好**：入口 [`docs/claude-review/2026-06-session-review.md`](claude-review/2026-06-session-review.md)，
+   覆盖 F-005 / F-006 / F-007 / F-008 / F-009 / F-010。按
+   [`docs/claude-review/spec-v2/tasks.md`](claude-review/spec-v2/tasks.md)
+   的 T-XXX 编码；验证命令见
+   [`docs/claude-review/spec-v2/verification.md`](claude-review/spec-v2/verification.md)；
+   补丁草案在
+   [`patches/F-005-rating-scaling-contract.md`](claude-review/patches/F-005-rating-scaling-contract.md)、
+   [`patches/F-007-release-context-from-dict.md`](claude-review/patches/F-007-release-context-from-dict.md)、
+   [`patches/F-008-sqlite-migration.md`](claude-review/patches/F-008-sqlite-migration.md)。
+3. V3 Knowledge 差量快照已就绪：[`docs/V3_Knowledge/knowledge-base.html`](V3_Knowledge/knowledge-base.html)
+   （2026-06 轮的变更面 + findings 状态表 + PR 编排图）；系统全景仍读
+   [`docs/V2_Knowledge/knowledge-base.html`](V2_Knowledge/knowledge-base.html)。本轮
+   PR 落地后用真实 commit sha 回填 V3 的 findings 状态表。
+4. 继续扩展 incident-style replay，优先覆盖 artifact validation failure、breaker short-circuit、shadow/advisory rollout transition
+5. 如果目标部署需要多写者，原型化 Kubernetes Lease / PostgreSQL advisory lock / Redis lease 之一
+6. 增加 artifact bundle 存储策略文档：本地 corpus、对象存储、CI 下载缓存如何组织
+7. 用真实观测数据校准 Cox / Retention 的阈值和学习率
+
+## Claude 评审结论（2026-05 session）
+- 评审报告：[`docs/claude-review/2026-05-session-review.md`](claude-review/2026-05-session-review.md)
+- 结构化 findings：[`docs/claude-review/findings.md`](claude-review/findings.md)（P1 / P2 / P3 分级）
+- Follow-up PR 清单：[`docs/claude-review/action-items.md`](claude-review/action-items.md)
+- 测试覆盖缺口：[`docs/claude-review/test-coverage-gaps.md`](claude-review/test-coverage-gaps.md)
+
+评审结论是 **merge with the P1 fix, then land 3 follow-up PRs**。evaluation 评分：交付度 ★★★★★、测试质量 ★★★★☆、契约清晰度 ★★★★★、抽象迁移能力 ★★★★★、生产鲁棒性 ★★★☆☆、文档结构 ★★★☆☆。
+
+## 可执行 Spec（B+A2，2026-05）· 已完成 ✅
+- 完成报告：[`docs/claude-review/2026-05-spec-completion.md`](claude-review/2026-05-spec-completion.md)
+- Spec 入口：[`docs/claude-review/spec/README.md`](claude-review/spec/README.md)
+- 需求（EARS-A2）：[`docs/claude-review/spec/requirements.md`](claude-review/spec/requirements.md)
+- 设计（组件 / 时序）：[`docs/claude-review/spec/design.md`](claude-review/spec/design.md)
+- 任务 checkbox（29 条 T-XXX）：[`docs/claude-review/spec/tasks.md`](claude-review/spec/tasks.md)
+- 验证命令 + 快照：[`docs/claude-review/spec/verification.md`](claude-review/spec/verification.md)
+- 代码补丁草案：[`docs/claude-review/patches/`](claude-review/patches/) — F-001 / F-002 / F-003 各一份 before/after + 测试 shape
+
+本轮覆盖 F-001 (合入前必修) + F-002 / F-003 (上产前必修) 全部已 resolved。
+codex 已按 `spec/tasks.md` 顺序执行，各 PR 合入的 commit sha 在
+`findings.md` 对应条目的 status 字段中登记。下一轮评审请开
+`docs/claude-review/2026-06-session-review.md` 与 `docs/V3_Knowledge/`
+（V2 快照冻结，不再变更）。
 
 ## 交接建议
-- 下一位先读 `docs/architecture.md`
-- 然后读 `docs/module-contracts.md`
-- 再看 `docs/state-lifecycle.md`
-- 最后看 `sre/self_iteration.py` 和 `sre/artifacts.py`
+- **先读 V2 知识库（一页全览）**：[`docs/V2_Knowledge/knowledge-base.html`](V2_Knowledge/knowledge-base.html) ← 新建，包含系统全景 / 决策流 / trace schema / findings / spec / 补丁入口
+- **先读评审**：`docs/claude-review/README.md` → `2026-05-session-review.md` → `findings.md`（10 分钟）
+- **再看 Spec**：`docs/claude-review/spec/README.md` → `requirements.md` → `tasks.md`（15 分钟）
+- **准备改代码**：`docs/claude-review/patches/F-001-lease-refresh.md`（直接给出 before/after）
+- **背景补强（可选）**：`docs/architecture/README.md` → `02-decision-flow.md` → `03-trace-schema.md`
+- **最后做事**：按 F-005~F-010 的优先级开下一轮 PR；本轮 B+A2 三条 blocker 已在 `gan-session` 分支 resolved
 
 这会比从数学模块倒着看更快进入真实控制面。
