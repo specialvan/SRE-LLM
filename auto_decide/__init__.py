@@ -25,7 +25,8 @@ from .cbf import (BarrierFunction, BrakingDistanceBarrier, DistanceBarrier,
 from .invariant import ControlInvariantOperator
 from .game import BeliefState, WorstCaseGame
 from .planner import StructuralPlanner
-from .trace import TRACE_SCHEMA_VERSION, build_trace_record
+from .trace import (TRACE_SCHEMA_VERSION, PLANNER_STATUS_VALUES,
+                    CBF_STATUS_VALUES, build_trace_record)
 
 __all__ = [
     "State", "Control", "AgentType",
@@ -39,7 +40,8 @@ __all__ = [
     "ControlInvariantOperator",
     "BeliefState", "WorstCaseGame",
     "StructuralPlanner",
-    "TRACE_SCHEMA_VERSION", "build_trace_record",
+    "TRACE_SCHEMA_VERSION", "PLANNER_STATUS_VALUES", "CBF_STATUS_VALUES",
+    "build_trace_record",
 ]
 
 __version__ = "0.1.0"

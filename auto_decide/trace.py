@@ -14,6 +14,14 @@ from typing import Any, Optional
 from .types import Control, State
 
 TRACE_SCHEMA_VERSION = "1.0"
+PLANNER_STATUS_VALUES = frozenset({
+    "stable",
+    "relaxed_exp",
+    "relaxed",
+    "non_increasing",
+    "emergency_brake",
+})
+CBF_STATUS_VALUES = frozenset({"nom_ok", "qp_ok", "fallback_brake"})
 
 
 def _jsonable(value: Any) -> Any:
@@ -53,7 +61,8 @@ def build_trace_record(*,
                        u_nn: Control,
                        u_safe: Control,
                        info: Mapping[str, Any],
-                       min_dist: float) -> dict:
+                       min_dist: float,
+                       strict: bool = True) -> dict:
     """Build a single planner trace record.
 
     The record is designed for JSONL storage and automated review. The
@@ -87,4 +96,22 @@ def build_trace_record(*,
         ),
         "cbf": _jsonable(cbf_info),
     }
+    if strict:
+        _validate_status(record)
     return record
+
+
+def _validate_status(record: Mapping[str, Any]) -> None:
+    status = record.get("status")
+    if status is not None and status not in PLANNER_STATUS_VALUES:
+        raise ValueError(
+            f"Unknown planner status: {status!r}. "
+            f"Allowed: {sorted(PLANNER_STATUS_VALUES)}"
+        )
+
+    cbf_status = record.get("cbf_status")
+    if cbf_status is not None and cbf_status not in CBF_STATUS_VALUES:
+        raise ValueError(
+            f"Unknown cbf_status: {cbf_status!r}. "
+            f"Allowed: {sorted(CBF_STATUS_VALUES)}"
+        )

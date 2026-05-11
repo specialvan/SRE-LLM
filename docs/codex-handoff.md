@@ -251,7 +251,7 @@ review 关注：
 
 review 关注：
 
-- 状态码是否覆盖 `ok`、`relaxed`、`fallback_brake` 等路径。
+- status code 的合法集合见 [trace-schema.md](./trace-schema.md) 的枚举表。
 - emergency brake 是否进入 trace。
 - fallback rate 是否可作为 SLI。
 
@@ -379,7 +379,7 @@ SRE 迁移时不要说“服务也有 Lyapunov 方程”这种空话。
 - `schema_version` 固定存在。
 - 非有限数写入前清洗成 `null`。
 - 状态向量和控制向量长度固定。
-- `cbf_status` 至少覆盖 `nom_ok` / `qp_ok` / `fallback_brake`。
+- `status` 与 `cbf_status` 的合法集合以 [trace-schema.md](./trace-schema.md) 为准。
 
 验收：
 
@@ -518,7 +518,7 @@ review 时按这个顺序看：
 2. `planner.step()` 是否仍是唯一北向入口。
 3. `u_nn` 是否一定经过 `cbf.py`。
 4. `u_safe` 是否一定经过 `invariant.py`。
-5. `cbf_status` 是否覆盖 nominal / qp / fallback。
+5. `status` / `cbf_status` 是否符合 [trace-schema.md](./trace-schema.md) 的枚举契约。
 6. `trace` 是否能解释每次动作改写。
 7. `BrakingDistanceBarrier` 是否考虑速度、反应时间和摩擦。
 8. `Lyapunov` 是否只承担稳定性职责。

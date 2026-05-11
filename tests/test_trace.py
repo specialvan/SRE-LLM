@@ -3,12 +3,18 @@
 import json
 
 import numpy as np
+import pytest
 
 from auto_decide.dynamics import BicycleModel, CircleObstacle, Manifold
 from auto_decide.graph import InteractionIntentGraph
 from auto_decide.planner import StructuralPlanner
 from auto_decide.potential import PotentialField
-from auto_decide.trace import TRACE_SCHEMA_VERSION, build_trace_record
+from auto_decide.trace import (
+    CBF_STATUS_VALUES,
+    PLANNER_STATUS_VALUES,
+    TRACE_SCHEMA_VERSION,
+    build_trace_record,
+)
 from auto_decide.types import Control, State
 
 
@@ -81,4 +87,55 @@ def test_planner_run_emits_schema_versioned_jsonl(tmp_path):
     assert first["dt"] == 0.1
     assert len(first["state"]) == 6
     assert len(first["u_safe"]) == 2
-    assert first["cbf_status"] in {"nom_ok", "qp_ok", "fallback_brake"}
+    assert first["status"] in PLANNER_STATUS_VALUES
+    assert first["cbf_status"] in CBF_STATUS_VALUES
+
+
+def test_planner_status_enum_contents():
+    assert PLANNER_STATUS_VALUES == frozenset({
+        "stable",
+        "relaxed_exp",
+        "relaxed",
+        "non_increasing",
+        "emergency_brake",
+    })
+
+
+def test_cbf_status_enum_contents():
+    assert CBF_STATUS_VALUES == frozenset({
+        "nom_ok",
+        "qp_ok",
+        "fallback_brake",
+    })
+
+
+def test_build_trace_record_rejects_unknown_planner_status():
+    state = State(px=0.0, py=0.0, psi=0.0, v=5.0, a=0.0, mu=1.0)
+
+    with pytest.raises(ValueError, match="Unknown planner status"):
+        build_trace_record(
+            step_index=0,
+            dt=0.1,
+            state=state,
+            next_state=state,
+            u_nn=Control(0.0, 0.0),
+            u_safe=Control(0.0, 0.0),
+            info={"status": "totally_new_value", "cbf": {}},
+            min_dist=10.0,
+        )
+
+
+def test_build_trace_record_rejects_unknown_cbf_status():
+    state = State(px=0.0, py=0.0, psi=0.0, v=5.0, a=0.0, mu=1.0)
+
+    with pytest.raises(ValueError, match="Unknown cbf_status"):
+        build_trace_record(
+            step_index=0,
+            dt=0.1,
+            state=state,
+            next_state=state,
+            u_nn=Control(0.0, 0.0),
+            u_safe=Control(0.0, 0.0),
+            info={"status": "stable", "cbf": {"status": "weird"}},
+            min_dist=10.0,
+        )

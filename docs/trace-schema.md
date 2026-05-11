@@ -21,8 +21,8 @@
 | `min_dist` | float | 当前状态下的最小障碍距离 |
 | `V` | float \| null | Lyapunov 值 |
 | `dV_dt` | float \| null | Lyapunov 导数 |
-| `status` | string \| null | `T_inv` 的状态码 |
-| `cbf_status` | string \| null | CBF 子层状态码 |
+| `status` | enum \| null | `T_inv.apply` 的状态码之一：<br>`stable`：首次即满足指数衰减目标；<br>`relaxed_exp`：松弛后满足指数衰减目标；<br>`relaxed`：松弛后满足 `dV_dt <= tol`；<br>`non_increasing`：首次即满足 `dV_dt <= tol` 但未达指数衰减；<br>`emergency_brake`：兜底刹停 |
+| `cbf_status` | enum \| null | `CBFQPFilter.filter` 的状态码之一：<br>`nom_ok`：名义命令直接满足所有 barrier；<br>`qp_ok`：网格搜索找到非平凡可行解；<br>`fallback_brake`：搜索失败，退化为刹停 |
 | `cbf_slack` | float \| null | CBF 松弛量 |
 | `cbf_violations` | array[float] | 每个 barrier 的约束值 |
 | `cbf` | object | 原始 CBF payload，已做 JSON-safe 清洗 |
@@ -34,7 +34,8 @@
 3. `step` 只在 `run()` 场景下递增。
 4. `t` 与 `dt` 一致，且 `t = step * dt`。
 5. 任何非有限数都会在写入前被清洗成 `null`，保证 JSONL 严格可解析。
-6. `cbf_status` 至少覆盖 `nom_ok` / `qp_ok` / `fallback_brake`。
+6. `status` 必须属于 `auto_decide.trace.PLANNER_STATUS_VALUES`。
+7. `cbf_status` 必须属于 `auto_decide.trace.CBF_STATUS_VALUES`。
 
 ## 使用位置
 

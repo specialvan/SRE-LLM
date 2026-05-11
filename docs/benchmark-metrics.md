@@ -82,6 +82,18 @@ reviewer 至少同时看四类指标：
 
 如果结构化链路碰撞率低但 `planner_emergency_rate` 很高，说明系统更安全但可能过保守，下一步要调 CBF / T_inv / nominal policy 的边界，而不是只展示“0 碰撞”。
 
+## SLO 阈值参考（AI-01）
+
+| 指标 | Demo 阈值（pytest） | 生产 SLO | 处置 |
+| --- | ---: | ---: | --- |
+| `collision_rate` | 0 | < 10^-6 / mile | P0 回退 PR |
+| `planner_emergency_rate` | <= 10% | < 0.5% | P1 告警，冻结 nominal policy 升级 |
+| `cbf_fallback_rate` | <= 10% | < 5% | P1 告警，优先修 nominal policy |
+| `mean_step_time_ms` | < 15 ms | < 15 ms P99 | P1 降频或缩小搜索预算 |
+
+Demo 阈值用于自动化测试，生产 SLO 来自 [knowledge-base.html](./knowledge-base.html) 的 SRE 评审口径。
+在 AI-02 完成前，availability SLO 测试应保持 `xfail(strict=True)`；AI-02 完成后必须移除 xfail。
+
 ## 和 Trace 的关系
 
 benchmark metrics 是 trace 的聚合层。
