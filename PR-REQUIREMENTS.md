@@ -1,10 +1,10 @@
 ---
 spec: starship-recovery · PR-level functional requirements
-version: 0.3.5
+version: 0.3.6
 updated: 2026-05-12
 owner: spacex-session
 baseline-commit: cf9c8dc
-head-commit: (post-v0.3.5 commit · see git log)
+head-commit: (post-v0.3.6 commit · see git log)
 status-legend:
   - "✅ SHIPPED  · 已实现 · 有测试 + 证据"
   - "🟡 IN-PROG  · 已开工 · 尚未合并"
@@ -685,18 +685,19 @@ disallowed: docs/*        ← no runtime code
 
 #### PR-S-02 · CatchController 属性澄清
 
-- **Status**: 🔵 PROPOSED
+- **Status**: ✅ SHIPPED (v0.3.6 · 见 git log)
 - **背景**：`API_CONTRACTS.md §2.9 CatchController` 放在 SRE 文档里容易误导。
 - **范围**：加一段"属 starship 物理层，不反向依赖 sre_control"说明。
-- **DoD**：文档修正 + 不改代码。
+- **Evidence**：`docs/API_CONTRACTS.md §2.9` 顶部加 note 块，明确引用 I-1 不变量。
 
 #### PR-S-03 · 收敛 CatchController wrapper 建议
 
-- **Status**: 🔵 PROPOSED
+- **Status**: ✅ SHIPPED (v0.3.6 · 见 git log)
 - **背景**：`ARCHITECTURE.md §4.5` + `CODEX_HANDOFF.md §下一步` + `claude-review/FAILURE_MODES.md`
   同时提到 "未来做 CatchController SRE wrapper"，重复 3 次。
-- **范围**：收敛到 `CODEX_HANDOFF.md` 一处。
-- **DoD**：删除其余两处重复建议，保持导航。
+- **范围**：收敛到 `CODEX_HANDOFF.md` 一处；`ARCHITECTURE.md` 只保留依赖边界说明。
+- **Evidence**：`docs/ARCHITECTURE.md §4.5` 第 5 条从原来的"建议 wrap"改成"已搬移"
+  指针（指向 CODEX_HANDOFF）。
 
 ### 中档（单 commit 可完成）
 
@@ -956,6 +957,14 @@ disallowed: docs/*        ← no runtime code
 ---
 
 ## Change Log
+
+### v0.3.6 · 2026-05-12 · Claude Reviewer（清空小档 Backlog）
+
+- **PR-S-02 SHIPPED**：`API_CONTRACTS.md §2.9 CatchController` 顶部加"属 starship 物理
+  层"note，引用 I-1 不变量。
+- **PR-S-03 SHIPPED**：`ARCHITECTURE.md §4.5` 第 5 条改为"已搬移"指针；
+  `CODEX_HANDOFF.md` 成为 CatchController wrapper 建议的 single source。
+- 无代码改动。Backlog 从 3 条降到 **2 条**（都是大档 cross-session，PR-L-01/PR-L-02）。
 
 ### v0.3.5 · 2026-05-12 · Claude Reviewer（PR-M-04 · 不变量升格到 5 条）
 

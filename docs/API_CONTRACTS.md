@@ -249,6 +249,11 @@ Counter-example:
 
 ### 2.9 `CatchController`
 
+> **注意 · 属 `starship/` 物理层**：本小节列出 `CatchController` 的契约是为了让 future
+> wrapper 开发者参考；它本身**不是** SRE adapter，不依赖 `sre_control/events.py`。残差
+> 通过 `info["alloc_residual"]` 暴露，如果未来需要把它映射成 SRE event，要新增一层
+> wrapper 而不是让 `starship/` 反向依赖 `sre_control/`（见 I-1 依赖方向不变量）。
+
 Public surface:
 
 - `step(state, target_position, target_velocity, target_axis_body=...) -> (thrusts, info)`

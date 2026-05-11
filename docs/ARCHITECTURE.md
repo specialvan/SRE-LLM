@@ -301,7 +301,10 @@ The next useful refinements are:
 2. Add explicit failure-state traces to `analysis/`.
 3. Split `SREControlStack` into observable sub-steps if future users need per-stage audits.
 4. Add a contract test for every public dataclass field.
-5. Wrap `CatchController` only if there is a real SRE-side actuator use case; keep `starship/` free of SRE event imports.
+5. *(Moved: CatchController wrapper guidance now lives solely in
+   `CODEX_HANDOFF.md §下一步` — this architecture doc owns only the
+   dependency-direction boundary itself, not the roadmap for wrapping
+   `starship/` primitives.)*
 
 ---
 
