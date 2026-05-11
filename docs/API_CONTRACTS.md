@@ -30,9 +30,11 @@ Public surface:
 Contract:
 
 - 输入是每秒 RPS 预测。
-- 输出是每秒池大小计划和成本信息。
+- 输出是每秒池大小计划、成本信息和本地运行态 trace。
 - `min_keep_alive <= pool <= max_capacity` 必须成立。
 - 无流量时池不能直接掉到 0，除非显式允许 non-convex baseline。
+- `info["events"]` 必须在预测需求超过硬上限时报告 `pool_capacity_clipped`。
+- `info["capacity_shortfall_rps"]` 必须暴露被上限钳掉的需求量。
 
 State:
 
@@ -41,7 +43,7 @@ State:
 Failure modes:
 
 - 预测过低时，计划会退化成最小保活。
-- 预测过高时，计划会撞上 `max_capacity`。
+- 预测过高时，计划会撞上 `max_capacity`，并通过 event 暴露容量缺口。
 - 如果 baseline 设置成 on/off，会让“收益”看起来特别夸张，审查时要注意。
 
 Counter-example:
@@ -82,7 +84,7 @@ Counter-example:
 
 Public surface:
 
-- `step(velocity, angular_velocity, dt) -> None`
+- `step(velocity, angular_velocity, dt) -> dict`
 - `ring_angle_rad -> float`
 - `axis() -> np.ndarray`
 - `distance_to(other) -> float`
@@ -91,6 +93,7 @@ Contract:
 
 - `q` 始终按 unit quaternion 理解。
 - `step` 之后姿态应保持在单位球附近。
+- `step()["events"]` 必须在输入 quaternion 被 reset / renormalize 时报告 `topology_state_repaired`。
 - `distance_to` 应返回“位置 + 流形角距离”的组合量。
 
 State:
@@ -103,6 +106,7 @@ Failure modes:
 
 - 如果把周期量当欧氏量处理，会出现环上跳变。
 - 如果积分类方法不守单位模，会有漂移。
+- 如果输入 quaternion 已经是零模、非有限或明显非单位模，必须先修复再积分。
 
 Counter-example:
 
@@ -254,6 +258,7 @@ Contract:
 - 输出是每个 thruster 的 magnitudes。
 - 先算 PD/wrench，再做有界分配。
 - thrust 不能越过 `T_min / T_max`。
+- 该模块属于 `starship/` 物理层，不直接依赖 `sre_control/events.py`；SRE 侧残差事件应由 `WeightedLoadBalancer` 或 future wrapper 产生。
 
 State:
 
@@ -301,9 +306,9 @@ Counter-example:
 
 | Contract | Test file | What it proves |
 |---|---|---|
-| `PoolCapacityPlanner` | `tests/test_sre_control.py` | keep-alive floor and capacity cap |
+| `PoolCapacityPlanner` | `tests/test_sre_control.py` | keep-alive floor, capacity cap and cap events |
 | `CanaryScheduler` | `tests/test_sre_control.py` | trust region adapts and rollout rejection is visible |
-| `TopologyState` | `tests/test_sre_control.py` | quaternion norm stays stable |
+| `TopologyState` | `tests/test_sre_control.py` | quaternion norm stays stable and invalid quaternions are repaired visibly |
 | `SLOGuardrail` | `tests/test_sre_control.py` | cone projection works and local projection events are visible |
 | `SignalFusion` | `tests/test_sre_control.py` | fusion converges and missing sensors are marked locally |
 | `PredictiveAutoscaler` | `tests/test_sre_control.py` | forecast growth triggers scaling and bound events are visible |

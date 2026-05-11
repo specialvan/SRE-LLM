@@ -9,6 +9,7 @@
 - `spacex/analysis/`：9 个 before/after 研究脚本可复现，汇总写入 `analysis/artifacts/SUMMARY.txt`。
 - `spacex/docs/`：`knowledge-base.html`、`FORMULA_MAP.md`、`EQUATION_DEEP_DIVE.md` 已形成三层知识库。
 - `spacex/docs/assets/`：8 张机制图 + 8 个 benefit GIF + `s09_sre_stack.png` 已重建。
+- `spacex/sre_control/events.py`：8 种 runtime event 已覆盖本地 adapter 的主要边界条件。
 
 ## 8 个支柱地图
 
@@ -48,18 +49,19 @@
 - `projection` 作为安全护栏
 - `bounded LS` 作为资源分配器
 - `state on manifold` 作为拓扑 / 一致性状态建模
+- `runtime event schema` 作为 failure trace 的共同语言，让单点能力能在 SRE 栈里复利
 
 ## 风险与坑
 
 - 数值问题：`SCP` / `MPC` / `EKF` 都会被初值、尺度、协方差放大效应拖偏。
 - 建模问题：观测模型若不识别 velocity / topology 等隐状态，融合会“看起来很稳，实际很飘”。
 - 边界条件：cone、box、rank-deficient 分配器在边界上最容易出错。
+- 架构边界：`CatchController` 属于 `starship/` 物理层，不应为了 SRE event trace 反向依赖 `sre_control/`。
 - 证据问题：`analysis` 的 before/after 只证明“在该场景下有效”，不能当作普适结论。
 - 运行问题：推荐使用 `python -m pytest tests -q`，避免不同 `pytest` 入口带来的解释器差异。
 
 ## 下一步
 
-1. 给每个 SRE 映射补一个 counter-example。
-2. 把 `knowledge-base.html` 继续压缩为更可审查的“读图索引 + 风险索引”。
+1. 把 `EVENT_COUNTEREXAMPLES` 映射成 HTML 知识库里的可检索事件索引。
+2. 给 `analysis/` 增加 failure-state before/after 图，展示 event 触发前后的 trace。
 3. 若要上生产级解释，补一层“约束违例日志”与“数值稳定性注释”。
-

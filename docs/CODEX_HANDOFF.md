@@ -51,6 +51,9 @@
 - 新增 [EVENT_SCHEMA.md](./EVENT_SCHEMA.md)，统一 runtime event schema 与 counter-example registry
 - 新增 `sre_control/events.py`，固定 `make_event`、`validate_event` 和 `EVENT_COUNTEREXAMPLES`
 - 新增 `tests/test_event_schema.py`，确保每种 event kind 都真实生成、满足 schema、带 counter-example
+- 把 `PoolCapacityPlanner.plan()` 接入 `pool_capacity_clipped`，暴露 `capacity_shortfall_rps`
+- 把 `TopologyState.step()` 改为返回 trace，并接入 `topology_state_repaired`
+- 明确 `CatchController` 仍属于 `starship/` 物理层，不反向依赖 SRE event schema
 - 更新 [ARCHITECTURE.md](./ARCHITECTURE.md) 的契约与运行态索引
 - 更新 [knowledge-base.html](./knowledge-base.html) 的审查入口
 - 刷新 `analysis/artifacts/SUMMARY.txt`
@@ -75,21 +78,22 @@ python -m analysis.run_all
 python -m scripts.build_kb
 ```
 
-当前状态下这三项都已经通过。最新 `pytest` 为 29 个用例通过。`build_kb` 会重新写入 `docs/assets/` 里的机制图和 GIF。
+当前状态下这三项都已经通过。最新 `pytest` 为 31 个用例通过。`build_kb` 会重新写入 `docs/assets/` 里的机制图和 GIF。
 
 ## 风险与坑
 
 - 这些 before/after 结果是合成场景证据，不要直接泛化成所有 SRE 场景
 - `SREControlStack` 只是编排骨架，不是生产控制平面
-- `WeightedLoadBalancer`、`SLOGuardrail`、`SCP` 这类模块最容易被边界条件打坏
+- `WeightedLoadBalancer`、`SLOGuardrail`、`SCP`、`TopologyState` 这类模块最容易被边界条件打坏
+- `CatchController` 的残差属于物理层 trace；要迁移成 SRE 事件时应包一层 adapter，不要让 `starship/` import `sre_control/`
 - `analysis/artifacts/SUMMARY.txt` 里的运行时间类数字会随机器略微波动
 - HTML 知识库和图像资产要一起看，否则很容易只看见文字没看见证据
 
 ## 下一步
 
-1. 如果继续工程化，下一步可以把 `PoolCapacityPlanner`、`TopologyState`、`CatchController` 也接入同一套 event schema
-2. 可以把 `EVENT_COUNTEREXAMPLES` 映射到 HTML 知识库里的事件索引表
-3. 给每个 SRE 适配层继续补“何时不该使用”的 counter-example，用来防止抽象滥用
+1. 可以把 `EVENT_COUNTEREXAMPLES` 映射到 HTML 知识库里的事件索引表
+2. 给 `analysis/` 增加 failure-state before/after 图，展示 event 触发前后的 trace
+3. 如果确实需要捕获段的 SRE 版本，再新增 wrapper 产生 event，避免 `starship/` 反向依赖
 4. 如果继续改知识库，记得重跑 `python -m scripts.build_kb`
 5. 如果继续改分析脚本，记得重跑 `python -m analysis.run_all`
 

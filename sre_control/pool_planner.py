@@ -19,6 +19,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .events import make_event
+
 
 @dataclass
 class PoolCapacityPlanner:
@@ -57,6 +59,9 @@ class PoolCapacityPlanner:
         violations_baseline = 0
         violations_after = 0
         baseline_cost = 0.0
+        local_states = ["relax"]
+        clipped_slots = 0
+        capacity_shortfall_rps = 0.0
         for rps in demand_rps_forecast:
             demanded = rps / rps_per_conn
             # baseline: either 0 or max_capacity (on/off) — this is the
@@ -69,10 +74,34 @@ class PoolCapacityPlanner:
             # after: lossless convex relaxation
             sigma = max(self.min_keep_alive,
                         min(self.max_capacity, int(demanded) + 1))
+            if sigma == self.min_keep_alive and demanded < self.min_keep_alive:
+                if "keep_alive_floor" not in local_states:
+                    local_states.append("keep_alive_floor")
+            shortfall = max(0.0, rps - self.max_capacity * rps_per_conn)
+            if shortfall > 0:
+                clipped_slots += 1
+                capacity_shortfall_rps += shortfall
+                if "clip" not in local_states:
+                    local_states.append("clip")
             if 0 < sigma < self.min_keep_alive:
                 violations_after += 1
             pool_plan.append(sigma)
             total_cost += self.unit_cost * sigma
+
+        events = []
+        if clipped_slots:
+            events.append(make_event(
+                stage="PoolCapacityPlanner",
+                kind="pool_capacity_clipped",
+                detail=(
+                    f"{clipped_slots} forecast slot(s) exceed max_capacity "
+                    f"by {capacity_shortfall_rps:.1f} rps"
+                ),
+                safe_action=(
+                    "clip pool size at max_capacity and expose the "
+                    "capacity shortfall"
+                ),
+            ))
 
         info = {
             "total_cost": total_cost,
@@ -81,5 +110,8 @@ class PoolCapacityPlanner:
                                 if baseline_cost > 0 else 0.0,
             "violations_baseline": violations_baseline,
             "violations_after": violations_after,
+            "capacity_shortfall_rps": capacity_shortfall_rps,
+            "local_states": local_states,
+            "events": events,
         }
         return pool_plan, info

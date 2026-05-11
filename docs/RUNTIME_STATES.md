@@ -37,7 +37,28 @@ Rule of thumb:
 
 ## 2. Module-Level State Machines
 
-### 2.1 `SignalFusion`
+### 2.1 `PoolCapacityPlanner`
+
+States:
+
+- `relax`
+- `keep_alive_floor`
+- `clip`
+
+Transitions:
+
+- `relax -> keep_alive_floor` when forecast demand is below the minimum live pool but health probes still require warm connections.
+- `relax -> clip` when forecast demand exceeds the hard pool cap.
+
+Failure signal:
+
+- positive `capacity_shortfall_rps`
+
+Recovery:
+
+- expose the shortfall and keep the pool at `max_capacity`; do not invent capacity above the configured bound
+
+### 2.2 `SignalFusion`
 
 States:
 
@@ -61,7 +82,7 @@ Recovery:
 - keep the last credible posterior
 - downweight noisy or missing streams
 
-### 2.2 `CanaryScheduler`
+### 2.3 `CanaryScheduler`
 
 States:
 
@@ -85,7 +106,27 @@ Recovery:
 
 - pin rollout and wait for more evidence
 
-### 2.3 `SLOGuardrail`
+### 2.4 `TopologyState`
+
+States:
+
+- `repair_unit_norm`
+- `integrate`
+
+Transitions:
+
+- `repair_unit_norm -> integrate` when an incoming quaternion is non-finite, near-zero, or visibly off the unit sphere.
+- `integrate` on every normal topology tick.
+
+Failure signal:
+
+- repaired input quaternion before exp-map integration
+
+Recovery:
+
+- reset an invalid quaternion to identity or renormalize a drifting one before integration
+
+### 2.5 `SLOGuardrail`
 
 States:
 
@@ -106,7 +147,7 @@ Recovery:
 
 - keep the projection, do not trust the raw proposal
 
-### 2.4 `PredictiveAutoscaler`
+### 2.6 `PredictiveAutoscaler`
 
 States:
 
@@ -127,7 +168,7 @@ Recovery:
 
 - raise capacity cap or tune weights; do not invent fractional replicas
 
-### 2.5 `WeightedLoadBalancer`
+### 2.7 `WeightedLoadBalancer`
 
 States:
 
@@ -148,7 +189,7 @@ Recovery:
 
 - prefer bounded least squares over exact matching
 
-### 2.6 `FastTrafficSwitcher`
+### 2.8 `FastTrafficSwitcher`
 
 States:
 
@@ -211,8 +252,10 @@ Current local event emitters:
 
 | Adapter | Local field | Event kinds |
 |---|---|---|
+| `PoolCapacityPlanner.plan()` | `info["events"]` | `pool_capacity_clipped` |
 | `SignalFusion.step()` | `trace["events"]` | `missing_sensor` |
 | `CanaryScheduler.observe()` | `CanaryStep.events` | `rollout_rejected` |
+| `TopologyState.step()` | `trace["events"]` | `topology_state_repaired` |
 | `SLOGuardrail.audit()` | `audit["events"]` | `unsafe_proposal_projected` |
 | `PredictiveAutoscaler.step()` | `last_trace["events"]` | `replica_bound_active` |
 | `FastTrafficSwitcher.plan()` | `info["events"]` | `deadline_exceeded` |
@@ -220,6 +263,7 @@ Current local event emitters:
 
 The exact schema and counter-examples are pinned in `docs/EVENT_SCHEMA.md`.
 This is intentionally coarse. It is a review trace, not a full production incident timeline.
+`starship/CatchController` stays outside this table because it is the physical layer primitive; SRE-facing residual events should be emitted by `WeightedLoadBalancer` or a future wrapper, not by importing the SRE event schema into `starship/`.
 
 ---
 
@@ -227,7 +271,9 @@ This is intentionally coarse. It is a review trace, not a full production incide
 
 | Failure source | Local symptom | Stack-level response |
 |---|---|---|
+| pool cap exceeded | positive `capacity_shortfall_rps` | hold `max_capacity`, surface capacity gap |
 | missing sensor | `used=False` in trace | keep fused state, reduce confidence |
+| invalid topology quaternion | `repair_unit_norm` | repair state before using topology distance / angle |
 | model mismatch | repeated residuals | shorten horizon / freeze rollout |
 | unsafe proposal | cone or magnitude violation | project before execution |
 | rank loss | residual stays non-zero | keep bounded LS and report residual |

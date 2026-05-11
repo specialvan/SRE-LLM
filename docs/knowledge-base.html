@@ -951,7 +951,22 @@ t_per_engine, residual = allocator.allocate(F_demand, tau_demand)</pre>
     runtime  ← adapter events + stack states    runtime-state review trace
     trace    ← {runtime, observe, plan, canary, safe, shares}</div>
 
-  <p class="note"><b>运行态 trace</b>：`SignalFusion.step()`、`CanaryScheduler.observe()`、`SLOGuardrail.audit()`、`PredictiveAutoscaler.step()`、`FastTrafficSwitcher.plan()`、`WeightedLoadBalancer.allocate()` 已经各自产生本地 <code>events</code>；<code>SREControlStack.step()</code> 负责汇总它们，并补上栈级 <code>DEGRADED_*</code> 状态。</p>
+  <p class="note"><b>运行态 trace</b>：`PoolCapacityPlanner.plan()`、`SignalFusion.step()`、`CanaryScheduler.observe()`、`TopologyState.step()`、`SLOGuardrail.audit()`、`PredictiveAutoscaler.step()`、`FastTrafficSwitcher.plan()`、`WeightedLoadBalancer.allocate()` 已经各自产生本地 <code>events</code>；<code>SREControlStack.step()</code> 负责汇总闭环 adapter，并补上栈级 <code>DEGRADED_*</code> 状态。<code>CatchController</code> 保持在 <code>starship/</code> 物理层，不反向依赖 SRE event schema。</p>
+
+  <h3>runtime event 索引</h3>
+  <table>
+    <thead><tr><th>Producer</th><th>Event kind</th><th>证明的边界条件</th></tr></thead>
+    <tbody>
+      <tr><td><code>PoolCapacityPlanner.plan()</code></td><td><code>pool_capacity_clipped</code></td><td>预测需求超过连接池硬上限时，不伪造容量，暴露 shortfall</td></tr>
+      <tr><td><code>SignalFusion.step()</code></td><td><code>missing_sensor</code></td><td>观测缺失时跳过 update，保留 posterior prediction</td></tr>
+      <tr><td><code>CanaryScheduler.observe()</code></td><td><code>rollout_rejected</code></td><td>SLO 烧穿时缩小 trust region 并冻结推进</td></tr>
+      <tr><td><code>TopologyState.step()</code></td><td><code>topology_state_repaired</code></td><td>输入 quaternion 无效或漂移时，先修复再积分</td></tr>
+      <tr><td><code>SLOGuardrail.audit()</code></td><td><code>unsafe_proposal_projected</code></td><td>proposal 越过 cone / magnitude 时只执行投影结果</td></tr>
+      <tr><td><code>PredictiveAutoscaler.step()</code></td><td><code>replica_bound_active</code></td><td>副本数撞到 min/max 时返回有界整数，不隐藏 cap</td></tr>
+      <tr><td><code>FastTrafficSwitcher.plan()</code></td><td><code>deadline_exceeded</code></td><td>最短切换时间超过 deadline 时不要硬赶窗口</td></tr>
+      <tr><td><code>WeightedLoadBalancer.allocate()</code></td><td><code>bounded_ls_residual</code></td><td>box 饱和或 residual 非零时报告残差，不重归一化</td></tr>
+    </tbody>
+  </table>
 
   <h3>端到端示例数据（<code>analysis/s09_sre_stack.py</code>）</h3>
   <p>300 s 合成流量，两次人为事故：t=60-80 s <b>brown-out</b>（延迟 +40 ms，RPS 不涨）、t=180-200 s <b>流量翻倍</b>。比较反应式 HPA vs <code>SREControlStack</code>。</p>
@@ -1097,7 +1112,7 @@ second-order cone 标准形 : ‖x‖ ≤ a·t
   <pre><span class="cm"># 从仓库根目录</span>
 cd spacex
 pip install -r requirements.txt
-pytest tests -q                         <span class="cm"># 21 用例（含 sre_control 10 条）</span>
+pytest tests -q                         <span class="cm"># 31 用例（含 runtime event schema）</span>
 python -m analysis.run_all              <span class="cm"># 9 主题 before/after 对照，~3 s</span>
 python -m examples.demo_sre_loop        <span class="cm"># 端到端 60 s SRE 循环</span>
 python -m scripts.build_mechanism_diagrams <span class="cm"># 机制图</span>

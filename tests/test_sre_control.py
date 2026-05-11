@@ -22,6 +22,17 @@ def test_pool_planner_respects_keep_alive_floor():
     assert all(s >= 4 for s in plan if s > 0)
     assert max(plan) <= 100
     assert info["violations_after"] == 0
+    assert info["events"] == []
+
+
+def test_pool_planner_marks_capacity_clip_event():
+    planner = PoolCapacityPlanner(min_keep_alive=4, max_capacity=5)
+    plan, info = planner.plan(demand_rps_forecast=[100, 800, 1_200])
+    assert max(plan) == 5
+    assert info["capacity_shortfall_rps"] > 0
+    assert "clip" in info["local_states"]
+    assert any(event["kind"] == "pool_capacity_clipped"
+               for event in info["events"])
 
 
 # ---------------------------------------------------------------------------
@@ -60,6 +71,16 @@ def test_topology_state_preserves_unit_norm():
         ts.step(velocity=[0, 0, 0],
                 angular_velocity=[0.1, -0.05, 0.08], dt=0.05)
     assert abs(np.linalg.norm(ts.q) - 1.0) < 1e-8
+
+
+def test_topology_state_repairs_invalid_quaternion_event():
+    ts = TopologyState(q=np.array([0.0, 0.0, 0.0, 0.0]))
+    trace = ts.step(velocity=[0, 0, 0],
+                    angular_velocity=[0.1, 0.0, 0.0], dt=0.05)
+    assert abs(np.linalg.norm(ts.q) - 1.0) < 1e-8
+    assert "repair_unit_norm" in trace["local_states"]
+    assert any(event["kind"] == "topology_state_repaired"
+               for event in trace["events"])
 
 
 # ---------------------------------------------------------------------------

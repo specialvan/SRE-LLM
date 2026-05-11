@@ -3,13 +3,18 @@ from __future__ import annotations
 import numpy as np
 
 from sre_control import (CanaryScheduler, FastTrafficSwitcher, Instance,
-                         PredictiveAutoscaler, Signal, SignalFusion,
-                         SLOGuardrail, WeightedLoadBalancer)
+                         PoolCapacityPlanner, PredictiveAutoscaler, Signal,
+                         SignalFusion, SLOGuardrail, TopologyState,
+                         WeightedLoadBalancer)
 from sre_control.events import EVENT_COUNTEREXAMPLES, validate_event
 
 
 def _collect_local_events():
     events = []
+
+    pool = PoolCapacityPlanner(min_keep_alive=4, max_capacity=5)
+    _, pool_info = pool.plan(demand_rps_forecast=[800])
+    events.extend(pool_info["events"])
 
     fusion = SignalFusion(
         x0=np.array([1000.0, 25.0, 0.3]),
@@ -25,6 +30,13 @@ def _collect_local_events():
         R=np.diag([50**2, 4**2]),
     )
     events.extend(fusion.step(dt=1.0, readings=[(sig, None)])["events"])
+
+    topology = TopologyState(q=np.array([0.0, 0.0, 0.0, 0.0]))
+    events.extend(topology.step(
+        velocity=[0, 0, 0],
+        angular_velocity=[0.1, 0.0, 0.0],
+        dt=0.05,
+    )["events"])
 
     canary = CanaryScheduler(slo_error_budget=0.01, eta_init=0.10)
     events.extend(canary.observe(

@@ -33,6 +33,14 @@ EVENT_COUNTEREXAMPLES: dict[str, str] = {
         "Do not hide allocation residual by renormalising shares after the solve; "
         "that can violate per-instance capacity boxes."
     ),
+    "pool_capacity_clipped": (
+        "Do not treat max pool clipping as proof the planner is wrong; "
+        "the real bottleneck may be quota, dependency capacity, or upstream demand shaping."
+    ),
+    "topology_state_repaired": (
+        "Do not normalize arbitrary scalar metrics as if they lived on a manifold; "
+        "repair only states that are explicitly quaternion topology states."
+    ),
 }
 
 

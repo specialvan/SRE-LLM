@@ -29,6 +29,8 @@ import numpy as np
 
 from starship.quaternion import Quaternion, integrate_quaternion
 
+from .events import make_event
+
 
 @dataclass
 class TopologyState:
@@ -53,11 +55,55 @@ class TopologyState:
 
     # ------------------------------------------------------------------
     def step(self, velocity: Sequence[float],
-             angular_velocity: Sequence[float], dt: float) -> None:
+             angular_velocity: Sequence[float], dt: float) -> dict:
         """Advance (position, q) by one dt using the quaternion exp-map."""
+        events = []
+        local_states = []
+
+        q = np.asarray(self.q, dtype=float)
+        q_norm = float(np.linalg.norm(q))
+        if not np.isfinite(q_norm) or q_norm < 1e-12:
+            self.q = np.array([1.0, 0.0, 0.0, 0.0])
+            local_states.append("repair_unit_norm")
+            events.append(make_event(
+                stage="TopologyState",
+                kind="topology_state_repaired",
+                detail=(
+                    f"input quaternion norm {q_norm:.3e} was invalid "
+                    "before integration"
+                ),
+                safe_action=(
+                    "reset the topology quaternion to identity before "
+                    "applying the exp-map"
+                ),
+            ))
+        elif abs(q_norm - 1.0) > 1e-6:
+            self.q = q / q_norm
+            local_states.append("repair_unit_norm")
+            events.append(make_event(
+                stage="TopologyState",
+                kind="topology_state_repaired",
+                detail=(
+                    f"input quaternion norm {q_norm:.3e} was normalized "
+                    "before integration"
+                ),
+                safe_action=(
+                    "renormalize the topology quaternion before applying "
+                    "the exp-map"
+                ),
+            ))
+        else:
+            self.q = q
+
         self.position = self.position + np.asarray(velocity, dtype=float) * dt
         self.omega = np.asarray(angular_velocity, dtype=float)
         self.q = integrate_quaternion(self.q, self.omega, dt)
+        local_states.append("integrate")
+        return {
+            "q_norm": float(np.linalg.norm(self.q)),
+            "local_states": local_states,
+            "events": events,
+        }
 
     # ------------------------------------------------------------------
     @property

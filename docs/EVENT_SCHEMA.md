@@ -31,6 +31,10 @@
 | `replica_bound_active` | `PredictiveAutoscaler.step()` | 下一个副本数打到 min/max | 返回有界整数副本数 | 打到 `replicas_max` 可能是 quota 或依赖容量问题，不一定是 autoscaler 失效 |
 | `deadline_exceeded` | `FastTrafficSwitcher.plan()` | 最短切换时间超过 deadline | 冻结变更或走更简单 rollback | 没有健康检查卡位时，不要为了赶 deadline 强行 bang-bang 切流 |
 | `bounded_ls_residual` | `WeightedLoadBalancer.allocate()` | box 饱和或 residual 无法清零 | 报告 residual，不伪装 exact match | 不要 solve 后强行归一化 shares；那会悄悄破坏 per-instance capacity box |
+| `pool_capacity_clipped` | `PoolCapacityPlanner.plan()` | 预测需求超过 `max_capacity * rps_per_conn` | 池大小钳到 `max_capacity`，同时暴露 `capacity_shortfall_rps` | 撞上连接池上限可能是 quota、依赖容量或上游削峰问题，不一定是 planner 算错 |
+| `topology_state_repaired` | `TopologyState.step()` | 输入 quaternion 非有限、接近零或明显非单位模 | 先 reset / renormalize，再做 exp-map 积分 | 不要把普通 scalar metric 当成流形状态硬归一化；只有明确拓扑姿态态才适合修复 |
+
+`CatchController` 属于 `starship/` 物理层，仍通过 `info["alloc_residual"]` 暴露分配残差，但不反向 import `sre_control/events.py`。如果未来需要把捕获段作为 SRE adapter 暴露，应由新的 SRE wrapper 生成 runtime event，避免 `starship/` 对迁移层产生倒置依赖。
 
 ## 3. Stack Aggregation
 
@@ -50,6 +54,6 @@ Adapter 先产生本地 `events`，然后 `SREControlStack.step()` 做两件事�
 
 - 每个 event 必须满足 `validate_event`
 - 每个已知 `kind` 必须有 counter-example
-- 六种当前 event kind 都必须能由本地 adapter 真实生成
+- 八种当前 event kind 都必须能由本地 adapter 真实生成
 
 如果新增 event kind，先补 `EVENT_COUNTEREXAMPLES`，再补测试。

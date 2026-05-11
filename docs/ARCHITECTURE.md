@@ -53,7 +53,7 @@ flowchart LR
 4. `SLOGuardrail` 把不安全 proposal 投影回可行集。
 5. `WeightedLoadBalancer` 在 box 约束下分配负载。
 6. `FastTrafficSwitcher` 只在紧急情形下进入 bang-bang。
-7. `PoolCapacityPlanner` 和 `TopologyState` 作为静态约束与状态底座存在。
+7. `PoolCapacityPlanner` 和 `TopologyState` 作为静态约束与状态底座存在，并在触碰容量 / 流形边界时输出本地 event。
 
 ### 1.4 Data Flow
 
@@ -76,9 +76,9 @@ flowchart LR
 
 | Module | Input | Output | Persistent state | Invariants | Common failure mode |
 |---|---|---|---|---|---|
-| `PoolCapacityPlanner` | demand forecast | pool sizes + cost info | none | `min_keep_alive <= pool <= max_capacity` | demand too low/high makes the relaxation look trivial |
+| `PoolCapacityPlanner` | demand forecast | pool sizes + cost/runtime info | none | `min_keep_alive <= pool <= max_capacity` | demand beyond cap creates explicit shortfall |
 | `CanaryScheduler` | current share + observed error | next share + trust region | slope estimate + eta | trust region stays within `[eta_min, eta_max]` | bad local model shrinks/grows too aggressively |
-| `TopologyState` | velocity + angular velocity | updated position + quaternion | position + q + omega | quaternion norm stays near 1 | Euler-style updates leak drift |
+| `TopologyState` | velocity + angular velocity | updated position + quaternion trace | position + q + omega | quaternion norm stays near 1 | invalid input quaternion must be repaired before integration |
 | `SLOGuardrail` | candidate action | approved action + audit | cone filter config | approved action lies in cone and box | proposal points outside cone or exceeds magnitude |
 | `SignalFusion` | sensor list | fused state + covariance trace | EKF posterior | covariance must remain PSD-ish | noise model mismatch poisons posterior |
 | `PredictiveAutoscaler` | current replicas + observed/forecast RPS | next integer replica count | internal MPC warm-start | output must stay in bounds | too-short horizon or bad scaling causes chatter |
@@ -110,7 +110,9 @@ Degradation policy:
 2. If fusion is weak, fall back to the last credible estimate plus conservative bounds.
 3. If canary confidence is weak, freeze rollout instead of pushing forward.
 4. If allocation is ill-conditioned, prefer residual-safe bounded LS over exact matching.
-5. If emergency logic triggers, use the bang-bang switcher and suppress soft optimizers.
+5. If pool demand exceeds configured capacity, expose shortfall instead of pretending capacity exists.
+6. If topology state drifts off the unit manifold, repair before computing distance or ring angle.
+7. If emergency logic triggers, use the bang-bang switcher and suppress soft optimizers.
 
 ---
 
@@ -295,11 +297,11 @@ Practical ordering:
 
 The next useful refinements are:
 
-1. Add counter-examples to each SRE adapter.
+1. Map `EVENT_COUNTEREXAMPLES` into the HTML knowledge base as a searchable event index.
 2. Add explicit failure-state traces to `analysis/`.
 3. Split `SREControlStack` into observable sub-steps if future users need per-stage audits.
 4. Add a contract test for every public dataclass field.
-5. Add one "do not use this when..." note per module to keep the abstraction honest.
+5. Wrap `CatchController` only if there is a real SRE-side actuator use case; keep `starship/` free of SRE event imports.
 
 ---
 
@@ -310,7 +312,7 @@ The next review surfaces are:
 - `docs/API_CONTRACTS.md`
 - `docs/RUNTIME_STATES.md`
 
-1. 为每个 SRE 原语补一个 counter-example。
-2. 在 `knowledge-base.html` 里把架构图、任务分解、契约和运行态索引化。
-3. 给 `stack.py` 增加更清晰的降级路径说明，并对齐 `RUNTIME_STATES.md`。
-4. 如果要继续做工程化，下一步应该补“接口契约”而不是再加更多图。
+1. 在 `knowledge-base.html` 里把 runtime event kinds、counter-example 和 producer 索引化。
+2. 给 `stack.py` 增加更清晰的降级路径说明，并对齐 `RUNTIME_STATES.md`。
+3. 给 `analysis/` 增加故障场景图，展示 event 发生前后的状态变化。
+4. 如果要继续做工程化，下一步应该补“可观测 failure trace”而不是再加更多图。
