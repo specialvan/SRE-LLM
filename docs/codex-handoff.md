@@ -23,6 +23,7 @@ auto-decide 已经从“论文公式落地”推进到“可被 Codex / reviewer
 | [FORMULA_MAP.md](./FORMULA_MAP.md) | 公式到代码的追踪地图 |
 | [DESIGN.md](./DESIGN.md) | 设计原则和工程裁剪说明 |
 | [trace-schema.md](./trace-schema.md) | JSONL trace 契约 |
+| [benchmark-metrics.md](./benchmark-metrics.md) | benchmark metrics JSON 契约 |
 
 代码侧当前核心事实：
 
@@ -31,6 +32,7 @@ auto-decide 已经从“论文公式落地”推进到“可被 Codex / reviewer
 3. `auto_decide/trace.py` 已把 trace 从调试输出提升为稳定契约。
 4. `CBF -> T_inv -> planner.step()` 是硬安全路径，不能被名义策略绕过。
 5. 软建议、稳定性、屏障约束、兜底降级已经在代码和文档中分层。
+6. `examples/compare_e2e_vs_structural.py` 已支持 `--metrics-out` 输出结构化 benchmark JSON。
 
 当前工作区提醒：
 
@@ -371,6 +373,20 @@ SRE 迁移时不要说“服务也有 Lyapunov 方程”这种空话。
 
 - SRE 文档能对应到 admission、derating、burn rate、change guard、trace contract。
 
+### R5：benchmark metrics 契约
+
+必须满足：
+
+- benchmark 既能打印人类可读摘要，也能输出 JSON。
+- JSON 记录参数、两条链路 summary、差值和场景列表。
+- 指标同时覆盖安全、可用性、舒适度和实时性。
+- fallback / emergency 指标不能重复计数成一个模糊比例。
+
+验收：
+
+- `tests/test_benchmark_metrics.py` 通过。
+- `python -m examples.compare_e2e_vs_structural --metrics-out <path>` 能写出严格 JSON。
+
 ## Task Breakdown
 
 ### P0：交接稳定化
@@ -382,15 +398,17 @@ SRE 迁移时不要说“服务也有 Lyapunov 方程”这种空话。
 
 ### P1：CBF 相对阶继续收紧
 
-1. 给 `DistanceBarrier` 和 `BrakingDistanceBarrier` 补更明确的测试矩阵。
-2. 加低摩擦、近距离、高速、jerk 饱和场景。
-3. 把 relative-degree limitation 写进 reviewer checklist。
+1. 已补 `BrakingDistanceBarrier` 速度和低摩擦膨胀测试。
+2. 已补低摩擦下 nominal acceleration 被改写成 brake 的测试。
+3. 继续加近距离、高速、jerk 饱和场景。
+4. 把 relative-degree limitation 写进 reviewer checklist。
 
 ### P2：benchmark 结构化回归
 
-1. 扩展 `examples/compare_e2e_vs_structural.py` 的场景参数。
-2. 输出 collision rate、min clearance、fallback rate、mean step ms。
-3. 把结果接入 trace 聚合。
+1. 已扩展 `examples/compare_e2e_vs_structural.py` 的 CLI 参数：`--n`、`--seed`、`--horizon`、`--dt`。
+2. 已支持 `--metrics-out` 输出 JSON。
+3. 已输出 collision rate、clearance、jerk、step time、CBF status、planner status。
+4. 下一步把结果接入可视化 HTML，而不是手填收益。
 
 ### P3：SRE adapter 原型
 
@@ -476,9 +494,9 @@ review 时按这个顺序看：
 
 最有价值的下一步：
 
-1. 补 CBF 相对阶和 braking-distance 的测试矩阵。
-2. 给 benchmark 输出稳定的 metrics JSON。
-3. 把 metrics JSON 接到已有可视化 HTML，而不是手填收益。
+1. 继续补 CBF 相对阶和 braking-distance 的近距离 / 高速 / jerk 饱和测试矩阵。
+2. 把 benchmark metrics JSON 接到已有可视化 HTML，而不是手填收益。
+3. 用 `planner_emergency_rate` 追踪结构化链路是否过保守。
 4. 起草 SRE adapter 的输入输出 schema。
 5. 把 SRE adapter 做成只读 advisor：给出 allow / derate / block / rollback suggestion，但不执行生产变更。
 
