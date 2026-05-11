@@ -122,7 +122,7 @@ python -m examples.sre_demo
 python -m gan_matchmaking.cli decide --input examples/sample_context.json
 
 # Launch the HTTP service (stdlib only, binds :8080)
-python -m gan_matchmaking.service --state-db state.sqlite
+python -m gan_matchmaking.service --state-db state.sqlite --lease-file state.lock
 curl -s http://localhost:8080/healthz
 curl -s -X POST http://localhost:8080/v1/decide \
   -H 'Content-Type: application/json' \

@@ -30,10 +30,14 @@ from .domain import (
     RiskLevel,
     Service,
 )
+from .leases import FileLease, LeaseNotAcquiredError, LeaseRefreshLoop
 from .self_iteration import SelfIterationPipeline
 
 __all__ = [
     "Decision",
+    "FileLease",
+    "LeaseNotAcquiredError",
+    "LeaseRefreshLoop",
     "DecisionKind",
     "ReleaseCandidate",
     "ReleaseContext",

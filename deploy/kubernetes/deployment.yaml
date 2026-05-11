@@ -44,6 +44,10 @@ spec:
               value: /etc/gan/config.json
             - name: GAN_STATE_DB
               value: /state/state.sqlite
+            - name: GAN_LEASE_FILE
+              value: /state/gan-matchmaking.lock
+            - name: GAN_LEASE_TTL_SECONDS
+              value: "60"
             - name: PYTHONHASHSEED
               value: "0"
           resources:

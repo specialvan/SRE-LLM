@@ -12,3 +12,5 @@ number.
 | [0003](0003-layered-structure-core-sre-game.md) | Layered structure — core / sre / game | Accepted |
 | [0004](0004-determinism-and-seeding.md) | Determinism and seeding | Accepted |
 | [0005](0005-fallback-strategy-for-untrained-models.md) | Fallback strategy for untrained models | Accepted |
+| [0006](0006-runtime-artifact-versioning.md) | Runtime artifact versioning for trained models | Accepted |
+| [0007](0007-single-writer-lease-boundary.md) | Single-writer lease boundary | Accepted |

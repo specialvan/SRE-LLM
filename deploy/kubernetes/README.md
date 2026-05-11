@@ -1,8 +1,9 @@
 # Kubernetes manifests
 
 Single-node deployment of the SRE decision service. Suitable for 1
-replica scenarios; for >1 replica swap the SQLite store for PostgreSQL
-(see [`ADR-0006`](../../docs/adr/0006-horizontal-scaling.md) — TODO).
+replica scenarios; for >1 replica move the writer lock to a distributed
+lease and swap SQLite for an external store (see
+[`ADR-0007`](../../docs/adr/0007-single-writer-lease-boundary.md)).
 
 ## Apply
 
@@ -31,6 +32,7 @@ curl -s -X POST http://localhost:8080/v1/decide \
 | CPU / memory | `deployment.yaml#resources` |
 | Training cadence | `cronjob-training.yaml#schedule` |
 | State retention | `PersistentVolumeClaim#storage` |
+| Process lease | `GAN_LEASE_FILE` / `GAN_LEASE_TTL_SECONDS` |
 | Image | `deployment.yaml#image`; built from root `Dockerfile` |
 
 ## Observability hooks
@@ -40,3 +42,14 @@ curl -s -X POST http://localhost:8080/v1/decide \
   parsers.
 - Traces: every response carries `X-Correlation-Id`. Join with logs on
   that key.
+
+## Lease boundary
+
+The manifest sets `replicas: 1`, `strategy: Recreate`, and a local
+`GAN_LEASE_FILE` under the mounted state directory. This protects the
+SQLite writer from accidental duplicate service processes during restarts
+or manual launches.
+
+Do not scale this deployment past one writable replica by only changing
+`replicas`. For horizontal scale, replace the local file lease with an
+external lease primitive and move state out of the single SQLite file.

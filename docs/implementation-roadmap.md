@@ -27,6 +27,7 @@ Goal: make the self-iteration loop production-shaped.
 - shadow / advisory / off
 - circuit breaker
 - per-service lock
+- process-level writer lease
 
 ### Phase 2 - Persistence and replay
 
@@ -118,6 +119,7 @@ Goal: make the system easy to review and evolve.
 - learned models without versioning
 - silent fallback paths
 - cross-process concurrency
+- local lease mistaken for distributed consensus
 - trace schema drift
 - mixing research demos into runtime
 
@@ -125,7 +127,8 @@ Goal: make the system easy to review and evolve.
 
 The best next increment is:
 
-1. add external lease / lock guidance for multi-instance deployment
-2. expand the replay corpus from branch coverage into incident-style
+1. expand the replay corpus from branch coverage into incident-style
    scenario coverage
-3. add replay promotion rules for fitted-artifact decisions
+2. add replay promotion rules for fitted-artifact decisions
+3. prototype a distributed lease backend if the deployment target needs
+   multiple writable replicas

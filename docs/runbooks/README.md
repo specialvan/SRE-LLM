@@ -10,3 +10,4 @@ pipeline. Each runbook is intentionally short; linked ADRs carry the
 | [escalate-decision.md](escalate-decision.md) | The pipeline emitted `ESCALATE`. |
 | [tune-risk-thresholds.md](tune-risk-thresholds.md) | Too many `ROLLBACK` / `HOLD` signals. |
 | [bootstrap-new-service.md](bootstrap-new-service.md) | Onboarding a service so the pipeline has enough state to decide. |
+| [multi-instance-lease.md](multi-instance-lease.md) | Before changing replicas or debugging lease ownership. |

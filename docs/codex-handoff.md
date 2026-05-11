@@ -4,7 +4,7 @@
 - 当前分支：`gan-session`
 - 当前方向：把 matchmaking / rating / decision 方案稳定成可审计、可训练、可回放的 SRE 决策流水线
 - 现状：九个机制的语义映射、架构拆解、模块契约、状态生命周期、实施路线图、ADR 已经成体系
-- 最新进展：runtime artifact 版本化已经接入在线决策链路，`Decision.artifact_version`、SQLite 决策审计表、训练产物元数据、runtime hydrate 都已打通；golden replay corpus 已覆盖 fallback / fitted artifact / freeze / rollback / escalation；artifact manifest 已校验 feature_names / shape / Cox baseline，不合格会降级为 bootstrap 并写入 trace；新决策 trace 已记录 `trace.input.context/config`，并新增 SQLite 审计行导出 replay fixture 的工具与 CLI
+- 最新进展：runtime artifact 版本化已经接入在线决策链路，`Decision.artifact_version`、SQLite 决策审计表、训练产物元数据、runtime hydrate 都已打通；golden replay corpus 已覆盖 fallback / fitted artifact / freeze / rollback / escalation；artifact manifest 已校验 feature_names / shape / Cox baseline，不合格会降级为 bootstrap 并写入 trace；新决策 trace 已记录 `trace.input.context/config`，并新增 SQLite 审计行导出 replay fixture 的工具与 CLI；服务入口已支持 `GAN_LEASE_FILE` 本地 writer lease，Kubernetes 文档和 ADR 已明确单写者边界
 
 ## 机制地图
 | 数学机制 | SRE 映射 | 代码位置 |
@@ -48,6 +48,9 @@
 - `sre/replay.py`
   - 已支持从 SQLite `decisions` 审计行导出 replay fixture
   - 会识别缺失 `trace.input.context` 的旧审计行，避免伪造不可复现样本
+- `sre/leases.py`
+  - 已支持本地文件 writer lease、TTL、token 校验释放和后台续租
+  - 适用于单节点 / ReadWriteOnce PVC 的重复进程防护，不是分布式锁
 - `training/`
   - 已能从 store 训练 Cox / Retention，并输出权重 + 元数据
 - `tests/fixtures/replay/`
@@ -79,7 +82,9 @@
    - fitted artifact 决策需要匹配 artifact bundle，否则只能导出“需要外部 artifact”的半成品
 
 4. **SQLite 仍是单进程友好，不是跨进程协调方案**
-   - 真要多实例并发，需要外部 lease / lock
+   - 服务入口已有本地 `FileLease` 护栏
+   - 真要多实例并发，需要外部分布式 lease / lock + 外部数据库
+   - 不能把本地 lease 当成跨节点一致性方案
 
 5. **shadow / advisory 模式不能丢 trace**
    - 这两种模式是可观察性工具，不是“悄悄改结果”
@@ -103,9 +108,9 @@
 这个结构可以迁移到发布控制、容量调度、故障分流、巡检节流、告警降噪、回滚决策等场景。
 
 ## 下一步
-1. 给多实例部署补外部锁或 lease
-2. 扩展 golden replay corpus，从分支覆盖升级成事故叙事场景
-3. 为 fitted artifact 决策定义 replay promotion 规则：artifact bundle 如何归档、引用和校验
+1. 扩展 golden replay corpus，从分支覆盖升级成事故叙事场景
+2. 为 fitted artifact 决策定义 replay promotion 规则：artifact bundle 如何归档、引用和校验
+3. 如果目标部署需要多写者，原型化 Kubernetes Lease / PostgreSQL advisory lock / Redis lease 之一
 4. 把 `PR-REQUIREMENTS.md` 继续收敛成可执行的 phase 任务单
 5. 用真实观测数据校准 Cox / Retention 的阈值和学习率
 

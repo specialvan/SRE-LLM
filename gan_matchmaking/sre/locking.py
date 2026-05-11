@@ -2,9 +2,9 @@
 
 Two concurrent ``decide(ctx)`` calls for the same service would race on the
 reliability rating. We serialise them with a per-service reentrant lock.
-For cross-process coordination this is not enough — operators should run a
-single pipeline instance per service store, or use the Redis-leased
-implementation in ``external_locks.py`` (future work, see ADR-0007).
+For cross-process coordination this is not enough. Use ``sre.leases`` at the
+process boundary, and use a distributed lease or external database before
+scaling one writable state store past a single instance.
 """
 from __future__ import annotations
 
