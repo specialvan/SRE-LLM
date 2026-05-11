@@ -35,6 +35,12 @@ from ..sre.circuit import CircuitBreaker
 JsonDict = Dict[str, Any]
 
 
+def _make_healthy_event() -> threading.Event:
+    evt = threading.Event()
+    evt.set()
+    return evt
+
+
 @dataclass
 class DecisionApp:
     """WSGI-ish app. Handlers receive parsed JSON and return (status, body)."""
@@ -42,6 +48,20 @@ class DecisionApp:
     pipeline: SelfIterationPipeline
     readiness_breaker: Optional[CircuitBreaker] = None
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False)
+    _lease_healthy: threading.Event = field(
+        default_factory=_make_healthy_event, init=False
+    )
+    _lease_unhealthy_details: JsonDict = field(default_factory=dict, init=False)
+    _lease_path: Optional[str] = field(default=None, init=False)
+    _lease_owner: Optional[str] = field(default=None, init=False)
+    m_lease_refresh_failures: Any = field(default=None, init=False)
+
+    def __post_init__(self) -> None:
+        self.m_lease_refresh_failures = self.pipeline.metrics.counter(
+            "gan_lease_refresh_failures_total",
+            "Number of lease refresh failures seen by the HTTP service.",
+            label_names=("reason",),
+        )
 
     # ------------------------------------------------------------------
     # Handlers
@@ -50,6 +70,12 @@ class DecisionApp:
         return 200, {"status": "ok"}
 
     def handle_ready(self, _body: Optional[JsonDict]) -> Tuple[int, JsonDict]:
+        if not self._lease_healthy.is_set():
+            return 503, {
+                "status": "not_ready",
+                "reason": "lease_unhealthy",
+                "details": dict(self._lease_unhealthy_details),
+            }
         breaker = self.readiness_breaker or self.pipeline.circuit_breaker
         if breaker is None or breaker.allow():
             return 200, {"status": "ready"}
@@ -89,6 +115,30 @@ class DecisionApp:
             return 404, {"error": {"code": "gan.http.not_found",
                                     "message": f"unknown service {service_id!r}"}}
         return 200, svc.as_dict()
+
+    def bind_lease_metadata(self, *, path: str, owner: str) -> None:
+        """Record lease identity for later log/metric emission."""
+        self._lease_path = path
+        self._lease_owner = owner
+
+    def mark_lease_unhealthy(self, exc: BaseException) -> None:
+        """Flip readiness, increment metric, and emit a structured log once."""
+        with self._lock:
+            if not self._lease_healthy.is_set():
+                return
+            reason = type(exc).__name__
+            self._lease_unhealthy_details = {
+                "reason": reason,
+                "message": str(exc)[:200],
+            }
+            self.m_lease_refresh_failures.inc(labels={"reason": reason})
+            self._lease_healthy.clear()
+        self.pipeline.logger.error(
+            "lease.refresh.failed",
+            lease_path=self._lease_path or "unknown",
+            owner=self._lease_owner or "unknown",
+            error_type=reason,
+        )
 
 
 # ---------------------------------------------------------------------------

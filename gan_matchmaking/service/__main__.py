@@ -44,7 +44,11 @@ def main(argv: list[str] | None = None) -> int:
                 owner=args.lease_owner,
                 ttl_seconds=args.lease_ttl_seconds,
             )
-            with LeaseRefreshLoop(lease):
+            app.bind_lease_metadata(
+                path=str(args.lease_file),
+                owner=str(args.lease_owner),
+            )
+            with LeaseRefreshLoop(lease, on_failure=app.mark_lease_unhealthy):
                 run_wsgi(app, host=args.host, port=args.port)
         else:
             run_wsgi(app, host=args.host, port=args.port)

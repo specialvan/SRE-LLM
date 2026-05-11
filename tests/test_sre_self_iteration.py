@@ -1,12 +1,17 @@
 """Integration & property tests for :class:`SelfIterationPipeline`."""
 from __future__ import annotations
 
+import io
+import json
+import logging
+
 import numpy as np
 import pytest
 
 from gan_matchmaking.core import AppConfig, MetricsRegistry
 from gan_matchmaking.core.config import ArtifactsConfig
 from gan_matchmaking.core.errors import DataError
+from gan_matchmaking.core.logging import JsonLineFormatter, JsonLineLogger
 from gan_matchmaking.eomm import RetentionModel
 from gan_matchmaking.survival import CoxModel
 from gan_matchmaking.sre import (
@@ -25,6 +30,7 @@ from gan_matchmaking.sre.artifacts import (
     save_retention_artifact,
 )
 from gan_matchmaking.sre.features import RISK_FEATURE_NAMES
+from gan_matchmaking.sre.shadow import ShadowMode
 
 
 def _ctx(**overrides):
@@ -44,6 +50,31 @@ def _ctx(**overrides):
 def _pipeline():
     # Fresh metrics registry per test — avoids shared state across tests.
     return SelfIterationPipeline(config=AppConfig(), metrics=MetricsRegistry())
+
+
+def _counter_value(registry: MetricsRegistry, name: str, **labels: str) -> float:
+    metric = registry.get(name)
+    assert metric is not None
+    return metric.value(labels=labels)
+
+
+def _parse_json_lines(stream: io.StringIO):
+    stream.seek(0)
+    return [json.loads(line) for line in stream.getvalue().splitlines() if line.strip()]
+
+
+def _logger_to_buffer(name: str = "gan.test.shadow"):
+    logger = logging.getLogger(name)
+    logger.handlers.clear()
+    logger.propagate = False
+    logger.setLevel(logging.DEBUG)
+    buf = io.StringIO()
+    handler = logging.StreamHandler(buf)
+    handler.setFormatter(JsonLineFormatter())
+    logger.addHandler(handler)
+    wrapped = JsonLineLogger.__new__(JsonLineLogger)
+    wrapped._logger = logger  # type: ignore[attr-defined]
+    return wrapped, buf
 
 
 def test_decision_returns_valid_decision_for_healthy_service():
@@ -149,6 +180,128 @@ def test_metrics_counter_increments_on_decide():
     pipeline.decide(_ctx())
     total = sum(v for v in reg.get("gan_decisions_total").snapshot().values())
     assert total == 2
+
+
+def test_shadow_mode_metric_reflects_enforced_kind():
+    reg = MetricsRegistry()
+    pipeline = SelfIterationPipeline(
+        config=AppConfig(),
+        metrics=reg,
+        shadow_mode=ShadowMode.SHADOW,
+    )
+
+    decision = pipeline.decide(_ctx(error_budget_remaining=0.0, correlation_id="shadow-metric"))
+
+    assert decision.kind == DecisionKind.HOLD
+    assert _counter_value(
+        reg,
+        "gan_decisions_total",
+        kind=DecisionKind.HOLD.value,
+        risk_level=RiskLevel.ALARM.value,
+    ) == pytest.approx(1.0)
+    assert _counter_value(
+        reg,
+        "gan_decisions_total",
+        kind=DecisionKind.ROLLBACK.value,
+        risk_level=RiskLevel.ALARM.value,
+    ) == pytest.approx(0.0)
+
+
+def test_shadow_mode_suppressed_kind_counter():
+    reg = MetricsRegistry()
+    pipeline = SelfIterationPipeline(
+        config=AppConfig(),
+        metrics=reg,
+        shadow_mode=ShadowMode.SHADOW,
+    )
+
+    pipeline.decide(_ctx(error_budget_remaining=0.0, correlation_id="shadow-diff"))
+
+    assert _counter_value(
+        reg,
+        "gan_shadow_diff_total",
+        suppressed_kind=DecisionKind.ROLLBACK.value,
+    ) == pytest.approx(1.0)
+
+
+def test_shadow_mode_emits_rewrite_event():
+    pipeline = SelfIterationPipeline(
+        config=AppConfig(),
+        metrics=MetricsRegistry(),
+        shadow_mode=ShadowMode.SHADOW,
+    )
+    logger, buf = _logger_to_buffer("gan.test.shadow.rewrite")
+    pipeline.logger = logger
+
+    pipeline.decide(_ctx(error_budget_remaining=0.0, correlation_id="shadow-log"))
+
+    events = _parse_json_lines(buf)
+    finished = [event for event in events if event["event"] == "decide.finished"]
+    rewritten = [event for event in events if event["event"] == "decide.shadow_rewritten"]
+    assert len(finished) == 1
+    assert finished[0]["payload"]["kind"] == DecisionKind.HOLD.value
+    assert len(rewritten) == 1
+    assert rewritten[0]["payload"]["original_kind"] == DecisionKind.ROLLBACK.value
+    assert rewritten[0]["payload"]["final_kind"] == DecisionKind.HOLD.value
+    assert rewritten[0]["payload"]["correlation_id"] == "shadow-log"
+
+
+def test_off_mode_unaffected_by_shadow_fix():
+    reg = MetricsRegistry()
+    pipeline = SelfIterationPipeline(
+        config=AppConfig(),
+        metrics=reg,
+        shadow_mode=ShadowMode.OFF,
+    )
+    logger, buf = _logger_to_buffer("gan.test.shadow.off")
+    pipeline.logger = logger
+
+    decision = pipeline.decide(_ctx(error_budget_remaining=0.0, correlation_id="shadow-off"))
+
+    assert decision.kind == DecisionKind.ROLLBACK
+    assert _counter_value(
+        reg,
+        "gan_decisions_total",
+        kind=DecisionKind.ROLLBACK.value,
+        risk_level=RiskLevel.ALARM.value,
+    ) == pytest.approx(1.0)
+    assert [
+        event for event in _parse_json_lines(buf)
+        if event["event"] == "decide.shadow_rewritten"
+    ] == []
+
+
+def test_advisory_mode_metric_uses_final_kind():
+    reg = MetricsRegistry()
+    pipeline = SelfIterationPipeline(
+        config=AppConfig(),
+        metrics=reg,
+        shadow_mode=ShadowMode.ADVISORY,
+    )
+
+    decision = pipeline.decide(_ctx(error_budget_remaining=0.0, correlation_id="shadow-advisory"))
+
+    assert decision.kind == DecisionKind.ROLLBACK
+    assert _counter_value(
+        reg,
+        "gan_decisions_total",
+        kind=DecisionKind.ROLLBACK.value,
+        risk_level=RiskLevel.ALARM.value,
+    ) == pytest.approx(1.0)
+
+
+def test_shadow_rewrite_preserves_trace_fields():
+    pipeline = SelfIterationPipeline(
+        config=AppConfig(),
+        metrics=MetricsRegistry(),
+        shadow_mode=ShadowMode.SHADOW,
+    )
+
+    decision = pipeline.decide(_ctx(error_budget_remaining=0.0, correlation_id="shadow-trace"))
+
+    assert decision.trace["shadow_mode"] == ShadowMode.SHADOW.value
+    assert decision.trace["shadow_suppressed_kind"] == DecisionKind.ROLLBACK.value
+    assert "_service_id" not in decision.trace
 
 
 def test_deterministic_decision_under_same_config():

@@ -512,7 +512,7 @@ class SelfIterationPipeline:
             trace: Dict[str, Any] = {
                 "input": {
                     "context": _context_payload(ctx),
-                    "config": self.config.to_dict(),
+                    "config": self.config.to_trace_dict(),
                 },
                 "stages": {},
                 "artifacts": self.artifacts.as_trace(),
@@ -854,7 +854,8 @@ class SelfIterationPipeline:
         correlation_id: str,
     ) -> Decision:
         confidence = max(0.0, min(1.0, service.mu - _CONF_ALPHA * service.sigma))
-        decision = Decision(
+        trace.setdefault("_service_id", service.id)
+        return Decision(
             kind=kind,
             chosen=chosen,
             risk_level=risk_level,
@@ -865,21 +866,45 @@ class SelfIterationPipeline:
             artifact_version=self.artifacts.version,
             correlation_id=correlation_id,
         )
-        self.m_decisions.inc(labels={"kind": kind.value, "risk_level": risk_level.value})
-        self.logger.info(
-            "decide.finished",
-            kind=kind.value,
-            risk_level=risk_level.value,
-            risk_prob=risk_p,
-            confidence=confidence,
-            service_id=service.id,
-            chosen_id=chosen.id if chosen else None,
-            artifact_version=self.artifacts.version,
+
+    def _publish_decision(
+        self,
+        decision: Decision,
+        *,
+        original_kind: DecisionKind,
+    ) -> None:
+        """Emit post-boundary metrics and logs for the final enforced kind."""
+        service_id = str(decision.trace.pop("_service_id", "unknown"))
+        self.m_decisions.inc(
+            labels={
+                "kind": decision.kind.value,
+                "risk_level": decision.risk_level.value,
+            }
         )
-        return decision
+        with with_correlation_id(decision.correlation_id):
+            self.logger.info(
+                "decide.finished",
+                kind=decision.kind.value,
+                risk_level=decision.risk_level.value,
+                risk_prob=decision.risk_prob,
+                confidence=decision.confidence,
+                service_id=service_id,
+                chosen_id=decision.chosen.id if decision.chosen else None,
+                artifact_version=decision.artifact_version,
+            )
+            if original_kind != decision.kind:
+                self.logger.info(
+                    "decide.shadow_rewritten",
+                    original_kind=original_kind.value,
+                    final_kind=decision.kind.value,
+                    correlation_id=decision.correlation_id,
+                    service_id=service_id,
+                )
 
     def _finalize_decision(self, decision: Decision) -> Decision:
+        original_kind = decision.kind
         decision = self._shadow_wrap(decision)
+        self._publish_decision(decision, original_kind=original_kind)
         if self.store is not None:
             self.store.observations.record_decision(decision)
         return decision

@@ -15,6 +15,26 @@ from typing import Any, Mapping, Optional
 from .errors import ConfigError
 
 
+_TRACE_ALLOWLIST: Mapping[str, tuple[str, ...] | None] = {
+    "seed": None,
+    "observability": ("log_level", "service_name"),
+    "trueskill": ("mu0", "sigma0", "beta", "tau", "draw_probability"),
+    "dynamic_k": ("k_max", "k_min", "lam", "theta", "penalize_wins"),
+    "handicap": ("max_penalty", "tau"),
+    "entropy": ("min_entropy",),
+    "eomm": ("epsilon", "lr", "iters", "l2"),
+    "survival": ("horizon_hours", "warn_threshold", "alarm_threshold"),
+    "gnn": ("hidden_dim", "layers", "seed"),
+    "artifacts": (
+        "directory",
+        "retention_filename",
+        "retention_metadata_filename",
+        "cox_filename",
+        "cox_metadata_filename",
+    ),
+}
+
+
 # ---------------------------------------------------------------------------
 # Per-module configuration blocks
 # ---------------------------------------------------------------------------
@@ -163,6 +183,31 @@ class AppConfig:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+    def to_trace_dict(self) -> dict[str, Any]:
+        """Return the config subset that is safe to embed in decision traces."""
+        full = self.to_dict()
+        out: dict[str, Any] = {}
+        for top_key, allowed in _TRACE_ALLOWLIST.items():
+            if top_key not in full:
+                continue
+            value = full[top_key]
+            if allowed is None:
+                out[top_key] = value
+                continue
+            if isinstance(value, Mapping):
+                out[top_key] = {key: value[key] for key in allowed if key in value}
+            else:
+                out[top_key] = value
+        return out
+
+    @classmethod
+    def trace_allowlist_snapshot(cls) -> dict[str, list[str] | None]:
+        """Stable public view for tests and review diffs."""
+        return {
+            key: None if allowed is None else list(allowed)
+            for key, allowed in _TRACE_ALLOWLIST.items()
+        }
 
 
 # ---------------------------------------------------------------------------

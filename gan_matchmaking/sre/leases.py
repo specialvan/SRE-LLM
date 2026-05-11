@@ -193,16 +193,24 @@ class FileLease:
 
 
 class LeaseRefreshLoop:
-    """Context manager that keeps a lease fresh while a server runs."""
+    """Context manager that keeps a lease fresh while a server runs.
+
+    If refresh fails, the loop stores the exception, calls ``on_failure`` so
+    the service can flip readiness / emit metrics, then exits the background
+    thread. The owning process should be drained or restarted rather than keep
+    writing after lease ownership became ambiguous.
+    """
 
     def __init__(
         self,
         lease: FileLease,
         *,
         interval_seconds: Optional[float] = None,
+        on_failure: Optional[Callable[[BaseException], None]] = None,
     ) -> None:
         self.lease = lease
         self.interval_seconds = interval_seconds
+        self.on_failure = on_failure
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self.error: Optional[BaseException] = None
@@ -225,8 +233,13 @@ class LeaseRefreshLoop:
         while not self._stop.wait(interval):
             try:
                 self.lease.refresh()
-            except BaseException as exc:  # pragma: no cover - surfaced by ``error``.
+            except BaseException as exc:
                 self.error = exc
+                if self.on_failure is not None:
+                    try:
+                        self.on_failure(exc)
+                    except Exception:
+                        pass
                 self._stop.set()
                 return
 
