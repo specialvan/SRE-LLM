@@ -36,7 +36,7 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 
@@ -366,7 +366,8 @@ class SelfIterationPipeline:
     def observe_release(self, service_id: str, success: bool,
                         duration_seconds: float = 0.0,
                         features: Optional[Dict[str, float]] = None,
-                        correlation_id: Optional[str] = None) -> None:
+                        correlation_id: Optional[str] = None,
+                        dependencies: Optional[Sequence[str]] = None) -> None:
         """Update the reliability rating after a release outcome.
 
         This is how the pipeline *learns*: new releases shift the Gaussian
@@ -419,8 +420,16 @@ class SelfIterationPipeline:
                 svc.mu - _CONF_ALPHA * svc.sigma,
                 labels={"service_id": service_id},
             )
-            # Accumulate on the dependency synergy graph when we know dependencies.
-            deps = getattr(svc, "_deps", [])
+            # Accumulate on the dependency synergy graph when callers provide
+            # the dependency edge set for this observed release.
+            deps: List[str] = []
+            seen_deps: set[str] = set()
+            for dep in dependencies or []:
+                dep_id = str(dep)
+                if not dep_id or dep_id == service_id or dep_id in seen_deps:
+                    continue
+                seen_deps.add(dep_id)
+                deps.append(dep_id)
             if deps:
                 self.synergy_graph.add_match([service_id] + list(deps), win=success)
                 if self.store is not None:
@@ -453,8 +462,6 @@ class SelfIterationPipeline:
         """
         ctx.validate()
         self._services.setdefault(ctx.service.id, ctx.service)
-        # Keep dependencies for the synergy graph without polluting the dataclass.
-        setattr(ctx.service, "_deps", list(ctx.dependencies))
 
         # Circuit breaker — fail fast if we've been burning.
         breaker = self.circuit_breaker

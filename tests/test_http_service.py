@@ -105,9 +105,12 @@ def test_observe_and_get_service(server):
     # Now observe works.
     status, body, _ = _post(f"{url}/v1/observe", {
         "service_id": "svc-a", "success": True,
-        "duration_seconds": 5.0
+        "duration_seconds": 5.0,
+        "dependencies": ["dep-a"],
     })
     assert status == 200
+    assert app.pipeline.store is not None
+    assert app.pipeline.store.synergy.stats("svc-a", "dep-a") == (1, 1)
 
     status, body, _ = _get(f"{url}/v1/services/svc-a")
     assert status == 200

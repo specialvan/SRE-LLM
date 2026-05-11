@@ -92,6 +92,12 @@ class DecisionApp:
         if missing:
             return 400, {"error": {"code": "gan.http.bad_request",
                                     "message": f"missing fields: {sorted(missing)}"}}
+        dependencies = body.get("dependencies", [])
+        if dependencies is None:
+            dependencies = []
+        if not isinstance(dependencies, list):
+            return 400, {"error": {"code": "gan.http.bad_request",
+                                    "message": "dependencies must be a list"}}
         with self._lock:
             self.pipeline.observe_release(
                 service_id=str(body["service_id"]),
@@ -99,6 +105,7 @@ class DecisionApp:
                 duration_seconds=float(body.get("duration_seconds", 0.0)),
                 features=body.get("features"),
                 correlation_id=body.get("correlation_id"),
+                dependencies=[str(dep) for dep in dependencies],
             )
         return 200, {"status": "recorded"}
 

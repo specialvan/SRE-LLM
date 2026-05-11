@@ -13,6 +13,7 @@ from gan_matchmaking.core.config import ArtifactsConfig
 from gan_matchmaking.core.errors import DataError
 from gan_matchmaking.core.logging import JsonLineFormatter, JsonLineLogger
 from gan_matchmaking.eomm import RetentionModel
+from gan_matchmaking.persistence import InMemoryPipelineStore
 from gan_matchmaking.survival import CoxModel
 from gan_matchmaking.sre import (
     Decision,
@@ -164,6 +165,41 @@ def test_observe_release_shifts_confidence():
     assert svc.mu > initial
     assert svc.sigma < 0.10
     assert svc.win_streak == 20
+
+
+def test_decide_does_not_mutate_service_object():
+    pipeline = _pipeline()
+    service = Service(id="svc-clean", mu=0.995, sigma=0.005)
+    before = service.as_dict()
+
+    pipeline.decide(_ctx(service=service, dependencies=["dep-a"]))
+    pipeline.decide(_ctx(service=service, dependencies=["dep-b", "dep-c"]))
+
+    assert service.as_dict() == before
+    assert "_deps" not in service.__dict__
+
+
+def test_observe_release_accepts_explicit_dependencies():
+    store = InMemoryPipelineStore()
+    pipeline = SelfIterationPipeline(
+        config=AppConfig(),
+        metrics=MetricsRegistry(),
+        store=store,
+    )
+    svc = Service(id="svc-deps")
+    pipeline.register_service(svc)
+
+    pipeline.observe_release(
+        "svc-deps",
+        success=True,
+        dependencies=["dep-a", "dep-b", "dep-a", "svc-deps"],
+    )
+
+    nodes, _ = pipeline.synergy_graph.adjacency()
+    assert {"svc-deps", "dep-a", "dep-b"} <= set(nodes)
+    assert store.synergy.stats("svc-deps", "dep-a") == (1, 1)
+    assert store.synergy.stats("svc-deps", "dep-b") == (1, 1)
+    assert store.synergy.stats("svc-deps", "svc-deps") == (0, 0)
 
 
 def test_correlation_id_propagated():
