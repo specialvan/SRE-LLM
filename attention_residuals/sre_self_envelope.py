@@ -26,19 +26,23 @@ The closure mirrors §5.2 of the Attention Residuals paper:
 Public API
 ----------
     OutcomeLabel                  enum: SAFE / UNSAFE / UNKNOWN
+    OutcomeEvidence               soft label with confidence / evidence mass
     ActionOutcome                 dataclass used by EnvelopeLearner
     LearnedSafetyEnvelope         the ratchet itself
     ContractionAwareEnvelope      wraps learned env, modulates max_delta by |gain|
     EnvelopeLearner               orchestrator: reads AuditTrail + labeler, fits periodically
+    CreditAwareLabeler            downgrades UNSAFE via TemporalCreditAssigner
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
+
+from .sre_math import TemporalCreditAssigner
 
 
 # ---------------------------------------------------------------------------
@@ -52,20 +56,103 @@ class OutcomeLabel(str, Enum):
     UNKNOWN = "unknown"
 
 
+@dataclass(frozen=True)
+class OutcomeEvidence:
+    """Soft post-hoc evidence for one action outcome.
+
+    ``safety_score`` is a continuous SAFE likelihood in ``[0, 1]``:
+
+    * ``1.0`` means fully SAFE evidence.
+    * ``0.0`` means fully UNSAFE evidence.
+    * ``0.5`` with ``confidence=0`` means UNKNOWN / no usable evidence.
+
+    ``confidence`` is the evidence mass. The envelope uses
+    ``safety_score * confidence`` as SAFE evidence and
+    ``(1 - safety_score) * confidence`` as UNSAFE evidence. Hard labels
+    are just the special cases with confidence 1.
+    """
+
+    safety_score: float
+    confidence: float = 1.0
+    reason: str = ""
+
+    def __post_init__(self) -> None:
+        if not (0.0 <= self.safety_score <= 1.0):
+            raise ValueError("safety_score must be in [0, 1]")
+        if not (0.0 <= self.confidence <= 1.0):
+            raise ValueError("confidence must be in [0, 1]")
+
+    @classmethod
+    def from_label(cls, label: OutcomeLabel, *, reason: str = "") -> "OutcomeEvidence":
+        if label is OutcomeLabel.SAFE:
+            return cls(1.0, 1.0, reason=reason)
+        if label is OutcomeLabel.UNSAFE:
+            return cls(0.0, 1.0, reason=reason)
+        return cls(0.5, 0.0, reason=reason)
+
+    @classmethod
+    def from_weights(
+        cls,
+        safe_weight: float,
+        unsafe_weight: float,
+        *,
+        reason: str = "",
+    ) -> "OutcomeEvidence":
+        if safe_weight < 0 or unsafe_weight < 0:
+            raise ValueError("evidence weights must be non-negative")
+        total = float(safe_weight + unsafe_weight)
+        if total <= 0.0:
+            return cls(0.5, 0.0, reason=reason)
+        confidence = min(1.0, total)
+        return cls(float(safe_weight) / total, confidence, reason=reason)
+
+    @property
+    def safe_weight(self) -> float:
+        return float(self.safety_score * self.confidence)
+
+    @property
+    def unsafe_weight(self) -> float:
+        return float((1.0 - self.safety_score) * self.confidence)
+
+    def hard_label(self) -> OutcomeLabel:
+        if self.confidence <= 0.0:
+            return OutcomeLabel.UNKNOWN
+        if self.safe_weight > self.unsafe_weight:
+            return OutcomeLabel.SAFE
+        if self.unsafe_weight > self.safe_weight:
+            return OutcomeLabel.UNSAFE
+        return OutcomeLabel.UNKNOWN
+
+    def as_dict(self) -> dict:
+        return {
+            "outcome": self.hard_label().value,
+            "safety_score": float(self.safety_score),
+            "confidence": float(self.confidence),
+            "safe_weight": self.safe_weight,
+            "unsafe_weight": self.unsafe_weight,
+            "reason": self.reason,
+        }
+
+
+OutcomeLike = Union[OutcomeLabel, OutcomeEvidence, float, str]
+
+
 @dataclass
 class ActionOutcome:
     """One labelled observation fed into the envelope."""
     step: int
     action: np.ndarray
-    outcome: OutcomeLabel
+    outcome: OutcomeLike
     delta: Optional[np.ndarray] = None          # ``action - previous action``
     context: Dict[str, float] = field(default_factory=dict)
 
     def as_dict(self) -> dict:
+        evidence = _coerce_evidence(self.outcome)
         return {
             "step": int(self.step),
             "action": [float(a) for a in self.action],
-            "outcome": self.outcome.value,
+            "outcome": evidence.hard_label().value,
+            "evidence": evidence.as_dict(),
             "delta": None if self.delta is None else [float(d) for d in self.delta],
             "context": dict(self.context),
         }
@@ -206,8 +293,10 @@ class LearnedSafetyEnvelope:
 
         # Rolling state.
         self._safe_actions: List[np.ndarray] = []
+        self._safe_weights: List[float] = []
         self._safe_deltas: List[np.ndarray] = []
-        self._unsafe_since_fit = 0
+        self._safe_delta_weights: List[float] = []
+        self._unsafe_since_fit = 0.0
         self._last_action: Optional[np.ndarray] = None
         self._violation_count = 0
         self._fit_history: List[Dict[str, Any]] = []
@@ -247,7 +336,7 @@ class LearnedSafetyEnvelope:
     def observe(
         self,
         action: np.ndarray,
-        outcome: OutcomeLabel,
+        outcome: OutcomeLike,
         *,
         delta: Optional[np.ndarray] = None,
         step: Optional[int] = None,      # kept for API symmetry; not used internally
@@ -260,19 +349,26 @@ class LearnedSafetyEnvelope:
         """
         del step
         action = _as_1d(action, self.action_dim, "action")
-        if outcome is OutcomeLabel.SAFE:
+        evidence = _coerce_evidence(outcome)
+        safe_weight = evidence.safe_weight
+        unsafe_weight = evidence.unsafe_weight
+        if safe_weight > 0.0:
             self._safe_actions.append(action.copy())
+            self._safe_weights.append(safe_weight)
             if delta is not None:
                 self._safe_deltas.append(
                     np.abs(_as_1d(delta, self.action_dim, "delta")).copy()
                 )
+                self._safe_delta_weights.append(safe_weight)
             # Drop oldest when over budget.
             while len(self._safe_actions) > self.buffer_size:
                 self._safe_actions.pop(0)
+                self._safe_weights.pop(0)
             while len(self._safe_deltas) > self.buffer_size:
                 self._safe_deltas.pop(0)
-        elif outcome is OutcomeLabel.UNSAFE:
-            self._unsafe_since_fit += 1
+                self._safe_delta_weights.pop(0)
+        if unsafe_weight > 0.0:
+            self._unsafe_since_fit += unsafe_weight
         # UNKNOWN → intentional no-op: we refuse to take a stand without evidence.
 
     # ------------------------------------------------------------------ fit
@@ -284,23 +380,26 @@ class LearnedSafetyEnvelope:
         """
         summary: Dict[str, Any] = {
             "n_safe": len(self._safe_actions),
+            "safe_evidence": float(sum(self._safe_weights)),
             "n_unsafe_since_fit": self._unsafe_since_fit,
+            "unsafe_evidence_since_fit": float(self._unsafe_since_fit),
             "tightened_high": False,
             "tightened_low": False,
             "tightened_max_delta": False,
         }
-        if self._unsafe_since_fit < self.unsafe_quorum:
+        if self._unsafe_since_fit + 1e-12 < self.unsafe_quorum:
             summary["reason"] = "no_unsafe_quorum"
             self._fit_history.append(summary)
             return summary
-        if len(self._safe_actions) < self.min_safe_samples:
+        if sum(self._safe_weights) + 1e-12 < self.min_safe_samples:
             summary["reason"] = "insufficient_safe_samples"
             self._fit_history.append(summary)
             return summary
 
         arr = np.stack(self._safe_actions, axis=0)       # shape (N, D)
-        q_hi = np.quantile(arr, self.safe_quantile, axis=0)
-        q_lo = np.quantile(arr, 1.0 - self.safe_quantile, axis=0)
+        safe_weights = np.asarray(self._safe_weights, dtype=float)
+        q_hi = _weighted_quantile(arr, safe_weights, self.safe_quantile)
+        q_lo = _weighted_quantile(arr, safe_weights, 1.0 - self.safe_quantile)
         # Hysteresis padding: proportional to the per-dim safe-range.
         width = np.maximum(q_hi - q_lo, 1e-9)
         pad = width * (self.hysteresis / 2.0)
@@ -326,7 +425,10 @@ class LearnedSafetyEnvelope:
         # max_delta: same ratchet rule on safe-delta quantiles.
         if self._safe_deltas:
             d_arr = np.stack(self._safe_deltas, axis=0)
-            q_md = np.quantile(d_arr, self.safe_quantile, axis=0) * (1.0 + self.hysteresis)
+            d_weights = np.asarray(self._safe_delta_weights, dtype=float)
+            q_md = _weighted_quantile(d_arr, d_weights, self.safe_quantile) * (
+                1.0 + self.hysteresis
+            )
             new_md = np.minimum(self.current_max_delta, q_md)
             new_md = np.clip(new_md, self.min_max_delta, self.hard_max_delta)
             if np.any(new_md < self.current_max_delta - 1e-12):
@@ -337,7 +439,7 @@ class LearnedSafetyEnvelope:
         summary["current_high"] = self.current_high.copy()
         summary["current_max_delta"] = self.current_max_delta.copy()
         # Reset quorum counter — we've acted on it.
-        self._unsafe_since_fit = 0
+        self._unsafe_since_fit = 0.0
         self._fit_history.append(summary)
         return summary
 
@@ -390,7 +492,7 @@ class LearnedSafetyEnvelope:
                 self.current_max_delta[d] * factor,
             )
         # Relax also resets the quorum counter — safe to start learning again.
-        self._unsafe_since_fit = 0
+        self._unsafe_since_fit = 0.0
         return {
             "before": before,
             "after": {
@@ -427,6 +529,49 @@ def _as_1d(x: np.ndarray, n: int, name: str) -> np.ndarray:
     if arr.shape != (n,):
         raise ValueError(f"{name} must have shape ({n},), got {arr.shape}")
     return arr
+
+
+def _coerce_evidence(outcome: OutcomeLike) -> OutcomeEvidence:
+    """Convert hard labels, strings, or scalar soft labels to evidence."""
+    if isinstance(outcome, OutcomeEvidence):
+        return outcome
+    if isinstance(outcome, OutcomeLabel):
+        return OutcomeEvidence.from_label(outcome)
+    if isinstance(outcome, str):
+        return OutcomeEvidence.from_label(OutcomeLabel(outcome))
+    if isinstance(outcome, (int, float, np.integer, np.floating)):
+        return OutcomeEvidence(float(outcome), 1.0)
+    raise TypeError(f"unsupported outcome type: {type(outcome)!r}")
+
+
+def _weighted_quantile(values: np.ndarray, weights: np.ndarray, q: float) -> np.ndarray:
+    """Return per-column weighted quantiles.
+
+    ``values`` is ``(n, d)`` and ``weights`` is ``(n,)``. The interpolation
+    uses weighted CDF midpoints, which keeps low-confidence outliers from
+    dominating the learned envelope while preserving the hard-label
+    behaviour when all weights are 1.
+    """
+    values = np.asarray(values, dtype=float)
+    weights = np.asarray(weights, dtype=float)
+    if values.ndim != 2:
+        raise ValueError("values must have shape (n, d)")
+    if weights.shape != (values.shape[0],):
+        raise ValueError("weights length must match values")
+    if np.any(weights < 0):
+        raise ValueError("weights must be non-negative")
+    total = weights.sum()
+    if total <= 0:
+        raise ValueError("weights must sum to > 0")
+
+    out = np.empty(values.shape[1], dtype=float)
+    for d in range(values.shape[1]):
+        order = np.argsort(values[:, d])
+        xs = values[order, d]
+        ws = weights[order]
+        cdf = (np.cumsum(ws) - 0.5 * ws) / total
+        out[d] = np.interp(q, cdf, xs, left=xs[0], right=xs[-1])
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -511,7 +656,7 @@ class ContractionAwareEnvelope:
 # Orchestrator: EnvelopeLearner
 # ---------------------------------------------------------------------------
 
-Labeler = Callable[[Dict[str, Any]], OutcomeLabel]
+Labeler = Callable[[Dict[str, Any]], OutcomeLike]
 
 
 @dataclass
@@ -520,6 +665,9 @@ class LearnerStats:
     safe: int = 0
     unsafe: int = 0
     unknown: int = 0
+    soft: int = 0
+    safe_evidence: float = 0.0
+    unsafe_evidence: float = 0.0
     fits: int = 0
 
     def as_dict(self) -> dict:
@@ -569,28 +717,123 @@ class EnvelopeLearner:
         *,
         delta: Optional[np.ndarray] = None,
         step: Optional[int] = None,
-    ) -> OutcomeLabel:
+    ) -> OutcomeEvidence:
         label = self.labeler(context)
-        self.envelope.observe(action, label, delta=delta, step=step)
+        evidence = _coerce_evidence(label)
+        self.envelope.observe(action, evidence, delta=delta, step=step)
         self.stats.ingested += 1
-        if label is OutcomeLabel.SAFE:
+        hard = evidence.hard_label()
+        if hard is OutcomeLabel.SAFE:
             self.stats.safe += 1
-        elif label is OutcomeLabel.UNSAFE:
+        elif hard is OutcomeLabel.UNSAFE:
             self.stats.unsafe += 1
         else:
             self.stats.unknown += 1
+        if 0.0 < evidence.confidence < 1.0 or 0.0 < evidence.safety_score < 1.0:
+            self.stats.soft += 1
+        self.stats.safe_evidence += evidence.safe_weight
+        self.stats.unsafe_evidence += evidence.unsafe_weight
         if self.stats.ingested % self.fit_every == 0:
             self.envelope.fit()
             self.stats.fits += 1
-        return label
+        return evidence
+
+
+class CreditAwareLabeler:
+    """Downgrade UNSAFE evidence when temporal credit points elsewhere.
+
+    A post-hoc SLO breach is not always caused by the current control
+    action. If :class:`TemporalCreditAssigner` says most blame belongs
+    to exogenous signals (for example upstream traffic), this wrapper
+    reduces the UNSAFE evidence before it reaches the envelope. The
+    action still remains auditable; it simply does not cause the safety
+    ratchet to overreact to the wrong root cause.
+    """
+
+    def __init__(
+        self,
+        base_labeler: Labeler,
+        credit_assigner: TemporalCreditAssigner,
+        controllable_signals: Sequence[str],
+        *,
+        incident_tick_key: str = "tick",
+        window: int = 50,
+        top_k: Optional[int] = None,
+        min_total_score: float = 1e-12,
+    ) -> None:
+        if not controllable_signals:
+            raise ValueError("controllable_signals must not be empty")
+        if window < 1:
+            raise ValueError("window must be >= 1")
+        if top_k is not None and top_k < 1:
+            raise ValueError("top_k must be >= 1 when provided")
+        if min_total_score < 0:
+            raise ValueError("min_total_score must be non-negative")
+        self.base_labeler = base_labeler
+        self.credit_assigner = credit_assigner
+        self.controllable_signals = set(controllable_signals)
+        self.incident_tick_key = incident_tick_key
+        self.window = int(window)
+        self.top_k = top_k
+        self.min_total_score = float(min_total_score)
+        self._last_adjustment: Dict[str, float] = {}
+
+    def __call__(self, context: Dict[str, Any]) -> OutcomeEvidence:
+        evidence = _coerce_evidence(self.base_labeler(context))
+        self._last_adjustment = {
+            "controllable_ratio": 1.0,
+            "total_credit": 0.0,
+            "unsafe_before": evidence.unsafe_weight,
+            "unsafe_after": evidence.unsafe_weight,
+        }
+        if evidence.unsafe_weight <= 0.0:
+            return evidence
+
+        if self.incident_tick_key not in context:
+            return evidence
+        incident_tick = int(context[self.incident_tick_key])
+        entries = self.credit_assigner.attribute(
+            incident_tick=incident_tick,
+            window=self.window,
+            top_k=self.top_k,
+        )
+        total = float(sum(max(0.0, e.score) for e in entries))
+        if total <= self.min_total_score:
+            return evidence
+
+        controllable = float(sum(
+            max(0.0, e.score)
+            for e in entries
+            if e.signal_name in self.controllable_signals
+        ))
+        ratio = max(0.0, min(1.0, controllable / total))
+        adjusted = OutcomeEvidence.from_weights(
+            evidence.safe_weight,
+            evidence.unsafe_weight * ratio,
+            reason=f"credit_adjusted:{ratio:.3f}",
+        )
+        self._last_adjustment = {
+            "controllable_ratio": ratio,
+            "total_credit": total,
+            "controllable_credit": controllable,
+            "unsafe_before": evidence.unsafe_weight,
+            "unsafe_after": adjusted.unsafe_weight,
+        }
+        return adjusted
+
+    def last_adjustment(self) -> Dict[str, float]:
+        return dict(self._last_adjustment)
 
 
 __all__ = [
     "OutcomeLabel",
+    "OutcomeEvidence",
+    "OutcomeLike",
     "ActionOutcome",
     "LearnedSafetyEnvelope",
     "ContractionAwareEnvelope",
     "Labeler",
     "LearnerStats",
     "EnvelopeLearner",
+    "CreditAwareLabeler",
 ]

@@ -157,8 +157,11 @@
     <li><a href="#s19"><span class="n">19</span>🏗 合体 · 三层架构 &amp; 路线图</a></li>
     <li><a href="#s20"><span class="n">20</span>🧬 七个方程 · 每个方程一条原语</a></li>
     <li><a href="#s21"><span class="n">21</span>🔒 自学习 SafetyEnvelope · 外壳闭环</a></li>
-    <li><a href="#appendix"><span class="n">A</span>附录 · 公式索引 / FAQ</a></li>
     <li><a href="#s22"><span class="n">22</span>数据变化收益 GIF 路 learned vs baseline</a></li>
+    <li><a href="#s23"><span class="n">23</span>软标签 · 归因修正的自学习外壳</a></li>
+    <li><a href="#s24"><span class="n">24</span>Audit JSONL · 事故归因回放</a></li>
+    <li><a href="#s25"><span class="n">25</span>指标源接入 · Prometheus / OpenTelemetry</a></li>
+    <li><a href="#appendix"><span class="n">A</span>附录 · 公式索引 / FAQ</a></li>
   </ol>
 </aside>
 
@@ -2731,6 +2734,235 @@ new_lo = clip(new_lo, hard_lo, hard_hi)</div>
     这个 GIF 对应的是 <code>docs/assets/self_learning_envelope.gif</code>，由
     <code>attention_residuals.sre_self_envelope</code> 的回放脚本导出。
     它不是“更漂亮的图”，而是为了把 self-learning envelope 的工程收益明确钉在时间轴上。
+  </p>
+</section>
+
+<!-- ========================= 23 Soft Labels + Credit ========================= -->
+<section id="s23">
+  <h2><span class="tag">23</span>软标签 · 归因修正的自学习外壳</h2>
+  <p class="lead">
+    Round 7 把 <code>SAFE/UNSAFE</code> 的硬二元判断升级成带置信度的证据，并让
+    <code>TemporalCreditAssigner</code> 反向修正 UNSAFE 的强度：不是控制动作造成的事故，不应该让 envelope 过度收紧。
+  </p>
+
+  <h3>23.1 为什么硬标签不够</h3>
+  <p>
+    生产里的 post-hoc label 很少是纯净的。P99 破线可能来自上游流量尖刺、下游数据库抖动、采样延迟，也可能真的是本次扩容动作太激进。
+    如果 envelope 把所有 <code>UNSAFE</code> 都当成 1.0 强度的证据，就会把安全壳收得过紧，最终让控制器丧失行动能力。
+  </p>
+  <div class="formula">safe_evidence   = safety_score · confidence
+unsafe_evidence = (1 - safety_score) · confidence</div>
+  <p>
+    硬标签只是特例：<code>SAFE = (1, 1)</code>，<code>UNSAFE = (0, 1)</code>，
+    <code>UNKNOWN = (0.5, 0)</code>。软标签允许 labeler 表达“这次不太妙，但我只有 30% 把握是动作的问题”。
+  </p>
+
+  <figure>
+    <svg viewBox="0 0 920 280" role="img" aria-label="Soft label and temporal credit pipeline">
+      <defs>
+        <marker id="arr23" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+          <path d="M0,0 L8,3.5 L0,7 Z" fill="#1b2430"/>
+        </marker>
+      </defs>
+      <rect x="20" y="40" width="150" height="70" rx="8" fill="#eaf1fa" stroke="#1f5fa3"/>
+      <text x="95" y="70" text-anchor="middle" font-weight="700">Audit trail</text>
+      <text x="95" y="92" text-anchor="middle" font-size="12" class="muted">weights · action · ctx</text>
+
+      <rect x="220" y="40" width="180" height="70" rx="8" fill="#fdf3ea" stroke="#b4411b"/>
+      <text x="310" y="70" text-anchor="middle" font-weight="700">Base labeler</text>
+      <text x="310" y="92" text-anchor="middle" font-size="12" class="muted">SAFE / UNSAFE / soft</text>
+
+      <rect x="220" y="165" width="180" height="70" rx="8" fill="#f8f4e9" stroke="#caa96a"/>
+      <text x="310" y="194" text-anchor="middle" font-weight="700">Temporal credit</text>
+      <text x="310" y="216" text-anchor="middle" font-size="12" class="muted">weight · loss · gamma^age</text>
+
+      <rect x="455" y="82" width="190" height="80" rx="8" fill="#fff" stroke="#394557"/>
+      <text x="550" y="112" text-anchor="middle" font-weight="700">CreditAwareLabeler</text>
+      <text x="550" y="135" text-anchor="middle" font-size="12" class="muted">unsafe *= controllable_blame</text>
+
+      <rect x="705" y="82" width="180" height="80" rx="8" fill="#eff6ee" stroke="#2f7d3a"/>
+      <text x="795" y="112" text-anchor="middle" font-weight="700">LearnedSafetyEnvelope</text>
+      <text x="795" y="135" text-anchor="middle" font-size="12" class="muted">weighted quantile ratchet</text>
+
+      <g stroke="#1b2430" fill="none" stroke-width="1.8">
+        <path d="M170 75 L220 75" marker-end="url(#arr23)"/>
+        <path d="M400 75 C430 75, 430 102, 455 112" marker-end="url(#arr23)"/>
+        <path d="M400 200 C440 200, 440 145, 455 132" marker-end="url(#arr23)"/>
+        <path d="M645 122 L705 122" marker-end="url(#arr23)"/>
+        <path d="M95 110 C95 220, 205 220, 220 205" marker-end="url(#arr23)" stroke-dasharray="4 4"/>
+      </g>
+    </svg>
+    <figcaption>图 27 · 软标签把 label 变成证据质量；归因模块只削弱“不归控制动作负责”的 UNSAFE。</figcaption>
+  </figure>
+
+  <h3>23.2 归因修正公式</h3>
+  <p>
+    <code>TemporalCreditAssigner</code> 已经给出事故窗口内每个信号的 blame score：
+  </p>
+  <div class="formula">blame(signal=k, tick=t | incident=T) = weight[t,k] · loss[t,k] · gamma^(T-t)</div>
+  <p>
+    Round 7 新增 <code>CreditAwareLabeler</code>，计算可控信号的归因占比：
+  </p>
+  <div class="formula">controllable_ratio = Σ blame(controllable signals) / Σ blame(all signals)
+adjusted_unsafe = raw_unsafe · controllable_ratio</div>
+  <p>
+    这不是替控制器“开脱”，而是把错误归因从安全棘轮里拿掉。若 blame 主要落在 <code>controller</code>，
+    UNSAFE 仍然会强力触发收紧；若主要落在 <code>traffic</code>，UNSAFE 只作为弱证据保留。
+  </p>
+
+  <h3>23.3 API 与验证</h3>
+  <div class="sig">
+    <span class="file">attention_residuals/sre_self_envelope.py</span><br/>
+    <span class="mono">
+    OutcomeEvidence(safety_score, confidence=1.0, reason='')<br/>
+    CreditAwareLabeler(base_labeler, credit_assigner, controllable_signals, window=50)<br/>
+    EnvelopeLearner(...).ingest(...) → OutcomeEvidence<br/>
+    LearnedSafetyEnvelope.observe(action, OutcomeEvidence(...))
+    </span>
+  </div>
+  <ul>
+    <li><code>tests/test_sre_self_envelope.py</code> 新增软标签与归因修正测试：低置信 outlier 不主导分位数、UNSAFE 证据按权重累计、外因事故被降权、控制动作事故被保留。</li>
+    <li><code>examples/demo_credit_aware_envelope.py</code> 演示同样是硬 <code>UNSAFE</code>，traffic 阶段只留下弱证据，controller 阶段触发收紧。</li>
+    <li>独立设计说明见 <code>docs/SOFT-LABEL-CREDIT.md</code>。</li>
+  </ul>
+</section>
+
+<!-- ========================= 24 Audit Replay ========================= -->
+<section id="s24">
+  <h2><span class="tag">24</span>Audit JSONL · 事故归因回放</h2>
+  <p class="lead">
+    Round 8 把 <code>AuditTrail.to_jsonl()</code> 和 <code>TemporalCreditAssigner</code> 接通：
+    控制面只负责写审计日志，复盘任务从 JSONL 重建 blame 分布，再喂给 <code>CreditAwareLabeler</code>。
+  </p>
+
+  <figure>
+    <svg viewBox="0 0 920 230" role="img" aria-label="Audit replay to temporal credit pipeline">
+      <defs>
+        <marker id="arr24" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+          <path d="M0,0 L8,3.5 L0,7 Z" fill="#1b2430"/>
+        </marker>
+      </defs>
+      <rect x="25" y="70" width="150" height="70" rx="8" fill="#eaf1fa" stroke="#1f5fa3"/>
+      <text x="100" y="98" text-anchor="middle" font-weight="700">AuditTrail</text>
+      <text x="100" y="120" text-anchor="middle" font-size="12" class="muted">weights · action · ctx</text>
+
+      <rect x="230" y="70" width="145" height="70" rx="8" fill="#fff" stroke="#394557"/>
+      <text x="302" y="98" text-anchor="middle" font-weight="700">JSONL</text>
+      <text x="302" y="120" text-anchor="middle" font-size="12" class="muted">file / stream</text>
+
+      <rect x="430" y="35" width="180" height="70" rx="8" fill="#fdf3ea" stroke="#b4411b"/>
+      <text x="520" y="63" text-anchor="middle" font-weight="700">MetricLossMapper</text>
+      <text x="520" y="85" text-anchor="middle" font-size="12" class="muted">context metric -> loss</text>
+
+      <rect x="430" y="125" width="180" height="70" rx="8" fill="#f8f4e9" stroke="#caa96a"/>
+      <text x="520" y="153" text-anchor="middle" font-weight="700">AuditCreditReplay</text>
+      <text x="520" y="175" text-anchor="middle" font-size="12" class="muted">validate · normalize · record</text>
+
+      <rect x="670" y="70" width="210" height="70" rx="8" fill="#eff6ee" stroke="#2f7d3a"/>
+      <text x="775" y="98" text-anchor="middle" font-weight="700">TemporalCreditAssigner</text>
+      <text x="775" y="120" text-anchor="middle" font-size="12" class="muted">blame = weight · loss · decay</text>
+
+      <g stroke="#1b2430" fill="none" stroke-width="1.8">
+        <path d="M175 105 L230 105" marker-end="url(#arr24)"/>
+        <path d="M375 105 L430 160" marker-end="url(#arr24)"/>
+        <path d="M520 105 L520 125" marker-end="url(#arr24)"/>
+        <path d="M610 160 C640 160, 640 105, 670 105" marker-end="url(#arr24)"/>
+      </g>
+    </svg>
+    <figcaption>图 28 · 审计记录离线回放：JSONL 是控制面与归因任务之间的稳定契约。</figcaption>
+  </figure>
+
+  <h3>24.1 Loss 映射</h3>
+  <p>
+    audit 记录里已有 <code>signals</code> 与 <code>weights</code>，但 temporal credit 还需要每个 signal 的 <code>loss</code>。
+    新增 <code>MetricLossSpec</code> 把 context metric 转成非负损失：
+  </p>
+  <div class="formula">above:    max(0, value - target) / scale
+below:    max(0, target - value) / scale
+distance: abs(value - target) / scale
+raw:      value / scale</div>
+
+  <h3>24.2 API</h3>
+  <div class="sig">
+    <span class="file">attention_residuals/sre_math.py</span><br/>
+    <span class="mono">
+    MetricLossSpec(context_key, target=0.0, mode='above', scale=1.0)<br/>
+    MetricLossMapper({'controller': MetricLossSpec('controller_error', mode='raw')})<br/>
+    AuditCreditReplay(tca, loss_mapper).replay_jsonl(text)<br/>
+    AuditCreditReplay(tca, loss_mapper).replay_jsonl_file(path)
+    </span>
+  </div>
+
+  <p>
+    Demo：<code>python -m examples.demo_audit_credit_replay</code>。它生成 30 条 audit JSONL，
+    只用落盘记录重建事故窗口内的归因排名。
+  </p>
+</section>
+
+<!-- ========================= 25 Metric Sources ========================= -->
+<section id="s25">
+  <h2><span class="tag">25</span>指标源接入 · Prometheus / OpenTelemetry</h2>
+  <p class="lead">
+    Round 9 把 synthetic context 往真实监控系统推进一步：Prometheus instant query 与 OpenTelemetry OTLP JSON
+    都能被转换成统一的 audit context，再进入控制器、审计、归因和自学习 envelope。
+  </p>
+
+  <figure>
+    <svg viewBox="0 0 920 250" role="img" aria-label="Metric source adapters feeding audit context">
+      <defs>
+        <marker id="arr25" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+          <path d="M0,0 L8,3.5 L0,7 Z" fill="#1b2430"/>
+        </marker>
+      </defs>
+      <rect x="25" y="35" width="170" height="70" rx="8" fill="#eaf1fa" stroke="#1f5fa3"/>
+      <text x="110" y="63" text-anchor="middle" font-weight="700">Prometheus</text>
+      <text x="110" y="85" text-anchor="middle" font-size="12" class="muted">/api/v1/query</text>
+
+      <rect x="25" y="145" width="170" height="70" rx="8" fill="#eaf1fa" stroke="#1f5fa3"/>
+      <text x="110" y="173" text-anchor="middle" font-weight="700">OpenTelemetry</text>
+      <text x="110" y="195" text-anchor="middle" font-size="12" class="muted">OTLP JSON export</text>
+
+      <rect x="260" y="35" width="210" height="70" rx="8" fill="#fff" stroke="#394557"/>
+      <text x="365" y="63" text-anchor="middle" font-weight="700">PrometheusContextReader</text>
+      <text x="365" y="85" text-anchor="middle" font-size="12" class="muted">query -> reducer -> value</text>
+
+      <rect x="260" y="145" width="210" height="70" rx="8" fill="#fff" stroke="#394557"/>
+      <text x="365" y="173" text-anchor="middle" font-weight="700">OpenTelemetryJSONMetricReader</text>
+      <text x="365" y="195" text-anchor="middle" font-size="12" class="muted">datapoints -> reducer -> value</text>
+
+      <rect x="540" y="90" width="150" height="70" rx="8" fill="#fdf3ea" stroke="#b4411b"/>
+      <text x="615" y="118" text-anchor="middle" font-weight="700">context dict</text>
+      <text x="615" y="140" text-anchor="middle" font-size="12" class="muted">latency · error · queue</text>
+
+      <rect x="750" y="90" width="145" height="70" rx="8" fill="#eff6ee" stroke="#2f7d3a"/>
+      <text x="822" y="118" text-anchor="middle" font-weight="700">AuditTrail</text>
+      <text x="822" y="140" text-anchor="middle" font-size="12" class="muted">for replay / credit</text>
+
+      <g stroke="#1b2430" fill="none" stroke-width="1.8">
+        <path d="M195 70 L260 70" marker-end="url(#arr25)"/>
+        <path d="M195 180 L260 180" marker-end="url(#arr25)"/>
+        <path d="M470 70 C505 70, 505 110, 540 118" marker-end="url(#arr25)"/>
+        <path d="M470 180 C505 180, 505 140, 540 132" marker-end="url(#arr25)"/>
+        <path d="M690 125 L750 125" marker-end="url(#arr25)"/>
+      </g>
+    </svg>
+    <figcaption>图 29 · 指标源适配层只负责把监控系统输出变成统一 context，不把控制逻辑塞进采集层。</figcaption>
+  </figure>
+
+  <h3>25.1 API</h3>
+  <div class="sig">
+    <span class="file">attention_residuals/sre_metrics.py</span><br/>
+    <span class="mono">
+    PrometheusHTTPClient(base_url, transport=None)<br/>
+    PrometheusContextReader(client, [PrometheusQuery(context_key, query, reducer='first')])<br/>
+    OpenTelemetryJSONMetricReader(reducer='sum').read_context(otlp_json)<br/>
+    reduce_points(points, reducer='sum|max|min|avg|first')
+    </span>
+  </div>
+
+  <p>
+    Demo：<code>python -m examples.demo_metric_source_replay</code>。示例使用 fake Prometheus transport 与 OTLP JSON，
+    但走的是同一套生产接口：指标源 → context → AuditTrail → AuditCreditReplay → TemporalCreditAssigner。
   </p>
 </section>
 

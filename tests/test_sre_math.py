@@ -7,9 +7,12 @@ import pytest
 
 from attention_residuals.sre_control import SignalSpec
 from attention_residuals.sre_math import (
+    AuditCreditReplay,
     CreditEntry,
     FTRLLearner,
     JacobianContractionMonitor,
+    MetricLossMapper,
+    MetricLossSpec,
     MultiViewCombiner,
     ScaleInvariantNormalizer,
     TemperatureScheduler,
@@ -337,6 +340,87 @@ def test_credit_assigner_param_errors():
         tca.record(0, np.zeros(2), np.zeros(3))
     with pytest.raises(ValueError):
         tca.record(0, np.zeros(2), np.zeros(2), signal_names=["only"])
+
+
+# ---------------------------------------------------------------------------
+# AuditCreditReplay
+# ---------------------------------------------------------------------------
+
+def test_metric_loss_spec_modes_and_clipping():
+    ctx = {"high": 12.0, "low": 2.0, "target": 7.0, "raw": 3.0}
+    assert MetricLossSpec("high", target=10.0, mode="above").evaluate(ctx) == 2.0
+    assert MetricLossSpec("low", target=5.0, mode="below").evaluate(ctx) == 3.0
+    assert MetricLossSpec("target", target=5.0, mode="distance").evaluate(ctx) == 2.0
+    assert MetricLossSpec("raw", mode="raw", scale=2.0).evaluate(ctx) == 1.5
+    assert MetricLossSpec("high", target=10.0, ceiling=1.0).evaluate(ctx) == 1.0
+    assert MetricLossSpec("missing", missing_loss=0.25).evaluate(ctx) == 0.25
+
+
+def test_metric_loss_mapper_strict_and_default_paths():
+    mapper = MetricLossMapper(
+        {"a": MetricLossSpec("a_loss", mode="raw")},
+        default_loss=0.1,
+    )
+    losses = mapper({"context": {"a_loss": 2.0}}, ["a", "b"])
+    assert np.allclose(losses, [2.0, 0.1])
+    strict = MetricLossMapper({"a": MetricLossSpec("a_loss")}, strict=True)
+    with pytest.raises(KeyError):
+        strict({"context": {"a_loss": 2.0}}, ["a", "b"])
+
+
+def test_audit_credit_replay_jsonl_populates_credit_assigner():
+    jsonl = "\n".join([
+        '{"step": 1, "signals": ["latency", "traffic"], '
+        '"weights": [0.2, 0.8], "action": [1.0], '
+        '"context": {"latency_excess": 0.1, "traffic_spike": 3.0}}',
+        '{"step": 2, "signals": ["latency", "traffic"], '
+        '"weights": [0.7, 0.3], "action": [2.0], '
+        '"context": {"latency_excess": 4.0, "traffic_spike": 0.1}}',
+    ])
+    tca = TemporalCreditAssigner(decay=1.0)
+    replay = AuditCreditReplay(
+        tca,
+        MetricLossMapper({
+            "latency": MetricLossSpec("latency_excess", mode="raw"),
+            "traffic": MetricLossSpec("traffic_spike", mode="raw"),
+        }),
+    )
+    assert replay.replay_jsonl(jsonl) == 2
+    blamed = tca.attribute(incident_tick=2, window=5, top_k=1)
+    assert blamed[0].signal_name == "latency"
+    assert blamed[0].score == pytest.approx(2.8)
+
+
+def test_audit_credit_replay_normalises_weights():
+    tca = TemporalCreditAssigner(decay=1.0)
+    replay = AuditCreditReplay(
+        tca,
+        MetricLossMapper({"a": MetricLossSpec("loss", mode="raw")}),
+    )
+    replay.replay_record({
+        "step": 0,
+        "signals": ["a"],
+        "weights": [7.0],
+        "context": {"loss": 2.0},
+    })
+    entry = tca.attribute(incident_tick=0)[0]
+    assert entry.weight == pytest.approx(1.0)
+    assert entry.score == pytest.approx(2.0)
+
+
+def test_audit_credit_replay_rejects_bad_records():
+    replay = AuditCreditReplay(
+        TemporalCreditAssigner(),
+        MetricLossMapper({"a": MetricLossSpec("loss", mode="raw")}),
+    )
+    with pytest.raises(ValueError):
+        replay.replay_record({"step": 0, "signals": ["a"], "weights": [0.0],
+                              "context": {"loss": 1.0}})
+    with pytest.raises(ValueError):
+        replay.replay_record({"step": 0, "signals": ["a", "b"], "weights": [1.0],
+                              "context": {"loss": 1.0}})
+    with pytest.raises(ValueError):
+        replay.replay_jsonl("{bad-json}")
 
 
 # ---------------------------------------------------------------------------

@@ -1,243 +1,184 @@
-# Codex Handoff 路 Attention-Residuals
+# Codex Handoff - Attention-Residuals
 
-> 这份文档用于下一位接手者快速进入状态。
-> 目标是把当前仓库的架构、已完成工作、已知风险、下一步动作一次说清。
-
----
+> 面向下一位接手者的工程交接文档。本文记录当前分支、已完成能力、关键不变量、验证方式、已知风险和下一步建议。
 
 ## 1. 当前状态
 
+- 工作目录：`D:\workspace\SRE-LLM\Attention-Residuals`
 - 当前分支：`attention-residuals-session`
-- 远端：`origin`
-- 全量测试：`pytest -q` 通过，当前为 `127/127`
-- 最近一轮重点成果：
-  - 补了 `docs/ARCHITECTURE.md`
-  - 在 `docs/knowledge-base.html` 新增 `s22` 动图章节
-  - 生成 `docs/assets/self_learning_envelope.gif`
-  - 修正 `AdaptiveCombiner` 对静态 bias 的覆盖问题
-  - 给上述修正补了回归测试
-
----
+- 远端：`origin https://github.com/specialvan/SRE-LLM.git`
+- 当前验证：`pytest -q` 全量通过，当前测试收集数为 `148`。
+- 主要新增方向：
+  - Round 7：软标签 + temporal credit 归因修正。
+  - Round 8：`AuditTrail.to_jsonl()` 离线回放到 `TemporalCreditAssigner`。
+  - Round 9：Prometheus / OpenTelemetry 指标源适配，真实指标进入 audit context。
 
 ## 2. 架构地图
 
-### 2.1 两层主干
+### 2.1 论文机制实现层
 
-1. 论文实现层
-   - `classic_residual.py`
-   - `norm.py`
-   - `hyper_connections.py`
-   - `attn_residual.py`
-   - `blocks.py`
-   - `multi_head_vertical.py`
-   - `layer_skip.py`
-   - `transformer_layer.py`
-   - `stack.py`
+- `classic_residual.py`：经典残差 `x + F(x)`。
+- `norm.py`：Pre-Norm / Post-Norm。
+- `hyper_connections.py`：HC / mHC 多通道残差。
+- `attn_residual.py`：核心 Attention Residual。
+- `blocks.py`：Block Attention Residuals。
+- `multi_head_vertical.py`：多头纵向注意力。
+- `layer_skip.py`：动态跳层门控。
+- `transformer_layer.py`：横向 MHA + 纵向 AttnRes 解耦层。
+- `stack.py`：统一残差策略入口。
 
-2. SRE 控制层
-   - `sre_control.py`
-   - `sre_adaptive.py`
-   - `sre_safety.py`
-   - `sre_math.py`
-   - `sre_self_envelope.py`
+### 2.2 SRE 控制工程层
 
-### 2.2 交付层
+- `sre_control.py`：凸组合控制器、审计轨迹、分层控制、预算门控、must-attend 注册表。
+- `sre_adaptive.py`：Hedge / regret learner，自适应 bias。
+- `sre_safety.py`：静态安全 envelope、shadow runner、反事实解释、权重漂移检测。
+- `sre_math.py`：尺度归一、温度退火、FTRL、Jacobian 监控、temporal credit、Wasserstein 漂移、audit replay。
+- `sre_self_envelope.py`：自学习 safety envelope、软标签、credit-aware labeler。
+- `sre_metrics.py`：Prometheus / OpenTelemetry 指标源适配。
 
-- `docs/DEEP-DIVE.md`
-- `docs/EQUATIONS-AND-SRE.md`
-- `docs/SRE-CONTROL-PLAYBOOK.md`
-- `docs/SELF-LEARNING-ENVELOPE.md`
-- `docs/ARCHITECTURE.md`
-- `docs/knowledge-base.html`
-- `examples/`
-- `tests/`
+### 2.3 文档与 demo
 
----
+- `docs/knowledge-base.html`：机制级知识库，当前包含 `s0` 到 `s25`。
+- `docs/SRE-CONTROL-PLAYBOOK.md`：SRE 控制原语复用手册。
+- `docs/SELF-LEARNING-ENVELOPE.md`：自学习 envelope 设计。
+- `docs/SOFT-LABEL-CREDIT.md`：软标签与归因修正。
+- `docs/AUDIT-CREDIT-REPLAY.md`：audit JSONL 回放到 temporal credit。
+- `docs/METRIC-SOURCES.md`：Prometheus / OpenTelemetry 指标源接入。
+- `examples/demo_credit_aware_envelope.py`：软标签 + credit-aware labeler。
+- `examples/demo_audit_credit_replay.py`：Audit JSONL 离线归因回放。
+- `examples/demo_metric_source_replay.py`：指标源 -> audit context -> temporal credit。
 
-## 3. 已完成工作
+## 3. Round 7：软标签 + 归因修正
 
-### 3.1 架构文档
+核心文件：
 
-- 新增 [docs/ARCHITECTURE.md](./ARCHITECTURE.md)
-- 内容包括：
-  - Architecture
-  - Requirements
-  - Task Breakdown
-  - Refinement
-- 文档把“论文机制 -> SRE 原语 -> 交付物”串成了一张工程图。
+- `attention_residuals/sre_self_envelope.py`
+- `tests/test_sre_self_envelope.py`
+- `examples/demo_credit_aware_envelope.py`
+- `docs/SOFT-LABEL-CREDIT.md`
 
-### 3.2 知识库补强
+新增能力：
 
-- 在 `docs/knowledge-base.html` 中新增 `s22`：
-  - 数据变化收益 GIF
-  - learned envelope vs baseline 对比
-  - 收益表
-- 新增图像资产：
-  - `docs/assets/self_learning_envelope.gif`
+- `OutcomeEvidence(safety_score, confidence)`：
+  - `safe_evidence = safety_score * confidence`
+  - `unsafe_evidence = (1 - safety_score) * confidence`
+- `LearnedSafetyEnvelope.observe(...)` 兼容旧的 `OutcomeLabel` 与新的 `OutcomeEvidence`。
+- SAFE 样本使用加权分位数学习边界，低置信 outlier 不会轻易拖动 envelope。
+- UNSAFE quorum 改成累计 evidence mass，不再按裸事件数机械触发。
+- `CreditAwareLabeler` 使用 `TemporalCreditAssigner` 的 blame 分布削弱外因事故的 UNSAFE 证据。
 
-### 3.3 代码修正
+关键 demo 现象：
 
-- 修正 `attention_residuals/sre_adaptive.py`
-  - 之前 `AdaptiveCombiner` 会把 operator static bias 覆盖掉
-  - 现在改为 `static_bias + learner_logits`
-- 补充测试：
-  - `tests/test_sre_adaptive.py`
-  - 新增 `test_adaptive_combiner_preserves_static_bias_under_learning`
+- traffic 导致的硬 `UNSAFE` 被降成弱 unsafe evidence。
+- controller 导致的 `UNSAFE` 保持高 evidence，并触发 envelope 收紧。
 
----
+## 4. Round 8：Audit JSONL 回放
 
-## 4. 模块梳理
+核心文件：
 
-### 4.1 Paper Layer
+- `attention_residuals/sre_math.py`
+- `tests/test_sre_math.py`
+- `examples/demo_audit_credit_replay.py`
+- `docs/AUDIT-CREDIT-REPLAY.md`
 
-- `attn_residual.py`
-  - 核心纵向注意力
-  - `AttentionResidual`
-  - `AttentionResidualConnector`
-- `blocks.py`
-  - 分段式 Attention Residual
-  - 默认 `inner_residual=False`
-- `multi_head_vertical.py`
-  - 多头纵向注意力
-- `layer_skip.py`
-  - 动态跳层门控
-- `transformer_layer.py`
-  - 横向 MHA + 纵向 AttnRes 的解耦层
-- `stack.py`
-  - 统一残差栈入口
+新增能力：
 
-### 4.2 SRE Control Plane
+- `MetricLossSpec`：把 audit context 中的指标转成非负 loss。
+- `MetricLossMapper`：按 signal name 生成 loss 向量。
+- `AuditCreditReplay`：
+  - `replay_record(record)`
+  - `replay_records(records)`
+  - `replay_jsonl(text)`
+  - `replay_jsonl_file(path)`
 
-- `sre_control.py`
-  - `WeightedConvexCombiner`
-  - `AuditTrail`
-  - `DecoupledControlLoop`
-  - `HierarchicalBlockController`
-  - `BudgetGate`
-  - `MustAttendRegistry`
-- `sre_adaptive.py`
-  - Hedge / regret learner
-  - 自适应 bias
-- `sre_safety.py`
-  - SafetyEnvelope
-  - ShadowRunner
-  - CounterfactualExplainer
-  - WeightDriftDetector
-- `sre_math.py`
-  - scale normalization
-  - temperature schedule
-  - multi-view combiner
-  - FTRL
-  - contraction monitor
-  - temporal credit
-  - Wasserstein drift
-- `sre_self_envelope.py`
-  - LearnedSafetyEnvelope
-  - ContractionAwareEnvelope
-  - EnvelopeLearner
+完整链路：
 
----
+```text
+AuditTrail.to_jsonl()
+  -> AuditCreditReplay
+  -> TemporalCreditAssigner
+  -> CreditAwareLabeler
+  -> LearnedSafetyEnvelope
+```
 
-## 5. 需求拆解
+## 5. Round 9：指标源接入
 
-### 5.1 Functional requirements
+核心文件：
 
-- 支持六种残差策略可互换
-- 支持纵向注意力权重暴露
-- 支持 Block 分段和复杂度降低
-- 支持多头纵向注意力和 layer skip
-- 支持 SRE 控制的 convex combine / audit / must-attend
-- 支持自适应学习和安全闭环
-- 支持自学习外壳与 contraction-aware 外壳
+- `attention_residuals/sre_metrics.py`
+- `tests/test_sre_metrics.py`
+- `examples/demo_metric_source_replay.py`
+- `docs/METRIC-SOURCES.md`
 
-### 5.2 Invariants
+新增能力：
 
-- `sum(weights) == 1`
-- `floor <= weight <= ceiling`
-- `fit()` 只能收紧
-- `relax()` 是唯一放宽路径
-- hard bounds 永不被自动突破
-- wrapper 不能污染 inner state
-- audit trail 必须可回放
+- `PrometheusHTTPClient`：标准库实现的 Prometheus instant query client。
+- `PrometheusContextReader`：把一组 Prometheus query 读成 audit context。
+- `PrometheusQuery`：声明 `context_key / query / reducer`。
+- `OpenTelemetryJSONMetricReader`：解析 OTLP JSON export 中的 gauge / sum datapoints。
+- `reduce_points`：支持 `first / sum / max / min / avg / callable`。
 
-### 5.3 Non-functional
+完整链路：
 
-- `sre_control` 保持纯 `numpy`
-- 论文层保持 `nn.Module`
-- 所有新增原语都要有 test + demo
-- 关键路径可在 CPU 上运行
-- 文档要能解释机制、实现、风险
+```text
+Prometheus / OpenTelemetry
+  -> context dict
+  -> WeightedConvexCombiner + AuditTrail
+  -> AuditCreditReplay + MetricLossMapper
+  -> TemporalCreditAssigner
+  -> CreditAwareLabeler + LearnedSafetyEnvelope
+```
 
----
+## 6. 必须守住的不变量
 
-## 6. 任务拆解
+- `WeightedConvexCombiner` 权重必须满足：
+  - `sum(weights) == 1`
+  - `floor <= weight <= ceiling`
+- `LearnedSafetyEnvelope.fit()` 只能自动收紧，不能自动放宽。
+- `relax()` 是唯一放宽 envelope 的路径。
+- learned bounds 永远不能越过 operator hard bounds。
+- `ContractionAwareEnvelope` 只能临时缩小 effective max_delta，不能污染 inner envelope 状态。
+- `AuditTrail` 必须可 JSONL 回放。
+- 软标签只能调节 evidence 强度，不能绕过 hard bounds。
+- 指标源适配层只负责读指标并生成 context，不承载控制策略。
 
-### Epic A
+## 7. 验证命令
 
-- 论文机制实现
-- 当前状态：完成主干
-- 关注点：`share_key=False` 已落地，可继续向真实指标源推进
+```bash
+pytest -q
+pytest tests/test_sre_metrics.py tests/test_sre_math.py tests/test_sre_self_envelope.py -q
+python -m examples.demo_credit_aware_envelope
+python -m examples.demo_audit_credit_replay
+python -m examples.demo_metric_source_replay
+```
 
-### Epic B
+当前已验证：
 
-- SRE control plane
-- 当前状态：完成核心原语
-- 关注点：后续可接真实 metric source
+- `pytest -q` 全量通过。
+- `pytest --collect-only` 收集 `148` 个测试。
+- `docs/knowledge-base.html` section 与 svg 闭合数一致。
+- 三个 Round 7/8/9 demo 均可运行。
 
-### Epic C
+## 8. 已知风险与边界
 
-- 闭环学习
-- 当前状态：Hedge / adaptive bias 已完成
-- 关注点：static bias + learner bias 的叠加语义已修正
-
-### Epic D
-
-- safety / observability
-- 当前状态：shadow、counterfactual、drift 已有
-
-### Epic E
-
-- self-learning envelope
-- 当前状态：已完成闭环自学习和 GIF 证据
-- 关注点：label 设计可继续细化
-
-### Epic F
-
-- 知识系统
-- 当前状态：`docs/ARCHITECTURE.md` + `knowledge-base.html` 已加厚
-
----
-
-## 7. 已知 finding
-
-1. 当前没有新增的功能性 blocker。
-2. 接下来优先级最高的是把 SRE 原语接真实指标源，做一版 live demo。
-3. 之后再继续细化 self-learning envelope 的 label / quorum。
-
----
-
-## 8. 风险与边界
-
-- Self-learning envelope 受 selection bias 限制，只能学习到被允许看到的动作。
-- GIF 是 synthetic replay，展示的是工程收益，不是生产 trace。
-- `sre_control` 目前只依赖 numpy，适合控制面，但不适合承载复杂训练逻辑。
-- 文档已比代码更丰富，后续要注意文档与实现一致性。
-
----
+- Self-learning envelope 仍然受 selection bias 限制：它只能学习已经被允许执行的动作。
+- Prometheus reader 当前支持 instant query 的 `scalar` 和 `vector`，不支持 `matrix`。
+- OpenTelemetry reader 当前解析 OTLP JSON 的 `gauge` 与 `sum`，没有实现 histogram 展开。
+- Metric source demo 使用 fake transport 和 synthetic OTLP payload，不是生产 trace。
+- `sre_control` / `sre_math` / `sre_metrics` 保持轻依赖，适合控制面；复杂训练逻辑仍不应塞进这些模块。
 
 ## 9. 下一步建议
 
-1. 接真实指标源，做一版 live demo
-2. 继续细化 self-learning envelope 的 label / quorum
-3. 让知识库目录和章节索引自动化生成
-4. 让知识库自动生成目录和章节索引
+1. 加一个 streaming replay loop：tail audit JSONL，持续更新 `TemporalCreditAssigner`。
+2. 给 `CreditAwareLabeler` 增加“最近 N 秒 credit cache”接口，避免每次事故都全量 attribute。
+3. 扩展 OpenTelemetry histogram 支持，把 bucket 转成 p95/p99 或 SLO burn loss。
+4. 做一版真实 Prometheus 配置示例：autoscaling / rate-limit / circuit-break 三种场景各一套 query。
+5. 引入 per-dimension quorum：不同 action 维度可以有不同的 unsafe evidence 门槛。
 
----
+## 10. 提交前检查清单
 
-## 10. 当前可直接继续的文件
-
-- `attention_residuals/sre_adaptive.py`
-- `tests/test_sre_adaptive.py`
-- `docs/ARCHITECTURE.md`
-- `docs/knowledge-base.html`
-- `docs/assets/self_learning_envelope.gif`
+- 新增 API 已导出到 `attention_residuals/__init__.py`。
+- 新增代码均有单元测试。
+- 新增能力均有 demo。
+- README 与知识库入口已更新。
+- 本文件已更新到最新状态。

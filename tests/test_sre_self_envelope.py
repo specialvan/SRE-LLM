@@ -13,10 +13,13 @@ import pytest
 from attention_residuals.sre_self_envelope import (
     ActionOutcome,
     ContractionAwareEnvelope,
+    CreditAwareLabeler,
     EnvelopeLearner,
     LearnedSafetyEnvelope,
+    OutcomeEvidence,
     OutcomeLabel,
 )
+from attention_residuals.sre_math import TemporalCreditAssigner
 
 
 # ---------------------------------------------------------------------------
@@ -407,6 +410,106 @@ def test_envelope_learner_unknown_records_do_not_feed_state():
     assert learner.stats.safe == 0 and learner.stats.unsafe == 0
     # Envelope bounds must not have moved — no observation was recorded.
     assert env.current_bounds()["high"][0] == 10.0
+
+
+# ---------------------------------------------------------------------------
+# Soft labels and temporal-credit-aware labels
+# ---------------------------------------------------------------------------
+
+def test_soft_unsafe_evidence_accumulates_towards_quorum():
+    env = _fresh_env(unsafe_quorum=2, min_safe_samples=5)
+    for _ in range(10):
+        env.observe(np.array([0.0]), OutcomeLabel.SAFE)
+
+    env.observe(np.array([9.0]), OutcomeEvidence(0.0, confidence=0.75))
+    env.observe(np.array([9.0]), OutcomeEvidence(0.0, confidence=0.75))
+    s1 = env.fit()
+    assert s1["reason"] == "no_unsafe_quorum"
+
+    env.observe(np.array([9.0]), OutcomeEvidence(0.0, confidence=0.5))
+    s2 = env.fit()
+    assert "reason" not in s2
+    assert s2["tightened_high"]
+
+
+def test_low_confidence_safe_outlier_has_little_quantile_power():
+    env = _fresh_env(unsafe_quorum=1, min_safe_samples=10,
+                     safe_quantile=0.9, hysteresis=0.0)
+    for _ in range(12):
+        env.observe(np.array([1.0]), OutcomeLabel.SAFE)
+    # A single "safe" outlier with tiny confidence should not drag the
+    # weighted quantile close to 9.
+    env.observe(np.array([9.0]), OutcomeEvidence(1.0, confidence=0.01))
+    env.observe(np.array([9.0]), OutcomeLabel.UNSAFE)
+    env.fit()
+    assert env.current_bounds()["high"][0] < 2.0
+
+
+def test_envelope_learner_accepts_soft_labeler_and_tracks_evidence():
+    env = _fresh_env(unsafe_quorum=10, min_safe_samples=5)
+    learner = EnvelopeLearner(
+        env,
+        labeler=lambda ctx: OutcomeEvidence(ctx["safety"], confidence=0.5),
+        fit_every=100,
+    )
+    e = learner.ingest(np.array([0.0]), {"safety": 0.2})
+    assert e.unsafe_weight == pytest.approx(0.4)
+    assert learner.stats.soft == 1
+    assert learner.stats.safe_evidence == pytest.approx(0.1)
+    assert learner.stats.unsafe_evidence == pytest.approx(0.4)
+
+
+def test_outcome_evidence_from_weights_normalises_large_evidence():
+    evidence = OutcomeEvidence.from_weights(2.0, 1.0)
+    assert evidence.confidence == pytest.approx(1.0)
+    assert evidence.safety_score == pytest.approx(2.0 / 3.0)
+
+
+def test_credit_aware_labeler_downgrades_exogenous_unsafe():
+    tca = TemporalCreditAssigner(decay=1.0)
+    tca.record(
+        10,
+        weights=np.array([0.1, 0.9]),
+        losses=np.array([1.0, 1.0]),
+        signal_names=["controller", "traffic"],
+    )
+    labeler = CreditAwareLabeler(
+        base_labeler=lambda ctx: OutcomeLabel.UNSAFE,
+        credit_assigner=tca,
+        controllable_signals=["controller"],
+        window=5,
+    )
+    evidence = labeler({"tick": 10})
+    assert evidence.unsafe_weight == pytest.approx(0.1)
+    assert labeler.last_adjustment()["controllable_ratio"] == pytest.approx(0.1)
+
+
+def test_credit_aware_labeler_preserves_action_caused_unsafe():
+    tca = TemporalCreditAssigner(decay=1.0)
+    tca.record(
+        3,
+        weights=np.array([0.8, 0.2]),
+        losses=np.array([1.0, 1.0]),
+        signal_names=["controller", "traffic"],
+    )
+    labeler = CreditAwareLabeler(
+        base_labeler=lambda ctx: OutcomeLabel.UNSAFE,
+        credit_assigner=tca,
+        controllable_signals=["controller"],
+        window=10,
+    )
+    evidence = labeler({"tick": 3})
+    assert evidence.unsafe_weight == pytest.approx(0.8)
+
+
+def test_credit_aware_labeler_without_credit_leaves_label_unchanged():
+    labeler = CreditAwareLabeler(
+        base_labeler=lambda ctx: OutcomeLabel.UNSAFE,
+        credit_assigner=TemporalCreditAssigner(),
+        controllable_signals=["controller"],
+    )
+    evidence = labeler({"tick": 99})
+    assert evidence.unsafe_weight == pytest.approx(1.0)
 
 
 # ---------------------------------------------------------------------------

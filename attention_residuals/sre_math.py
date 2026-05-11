@@ -19,8 +19,9 @@ can be dropped into a control-plane service without a PyTorch dependency.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -611,6 +612,149 @@ class TemporalCreditAssigner:
         return entries if top_k is None else entries[:top_k]
 
 
+LossMapper = Callable[[Mapping[str, Any], Sequence[str]], np.ndarray]
+
+
+@dataclass(frozen=True)
+class MetricLossSpec:
+    """Map one metric in an audit context to a non-negative loss."""
+
+    context_key: str
+    target: float = 0.0
+    mode: str = "above"
+    scale: float = 1.0
+    floor: float = 0.0
+    ceiling: Optional[float] = None
+    missing_loss: Optional[float] = None
+
+    def __post_init__(self) -> None:
+        if self.mode not in {"above", "below", "distance", "raw"}:
+            raise ValueError("mode must be one of above/below/distance/raw")
+        if self.scale <= 0:
+            raise ValueError("scale must be > 0")
+        if self.floor < 0:
+            raise ValueError("floor must be >= 0")
+        if self.ceiling is not None and self.ceiling < self.floor:
+            raise ValueError("ceiling must be >= floor")
+        if self.missing_loss is not None and self.missing_loss < 0:
+            raise ValueError("missing_loss must be >= 0")
+
+    def evaluate(self, context: Mapping[str, Any]) -> float:
+        if self.context_key not in context:
+            if self.missing_loss is None:
+                raise KeyError(f"missing metric {self.context_key!r}")
+            return float(self.missing_loss)
+        value = float(context[self.context_key])
+        if self.mode == "above":
+            loss = max(0.0, value - self.target) / self.scale
+        elif self.mode == "below":
+            loss = max(0.0, self.target - value) / self.scale
+        elif self.mode == "distance":
+            loss = abs(value - self.target) / self.scale
+        else:
+            loss = value / self.scale
+        loss = max(self.floor, float(loss))
+        if self.ceiling is not None:
+            loss = min(float(self.ceiling), loss)
+        return loss
+
+
+class MetricLossMapper:
+    """Build per-signal loss vectors from audit-record context metrics."""
+
+    def __init__(
+        self,
+        specs: Mapping[str, MetricLossSpec],
+        *,
+        default_loss: float = 0.0,
+        strict: bool = False,
+    ) -> None:
+        if default_loss < 0:
+            raise ValueError("default_loss must be >= 0")
+        self.specs = dict(specs)
+        self.default_loss = float(default_loss)
+        self.strict = bool(strict)
+
+    def __call__(self, record: Mapping[str, Any], signal_names: Sequence[str]) -> np.ndarray:
+        context = record.get("context", {})
+        if not isinstance(context, Mapping):
+            raise ValueError("record context must be a mapping")
+        losses: List[float] = []
+        for name in signal_names:
+            spec = self.specs.get(name)
+            if spec is None:
+                if self.strict:
+                    raise KeyError(f"missing loss spec for signal {name!r}")
+                losses.append(self.default_loss)
+                continue
+            losses.append(spec.evaluate(context))
+        return np.asarray(losses, dtype=float)
+
+
+class AuditCreditReplay:
+    """Replay AuditTrail JSONL records into a TemporalCreditAssigner."""
+
+    def __init__(
+        self,
+        credit_assigner: TemporalCreditAssigner,
+        loss_mapper: LossMapper,
+    ) -> None:
+        self.credit_assigner = credit_assigner
+        self.loss_mapper = loss_mapper
+        self.replayed = 0
+
+    def replay_record(self, record: Mapping[str, Any]) -> None:
+        signal_names = list(record.get("signals", record.get("signal_names", [])))
+        if not signal_names:
+            raise ValueError("audit record must contain signals")
+        weights = np.asarray(record.get("weights"), dtype=float)
+        if weights.shape != (len(signal_names),):
+            raise ValueError("weights length must match signals")
+        total = weights.sum()
+        if total <= 0:
+            raise ValueError("weights must sum to > 0")
+        weights = weights / total
+        losses = np.asarray(self.loss_mapper(record, signal_names), dtype=float)
+        if losses.shape != weights.shape:
+            raise ValueError("loss mapper returned wrong shape")
+        if np.any(losses < 0):
+            raise ValueError("losses must be non-negative")
+        context = record.get("context", {})
+        if not isinstance(context, Mapping):
+            raise ValueError("record context must be a mapping")
+        self.credit_assigner.record(
+            tick=int(record["step"]),
+            weights=weights,
+            losses=losses,
+            signal_names=signal_names,
+            context=dict(context),
+        )
+        self.replayed += 1
+
+    def replay_records(self, records: Iterable[Mapping[str, Any]]) -> int:
+        before = self.replayed
+        for record in records:
+            self.replay_record(record)
+        return self.replayed - before
+
+    def replay_jsonl(self, text: str) -> int:
+        before = self.replayed
+        for lineno, line in enumerate(text.splitlines(), start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                record = json.loads(stripped)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"invalid JSON on line {lineno}") from exc
+            self.replay_record(record)
+        return self.replayed - before
+
+    def replay_jsonl_file(self, path: str) -> int:
+        with open(path, "r", encoding="utf-8") as fh:
+            return self.replay_jsonl(fh.read())
+
+
 # ---------------------------------------------------------------------------
 # §18  Wasserstein drift  —  alternative to KL for weight drift
 # ---------------------------------------------------------------------------
@@ -713,6 +857,7 @@ __all__ = [
     # §02
     "JacobianContractionMonitor",
     "CreditEntry", "TemporalCreditAssigner",
+    "LossMapper", "MetricLossSpec", "MetricLossMapper", "AuditCreditReplay",
     # §18
     "WassersteinDriftDetector",
 ]

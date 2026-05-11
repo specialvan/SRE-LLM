@@ -61,13 +61,21 @@ from .sre_math import (
     FTRLLearner,
     JacobianContractionMonitor,
     CreditEntry, TemporalCreditAssigner,
+    LossMapper, MetricLossSpec, MetricLossMapper, AuditCreditReplay,
     WassersteinDriftDetector,
+)
+from . import sre_metrics
+from .sre_metrics import (
+    MetricPoint,
+    PrometheusQuery, PrometheusHTTPClient, PrometheusContextReader,
+    OpenTelemetryJSONMetricReader,
+    reduce_points,
 )
 from . import sre_self_envelope
 from .sre_self_envelope import (
-    OutcomeLabel, ActionOutcome,
+    OutcomeLabel, OutcomeEvidence, OutcomeLike, ActionOutcome,
     LearnedSafetyEnvelope, ContractionAwareEnvelope,
-    Labeler, LearnerStats, EnvelopeLearner,
+    Labeler, LearnerStats, EnvelopeLearner, CreditAwareLabeler,
 )
 
 __all__ = [
@@ -105,12 +113,19 @@ __all__ = [
     "FTRLLearner",
     "JacobianContractionMonitor",
     "CreditEntry", "TemporalCreditAssigner",
+    "LossMapper", "MetricLossSpec", "MetricLossMapper", "AuditCreditReplay",
     "WassersteinDriftDetector",
+    # Metric source adapters
+    "sre_metrics",
+    "MetricPoint",
+    "PrometheusQuery", "PrometheusHTTPClient", "PrometheusContextReader",
+    "OpenTelemetryJSONMetricReader",
+    "reduce_points",
     # Self-learning envelope (audit → envelope closed loop)
     "sre_self_envelope",
-    "OutcomeLabel", "ActionOutcome",
+    "OutcomeLabel", "OutcomeEvidence", "OutcomeLike", "ActionOutcome",
     "LearnedSafetyEnvelope", "ContractionAwareEnvelope",
-    "Labeler", "LearnerStats", "EnvelopeLearner",
+    "Labeler", "LearnerStats", "EnvelopeLearner", "CreditAwareLabeler",
 ]
 
 __version__ = "0.1.0"

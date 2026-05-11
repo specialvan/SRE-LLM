@@ -29,6 +29,18 @@
 > 五条硬约束 + 六大不变量全部用代码验证。
 > 实现：[`sre_self_envelope.py`](./attention_residuals/sre_self_envelope.py)，
 > Demo：[`examples/demo_self_learning_envelope.py`](./examples/demo_self_learning_envelope.py)。
+>
+> **🧭 软标签 + 归因修正：** [`docs/SOFT-LABEL-CREDIT.md`](./docs/SOFT-LABEL-CREDIT.md)
+> — 把 `SAFE/UNSAFE` 升级为带置信度的 evidence，并用 `TemporalCreditAssigner` 防止外因事故误收紧 envelope。
+> Demo：[`examples/demo_credit_aware_envelope.py`](./examples/demo_credit_aware_envelope.py)。
+>
+> **📼 Audit JSONL 回放：** [`docs/AUDIT-CREDIT-REPLAY.md`](./docs/AUDIT-CREDIT-REPLAY.md)
+> — 把 `AuditTrail.to_jsonl()` 直接重放进 `TemporalCreditAssigner`，用于离线复盘或流式事故归因。
+> Demo：[`examples/demo_audit_credit_replay.py`](./examples/demo_audit_credit_replay.py)。
+>
+> **📡 指标源接入：** [`docs/METRIC-SOURCES.md`](./docs/METRIC-SOURCES.md)
+> — 用标准库适配 Prometheus instant query 与 OpenTelemetry OTLP JSON，把真实指标转成 audit context。
+> Demo：[`examples/demo_metric_source_replay.py`](./examples/demo_metric_source_replay.py)。
 
 一句话总结 Kimi 的主张：
 > **Transformer 除了横向（上下文方向）的自注意力之外，层间同样存在一个被残差网络隐式承载的"纵向自注意力"。既然它是自注意力，就应该把它显式化、可学习化、可审计化。**
