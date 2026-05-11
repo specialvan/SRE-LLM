@@ -1,10 +1,10 @@
 ---
 spec: starship-recovery · PR-level functional requirements
-version: 0.3.0
+version: 0.3.1
 updated: 2026-05-12
 owner: spacex-session
 baseline-commit: cf9c8dc
-head-commit: e2658f6
+head-commit: dd9cd7a
 status-legend:
   - "✅ SHIPPED  · 已实现 · 有测试 + 证据"
   - "🟡 IN-PROG  · 已开工 · 尚未合并"
@@ -15,7 +15,7 @@ invariants:
   - I-2 事件 schema 封闭：新 kind 必须同步 EVENT_COUNTEREXAMPLES + schema + 测试
   - I-3 降级路径对齐：runtime.degraded=True 必然伴随 DEGRADED_* 状态和至少 1 条 event
 quality-gates:
-  - pytest tests -q                 # 33 passed
+  - pytest tests -q                 # 35 passed
   - python -m analysis.run_all      # 9 studies finish <3s
   - python -m scripts.build_kb      # 16 assets rebuild
   - python -m examples.demo_sre_loop
@@ -65,7 +65,7 @@ quality-gates:
 
 | Gate | 命令 | 预期 |
 |---|---|---|
-| 单元测试 | `python -m pytest tests -q` | **33 passed** |
+| 单元测试 | `python -m pytest tests -q` | **35 passed** |
 | 基准证据 | `python -m analysis.run_all` | All 9 studies finish in ~3 s |
 | 资产构建 | `python -m scripts.build_kb` | 16 assets rebuilt |
 | 端到端 Demo | `python -m examples.demo_sre_loop` | 12 行 trace 无异常 |
@@ -659,12 +659,12 @@ disallowed: docs/*        ← no runtime code
 
 #### PR-S-01 · test_event_schema 宽松签名
 
-- **Status**: 🔵 PROPOSED
+- **Status**: ✅ SHIPPED (commit `dd9cd7a`)
 - **背景**：当前 `"Do not" in counterexample` 字符串签名脆，未来改 "Avoid" 会挂。
 - **范围**：`tests/test_event_schema.py::test_every_event_kind_has_a_specific_counterexample`
 - **DoD**：改成 `startswith(("Do not", "Avoid"))` 或直接删除该断言，靠
   `len >= 60` + kind ∈ EVENT_COUNTEREXAMPLES 足矣。
-- **估时**：< 30 min。
+- **Evidence**：Codex 把匹配放宽为 `startswith(("Do not", "Avoid"))`，测试保留但更鲁棒。
 
 #### PR-S-02 · CatchController 属性澄清
 
@@ -685,13 +685,14 @@ disallowed: docs/*        ← no runtime code
 
 #### PR-M-01 · 依赖方向护栏测试
 
-- **Status**: 🔵 PROPOSED
+- **Status**: ✅ SHIPPED (commit `dd9cd7a`)
 - **背景**：I-1 至今靠人类守。需要 pytest 自动护栏。
-- **范围**：`tests/test_import_graph.py`：遍历 `starship/*.py` AST，禁止 `import sre_control`。
+- **范围**：`tests/test_import_graph.py`：遍历 `starship/*.py` AST，禁止 `import sre_control`；
+  额外约束 `sre_control/events.py` 不得依赖 `starship/`。
 - **DoD**：
   - 对现有代码通过
   - 故意在 starship 里加一行 `from sre_control import events` 会失败
-- **文件**：`tests/test_import_graph.py`
+- **Evidence**：新增文件 `tests/test_import_graph.py`；`pytest` 现为 **35 passed**。
 
 #### PR-M-02 · Failure-trace before/after
 
@@ -815,6 +816,17 @@ disallowed: docs/*        ← no runtime code
 ---
 
 ## Change Log
+
+### v0.3.1 · 2026-05-12 · 同步 Codex 下轮产出
+
+- **PR-S-01** 状态 `🔵 PROPOSED → ✅ SHIPPED`（commit `dd9cd7a`）：counter-example 签名
+  放宽为 `startswith(("Do not", "Avoid"))`。
+- **PR-M-01** 状态 `🔵 PROPOSED → ✅ SHIPPED`（commit `dd9cd7a`）：新增
+  `tests/test_import_graph.py` 用 AST 固化依赖方向护栏。
+- quality gate 从 33 passed → **35 passed**。
+- head-commit 从 `e2658f6` → `dd9cd7a`。
+
+这说明 spec 的 Backlog 节本身就是可执行的任务列表——Codex 已经照清单做了 2 项。
 
 ### v0.3.0 · 2026-05-12 · Claude Reviewer
 
