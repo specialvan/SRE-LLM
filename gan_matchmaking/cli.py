@@ -5,6 +5,7 @@ Usage::
     python -m gan_matchmaking.cli decide --input context.json [--config cfg.json]
     python -m gan_matchmaking.cli metrics [--config cfg.json]
     python -m gan_matchmaking.cli export-replay --state-db state.sqlite --correlation-id dec-1
+    python -m gan_matchmaking.cli export-replay --state-db state.sqlite --correlation-id dec-1 --allow-fitted-artifacts --artifact-dir artifacts --artifact-output-dir tests/fixtures/replay/dec-1-artifacts
 
 The CLI exists for code review and light integration (airflow / cron).
 Anything complex belongs in :class:`SelfIterationPipeline` directly.
@@ -94,6 +95,8 @@ def _cmd_export_replay(args: argparse.Namespace) -> int:
         config=config,
         name=args.name,
         allow_fitted_artifacts=args.allow_fitted_artifacts,
+        artifact_directory=args.artifact_dir,
+        artifact_output_directory=args.artifact_output_dir,
     )
     if args.output:
         json.dump(
@@ -146,6 +149,10 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="export non-bootstrap decisions that require a matching artifact bundle",
     )
+    p_export.add_argument("--artifact-dir", default=None,
+                          help="runtime artifact directory used by the audited decision")
+    p_export.add_argument("--artifact-output-dir", default=None,
+                          help="optional directory to archive the validated artifact bundle")
     p_export.set_defaults(func=_cmd_export_replay)
     return parser
 

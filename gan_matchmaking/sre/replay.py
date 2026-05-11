@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import sqlite3
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -17,6 +18,15 @@ from pathlib import Path
 from typing import Any, Optional
 
 from ..core.errors import DataError
+from .artifacts import load_runtime_artifacts
+
+
+DEFAULT_ARTIFACT_FILENAMES = {
+    "retention_filename": "retention_weights.npz",
+    "retention_metadata_filename": "retention_artifact.json",
+    "cox_filename": "cox_beta.npz",
+    "cox_metadata_filename": "cox_artifact.json",
+}
 
 
 @dataclass(frozen=True)
@@ -46,6 +56,105 @@ def _loads_json_field(raw: str, *, field: str, correlation_id: str) -> Any:
             f"invalid JSON in decisions.{field}",
             details={"correlation_id": correlation_id, "field": field},
         ) from exc
+
+
+def _artifact_filenames(config: Mapping[str, Any]) -> dict[str, str]:
+    artifacts = config.get("artifacts", {})
+    if not isinstance(artifacts, Mapping):
+        artifacts = {}
+    return {
+        key: str(artifacts.get(key, default))
+        for key, default in DEFAULT_ARTIFACT_FILENAMES.items()
+    }
+
+
+def _relative_or_absolute(path: Path, *, base: Path | None) -> str:
+    if base is None:
+        return str(path)
+    try:
+        return str(path.relative_to(base))
+    except ValueError:
+        return str(path)
+
+
+def validate_artifact_bundle(
+    artifact_directory: str | Path,
+    expected_version: str,
+    *,
+    config: Optional[Mapping[str, Any]] = None,
+) -> dict[str, Any]:
+    """Validate that a runtime artifact directory can replay a fitted decision."""
+    filenames = _artifact_filenames(config or {})
+    bundle = load_runtime_artifacts(
+        artifact_directory,
+        retention_filename=filenames["retention_filename"],
+        retention_metadata_filename=filenames["retention_metadata_filename"],
+        cox_filename=filenames["cox_filename"],
+        cox_metadata_filename=filenames["cox_metadata_filename"],
+    )
+    if bundle.validation_errors:
+        raise DataError(
+            "artifact bundle failed manifest validation",
+            details={
+                "artifact_directory": str(artifact_directory),
+                "validation_errors": {
+                    key: list(errors)
+                    for key, errors in bundle.validation_errors.items()
+                },
+            },
+        )
+    if bundle.version != expected_version:
+        raise DataError(
+            "artifact bundle version mismatch",
+            details={
+                "artifact_directory": str(artifact_directory),
+                "expected_version": expected_version,
+                "actual_version": bundle.version,
+            },
+        )
+    if not bundle.fitted:
+        raise DataError(
+            "artifact bundle is empty",
+            details={"artifact_directory": str(artifact_directory)},
+        )
+    files = [
+        filename
+        for filename in filenames.values()
+        if (Path(artifact_directory) / filename).exists()
+    ]
+    return {
+        "version": bundle.version,
+        "files": files,
+        "retention_version": (
+            None if bundle.retention is None else bundle.retention.metadata.version
+        ),
+        "cox_version": None if bundle.cox is None else bundle.cox.metadata.version,
+    }
+
+
+def archive_artifact_bundle(
+    artifact_directory: str | Path,
+    output_directory: str | Path,
+    expected_version: str,
+    *,
+    config: Optional[Mapping[str, Any]] = None,
+) -> dict[str, Any]:
+    """Copy a validated artifact bundle to an archive directory."""
+    manifest = validate_artifact_bundle(
+        artifact_directory,
+        expected_version,
+        config=config,
+    )
+    src = Path(artifact_directory)
+    dst = Path(output_directory)
+    dst.mkdir(parents=True, exist_ok=True)
+    for filename in manifest["files"]:
+        shutil.copy2(src / filename, dst / filename)
+    (dst / "replay_artifact_manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return manifest
 
 
 def load_decision_audit_row(db_path: str | Path, correlation_id: str) -> DecisionAuditRow:
@@ -117,6 +226,7 @@ def build_replay_fixture(
     config: Optional[Mapping[str, Any]] = None,
     name: Optional[str] = None,
     allow_fitted_artifacts: bool = False,
+    artifact_bundle: Optional[Mapping[str, Any]] = None,
 ) -> dict[str, Any]:
     """Build a replay fixture from a decision audit row.
 
@@ -147,6 +257,15 @@ def build_replay_fixture(
                 "hint": "pass allow_fitted_artifacts=True and provide the matching artifact bundle when replaying",
             },
         )
+    if artifact_version != "bootstrap" and artifact_bundle is None:
+        raise DataError(
+            "fitted-artifact replay requires a validated artifact bundle",
+            details={
+                "correlation_id": row.correlation_id,
+                "artifact_version": artifact_version,
+                "hint": "pass artifact_directory and archive the bundle with the fixture",
+            },
+        )
 
     config_payload: Mapping[str, Any]
     if config is not None:
@@ -154,6 +273,16 @@ def build_replay_fixture(
     else:
         embedded_config = trace_input.get("config", {})
         config_payload = dict(embedded_config) if isinstance(embedded_config, Mapping) else {}
+    if artifact_bundle is not None:
+        config_payload = dict(config_payload)
+        raw_artifacts_cfg = config_payload.get("artifacts", {})
+        artifacts_cfg = (
+            dict(raw_artifacts_cfg)
+            if isinstance(raw_artifacts_cfg, Mapping)
+            else {}
+        )
+        artifacts_cfg["directory"] = str(artifact_bundle["path"])
+        config_payload["artifacts"] = artifacts_cfg
 
     expected: dict[str, Any] = {
         "kind": row.kind,
@@ -183,6 +312,7 @@ def build_replay_fixture(
     }
     if artifact_version != "bootstrap":
         payload["requires_artifact_version"] = artifact_version
+        payload["artifact_bundle"] = dict(artifact_bundle or {})
     return payload
 
 
@@ -194,14 +324,56 @@ def export_replay_fixture(
     config: Optional[Mapping[str, Any]] = None,
     name: Optional[str] = None,
     allow_fitted_artifacts: bool = False,
+    artifact_directory: str | Path | None = None,
+    artifact_output_directory: str | Path | None = None,
 ) -> dict[str, Any]:
     """Export one SQLite decision row as a replay fixture payload."""
     row = load_decision_audit_row(db_path, correlation_id)
+    trace_input = row.trace.get("input", {})
+    if not isinstance(trace_input, Mapping):
+        trace_input = {}
+    config_payload = dict(config) if config is not None else trace_input.get("config", {})
+    if not isinstance(config_payload, Mapping):
+        config_payload = {}
+
+    artifact_bundle = None
+    if row.artifact_version != "bootstrap" and allow_fitted_artifacts:
+        if artifact_directory is None:
+            raise DataError(
+                "artifact_directory is required for fitted-artifact replay export",
+                details={
+                    "correlation_id": row.correlation_id,
+                    "artifact_version": row.artifact_version,
+                },
+            )
+        bundle_dir = Path(artifact_directory)
+        if artifact_output_directory is not None:
+            archive_manifest = archive_artifact_bundle(
+                bundle_dir,
+                artifact_output_directory,
+                row.artifact_version,
+                config=config_payload,
+            )
+            bundle_path = Path(artifact_output_directory)
+        else:
+            archive_manifest = validate_artifact_bundle(
+                bundle_dir,
+                row.artifact_version,
+                config=config_payload,
+            )
+            bundle_path = bundle_dir
+        output_base = None if output is None else Path(output).parent
+        artifact_bundle = {
+            **archive_manifest,
+            "path": _relative_or_absolute(bundle_path, base=output_base),
+        }
+
     payload = build_replay_fixture(
         row,
-        config=config,
+        config=config_payload,
         name=name,
         allow_fitted_artifacts=allow_fitted_artifacts,
+        artifact_bundle=artifact_bundle,
     )
     if output is not None:
         path = Path(output)

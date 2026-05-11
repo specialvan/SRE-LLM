@@ -3,11 +3,24 @@ from __future__ import annotations
 
 import json
 
+import numpy as np
+import pytest
+
 from gan_matchmaking.cli import _ctx_from_dict
-from gan_matchmaking.core import AppConfig, MetricsRegistry, load_config
+from gan_matchmaking.core import AppConfig, ArtifactsConfig, MetricsRegistry, load_config
+from gan_matchmaking.core.errors import DataError
+from gan_matchmaking.eomm import RetentionModel
 from gan_matchmaking.persistence import SQLitePipelineStore
 from gan_matchmaking.sre import SelfIterationPipeline
+from gan_matchmaking.sre.artifacts import (
+    EOMM_FEATURE_NAMES,
+    build_metadata,
+    save_cox_artifact,
+    save_retention_artifact,
+)
+from gan_matchmaking.sre.features import RISK_FEATURE_NAMES
 from gan_matchmaking.sre.replay import export_replay_fixture
+from gan_matchmaking.survival import CoxModel
 
 
 def _context_payload():
@@ -39,6 +52,44 @@ def _context_payload():
         "error_budget_remaining": 0.8,
         "correlation_id": "export-corr-1",
     }
+
+
+def _write_fitted_artifacts(path):
+    retention_model = RetentionModel(
+        weights=np.array([0.2, -0.1, 0.05, 0.01, 0.3, -0.2, 0.15, 0.04],
+                         dtype=float),
+        bias=-0.2,
+    )
+    retention_meta = build_metadata(
+        "retention",
+        source_window={"n_samples": 12},
+        config={"fixture": "export", "model": "retention"},
+        extra={
+            "feature_dim": len(EOMM_FEATURE_NAMES),
+            "feature_names": list(EOMM_FEATURE_NAMES),
+        },
+        trained_at=1.0,
+        build_id="test-export",
+    )
+    save_retention_artifact(path, retention_model, retention_meta)
+
+    cox_model = CoxModel(
+        beta=np.array([0.1, -0.05, 0.2, 0.1, 0.05, 0.3], dtype=float),
+        _baseline_t=np.array([1.0, 24.0], dtype=float),
+        _baseline_H=np.array([0.01, 0.05], dtype=float),
+    )
+    cox_meta = build_metadata(
+        "cox",
+        source_window={"n_events": 3},
+        config={"fixture": "export", "model": "cox"},
+        extra={
+            "feature_dim": len(RISK_FEATURE_NAMES),
+            "feature_names": list(RISK_FEATURE_NAMES),
+        },
+        trained_at=1.0,
+        build_id="test-export",
+    )
+    save_cox_artifact(path, cox_model, cox_meta)
 
 
 def test_export_replay_fixture_from_sqlite_decision(tmp_path):
@@ -81,3 +132,74 @@ def test_export_replay_fixture_from_sqlite_decision(tmp_path):
     assert replay.kind.value == fixture["expected"]["kind"]
     assert (replay.chosen.id if replay.chosen else None) == fixture["expected"]["chosen_id"]
     assert replay.risk_level.value == fixture["expected"]["risk_level"]
+
+
+def test_export_fitted_decision_requires_artifact_bundle(tmp_path):
+    artifact_dir = tmp_path / "runtime-artifacts"
+    _write_fitted_artifacts(artifact_dir)
+    db_path = tmp_path / "state.sqlite"
+    store = SQLitePipelineStore(db_path)
+    try:
+        pipeline = SelfIterationPipeline(
+            config=AppConfig(artifacts=ArtifactsConfig(directory=str(artifact_dir))),
+            metrics=MetricsRegistry(),
+            store=store,
+        )
+        original = pipeline.decide(_ctx_from_dict(_context_payload()))
+    finally:
+        store.close()
+
+    assert original.artifact_version != "bootstrap"
+    with pytest.raises(DataError):
+        export_replay_fixture(
+            db_path,
+            "export-corr-1",
+            allow_fitted_artifacts=True,
+        )
+
+
+def test_export_fitted_decision_archives_valid_artifact_bundle(tmp_path):
+    artifact_dir = tmp_path / "runtime-artifacts"
+    _write_fitted_artifacts(artifact_dir)
+    db_path = tmp_path / "state.sqlite"
+    store = SQLitePipelineStore(db_path)
+    try:
+        pipeline = SelfIterationPipeline(
+            config=AppConfig(artifacts=ArtifactsConfig(directory=str(artifact_dir))),
+            metrics=MetricsRegistry(),
+            store=store,
+        )
+        original = pipeline.decide(_ctx_from_dict(_context_payload()))
+    finally:
+        store.close()
+
+    out_path = tmp_path / "fixture.json"
+    bundle_out = tmp_path / "artifact-bundles" / "export-corr-1"
+    fixture = export_replay_fixture(
+        db_path,
+        "export-corr-1",
+        output=out_path,
+        allow_fitted_artifacts=True,
+        artifact_directory=artifact_dir,
+        artifact_output_directory=bundle_out,
+        name="exported-fitted-decision",
+    )
+
+    bundle_path = out_path.parent / fixture["artifact_bundle"]["path"]
+    assert bundle_path == bundle_out
+    assert (bundle_path / "replay_artifact_manifest.json").exists()
+    assert fixture["requires_artifact_version"] == original.artifact_version
+    assert fixture["artifact_bundle"]["version"] == original.artifact_version
+    assert fixture["expected"]["artifact_version"] == original.artifact_version
+
+    config_raw = dict(fixture["config"])
+    config_raw["artifacts"] = {
+        **dict(config_raw.get("artifacts", {})),
+        "directory": str(bundle_path),
+    }
+    replay = SelfIterationPipeline(
+        config=load_config(config_raw),
+        metrics=MetricsRegistry(),
+    ).decide(_ctx_from_dict(fixture["context"]))
+    assert replay.artifact_version == original.artifact_version
+    assert replay.kind.value == fixture["expected"]["kind"]

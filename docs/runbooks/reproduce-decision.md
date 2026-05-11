@@ -87,12 +87,41 @@ python -m gan_matchmaking.cli export-replay ^
 The exporter is intentionally conservative:
 
 - Bootstrap decisions become standalone fixtures.
-- Fitted-artifact decisions are refused unless
-  `--allow-fitted-artifacts` is passed, because the decision audit table
-  records artifact identity but not model weights.
+- Fitted-artifact decisions require `--allow-fitted-artifacts` **and** a
+  matching `--artifact-dir`, because the decision audit table records
+  artifact identity but not model weights.
 - If `trace.input.context` is missing, the row came from an older runtime
   and must be reconstructed manually before it can be promoted to golden
   corpus.
+
+## Promote a fitted-artifact replay
+
+A fitted decision may enter the golden corpus only when code, config,
+fixture, and artifact bundle are archived together.
+
+```
+python -m gan_matchmaking.cli export-replay ^
+  --state-db state.sqlite ^
+  --correlation-id <decision-correlation-id> ^
+  --allow-fitted-artifacts ^
+  --artifact-dir /path/to/runtime/artifacts ^
+  --artifact-output-dir tests/fixtures/replay/<incident-name>-artifacts ^
+  --output tests/fixtures/replay/<incident-name>.json ^
+  --name <incident-name>
+```
+
+Promotion rules:
+
+- The artifact bundle version must exactly match the archived decision's
+  `artifact_version`.
+- Runtime artifact manifest validation must pass before export.
+- The exporter writes `replay_artifact_manifest.json` beside the copied
+  artifact files.
+- The fixture records `requires_artifact_version` and `artifact_bundle`,
+  so replay tests can load the archived bundle rather than the operator's
+  current runtime directory.
+- If artifact validation fails, add an incident fixture for the fallback
+  decision instead of forcing the bad artifact into the corpus.
 
 ## If they don't match
 

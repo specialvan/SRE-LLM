@@ -202,7 +202,7 @@
   - fixture 能声明 required artifact bundle / version。
   - replay 前校验 artifact manifest。
   - runbook 明确哪些 fitted 决策可以进入 golden corpus。
-- **状态**：待交付
+- **状态**：已完成
 
 ---
 
@@ -306,10 +306,10 @@
 
 ## 下一轮最值得做的 PR
 
-1. **PR-3-04**：定义 fitted artifact replay promotion，解决 artifact bundle 如何归档、引用和校验。
-2. **PR-2-03 扩展**：继续补 incident-style replay，覆盖 artifact validation failure、breaker short-circuit、shadow/advisory transition。
-3. **PR-跨进程扩展**：如果要多副本上线，再补 Kubernetes Lease / PostgreSQL advisory lock / Redis lease 之一。
-4. **PR-5-04**：把 `sre-control-primitives` 继续扩展成迁移模板和设计评审 checklist。
+1. **PR-2-03 扩展**：继续补 incident-style replay，覆盖 artifact validation failure、breaker short-circuit、shadow/advisory transition。
+2. **PR-跨进程扩展**：如果要多副本上线，再补 Kubernetes Lease / PostgreSQL advisory lock / Redis lease 之一。
+3. **PR-Artifact Storage**：定义 artifact bundle 在本地 corpus、对象存储、CI 下载缓存中的组织方式。
+4. **PR-5-04 扩展**：把 `sre-control-primitives` 继续扩展成迁移模板和设计评审 checklist。
 5. **PR-校准**：用真实观测数据校准 Cox / Retention 阈值和学习率。
 
 这五项会把“可跑”推进到“可复现、可回滚、可审计”的生产形态。

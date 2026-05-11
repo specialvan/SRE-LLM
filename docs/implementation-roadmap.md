@@ -132,8 +132,9 @@ Goal: make the system easy to review and evolve.
 
 The best next increment is:
 
-1. add replay promotion rules for fitted-artifact decisions
+1. expand incident-style replay coverage for artifact validation failures
+   and breaker/shadow-mode transitions
 2. prototype a distributed lease backend if the deployment target needs
    multiple writable replicas
-3. expand incident-style replay coverage for artifact validation failures
-   and breaker/shadow-mode transitions
+3. define artifact bundle storage policy for local corpus, object storage,
+   and CI cache hydration

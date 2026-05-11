@@ -4,7 +4,7 @@
 - 当前分支：`gan-session`
 - 当前方向：把 matchmaking / rating / decision 方案稳定成可审计、可训练、可回放的 SRE 决策流水线
 - 现状：九个机制的语义映射、架构拆解、模块契约、状态生命周期、实施路线图、ADR 已经成体系
-- 最新进展：runtime artifact 版本化已经接入在线决策链路，`Decision.artifact_version`、SQLite 决策审计表、训练产物元数据、runtime hydrate 都已打通；golden replay corpus 已覆盖 fallback / fitted artifact / freeze / rollback / escalation，并新增 critical-tier canary downgrade、risk-WARN canary、shadow strategy hold 三个事故叙事样本；artifact manifest 已校验 feature_names / shape / Cox baseline，不合格会降级为 bootstrap 并写入 trace；新决策 trace 已记录 `trace.input.context/config`，并新增 SQLite 审计行导出 replay fixture 的工具与 CLI；服务入口已支持 `GAN_LEASE_FILE` 本地 writer lease，Kubernetes 文档和 ADR 已明确单写者边界；新增 `sre/primitives.py` 与 `docs/sre-control-primitives.md`，把九机制抽象为可迁移的 SRE 控制原语
+- 最新进展：runtime artifact 版本化已经接入在线决策链路，`Decision.artifact_version`、SQLite 决策审计表、训练产物元数据、runtime hydrate 都已打通；golden replay corpus 已覆盖 fallback / fitted artifact / freeze / rollback / escalation，并新增 critical-tier canary downgrade、risk-WARN canary、shadow strategy hold 三个事故叙事样本；artifact manifest 已校验 feature_names / shape / Cox baseline，不合格会降级为 bootstrap 并写入 trace；新决策 trace 已记录 `trace.input.context/config`；SQLite replay export 现在支持 fitted artifact promotion：导出前校验 artifact bundle、可归档 artifact 文件、写 `replay_artifact_manifest.json`，并在 fixture 中记录 `requires_artifact_version` / `artifact_bundle`；服务入口已支持 `GAN_LEASE_FILE` 本地 writer lease，Kubernetes 文档和 ADR 已明确单写者边界；新增 `sre/primitives.py` 与 `docs/sre-control-primitives.md`，把九机制抽象为可迁移的 SRE 控制原语
 
 ## 机制地图
 | 数学机制 | SRE 映射 | 代码位置 |
@@ -23,11 +23,12 @@
 - 入口：`tests/fixtures/replay/*.json`
 - 测试：`tests/test_replay_corpus.py`
 - 导出：`python -m gan_matchmaking.cli export-replay --state-db state.sqlite --correlation-id <id> --output tests/fixtures/replay/<name>.json`
+- fitted promotion：追加 `--allow-fitted-artifacts --artifact-dir <runtime-artifacts> --artifact-output-dir tests/fixtures/replay/<name>-artifacts`
 - 覆盖：bootstrap fallback、fitted artifact、freeze hold、budget rollback、unknown strategy escalation
 - 事故叙事样本：critical-tier canary downgrade、risk-WARN canary、shadow strategy hold
 - 断言能力：除最终 decision 字段外，fixture 现在可声明 `expected.rationale_contains` 和 `expected.trace_values`
 - 作用：把“可回放”从 runbook 描述推进到可执行回归资产
-- 边界：bootstrap 决策可直接导出成 standalone fixture；fitted artifact 决策默认拒绝导出，除非显式允许并在回放环境提供匹配 artifact bundle
+- 边界：bootstrap 决策可直接导出成 standalone fixture；fitted artifact 决策必须显式允许并提供匹配 artifact bundle，导出器会校验版本和 manifest 后再归档
 
 ## 生产化模块
 ### 已经接近生产形态
@@ -50,6 +51,7 @@
 - `sre/replay.py`
   - 已支持从 SQLite `decisions` 审计行导出 replay fixture
   - 会识别缺失 `trace.input.context` 的旧审计行，避免伪造不可复现样本
+  - fitted artifact replay promotion 已要求 bundle 校验和归档，避免把只有 artifact id、没有权重的样本放进 corpus
 - `sre/leases.py`
   - 已支持本地文件 writer lease、TTL、token 校验释放和后台续租
   - 适用于单节点 / ReadWriteOnce PVC 的重复进程防护，不是分布式锁
@@ -82,7 +84,7 @@
    - `correlation_id` 不能乱复用
    - 熔断短路场景要避免重复主键
    - 只有记录了 `trace.input.context` 的新审计行能自动导出 replay fixture
-   - fitted artifact 决策需要匹配 artifact bundle，否则只能导出“需要外部 artifact”的半成品
+   - fitted artifact 决策需要匹配 artifact bundle，否则导出器会拒绝 promotion
 
 4. **SQLite 仍是单进程友好，不是跨进程协调方案**
    - 服务入口已有本地 `FileLease` 护栏
@@ -126,9 +128,9 @@
 - 作用：把 GAN 九机制从“算法列表”提升为可被其它 SRE 控制面复用的能力目录
 
 ## 下一步
-1. 为 fitted artifact 决策定义 replay promotion 规则：artifact bundle 如何归档、引用和校验
+1. 继续扩展 incident-style replay，优先覆盖 artifact validation failure、breaker short-circuit、shadow/advisory rollout transition
 2. 如果目标部署需要多写者，原型化 Kubernetes Lease / PostgreSQL advisory lock / Redis lease 之一
-3. 继续扩展 incident-style replay，优先覆盖 artifact validation failure、breaker short-circuit、shadow/advisory rollout transition
+3. 增加 artifact bundle 存储策略文档：本地 corpus、对象存储、CI 下载缓存如何组织
 4. 把 `PR-REQUIREMENTS.md` 继续收敛成可执行的 phase 任务单
 5. 用真实观测数据校准 Cox / Retention 的阈值和学习率
 

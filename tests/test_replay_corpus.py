@@ -83,6 +83,16 @@ def test_golden_replay_corpus(fixture_path, tmp_path):
         artifact_dir = tmp_path / raw["name"] / "artifacts"
         _write_artifacts(raw["artifacts"], artifact_dir, raw["name"])
         config_raw["artifacts"] = {"directory": str(artifact_dir)}
+    elif raw.get("artifact_bundle"):
+        artifact_bundle = raw["artifact_bundle"]
+        artifact_path = Path(artifact_bundle["path"])
+        if not artifact_path.is_absolute():
+            artifact_path = fixture_path.parent / artifact_path
+        assert artifact_path.exists()
+        config_raw["artifacts"] = {
+            **dict(config_raw.get("artifacts", {})),
+            "directory": str(artifact_path),
+        }
 
     cfg = load_config(config_raw)
     pipeline = SelfIterationPipeline(config=cfg, metrics=MetricsRegistry())
@@ -98,6 +108,8 @@ def test_golden_replay_corpus(fixture_path, tmp_path):
     else:
         assert payload["artifact_version"] != "bootstrap"
         assert payload["trace"]["artifacts"]["fitted"] is True
+    if raw.get("requires_artifact_version"):
+        assert payload["artifact_version"] == raw["requires_artifact_version"]
 
     if "eomm_source" in expected:
         assert payload["trace"]["stages"]["eomm"]["source"] == expected["eomm_source"]
