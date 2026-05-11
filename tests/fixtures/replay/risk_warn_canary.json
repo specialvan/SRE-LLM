@@ -1,0 +1,47 @@
+{
+  "name": "risk_warn_canary",
+  "scenario": {
+    "type": "risk_gate",
+    "summary": "Recent reliability loss and half-spent budget push risk to WARN, so a full rollout is held to CANARY."
+  },
+  "config": {
+    "seed": 0
+  },
+  "context": {
+    "service": {
+      "id": "svc-warn",
+      "mu": 0.92,
+      "sigma": 0.06,
+      "loss_streak": 1,
+      "total_releases": 9,
+      "tier": "standard"
+    },
+    "candidates": [
+      {
+        "id": "c-full",
+        "strategy": "full",
+        "canary_fraction": 0.0,
+        "rollback_budget_seconds": 600,
+        "expected_success": 0.95
+      }
+    ],
+    "error_budget_remaining": 0.5,
+    "correlation_id": "replay-risk-warn-canary"
+  },
+  "expected": {
+    "kind": "canary",
+    "chosen_id": "c-full",
+    "risk_level": "warn",
+    "artifact_version": "bootstrap",
+    "eomm_source": "fallback",
+    "rationale_contains": [
+      "risk=WARN",
+      "CANARY only"
+    ],
+    "trace_values": {
+      "input.context.error_budget_remaining": 0.5,
+      "stages.eomm.chosen_id": "c-full",
+      "stages.risk.level": "warn"
+    }
+  }
+}

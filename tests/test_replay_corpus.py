@@ -65,6 +65,16 @@ def _write_artifacts(spec: dict, directory: Path, fixture_name: str) -> None:
         save_cox_artifact(directory, model, metadata)
 
 
+def _get_path(payload: dict, path: str):
+    current = payload
+    for part in path.split("."):
+        if isinstance(current, list):
+            current = current[int(part)]
+        else:
+            current = current[part]
+    return current
+
+
 @pytest.mark.parametrize("fixture_path", _fixture_paths(), ids=lambda p: p.stem)
 def test_golden_replay_corpus(fixture_path, tmp_path):
     raw = json.loads(fixture_path.read_text(encoding="utf-8"))
@@ -91,3 +101,9 @@ def test_golden_replay_corpus(fixture_path, tmp_path):
 
     if "eomm_source" in expected:
         assert payload["trace"]["stages"]["eomm"]["source"] == expected["eomm_source"]
+
+    for needle in expected.get("rationale_contains", []):
+        assert any(needle in item for item in payload["rationale"])
+
+    for path, value in expected.get("trace_values", {}).items():
+        assert _get_path(payload["trace"], path) == value

@@ -1,0 +1,47 @@
+{
+  "name": "shadow_strategy_hold",
+  "scenario": {
+    "type": "traffic_mode",
+    "summary": "A shadow-only strategy can be selected for learning, but it must not advance production traffic."
+  },
+  "config": {
+    "seed": 0
+  },
+  "context": {
+    "service": {
+      "id": "svc-shadow",
+      "mu": 0.995,
+      "sigma": 0.005,
+      "win_streak": 3,
+      "total_releases": 30,
+      "tier": "standard"
+    },
+    "candidates": [
+      {
+        "id": "c-shadow",
+        "strategy": "shadow",
+        "canary_fraction": 0.0,
+        "rollback_budget_seconds": 300,
+        "expected_success": 0.99
+      }
+    ],
+    "error_budget_remaining": 1.0,
+    "correlation_id": "replay-shadow-hold"
+  },
+  "expected": {
+    "kind": "hold",
+    "chosen_id": "c-shadow",
+    "risk_level": "ok",
+    "artifact_version": "bootstrap",
+    "eomm_source": "fallback",
+    "rationale_contains": [
+      "shadow traffic only",
+      "HOLD"
+    ],
+    "trace_values": {
+      "input.context.candidates.0.strategy": "shadow",
+      "stages.eomm.chosen_id": "c-shadow",
+      "stages.risk.level": "ok"
+    }
+  }
+}

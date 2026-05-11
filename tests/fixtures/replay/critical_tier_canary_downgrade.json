@@ -1,0 +1,54 @@
+{
+  "name": "critical_tier_canary_downgrade",
+  "scenario": {
+    "type": "policy_guardrail",
+    "summary": "A critical service has low measured risk and EOMM prefers full rollout, but policy downgrades the action to CANARY."
+  },
+  "config": {
+    "seed": 0
+  },
+  "context": {
+    "service": {
+      "id": "svc-critical",
+      "mu": 0.999,
+      "sigma": 0.001,
+      "win_streak": 8,
+      "total_releases": 90,
+      "tier": "critical"
+    },
+    "candidates": [
+      {
+        "id": "c-full",
+        "strategy": "full",
+        "canary_fraction": 0.0,
+        "rollback_budget_seconds": 600,
+        "expected_success": 0.995
+      },
+      {
+        "id": "c-canary",
+        "strategy": "canary",
+        "canary_fraction": 0.05,
+        "rollback_budget_seconds": 300,
+        "expected_success": 0.98
+      }
+    ],
+    "error_budget_remaining": 0.9,
+    "correlation_id": "replay-critical-canary-downgrade"
+  },
+  "expected": {
+    "kind": "canary",
+    "chosen_id": "c-full",
+    "risk_level": "ok",
+    "artifact_version": "bootstrap",
+    "eomm_source": "fallback",
+    "rationale_contains": [
+      "tier=critical",
+      "CANARY downgrade"
+    ],
+    "trace_values": {
+      "input.context.service.tier": "critical",
+      "stages.eomm.chosen_id": "c-full",
+      "stages.risk.level": "ok"
+    }
+  }
+}

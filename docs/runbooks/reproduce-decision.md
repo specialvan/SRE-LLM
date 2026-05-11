@@ -53,6 +53,11 @@ The repository ships a regression corpus under
 - `artifacts`: optional fitted retention / Cox artifact specs.
 - `context`: the `ReleaseContext` payload.
 - `expected`: stable decision fields and selected trace assertions.
+- `expected.rationale_contains`: optional substrings that must appear in
+  the emitted rationale.
+- `expected.trace_values`: optional dotted trace paths and exact values.
+- `scenario`: optional incident narrative metadata explaining why the
+  fixture exists.
 
 Run the corpus with:
 
@@ -61,7 +66,9 @@ python -m pytest -q tests/test_replay_corpus.py
 ```
 
 Add a fixture whenever a post-incident replay exposes a new branch,
-fallback, or policy boundary.
+fallback, or policy boundary. Prefer incident-style fixtures that assert
+the guardrail reason in `rationale_contains` and at least one trace value,
+not only the final decision kind.
 
 ## Export From SQLite Audit
 

@@ -4,7 +4,7 @@
 - 当前分支：`gan-session`
 - 当前方向：把 matchmaking / rating / decision 方案稳定成可审计、可训练、可回放的 SRE 决策流水线
 - 现状：九个机制的语义映射、架构拆解、模块契约、状态生命周期、实施路线图、ADR 已经成体系
-- 最新进展：runtime artifact 版本化已经接入在线决策链路，`Decision.artifact_version`、SQLite 决策审计表、训练产物元数据、runtime hydrate 都已打通；golden replay corpus 已覆盖 fallback / fitted artifact / freeze / rollback / escalation；artifact manifest 已校验 feature_names / shape / Cox baseline，不合格会降级为 bootstrap 并写入 trace；新决策 trace 已记录 `trace.input.context/config`，并新增 SQLite 审计行导出 replay fixture 的工具与 CLI；服务入口已支持 `GAN_LEASE_FILE` 本地 writer lease，Kubernetes 文档和 ADR 已明确单写者边界
+- 最新进展：runtime artifact 版本化已经接入在线决策链路，`Decision.artifact_version`、SQLite 决策审计表、训练产物元数据、runtime hydrate 都已打通；golden replay corpus 已覆盖 fallback / fitted artifact / freeze / rollback / escalation，并新增 critical-tier canary downgrade、risk-WARN canary、shadow strategy hold 三个事故叙事样本；artifact manifest 已校验 feature_names / shape / Cox baseline，不合格会降级为 bootstrap 并写入 trace；新决策 trace 已记录 `trace.input.context/config`，并新增 SQLite 审计行导出 replay fixture 的工具与 CLI；服务入口已支持 `GAN_LEASE_FILE` 本地 writer lease，Kubernetes 文档和 ADR 已明确单写者边界
 
 ## 机制地图
 | 数学机制 | SRE 映射 | 代码位置 |
@@ -24,6 +24,8 @@
 - 测试：`tests/test_replay_corpus.py`
 - 导出：`python -m gan_matchmaking.cli export-replay --state-db state.sqlite --correlation-id <id> --output tests/fixtures/replay/<name>.json`
 - 覆盖：bootstrap fallback、fitted artifact、freeze hold、budget rollback、unknown strategy escalation
+- 事故叙事样本：critical-tier canary downgrade、risk-WARN canary、shadow strategy hold
+- 断言能力：除最终 decision 字段外，fixture 现在可声明 `expected.rationale_contains` 和 `expected.trace_values`
 - 作用：把“可回放”从 runbook 描述推进到可执行回归资产
 - 边界：bootstrap 决策可直接导出成 standalone fixture；fitted artifact 决策默认拒绝导出，除非显式允许并在回放环境提供匹配 artifact bundle
 
@@ -55,6 +57,7 @@
   - 已能从 store 训练 Cox / Retention，并输出权重 + 元数据
 - `tests/fixtures/replay/`
   - 已有第一组 golden replay fixtures，可作为事故复盘和回归基线
+  - 已开始从“分支覆盖”升级到“事故叙事 + rationale/trace 断言”
 
 ### 仍偏研究态
 - `minimax_bp.py`
@@ -108,9 +111,9 @@
 这个结构可以迁移到发布控制、容量调度、故障分流、巡检节流、告警降噪、回滚决策等场景。
 
 ## 下一步
-1. 扩展 golden replay corpus，从分支覆盖升级成事故叙事场景
-2. 为 fitted artifact 决策定义 replay promotion 规则：artifact bundle 如何归档、引用和校验
-3. 如果目标部署需要多写者，原型化 Kubernetes Lease / PostgreSQL advisory lock / Redis lease 之一
+1. 为 fitted artifact 决策定义 replay promotion 规则：artifact bundle 如何归档、引用和校验
+2. 如果目标部署需要多写者，原型化 Kubernetes Lease / PostgreSQL advisory lock / Redis lease 之一
+3. 继续扩展 incident-style replay，优先覆盖 artifact validation failure、breaker short-circuit、shadow/advisory rollout transition
 4. 把 `PR-REQUIREMENTS.md` 继续收敛成可执行的 phase 任务单
 5. 用真实观测数据校准 Cox / Retention 的阈值和学习率
 

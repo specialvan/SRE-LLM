@@ -39,6 +39,7 @@ Goal: make every decision reconstructable.
 - decision persistence
 - replay runbook and golden traces
 - SQLite audit-row to replay-fixture exporter
+- incident-style replay assertions for rationale and trace values
 
 ### Phase 3 - Training and artifact hydration
 
@@ -113,6 +114,7 @@ Goal: make the system easy to review and evolve.
 - keep readiness and metrics actionable
 - support replay from a single archived decision
 - export replay fixtures from persisted SQLite decisions
+- promote branch fixtures into incident narratives
 
 ## 4. Risks to Watch
 
@@ -127,8 +129,8 @@ Goal: make the system easy to review and evolve.
 
 The best next increment is:
 
-1. expand the replay corpus from branch coverage into incident-style
-   scenario coverage
-2. add replay promotion rules for fitted-artifact decisions
-3. prototype a distributed lease backend if the deployment target needs
+1. add replay promotion rules for fitted-artifact decisions
+2. prototype a distributed lease backend if the deployment target needs
    multiple writable replicas
+3. expand incident-style replay coverage for artifact validation failures
+   and breaker/shadow-mode transitions
