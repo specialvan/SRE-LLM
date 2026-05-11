@@ -48,6 +48,7 @@ from .pool_planner import PoolCapacityPlanner
 from .predictive_autoscaler import PredictiveAutoscaler
 from .signal_fusion import SignalFusion, Signal
 from .slo_guardrail import SLOGuardrail
+from .stability_guard import StabilityGuard
 from .topology_state import TopologyState
 from .fast_switcher import FastTrafficSwitcher
 from .weighted_balancer import Instance, WeightedLoadBalancer
@@ -71,8 +72,10 @@ class SREControlStack:
     switcher: Optional[FastTrafficSwitcher] = None
     pool: Optional[PoolCapacityPlanner] = None
     topology: Optional[TopologyState] = None
+    stability: Optional[StabilityGuard] = None
 
     trace: List[dict] = field(default_factory=list)
+    _tick_index: int = field(default=0, init=False, repr=False)
 
     # ------------------------------------------------------------------
     @staticmethod
@@ -120,6 +123,31 @@ class SREControlStack:
             observed_rps = float(forecast_rps)      # safe fallback
             runtime_states.append("DEGRADED_OBSERVE")
             runtime_events.extend(fuse_trace["events"])
+
+        # ========================= 1b) STABILITY MONITOR (optional) ==
+        # Runs between OBSERVE and PLAN.  A triggered monitor feeds a
+        # `stability_violation` event + DEGRADED_PLAN so downstream
+        # planners know to prefer conservative commands.
+        stability_trace: Optional[dict] = None
+        if self.stability is not None and self.fusion.state is not None:
+            try:
+                tick_time = self._tick_index * dt
+                stability_trace = self.stability.step(
+                    np.asarray(self.fusion.state, dtype=float),
+                    t=float(tick_time))
+                if stability_trace["events"]:
+                    # Fresh trigger this tick
+                    runtime_states.append("DEGRADED_PLAN")
+                    runtime_events.extend(stability_trace["events"])
+                elif stability_trace["triggered"]:
+                    # Sustained (no new event, just a reminder)
+                    if "DEGRADED_PLAN" not in runtime_states:
+                        runtime_states.append("DEGRADED_PLAN")
+            except Exception as exc:  # noqa: BLE001
+                stability_trace = {"error": f"{type(exc).__name__}: {exc}"}
+                runtime_states.append("DEGRADED_PLAN")
+                runtime_events.append(
+                    self._stability_event("StabilityGuard", exc))
 
         # ========================= 2) PLAN ============================
         runtime_states.append("PLANNING")
@@ -220,6 +248,7 @@ class SREControlStack:
                 "events": runtime_events,
             },
             "state":              fuse_trace,
+            "stability":          stability_trace,
             "replicas_current":   current_replicas,
             "replicas_next":      next_replicas,
             "canary":             vars(canary_step) if canary_step else None,
@@ -228,4 +257,5 @@ class SREControlStack:
             "alloc_info":         alloc_info,
         }
         self.trace.append(entry)
+        self._tick_index += 1
         return entry

@@ -249,3 +249,74 @@ def test_sre_stack_survives_autoscaler_exception():
                and e["stage"] == "PredictiveAutoscaler"
                for e in entry["runtime"]["events"])
     json.dumps(entry)
+
+
+
+def test_stability_guard_triggers_stability_violation_event():
+    """Feed the stack a monotonically increasing Lyapunov candidate.
+    After k_violations consecutive violating ticks the stack must
+    surface a stability_violation event and DEGRADED_PLAN.
+
+    Trick: the default SignalFusion pulls the posterior toward
+    ``x_ref``, so just raising the reading doesn't monotonically raise
+    the fused state.  Instead we build a custom stack whose fusion has
+    no OU pull, so the fused QPS tracks the reading ~1:1.
+    """
+    from sre_control import (Instance, PredictiveAutoscaler, Signal,
+                              SignalFusion, SLOGuardrail, SREControlStack,
+                              StabilityGuard, WeightedLoadBalancer)
+
+    fusion = SignalFusion(
+        x0=np.array([700.0, 25.0, 0.3]),
+        P0=np.diag([100.0 ** 2, 8.0 ** 2, 0.1 ** 2]),
+        Q=np.diag([1e-3, 1e-3, 1e-4]),
+        x_ref=np.array([700.0, 25.0, 0.3]),
+        theta=0.0,                  # ← disable OU reversion
+    )
+    autoscaler = PredictiveAutoscaler(
+        per_replica_rps=100.0, replicas_min=4, replicas_max=30,
+        max_step=4, dt=5.0, horizon=6, q_slo=120.0, r_cost=0.6,
+    )
+    guardrail = SLOGuardrail(
+        nominal_direction=np.array([1.0, 0.0, 0.0]),
+        theta_max_deg=20.0, magnitude_cap=10_000.0,
+    )
+    balancer = WeightedLoadBalancer(instances=[
+        Instance("east", np.array([1.0, 0.0]), rps_min=1.0, rps_max=500.0),
+        Instance("west", np.array([0.0, 1.0]), rps_min=1.0, rps_max=500.0),
+    ])
+    stack = SREControlStack(
+        fusion=fusion, autoscaler=autoscaler,
+        guardrail=guardrail, balancer=balancer,
+        stability=StabilityGuard(
+            V_fn=lambda x: float(x[0]),
+            tolerance=1e-3, k_violations=2, label="qps",
+        ),
+    )
+    metrics = Signal(
+        name="metrics",
+        h=lambda x: x[0:2],
+        H=lambda x: np.array([[1.0, 0.0, 0.0],
+                              [0.0, 1.0, 0.0]]),
+        R=np.diag([25.0 ** 2, 3.0 ** 2]),
+    )
+
+    last_entry = None
+    for qps in [750.0, 800.0, 850.0, 900.0, 950.0]:
+        last_entry = stack.step(
+            dt=5.0,
+            sensor_readings=[(metrics, np.array([qps, 28.0]))],
+            forecast_rps=1000.0,
+            current_replicas=6,
+            zone_target=np.array([480.0, 320.0]),
+            nn_proposal=np.array([500.0, 50.0, 10.0]),
+        )
+
+    assert last_entry["stability"] is not None
+    assert last_entry["stability"]["triggered"] is True
+    assert "DEGRADED_PLAN" in last_entry["runtime"]["states"]
+    all_events = [ev for e in stack.trace for ev in e["runtime"]["events"]]
+    assert any(ev["kind"] == "stability_violation"
+               and ev["stage"].startswith("StabilityGuard")
+               for ev in all_events)
+    json.dumps(last_entry)

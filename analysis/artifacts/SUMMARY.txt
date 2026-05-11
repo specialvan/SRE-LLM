@@ -2,16 +2,16 @@
   cone_margin_min           before=2.351e+05  after=5.27e+04  (×0.224)
   fuel                      before=1.279e+04  after=1.051e+04  (×0.822)
   pos_err                   before=148.3  after=2.125e-06  (×1.43e-08)
-  solve_ms                  before=0  after=313  (×inf)
+  solve_ms                  before=0  after=297.8  (×inf)
   vel_err                   before=30.92  after=3.799e-07  (×1.23e-08)
-    (elapsed 0.80s)
+    (elapsed 0.77s)
 
 === §2 Successive Convex Programming ===
   control_effort            before=19.61  after=19.78  (×1.01)
   final_pos_err             before=8.08  after=2.87  (×0.355)
   final_speed               before=0.1185  after=2.826  (×23.8)
   iters                     before=1  after=6
-    (elapsed 0.67s)
+    (elapsed 0.63s)
 
 === §3 6-DoF Rigid-Body Dynamics ===
   angle_rmse_rad            before=0.05576  after=5.715e-07  (×1.02e-05)
@@ -24,7 +24,7 @@
   mag_violations            before=0.7825  after=0  (×0)
   mean_magnitude            before=3.17e+06  after=1.5e+06  (×0.473)
   mean_projection_cost      before=0  after=2.168e+06  (×inf)
-    (elapsed 0.16s)
+    (elapsed 0.15s)
 
 === §5 EKF multi-sensor fusion ===
   pos_p95                   before=59.44  after=77.34  (×1.3)
@@ -36,7 +36,7 @@
   control_var               before=0.2791  after=0.411  (×1.47)
   final_err                 before=0.01192  after=3.463e-07  (×2.9e-05)
   tracking_rmse             before=2.098  after=2.083  (×0.993)
-    (elapsed 0.19s)
+    (elapsed 0.21s)
 
 === §7 Belly-Flop → Landing-Flip ===
   duration_s                before=3.236  after=3.236  (×1)
@@ -50,17 +50,17 @@
   mean_residual             before=1.809e+06  after=1.875e+06  (×1.04)
   mean_saturation_excess    before=7.928e+04  after=0  (×0)
   saturation_violation_pct  before=33.75  after=0  (×0)
-    (elapsed 0.33s)
+    (elapsed 0.31s)
 
 === §SRE · end-to-end stack ===
   mean_replicas             before=18.43  after=26.5  (×1.44)
   peak_replicas             before=24  after=34  (×1.42)
   slo_violation_pct         before=25  after=10  (×0.4)
-    (elapsed 0.32s)
+    (elapsed 0.30s)
 
 === §10 · Failure trace (event-level evidence) ===
   degraded_tick_fraction    before=0  after=100  (×inf)
   distinct_kinds            before=0  after=4
   event_count_total         before=0  after=83
   mttr_seconds              before=0  after=115  (×inf)
-    (elapsed 0.31s)
+    (elapsed 0.32s)

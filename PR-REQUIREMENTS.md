@@ -1,10 +1,10 @@
 ---
 spec: starship-recovery · PR-level functional requirements
-version: 0.3.6
+version: 0.3.7
 updated: 2026-05-12
 owner: spacex-session
 baseline-commit: cf9c8dc
-head-commit: (post-v0.3.6 commit · see git log)
+head-commit: (post-v0.3.7 commit · see git log)
 status-legend:
   - "✅ SHIPPED  · 已实现 · 有测试 + 证据"
   - "🟡 IN-PROG  · 已开工 · 尚未合并"
@@ -17,7 +17,7 @@ invariants:
   - I-4 文档不钉死 HEAD：不得在文档里写"最新 commit = <具体 SHA>"，用"近期日志包含 <关键 commit>"表达
   - I-5 adapter 异常不崩栈：任何 SREControlStack 阶段抛异常必须转为 stability_violation event + DEGRADED_<stage>
 quality-gates:
-  - pytest tests -q                 # 43 passed
+  - pytest tests -q                 # 51 passed
   - python -m analysis.run_all      # 10 studies finish <4s
   - python -m scripts.build_kb      # 16 assets rebuild
   - python -m examples.demo_sre_loop
@@ -68,7 +68,7 @@ event-kinds-total: 10
 
 | Gate | 命令 | 预期 |
 |---|---|---|
-| 单元测试 | `python -m pytest tests -q` | **43 passed** |
+| 单元测试 | `python -m pytest tests -q` | **51 passed** |
 | 基准证据 | `python -m analysis.run_all` | All 10 studies finish in ~3 s |
 | 资产构建 | `python -m scripts.build_kb` | 16 assets rebuilt |
 | 端到端 Demo | `python -m examples.demo_sre_loop` | 12 行 trace 无异常 |
@@ -810,16 +810,42 @@ disallowed: docs/*        ← no runtime code
 
 #### PR-L-01 · Lyapunov stability monitor
 
-- **Status**: 🔵 PROPOSED
-- **背景**：§2.1 Lyapunov `dV/dt ≤ 0` 在 `starship/` 还未落地；SRE 侧等价物是"指标自激
-  震荡识别"（例如 QPS 振荡系数 > 1）。
+- **Status**: ✅ SHIPPED (本轮 commit · 见 git log)
+- **背景**：§2.1 物理红线 `dV/dt ≤ 0` 在 `starship/` 层面尚未落地；SRE 侧等价物是
+  "关键 SLI 的 Lyapunov 候选（如 error-rate 平方误差）不得连续上升" —— 这是自激震荡
+  的经典特征。此 PR 把文章里的概念真正落成代码并接入现有事件体系。
 - **范围**：
-  - `starship/stability_monitor.py` 监视每一拍 `V(x_k)` 是否单调不增
-  - SRE 侧新 event kind `stability_violation`（与 PR-M-04 合并）
-  - `analysis/s11_lyapunov.py` 证明 before/after：加不加 monitor 对失控场景的影响
-- **DoD**：
-  - `V(x)` 监视器在 double integrator 测试里能正确识别失控轨迹
-  - SRE 侧能把"持续 5 tick QPS 振荡"映射到同一个事件
+  1. **物理层**（新模块 `starship/stability_monitor.py`）：
+     - `StabilityMonitor` 类：`V_fn`, `tolerance`, `k_violations`, `window`
+     - `StabilityVerdict` 数据类（每 tick 的结构化结论）
+     - 便捷 builder：`kinetic_plus_potential_V`, `quadratic_V`
+     - 严格 **no import of sre_control**（守护 I-1）
+  2. **迁移层**（新模块 `sre_control/stability_guard.py`）：
+     - `StabilityGuard` 薄包装：把物理层的 `triggered` 翻译成 `stability_violation`
+       event，stage 前缀 `StabilityGuard/<label>`
+     - 复用 PR-M-04 注册的 `stability_violation` kind（两个合法 producer）
+  3. **装配层**：`SREControlStack` 加 optional `stability` 字段，在 OBSERVE 之后
+     PLAN 之前运行；触发时补 `DEGRADED_PLAN`
+  4. **测试**：
+     - `tests/test_stability_monitor.py` 7 条（物理层）
+     - `tests/test_contracts.py::test_stability_guard_triggers_*` 1 条（端到端）
+- **DoD**（全部达成）：
+  - ✅ 单调上升的 V 在 `k_violations` 个 tick 后 `triggered=True`
+  - ✅ 单次 blip 不触发（噪声容忍）
+  - ✅ `reset()` 清理状态
+  - ✅ `stability_violation` 事件能由 `StabilityGuard` 真实触发（I-2 第三次演练）
+  - ✅ `DEGRADED_PLAN` 出现在 `runtime.states`（I-3）
+  - ✅ `starship/stability_monitor.py` 不依赖 `sre_control/*`（I-1）
+- **为什么事件 kind 数量不增加**：`stability_violation` 由 PR-M-04 的 adapter 异常路径
+  和 PR-L-01 的监视器触发路径**共享**。用 `stage` 字段区分：`"SignalFusion"` /
+  `"PredictiveAutoscaler"` 等是异常路径；`"StabilityGuard/<label>"` 是监视器路径。
+  counter-example 保持不变（两个路径都在"不能靠放宽安全路径消化"的原则下）。
+- **Evidence**：
+  - 代码 `starship/stability_monitor.py`（~170 LOC）
+  - 代码 `sre_control/stability_guard.py`（~100 LOC）
+  - 代码 `sre_control/stack.py`（+stability stage，~30 LOC）
+  - 测试 `tests/test_stability_monitor.py` 7 条 + `test_contracts.py` +1 条
+  - 文档 `docs/EVENT_SCHEMA.md` + V2 HTML：`stability_violation` 行加第二个 producer
 
 #### PR-L-02 · docs/knowledge-base.html 换模板
 
@@ -957,6 +983,22 @@ disallowed: docs/*        ← no runtime code
 ---
 
 ## Change Log
+
+### v0.3.7 · 2026-05-12 · Claude Reviewer（PR-L-01 · Lyapunov 落地）
+
+- **PR-L-01 SHIPPED**（本轮 commit）：完成 §2.1 Lyapunov 红线的代码化落地。
+  这是本 session 首个跨层 PR，同时新增 `starship/` 和 `sre_control/` 模块。
+- **新模块 `starship/stability_monitor.py`**：通用 `V(x)` 监视器，`n` 维状态 ×
+  任意标量 Lyapunov 候选。不依赖 `sre_control/`（I-1）。
+- **新模块 `sre_control/stability_guard.py`**：薄包装，把物理层 `triggered` 翻译成
+  `stability_violation` event。**无需新 event kind**——和 PR-M-04 共享。
+- **`SREControlStack` 扩展**：加 optional `stability` 字段，在 OBSERVE 与 PLAN 之间
+  跑一次；触发即补 `DEGRADED_PLAN`。向后兼容（default `None`）。
+- **第三次演练 I-2 全套同步**：这次是"复用已有 kind 但扩展合法 producer 集合"的
+  变种，schema 不变但需要更新 doc 索引表的 `producer` 列。
+- **quality gate**：`pytest` 43 → **51 passed**（+8 条）；event kind 数保持 10；
+  `analysis.run_all` 仍 10 studies。
+- **Backlog 剩余从 2 降到 1**（只剩 PR-L-02 V1 HTML 重排）。
 
 ### v0.3.6 · 2026-05-12 · Claude Reviewer（清空小档 Backlog）
 

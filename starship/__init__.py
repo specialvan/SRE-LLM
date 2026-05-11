@@ -13,6 +13,7 @@ Each module maps to one of the 8 mathematical pillars identified from
 - ``mpc``               — §6 receding-horizon quadratic MPC
 - ``flip_maneuver``     — §7 belly-flop → landing-flip
 - ``catch_controller``  — §8 tower-arm catch phase
+- ``stability_monitor`` — §2.1 Lyapunov dV/dt ≤ 0 guard
 - ``pipeline``          — §5→§6→§8 end-to-end assembly
 """
 
@@ -27,6 +28,12 @@ from .types import (
 )
 from .quaternion import Quaternion, omega_matrix
 from .rigid_body import RigidBody
+from .stability_monitor import (
+    StabilityMonitor,
+    StabilityVerdict,
+    kinetic_plus_potential_V,
+    quadratic_V,
+)
 from .thrust_constraints import (
     ConeQPFilter,
     magnitude_bound,
@@ -46,6 +53,9 @@ __all__ = [
     "Thruster", "ThrusterBank", "VehicleParams", "DEFAULT_STARSHIP",
     # quaternion / rigid body
     "Quaternion", "omega_matrix", "RigidBody",
+    # stability monitor (§2.1)
+    "StabilityMonitor", "StabilityVerdict",
+    "kinetic_plus_potential_V", "quadratic_V",
     # thrust constraints
     "ConeQPFilter", "magnitude_bound", "pointing_cone_constraint",
     # EKF

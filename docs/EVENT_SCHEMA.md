@@ -34,7 +34,7 @@
 | `pool_capacity_clipped` | `PoolCapacityPlanner.plan()` | 预测需求超过 `max_capacity * rps_per_conn` | 池大小钳到 `max_capacity`，同时暴露 `capacity_shortfall_rps` | 撞上连接池上限可能是 quota、依赖容量或上游削峰问题，不一定是 planner 算错 |
 | `topology_state_repaired` | `TopologyState.step()` | 输入 quaternion 非有限、接近零或明显非单位模 | 先 reset / renormalize，再做 exp-map 积分 | 不要把普通 scalar metric 当成流形状态硬归一化；只有明确拓扑姿态态才适合修复 |
 | `outlier_rejected` | `SignalFusion.step()` (当 `gate_threshold` 启用时) | 观测的 Mahalanobis 距离 `√(yᵀS⁻¹y)` 超过 gate 阈值 | 跳过 update 保护 posterior，保留 predict 结果 | 不要通过调高 gate 来让事件消失；持续 outlier 通常意味着 `h(x)` 或 `R` 设置错了 |
-| `stability_violation` | `SREControlStack.step()` 任一阶段 | adapter 抛出异常 | 记录事件 + 加 `DEGRADED_<stage>` + 用安全回退继续 tick | 不要把 adapter 异常当作"只是一个事件"吞下，必须排查根因，不能靠放宽安全路径消化 |
+| `stability_violation` | `SREControlStack.step()` 任一阶段 / `StabilityGuard.step()` | adapter 抛出异常 · 或 `dV/dt > tolerance` 连续 k 次 | 记录事件 + 加 `DEGRADED_<stage>` + 用安全回退继续 tick | 不要把 adapter 异常当作"只是一个事件"吞下，必须排查根因，不能靠放宽安全路径消化 |
 
 `CatchController` 属于 `starship/` 物理层，仍通过 `info["alloc_residual"]` 暴露分配残差，但不反向 import `sre_control/events.py`。如果未来需要把捕获段作为 SRE adapter 暴露，应由新的 SRE wrapper 生成 runtime event，避免 `starship/` 对迁移层产生倒置依赖。
 

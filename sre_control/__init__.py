@@ -27,6 +27,7 @@ from .signal_fusion import SignalFusion, Signal
 from .predictive_autoscaler import PredictiveAutoscaler
 from .fast_switcher import FastTrafficSwitcher
 from .weighted_balancer import WeightedLoadBalancer, Instance
+from .stability_guard import StabilityGuard
 from .stack import SREControlStack
 from .events import (EVENT_COUNTEREXAMPLES, REQUIRED_EVENT_FIELDS,
                      make_event, validate_event)
@@ -40,6 +41,7 @@ __all__ = [
     "PredictiveAutoscaler",
     "FastTrafficSwitcher",
     "WeightedLoadBalancer", "Instance",
+    "StabilityGuard",
     "SREControlStack",
     "EVENT_COUNTEREXAMPLES", "REQUIRED_EVENT_FIELDS",
     "make_event", "validate_event",
