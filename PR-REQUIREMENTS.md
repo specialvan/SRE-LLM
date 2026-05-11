@@ -1,6 +1,6 @@
 ---
 spec: starship-recovery · PR-level functional requirements
-version: 0.3.1
+version: 0.3.2
 updated: 2026-05-12
 owner: spacex-session
 baseline-commit: cf9c8dc
@@ -11,12 +11,13 @@ status-legend:
   - "🔵 PROPOSED · 仅 spec · 等待拉取"
   - "❌ DROPPED  · 放弃理由见 change-log"
 invariants:
-  - I-1 依赖方向单向：starship/ 绝不 import sre_control/
+  - I-1 依赖方向单向：starship/ 绝不 import sre_control/（由 test_import_graph.py 自动守护）
   - I-2 事件 schema 封闭：新 kind 必须同步 EVENT_COUNTEREXAMPLES + schema + 测试
   - I-3 降级路径对齐：runtime.degraded=True 必然伴随 DEGRADED_* 状态和至少 1 条 event
+  - I-4 文档不钉死 HEAD：不得在文档里写"最新 commit = <具体 SHA>"，用"近期日志包含 <关键 commit>"表达
 quality-gates:
   - pytest tests -q                 # 35 passed
-  - python -m analysis.run_all      # 9 studies finish <3s
+  - python -m analysis.run_all      # 9 studies finish <3s（待 PR-M-02 合并后 → 10 studies）
   - python -m scripts.build_kb      # 16 assets rebuild
   - python -m examples.demo_sre_loop
   - HTML well-formed (html.parser)
@@ -78,8 +79,10 @@ quality-gates:
 
 - **I-1 依赖方向单向**：`starship/` 绝不 `import sre_control/`。验证：
   ```
-  grep -rE "^(from|import) sre_control" starship/   # 必须空
+  python -m pytest tests/test_import_graph.py -q
   ```
+  （由 `dd9cd7a` 合入 AST 护栏后自动守护。手工 grep 仍可用作 sanity：
+  `grep -rE "^(from|import) sre_control" starship/` 必须空。）
 - **I-2 事件 schema 封闭**：新增 runtime event `kind` 必须同步：
   1. `sre_control/events.py::EVENT_COUNTEREXAMPLES` 加条目
   2. 产生 event 的 adapter 代码路径
@@ -88,6 +91,11 @@ quality-gates:
 - **I-3 降级路径对齐**：`runtime.degraded=True` 必然伴随至少 1 个 `DEGRADED_*` 状态
   和至少 1 条 event。验证：`tests/test_contracts.py::test_sre_stack_*_upward`
   系列（5 条）必须 pass。
+- **I-4 文档不钉死 HEAD**（2026-05-12 新增，来自 `CODEX_TRIAGE.md §4`）：
+  - handoff / checklist / knowledge base **不得**写"最新 commit = `<具体 SHA>`"
+  - 应改写为"近期日志应包含 `<关键 review commit>`"
+  - 否则每次新增文档 commit 就会让清单过期、误导下一轮 agent
+  - 例：`HANDOFF_CHECKLIST.md` 和 `V2_Knowledge/knowledge-base.html` 已被 `dd9cd7a` 按此规则修正
 
 ### NFR-3 · 依赖图护栏
 
@@ -694,15 +702,32 @@ disallowed: docs/*        ← no runtime code
   - 故意在 starship 里加一行 `from sre_control import events` 会失败
 - **Evidence**：新增文件 `tests/test_import_graph.py`；`pytest` 现为 **35 passed**。
 
-#### PR-M-02 · Failure-trace before/after
+#### PR-M-02 · Failure-trace before/after · event-level 证据
 
-- **Status**: 🔵 PROPOSED
-- **背景**：V1/V2 知识库只有"正常工况"的 before/after 图，没有"事件触发时"的对照。
-- **范围**：`analysis/s10_failure_trace.py`：
-  - 构造 brown-out、surge、rollback 三种场景
-  - 记录每 tick 的 `runtime.events` 密度 + kind 分布
-  - 输出热力图 `docs/assets/s10_failure_trace.png`
-- **DoD**：热力图能看出事件在时间轴上的聚集模式；加进 `analysis.run_all`（→ 10 studies）。
+- **Status**: 🔵 PROPOSED · **优先级提升**（来自 `CODEX_TRIAGE.md §9` 推荐为下一轮首选）
+- **背景**：当前 before/after 证据（9 项）全部在证明"控制效果变好"，但
+  `EVENT_LIFECYCLE.md` 里描述的 brown-out / surge 事件密度还停留在叙事层——没有可复现
+  的 event-level 数值证据。这是可观测性抽象的最后一公里。
+- **范围**：新增 `analysis/s10_failure_trace.py`：
+  1. 在 `analysis/s09_sre_stack.py` 基础上**主动注入故障**：`missing_sensor` ×20 tick、
+     `replica_bound_active` ×10 tick、`unsafe_proposal_projected` ×5 tick。
+  2. 每 tick 收集 `runtime.events` 并按 `kind` 聚合。
+  3. 输出三件证据：
+     - 事件密度随时间曲线 (`docs/assets/s10_event_density.png`)
+     - 事件 kind 共现矩阵（Jaccard）(`docs/assets/s10_cooccurrence.png`)
+     - JSONL 样例 `analysis/artifacts/s10_trace_sample.jsonl`（10 行足够）
+  4. 把 s10 加到 `analysis/run_all.py` 的 STUDIES（→ 10 studies）。
+  5. 把三件证据嵌入 `docs/V2_Knowledge/knowledge-base.html` 的 `#lifecycle` 节。
+- **DoD**：
+  - `python -m analysis.s10_failure_trace` 跑通，产物写入 `analysis/artifacts/` 和
+    `docs/assets/`
+  - `analysis.run_all` 报告 **10 studies finished**
+  - `SUMMARY.txt` 新增一条 `§10 · failure trace` 含事件密度的 before/after 数字
+  - 新产物不破坏 I-2 / I-3 / I-4（尤其不能新增 event kind 也不能钉死 SHA）
+- **反面案例** (counter-example)：不要为了出图去**人为制造不平衡的场景**（例如把 baseline
+  的观测延迟调大）；变量只能是"是否注入事件"本身。
+- **代价评估**：约 150 行 Python + 5 行 HTML 嵌入；跑通需要 ~5 分钟。
+- **依赖**：无前置 PR。可作为下一轮首个原子 commit。
 
 #### PR-M-03 · SignalFusion innovation gating
 
@@ -815,7 +840,79 @@ disallowed: docs/*        ← no runtime code
 
 ---
 
+## Spec ↔ Triage · 两端反馈循环
+
+> **谁在读 spec？** 人类 reviewer + 各种 agent（Codex/Claude/future agents）。
+>
+> **谁在修 spec？** 任何在本工程推进一步的 agent，修完自己那步后同时更新 spec。
+
+观察：截至 v0.3.2，spec 已经演化出一套稳定的两端协议：
+
+```
+                   +-------------------+
+                   |  PR-REQUIREMENTS  |
+                   |  (single source   |
+                   |   of truth)       |
+                   +---+--------+------+
+                       |        ^
+     Claude refine     |        |     Codex triage
+     (加 Backlog)       |        |     (挑 PROPOSED 实施)
+                       v        |
+              +--------+--------+------+
+              |  docs/claude-review/   |
+              |  · REVIEW              |
+              |  · DETAILED_ARCH       |
+              |  · EVENT_LIFECYCLE     |
+              |  · FAILURE_MODES       |
+              |  · HANDOFF_CHECKLIST   |
+              |  · CODEX_TRIAGE  ←新增 |
+              +------------------------+
+                       |
+                       v
+                实际代码 / 测试 / 证据
+```
+
+- Claude 负责**纵向深入 + 打回点整理**：产出 `docs/claude-review/` 6 件套。
+- Codex 负责**横向清单化 + 逐项推进**：产出 `CODEX_TRIAGE.md` 把 review 变成可执行队列。
+- Spec 本身（本文件）是两端共同的**状态账本**：
+  - Backlog 节是"接下来做什么"
+  - Traceability 是"过去做了什么"
+  - Invariants 是"永远不能违反什么"
+  - Change Log 是"何时由谁推进了什么"
+
+**反面案例**（未来 agent 可能犯的错）：
+- 只改代码不更新 spec → spec 和现实脱节
+- 只改 spec 不同步 claude-review / CODEX_TRIAGE → 下一轮 agent 看到矛盾
+- 在 HANDOFF / checklist 里写"HEAD 必须 = `<某 SHA>`"（违反 I-4）→ 每次新 commit 都过期
+
+**验收本循环健康的信号**：
+
+1. `git log --oneline` 里的 commit 顺序是 `spec refine → code/test → triage update → spec sync` 交替。
+2. Backlog 节的 🔵 条目数量单调下降（PROPOSED 逐轮被拉走变 ✅）。
+3. Change Log 每条 entry 都能链回具体 commit SHA 和被改动的 Backlog PR。
+4. `docs/claude-review/CODEX_TRIAGE.md` 的打回项 triage 表第 3 列（当前状态）最终都变成"已修"。
+
+**当前循环健康度**：
+
+- v0.3.0 → v0.3.1：Codex 在 `dd9cd7a` 里一口气拉走 PR-S-01 和 PR-M-01，并新建 `CODEX_TRIAGE.md` 把剩余工作队列化。✅
+- v0.3.1 → v0.3.2：Claude 本次把 `CODEX_TRIAGE.md §4 文档漂移` 升格为 I-4 不变量，并把 PR-M-02 按 Codex 推荐的细节展开成可拉取的清单。✅
+- 下一步期望：Codex 或其他 agent 拉取 PR-M-02，并产出 `analysis/s10_failure_trace.py`。
+
+---
+
 ## Change Log
+
+### v0.3.2 · 2026-05-12 · Claude Reviewer（吸收 Codex triage）
+
+- **新增 I-4 不变量**：文档不得钉死 HEAD commit SHA（来源 `CODEX_TRIAGE.md §4`，
+  Codex 在 `dd9cd7a` 里已把 `HANDOFF_CHECKLIST.md` / `V2_Knowledge/knowledge-base.html`
+  按此规则修正）。
+- **PR-M-02 大幅展开**：从 1 段模糊建议升级为"150 行 Python + 3 件证据 + SUMMARY 新条目"
+  的可拉取清单，含反面案例和依赖声明。
+- **新增 Spec ↔ Triage 反馈循环节**：显式描述 Claude（纵向深入）+ Codex（横向清单化）
+  + Spec（状态账本）三端协议，并给出健康度验收信号。
+- **quality gate 注脚更新**：`analysis.run_all` 目前 9 studies，PR-M-02 合并后 → 10。
+- head-commit 维持 `dd9cd7a`；本轮无代码改动。
 
 ### v0.3.1 · 2026-05-12 · 同步 Codex 下轮产出
 
