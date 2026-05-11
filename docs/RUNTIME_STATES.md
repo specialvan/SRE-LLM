@@ -218,6 +218,7 @@ Current local event emitters:
 | `FastTrafficSwitcher.plan()` | `info["events"]` | `deadline_exceeded` |
 | `WeightedLoadBalancer.allocate()` | `info["events"]` | `bounded_ls_residual` |
 
+The exact schema and counter-examples are pinned in `docs/EVENT_SCHEMA.md`.
 This is intentionally coarse. It is a review trace, not a full production incident timeline.
 
 ---

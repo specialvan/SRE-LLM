@@ -1,0 +1,55 @@
+# SRE Runtime Event Schema
+
+这份文档定义 `sre_control/` 里本地 runtime event 的最小共享格式。
+
+它解决的问题是：每个 adapter 都能报告自己的 failure trace，但不要让每个模块各自发明字段名，最后让 `SREControlStack.step()` 很难汇总。
+
+## 1. Event Shape
+
+每个 event 必须是 JSON-serializable 的 `dict`，并至少包含四个字段：
+
+| Field | Meaning |
+|---|---|
+| `stage` | 产生事件的 adapter 或阶段 |
+| `kind` | 稳定事件类型，用于测试和文档索引 |
+| `detail` | 当前 tick 发生了什么 |
+| `safe_action` | 控制栈采取的保守动作 |
+
+代码入口：
+
+- `sre_control/events.py::make_event`
+- `sre_control/events.py::validate_event`
+- `sre_control/events.py::EVENT_COUNTEREXAMPLES`
+
+## 2. Current Event Kinds
+
+| Kind | Producer | Trigger | Safe action | Counter-example |
+|---|---|---|---|---|
+| `missing_sensor` | `SignalFusion.step()` | 某路观测为 `None` | 跳过 update，保留 posterior prediction | 不要把一路低价值观测缺失直接当成全局事故；只有当该观测影响当前控制动作时才降级信心 |
+| `rollout_rejected` | `CanaryScheduler.observe()` | 灰度观测错误率烧穿预算 | 缩小 trust region 并冻结推进 | 一次性迁移没有流量比例 ramp，不适合用灰度拒绝事件表达 |
+| `unsafe_proposal_projected` | `SLOGuardrail.audit()` | proposal 违反 cone 或 magnitude | 只执行投影后的 action | 小投影距离可能只是数值 clipping，不一定说明上游策略坏了 |
+| `replica_bound_active` | `PredictiveAutoscaler.step()` | 下一个副本数打到 min/max | 返回有界整数副本数 | 打到 `replicas_max` 可能是 quota 或依赖容量问题，不一定是 autoscaler 失效 |
+| `deadline_exceeded` | `FastTrafficSwitcher.plan()` | 最短切换时间超过 deadline | 冻结变更或走更简单 rollback | 没有健康检查卡位时，不要为了赶 deadline 强行 bang-bang 切流 |
+| `bounded_ls_residual` | `WeightedLoadBalancer.allocate()` | box 饱和或 residual 无法清零 | 报告 residual，不伪装 exact match | 不要 solve 后强行归一化 shares；那会悄悄破坏 per-instance capacity box |
+
+## 3. Stack Aggregation
+
+Adapter 先产生本地 `events`，然后 `SREControlStack.step()` 做两件事：
+
+1. 汇总 adapter 本地事件到 `entry["runtime"]["events"]`
+2. 根据事件类别补上栈级 `DEGRADED_*` 状态
+
+这让 trace 同时保留两层信息：
+
+- 本地：哪个 adapter 具体失败、采取了什么保守动作
+- 全局：这个 tick 是否进入 degraded runtime state
+
+## 4. Test Coverage
+
+事件 schema 由 `tests/test_event_schema.py` 固化：
+
+- 每个 event 必须满足 `validate_event`
+- 每个已知 `kind` 必须有 counter-example
+- 六种当前 event kind 都必须能由本地 adapter 真实生成
+
+如果新增 event kind，先补 `EVENT_COUNTEREXAMPLES`，再补测试。

@@ -23,6 +23,8 @@ from typing import List, Sequence, Tuple
 import numpy as np
 from scipy.optimize import lsq_linear
 
+from .events import make_event
+
 
 @dataclass
 class Instance:
@@ -76,12 +78,12 @@ class WeightedLoadBalancer:
         )
         events = []
         if any(saturation) or residual_active:
-            events.append({
-                "stage": "WeightedLoadBalancer",
-                "kind": "bounded_ls_residual",
-                "detail": "box constraints or residuals were active",
-                "safe_action": "report residual instead of pretending exact matching",
-            })
+            events.append(make_event(
+                stage="WeightedLoadBalancer",
+                kind="bounded_ls_residual",
+                detail="box constraints or residuals were active",
+                safe_action="report residual instead of pretending exact matching",
+            ))
         local_states = ["solve_ls"]
         if any(saturation):
             local_states.append("saturate")

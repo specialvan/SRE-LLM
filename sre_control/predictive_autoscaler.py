@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from starship.mpc import LinearDiscretizer, QuadraticMPC
+from .events import make_event
 
 
 @dataclass
@@ -92,12 +93,12 @@ class PredictiveAutoscaler:
 
         events = []
         if next_replicas in (self.replicas_min, self.replicas_max):
-            events.append({
-                "stage": "PredictiveAutoscaler",
-                "kind": "replica_bound_active",
-                "detail": "next replica count is at a hard bound",
-                "safe_action": "return bounded integer replicas",
-            })
+            events.append(make_event(
+                stage="PredictiveAutoscaler",
+                kind="replica_bound_active",
+                detail="next replica count is at a hard bound",
+                safe_action="return bounded integer replicas",
+            ))
         self.last_trace = {
             "target_replicas": float(target_replicas),
             "raw_control": float(u),

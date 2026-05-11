@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from .events import make_event
+
 
 @dataclass
 class CanaryStep:
@@ -89,12 +91,12 @@ class CanaryScheduler:
         accepted = observed_error_rate <= self.slo_error_budget
         if not accepted:
             local_states.append("freeze")
-            events.append({
-                "stage": "CanaryScheduler",
-                "kind": "rollout_rejected",
-                "detail": "observed error burned the canary budget",
-                "safe_action": "shrink trust region and freeze rollout progress",
-            })
+            events.append(make_event(
+                stage="CanaryScheduler",
+                kind="rollout_rejected",
+                detail="observed error burned the canary budget",
+                safe_action="shrink trust region and freeze rollout progress",
+            ))
 
         # If accepted, refit the linear slope
         if accepted and proposed_share - current_share > 1e-6:

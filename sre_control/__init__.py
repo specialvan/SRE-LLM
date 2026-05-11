@@ -28,6 +28,8 @@ from .predictive_autoscaler import PredictiveAutoscaler
 from .fast_switcher import FastTrafficSwitcher
 from .weighted_balancer import WeightedLoadBalancer, Instance
 from .stack import SREControlStack
+from .events import (EVENT_COUNTEREXAMPLES, REQUIRED_EVENT_FIELDS,
+                     make_event, validate_event)
 
 __all__ = [
     "PoolCapacityPlanner",
@@ -39,6 +41,8 @@ __all__ = [
     "FastTrafficSwitcher",
     "WeightedLoadBalancer", "Instance",
     "SREControlStack",
+    "EVENT_COUNTEREXAMPLES", "REQUIRED_EVENT_FIELDS",
+    "make_event", "validate_event",
 ]
 
 __version__ = "0.1.0"

@@ -1,0 +1,86 @@
+from __future__ import annotations
+
+import numpy as np
+
+from sre_control import (CanaryScheduler, FastTrafficSwitcher, Instance,
+                         PredictiveAutoscaler, Signal, SignalFusion,
+                         SLOGuardrail, WeightedLoadBalancer)
+from sre_control.events import EVENT_COUNTEREXAMPLES, validate_event
+
+
+def _collect_local_events():
+    events = []
+
+    fusion = SignalFusion(
+        x0=np.array([1000.0, 25.0, 0.3]),
+        P0=np.diag([200**2, 10**2, 0.2**2]),
+        Q=np.diag([10.0, 0.5, 0.01]),
+        x_ref=np.array([1000.0, 25.0, 0.3]),
+        theta=0.2,
+    )
+    sig = Signal(
+        name="metrics",
+        h=lambda x: x[0:2],
+        H=lambda x: np.array([[1, 0, 0], [0, 1, 0]]),
+        R=np.diag([50**2, 4**2]),
+    )
+    events.extend(fusion.step(dt=1.0, readings=[(sig, None)])["events"])
+
+    canary = CanaryScheduler(slo_error_budget=0.01, eta_init=0.10)
+    events.extend(canary.observe(
+        current_share=0.0,
+        proposed_share=0.10,
+        observed_error_rate=0.03,
+    ).events)
+
+    guard = SLOGuardrail(
+        nominal_direction=np.array([0, 0, 1.0]),
+        theta_max_deg=15.0,
+        magnitude_cap=1000.0,
+    )
+    events.extend(guard.audit([900, 900, 0])["events"])
+
+    autoscaler = PredictiveAutoscaler(
+        per_replica_rps=100.0,
+        replicas_min=1,
+        replicas_max=10,
+        max_step=5,
+        dt=5.0,
+        horizon=6,
+    )
+    autoscaler.step(current_replicas=10, observed_rps=1_000,
+                    forecast_rps=3_000)
+    events.extend(autoscaler.last_trace["events"])
+
+    switcher = FastTrafficSwitcher(rate_max=0.4)
+    _, _, switch_info = switcher.plan(
+        share_from=0.0,
+        share_to=1.0,
+        deadline_s=0.5,
+    )
+    events.extend(switch_info["events"])
+
+    balancer = WeightedLoadBalancer(instances=[
+        Instance("east", np.array([1.0, 0.0]), rps_min=10, rps_max=100),
+        Instance("west", np.array([0.0, 1.0]), rps_min=10, rps_max=100),
+    ])
+    _, alloc_info = balancer.allocate(
+        rps_demand=500,
+        zone_target=[250, 250],
+    )
+    events.extend(alloc_info["events"])
+
+    return events
+
+
+def test_all_runtime_events_follow_shared_schema():
+    events = _collect_local_events()
+    assert {event["kind"] for event in events} == set(EVENT_COUNTEREXAMPLES)
+    assert all(validate_event(event) for event in events)
+
+
+def test_every_event_kind_has_a_specific_counterexample():
+    for kind, counterexample in EVENT_COUNTEREXAMPLES.items():
+        assert kind
+        assert len(counterexample) >= 60
+        assert "Do not" in counterexample

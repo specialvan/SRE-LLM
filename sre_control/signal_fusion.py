@@ -28,6 +28,7 @@ from typing import Callable, List, Optional, Sequence, Tuple
 import numpy as np
 
 from starship.ekf import EKF
+from .events import make_event
 
 
 @dataclass
@@ -95,12 +96,12 @@ class SignalFusion:
                 fused_trace.append({"signal": signal.name, "used": False})
                 if "skip_update" not in local_states:
                     local_states.append("skip_update")
-                events.append({
-                    "stage": "SignalFusion",
-                    "kind": "missing_sensor",
-                    "detail": f"{signal.name} reading was absent in this tick",
-                    "safe_action": "skip update and keep posterior prediction",
-                })
+                events.append(make_event(
+                    stage="SignalFusion",
+                    kind="missing_sensor",
+                    detail=f"{signal.name} reading was absent in this tick",
+                    safe_action="skip update and keep posterior prediction",
+                ))
                 continue
             z = np.asarray(z, dtype=float)
             self._ekf.update(z, signal.h, signal.H, signal.R)

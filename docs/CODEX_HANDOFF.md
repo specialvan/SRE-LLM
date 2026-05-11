@@ -11,8 +11,8 @@
 - `starship/` 的 8 个数学支柱已经都落成可运行模块
 - `sre_control/` 已经有同构适配层和端到端 `SREControlStack`
 - `analysis/` 里有 8 组 before/after 证据和总表
-- `docs/` 里已经有架构、契约、运行态、知识库和审查入口
-- `tests/` 里已经补了模块级合同测试和堆栈级 trace 测试
+- `docs/` 里已经有架构、契约、运行态、事件 schema、知识库和审查入口
+- `tests/` 里已经补了模块级合同测试、堆栈级 trace 测试和 event schema 测试
 
 ## 先读哪些
 
@@ -20,9 +20,10 @@
 
 1. [API_CONTRACTS.md](./API_CONTRACTS.md)
 2. [RUNTIME_STATES.md](./RUNTIME_STATES.md)
-3. [ARCHITECTURE.md](./ARCHITECTURE.md)
-4. [analysis/artifacts/SUMMARY.txt](../analysis/artifacts/SUMMARY.txt)
-5. [knowledge-base.html](./knowledge-base.html)
+3. [EVENT_SCHEMA.md](./EVENT_SCHEMA.md)
+4. [ARCHITECTURE.md](./ARCHITECTURE.md)
+5. [analysis/artifacts/SUMMARY.txt](../analysis/artifacts/SUMMARY.txt)
+6. [knowledge-base.html](./knowledge-base.html)
 
 ## 8 个支柱地图
 
@@ -47,6 +48,9 @@
 - 给 `SREControlStack.step()` 增加 `runtime.states` / `runtime.events`，让降级路径进入 trace
 - 把 `missing_sensor`、`unsafe_proposal_projected`、`bounded_ls_residual` 下沉到 adapter 本地 events
 - 把 `rollout_rejected`、`replica_bound_active`、`deadline_exceeded` 也补成 adapter 本地 events
+- 新增 [EVENT_SCHEMA.md](./EVENT_SCHEMA.md)，统一 runtime event schema 与 counter-example registry
+- 新增 `sre_control/events.py`，固定 `make_event`、`validate_event` 和 `EVENT_COUNTEREXAMPLES`
+- 新增 `tests/test_event_schema.py`，确保每种 event kind 都真实生成、满足 schema、带 counter-example
 - 更新 [ARCHITECTURE.md](./ARCHITECTURE.md) 的契约与运行态索引
 - 更新 [knowledge-base.html](./knowledge-base.html) 的审查入口
 - 刷新 `analysis/artifacts/SUMMARY.txt`
@@ -71,7 +75,7 @@ python -m analysis.run_all
 python -m scripts.build_kb
 ```
 
-当前状态下这三项都已经通过。`build_kb` 会重新写入 `docs/assets/` 里的机制图和 GIF。
+当前状态下这三项都已经通过。最新 `pytest` 为 29 个用例通过。`build_kb` 会重新写入 `docs/assets/` 里的机制图和 GIF。
 
 ## 风险与坑
 
@@ -83,9 +87,9 @@ python -m scripts.build_kb
 
 ## 下一步
 
-1. 给每个 SRE 适配层再补一个 counter-example
-2. 给每个本地 event 增加一条更具体的 counter-example
-3. 如果继续工程化，下一步可以把 `PoolCapacityPlanner`、`TopologyState`、`CatchController` 也接入同一套 event schema
+1. 如果继续工程化，下一步可以把 `PoolCapacityPlanner`、`TopologyState`、`CatchController` 也接入同一套 event schema
+2. 可以把 `EVENT_COUNTEREXAMPLES` 映射到 HTML 知识库里的事件索引表
+3. 给每个 SRE 适配层继续补“何时不该使用”的 counter-example，用来防止抽象滥用
 4. 如果继续改知识库，记得重跑 `python -m scripts.build_kb`
 5. 如果继续改分析脚本，记得重跑 `python -m analysis.run_all`
 

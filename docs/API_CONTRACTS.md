@@ -15,6 +15,7 @@
 4. 有状态对象必须说明状态会不会跨 tick 累积。
 5. 任何“投影”“过滤”“分配”都必须写清楚它是硬约束还是软目标。
 6. 数值边界上优先保守，不要靠乐观的浮点精度。
+7. 本地 runtime event 必须遵守 `docs/EVENT_SCHEMA.md` 的四字段 schema。
 
 ---
 
@@ -309,6 +310,7 @@ Counter-example:
 | `FastTrafficSwitcher` | `tests/test_sre_control.py` | target share is reached and deadline misses are visible |
 | `WeightedLoadBalancer` | `tests/test_sre_control.py` | demand is matched without false saturation events |
 | `SREControlStack` | `tests/test_contracts.py` | trace stays JSON-serializable and runtime degradation states are visible |
+| Runtime events | `tests/test_event_schema.py` | every event follows schema and has a counter-example |
 
 ---
 

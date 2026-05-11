@@ -25,6 +25,7 @@ from typing import Sequence
 import numpy as np
 
 from starship.thrust_constraints import ConeQPFilter, pointing_cone_constraint
+from .events import make_event
 
 
 @dataclass
@@ -80,12 +81,12 @@ class SLOGuardrail:
         projection_distance = float(np.linalg.norm(proposal - safe))
         events = []
         if cone_violated or magnitude_violated:
-            events.append({
-                "stage": "SLOGuardrail",
-                "kind": "unsafe_proposal_projected",
-                "detail": "proposal violated cone or magnitude constraints",
-                "safe_action": "execute only the projected action",
-            })
+            events.append(make_event(
+                stage="SLOGuardrail",
+                kind="unsafe_proposal_projected",
+                detail="proposal violated cone or magnitude constraints",
+                safe_action="execute only the projected action",
+            ))
 
         return {
             "proposal":               proposal.tolist(),

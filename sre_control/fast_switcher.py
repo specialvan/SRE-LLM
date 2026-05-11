@@ -27,6 +27,8 @@ from typing import Tuple
 
 import numpy as np
 
+from .events import make_event
+
 
 @dataclass
 class FastTrafficSwitcher:
@@ -85,12 +87,12 @@ class FastTrafficSwitcher:
         local_states = ["ramp_up", "switch_midpoint", "ramp_down"]
         events = []
         if deadline_s is not None and T_min > deadline_s:
-            events.append({
-                "stage": "FastTrafficSwitcher",
-                "kind": "deadline_exceeded",
-                "detail": "minimum-time switch is slower than the incident deadline",
-                "safe_action": "freeze the change or choose a simpler rollback path",
-            })
+            events.append(make_event(
+                stage="FastTrafficSwitcher",
+                kind="deadline_exceeded",
+                detail="minimum-time switch is slower than the incident deadline",
+                safe_action="freeze the change or choose a simpler rollback path",
+            ))
 
         info = {
             "T_min_seconds":     float(T_min),
