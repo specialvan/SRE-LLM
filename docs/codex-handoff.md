@@ -4,7 +4,7 @@
 - 当前分支：`gan-session`
 - 当前方向：把 matchmaking / rating / decision 方案稳定成可审计、可训练、可回放的 SRE 决策流水线
 - 现状：九个机制的语义映射、架构拆解、模块契约、状态生命周期、实施路线图、ADR 已经成体系
-- 最新进展：runtime artifact 版本化已经接入在线决策链路，`Decision.artifact_version`、SQLite 决策审计表、训练产物元数据、runtime hydrate 都已打通；golden replay corpus 已覆盖 fallback / fitted artifact / freeze / rollback / escalation，并新增 critical-tier canary downgrade、risk-WARN canary、shadow strategy hold 三个事故叙事样本；artifact manifest 已校验 feature_names / shape / Cox baseline，不合格会降级为 bootstrap 并写入 trace；新决策 trace 已记录 `trace.input.context/config`，并新增 SQLite 审计行导出 replay fixture 的工具与 CLI；服务入口已支持 `GAN_LEASE_FILE` 本地 writer lease，Kubernetes 文档和 ADR 已明确单写者边界
+- 最新进展：runtime artifact 版本化已经接入在线决策链路，`Decision.artifact_version`、SQLite 决策审计表、训练产物元数据、runtime hydrate 都已打通；golden replay corpus 已覆盖 fallback / fitted artifact / freeze / rollback / escalation，并新增 critical-tier canary downgrade、risk-WARN canary、shadow strategy hold 三个事故叙事样本；artifact manifest 已校验 feature_names / shape / Cox baseline，不合格会降级为 bootstrap 并写入 trace；新决策 trace 已记录 `trace.input.context/config`，并新增 SQLite 审计行导出 replay fixture 的工具与 CLI；服务入口已支持 `GAN_LEASE_FILE` 本地 writer lease，Kubernetes 文档和 ADR 已明确单写者边界；新增 `sre/primitives.py` 与 `docs/sre-control-primitives.md`，把九机制抽象为可迁移的 SRE 控制原语
 
 ## 机制地图
 | 数学机制 | SRE 映射 | 代码位置 |
@@ -109,6 +109,21 @@
    - observation log -> artifact -> runtime hydrate
 
 这个结构可以迁移到发布控制、容量调度、故障分流、巡检节流、告警降噪、回滚决策等场景。
+
+## 控制原语目录
+- 代码：`gan_matchmaking/sre/primitives.py`
+- 文档：`docs/sre-control-primitives.md`
+- 核心抽象：
+  - `belief_state_estimator`
+  - `objective_aware_strategy_ranker`
+  - `adaptive_gain_scheduler`
+  - `latent_signal_compressor`
+  - `graph_blast_radius_scorer`
+  - `risk_adjusted_probability_scorer`
+  - `information_value_gate`
+  - `time_to_incident_forecaster`
+  - `adversarial_policy_arbitrator`
+- 作用：把 GAN 九机制从“算法列表”提升为可被其它 SRE 控制面复用的能力目录
 
 ## 下一步
 1. 为 fitted artifact 决策定义 replay promotion 规则：artifact bundle 如何归档、引用和校验

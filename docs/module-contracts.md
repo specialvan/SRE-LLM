@@ -31,10 +31,18 @@ and whether it is production-shaped or still exploratory.
 | `sre/domain.py` | decision DTOs | service / candidate / context | `Decision` | validation errors | production |
 | `sre/self_iteration.py` | end-to-end decisioning | context + state + config | decision + trace | guarded fallback / escalation | production |
 | `sre/locking.py` | per-service serialization | service id | exclusive critical section | timeout | production |
+| `sre/leases.py` | process writer ownership | lease file / owner / TTL | single-writer lease | `LeaseNotAcquiredError` | production |
 | `sre/circuit.py` | breaker state machine | success/failure signals | allow / deny / snapshot | open state | production |
 | `sre/shadow.py` | rollout mode boundary | mode flag | rewritten or advisory decision | invalid mode | production |
+| `sre/primitives.py` | transferable primitive catalog | nine mechanism definitions | reusable SRE capability map | missing lookup | production |
 
 ## 4. Mechanism Contracts
+
+The mechanism modules are also exposed as reusable SRE control primitives
+in `sre/primitives.py`. The primitive catalog intentionally names the
+engineering capability, not just the mathematical mechanism, so the same
+pattern can be moved to alert triage, capacity decisions, and rollback
+control.
 
 ### 4.1 TrueSkill
 

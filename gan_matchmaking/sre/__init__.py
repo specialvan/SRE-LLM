@@ -31,9 +31,17 @@ from .domain import (
     Service,
 )
 from .leases import FileLease, LeaseNotAcquiredError, LeaseRefreshLoop
+from .primitives import (
+    CONTROL_PRIMITIVES,
+    ControlPrimitive,
+    list_control_primitives,
+    primitive_by_mechanism,
+)
 from .self_iteration import SelfIterationPipeline
 
 __all__ = [
+    "CONTROL_PRIMITIVES",
+    "ControlPrimitive",
     "Decision",
     "FileLease",
     "LeaseNotAcquiredError",
@@ -44,4 +52,6 @@ __all__ = [
     "RiskLevel",
     "Service",
     "SelfIterationPipeline",
+    "list_control_primitives",
+    "primitive_by_mechanism",
 ]

@@ -23,6 +23,11 @@ The nine mathematical mechanisms are not the product by themselves. They
 are reusable scoring / filtering / policy primitives inside a larger SRE
 control loop.
 
+The transfer layer is documented in
+[`docs/sre-control-primitives.md`](sre-control-primitives.md): each
+mechanism is named as an SRE control primitive with inputs, outputs,
+readiness, and reuse boundaries.
+
 ## 2. Architecture Goals
 
 1. Separate infrastructure from domain logic.
@@ -92,6 +97,8 @@ This layer is dependency-light and reusable across sibling systems.
 - `domain.py`: `Service`, `ReleaseCandidate`, `ReleaseContext`, `Decision`
 - `self_iteration.py`: the primary control loop
 - `locking.py`: per-service mutex
+- `leases.py`: process-level writer lease
+- `primitives.py`: nine-mechanism SRE control primitive catalog
 - `circuit.py`: breaker
 - `shadow.py`: off / shadow / advisory
 
@@ -225,15 +232,16 @@ Policy lives in the final resolution step.
 - ADR for why each design exists
 - runbooks for failure modes
 - HTML knowledge base for module-by-module explanation
+- reusable SRE primitive catalog for cross-domain transfer
 
 ## 9. Refinement Targets
 
-1. Make runtime artifact loading explicit for trained models.
+1. Define replay promotion rules for fitted-artifact decisions.
 2. Split `policy` into a pure policy engine module if the decision tree grows.
-3. Add cross-process locking if the system moves beyond one writer.
-4. Add golden replay fixtures for every meaningful decision kind.
+3. Prototype a distributed lease backend if the system moves beyond one writer.
+4. Add incident-style replay fixtures for artifact validation and breaker/shadow transitions.
 5. Clearly tag research-only modules in docs and packaging metadata.
-6. Make model versioning part of the trace and persisted decision record.
+6. Calibrate Cox / retention thresholds with real observations.
 
 ## 10. Boundary Conditions
 
@@ -246,17 +254,21 @@ Policy lives in the final resolution step.
 
 ## 11. Recommended Next Step
 
-The next useful increment is to make the runtime artifact story first-class:
+The next useful increment is to promote fitted-artifact replay from a
+manual practice into a contract:
 
-- version the trained retention and Cox outputs
-- load them in the runtime pipeline
-- record artifact version in trace and decision persistence
+- archive the artifact bundle beside replay fixtures
+- record the expected artifact version in fixture metadata
+- verify artifact manifests before replaying
+- make the runbook say when a fitted replay may enter the golden corpus
 
-That closes the loop between observations, training, and enforcement.
+That closes the loop between observations, training, enforcement, and
+post-incident regression.
 
 See also:
 
 - [`docs/state-lifecycle.md`](state-lifecycle.md)
 - [`docs/module-contracts.md`](module-contracts.md)
+- [`docs/sre-control-primitives.md`](sre-control-primitives.md)
 - [`docs/adr/0006-runtime-artifact-versioning.md`](adr/0006-runtime-artifact-versioning.md)
 - [`docs/implementation-roadmap.md`](implementation-roadmap.md)

@@ -162,7 +162,7 @@
   - 训练产物带版本、时间、数据窗口、config hash。
   - runtime 能明确区分 fitted / fallback / uninitialized。
   - trace 能记录 artifact identity。
-- **状态**：待交付
+- **状态**：已完成
 
 ### PR-3-02 - Cox artifact versioning and loader
 
@@ -175,7 +175,7 @@
   - Cox artifact 可持久化、可水合、可回滚。
   - runtime fallback 必须有明确的 pessimistic 行为。
   - trace 中能看到 fitted / fallback 状态。
-- **状态**：待交付
+- **状态**：已完成
 
 ### PR-3-03 - Artifact metadata in trace and persistence
 
@@ -188,6 +188,20 @@
   - 每条决策持久化 artifact version。
   - replay 时可区分 code drift 与 model drift。
   - 训练报告和运行日志可互相对照。
+- **状态**：已完成
+
+### PR-3-04 - Fitted artifact replay promotion
+
+- **目标**：把 fitted artifact 决策从“可导出但需人工补 artifact”提升为可审查的 replay promotion 流程。
+- **范围**
+  - `sre/replay.py`
+  - `sre/artifacts.py`
+  - `docs/runbooks/reproduce-decision.md`
+  - `tests/test_replay_corpus.py`
+- **交付标准**
+  - fixture 能声明 required artifact bundle / version。
+  - replay 前校验 artifact manifest。
+  - runbook 明确哪些 fitted 决策可以进入 golden corpus。
 - **状态**：待交付
 
 ---
@@ -274,14 +288,28 @@
   - 交接文档和 roadmap 可以直接驱动下一轮 Codex。
 - **状态**：已完成
 
+### PR-5-04 - SRE control primitive catalog
+
+- **目标**：把 GAN 九机制从算法说明提升为可迁移的 SRE 工程能力目录。
+- **范围**
+  - `sre/primitives.py`
+  - `docs/sre-control-primitives.md`
+  - `docs/architecture.md`
+  - `docs/module-contracts.md`
+- **交付标准**
+  - 九个机制都有稳定 primitive 名称、输入、输出、runtime stage、readiness。
+  - 文档说明每个 primitive 能迁移到哪些 SRE 场景，以及误用边界。
+  - 测试保护 primitive catalog 不丢机制、不重名、不空契约。
+- **状态**：已完成
+
 ---
 
 ## 下一轮最值得做的 PR
 
-1. **PR-3-01**：先把 retention artifact hydration 接起来。
-2. **PR-3-02**：再把 Cox artifact hydration 接起来。
-3. **PR-3-03**：把 artifact 版本写入 trace 和持久化。
-4. **PR-2-03**：补 golden replay corpus，覆盖 fitted / fallback / escalation。
-5. **PR-跨进程**：如果要多副本上线，再补外部 lease 或 DB 级协调。
+1. **PR-3-04**：定义 fitted artifact replay promotion，解决 artifact bundle 如何归档、引用和校验。
+2. **PR-2-03 扩展**：继续补 incident-style replay，覆盖 artifact validation failure、breaker short-circuit、shadow/advisory transition。
+3. **PR-跨进程扩展**：如果要多副本上线，再补 Kubernetes Lease / PostgreSQL advisory lock / Redis lease 之一。
+4. **PR-5-04**：把 `sre-control-primitives` 继续扩展成迁移模板和设计评审 checklist。
+5. **PR-校准**：用真实观测数据校准 Cox / Retention 阈值和学习率。
 
 这五项会把“可跑”推进到“可复现、可回滚、可审计”的生产形态。

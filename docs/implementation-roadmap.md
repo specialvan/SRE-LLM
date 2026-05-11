@@ -69,6 +69,7 @@ Goal: make the system easy to review and evolve.
 - runbooks
 - knowledge base
 - architecture-to-module map
+- SRE control primitive catalog
 
 ## 2. PR Map
 
@@ -80,6 +81,7 @@ Goal: make the system easy to review and evolve.
 | 3 | PR-3-01 to PR-3-04 | training + runtime artifacts |
 | 4 | PR-4-01 to PR-4-04 | interfaces + deployability |
 | 5 | ADR / runbook / docs | governance and explanation |
+| 5 | PR-5-04 | reusable SRE primitive catalog |
 
 ## 3. Detailed Task Breakdown
 
@@ -114,6 +116,7 @@ Goal: make the system easy to review and evolve.
 - keep readiness and metrics actionable
 - support replay from a single archived decision
 - export replay fixtures from persisted SQLite decisions
+- keep the nine mechanisms mapped to reusable SRE primitives
 - promote branch fixtures into incident narratives
 
 ## 4. Risks to Watch

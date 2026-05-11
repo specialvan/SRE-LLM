@@ -178,6 +178,7 @@ A short list for codex-style reviews. Each item has a concrete file:
 
 - [`docs/architecture.md`](docs/architecture.md) — architecture, requirements, task breakdown, and refinement targets.
 - [`docs/codex-handoff.md`](docs/codex-handoff.md) — handoff summary for the next Codex pass.
+- [`docs/sre-control-primitives.md`](docs/sre-control-primitives.md) — reusable SRE control primitives extracted from the nine mechanisms.
 - [`docs/state-lifecycle.md`](docs/state-lifecycle.md) — service, model, decision, breaker, and shadow state machines.
 - [`docs/module-contracts.md`](docs/module-contracts.md) — module-level ownership, fallback, and readiness matrix.
 - [`docs/implementation-roadmap.md`](docs/implementation-roadmap.md) — phase-by-phase delivery map and PR sequence.
