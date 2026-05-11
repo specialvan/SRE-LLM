@@ -51,14 +51,48 @@ class EKF:
     def update(self, z: np.ndarray,
                h: Callable[[np.ndarray], np.ndarray],
                H: Callable[[np.ndarray], np.ndarray],
-               R: np.ndarray) -> None:
+               R: np.ndarray,
+               gate_threshold: Optional[float] = None) -> dict:
+        """Apply one EKF measurement update; optionally gate by innovation.
+
+        Parameters
+        ----------
+        z, h, H, R :
+            Standard Kalman update ingredients.
+        gate_threshold :
+            When provided, compute the Mahalanobis distance of the
+            innovation ``d = sqrt(y^T · S^-1 · y)``.  If ``d`` exceeds
+            the threshold the update is **skipped** (state and
+            covariance unchanged) — this protects the posterior from
+            single-sample outliers without needing a heavy robust
+            filter.  Typical threshold is ``3.0`` (~3σ) for a
+            univariate residual.
+
+        Returns
+        -------
+        dict with keys
+            ``gated``                 : bool — True if update skipped.
+            ``innovation_mahalanobis``: float — the d value.
+        """
         y = np.asarray(z, dtype=float) - h(self.x)
         H_mat = H(self.x)
         S = H_mat @ self.P @ H_mat.T + R
+
+        # Mahalanobis-distance gating (O(m³) where m = dim(z), typically 2-3)
+        try:
+            S_inv_y = np.linalg.solve(S, y)
+            d_mahal = float(np.sqrt(max(0.0, y @ S_inv_y)))
+        except np.linalg.LinAlgError:
+            d_mahal = float("inf")
+
+        if gate_threshold is not None and d_mahal > gate_threshold:
+            return {"gated": True, "innovation_mahalanobis": d_mahal}
+
         K = np.linalg.solve(S.T, (self.P @ H_mat.T).T).T
         self.x = self.x + K @ y
         I = np.eye(self.P.shape[0])
         self.P = (I - K @ H_mat) @ self.P
+        return {"gated": False, "innovation_mahalanobis": d_mahal}
 
     # ------------------------------------------------------------------
     def _jac_F(self, x: np.ndarray, u: np.ndarray, dt: float) -> np.ndarray:

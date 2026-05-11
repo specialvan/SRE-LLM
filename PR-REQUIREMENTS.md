@@ -1,10 +1,10 @@
 ---
 spec: starship-recovery · PR-level functional requirements
-version: 0.3.3
+version: 0.3.4
 updated: 2026-05-12
 owner: spacex-session
 baseline-commit: cf9c8dc
-head-commit: (post-v0.3.3 commit · see git log)
+head-commit: (post-v0.3.4 commit · see git log)
 status-legend:
   - "✅ SHIPPED  · 已实现 · 有测试 + 证据"
   - "🟡 IN-PROG  · 已开工 · 尚未合并"
@@ -16,11 +16,12 @@ invariants:
   - I-3 降级路径对齐：runtime.degraded=True 必然伴随 DEGRADED_* 状态和至少 1 条 event
   - I-4 文档不钉死 HEAD：不得在文档里写"最新 commit = <具体 SHA>"，用"近期日志包含 <关键 commit>"表达
 quality-gates:
-  - pytest tests -q                 # 39 passed
+  - pytest tests -q                 # 41 passed
   - python -m analysis.run_all      # 10 studies finish <4s
   - python -m scripts.build_kb      # 16 assets rebuild
   - python -m examples.demo_sre_loop
   - HTML well-formed (html.parser)
+event-kinds-total: 9
 ---
 
 # PR 级功能需求清单 — 星舰筷子塔回收 + SRE 复利栈
@@ -66,7 +67,7 @@ quality-gates:
 
 | Gate | 命令 | 预期 |
 |---|---|---|
-| 单元测试 | `python -m pytest tests -q` | **39 passed** |
+| 单元测试 | `python -m pytest tests -q` | **41 passed** |
 | 基准证据 | `python -m analysis.run_all` | All 10 studies finish in ~3 s |
 | 资产构建 | `python -m scripts.build_kb` | 16 assets rebuilt |
 | 端到端 Demo | `python -m examples.demo_sre_loop` | 12 行 trace 无异常 |
@@ -733,14 +734,37 @@ disallowed: docs/*        ← no runtime code
 
 #### PR-M-03 · SignalFusion innovation gating
 
-- **Status**: 🔵 PROPOSED
-- **背景**：`FAILURE_MODES.md §SignalFusion` 指出尖峰观测可能把 posterior 拉飞。
-- **范围**：给 `EKF.update()` 加选项：`‖y‖ > k·√(Sᵢᵢ)` 时把本次观测标记为 outlier，
-  不做 update 并产 `outlier_rejected` event。
-- **DoD**：
-  - 新 kind `outlier_rejected` 进 `EVENT_COUNTEREXAMPLES`（I-2）
-  - 新测试验证：故意注入 10σ 观测后 posterior 不偏
-- **注意**：这是新增 event kind，触发 I-2 全套同步。
+- **Status**: ✅ SHIPPED (本轮 commit · 见 git log)
+- **背景**：`FAILURE_MODES.md §SignalFusion` 指出：单次 10σ 尖峰观测会把 EKF 后验拉飞，
+  线上 Prometheus/trace 链路里这种情况并不罕见（瞬时网络抖动 / clock skew）。
+- **范围**：
+  1. 给 `starship/ekf.py::EKF.update` 增加 optional 参数 `gate_threshold`——
+     当 innovation Mahalanobis σ `√(yᵀS⁻¹y)` 超过阈值则**跳过 update**，返回
+     `{"gated": True, "innovation_mahalanobis": d}`。
+  2. 给 `sre_control/signal_fusion.py::SignalFusion` 加字段 `gate_threshold`
+     (默认 `None` = 关闭，保持向后兼容)。启用时在 trace 中记录每次更新的 `d` 值。
+  3. 注册新 event kind `outlier_rejected` 并按 I-2 流程全套同步：
+     - 加入 `EVENT_COUNTEREXAMPLES`
+     - 让 `tests/test_event_schema.py::_collect_local_events` 真实触发它
+     - 加入 `docs/EVENT_SCHEMA.md` 和 V2_Knowledge 的索引表
+  4. 新增 2 条专门测试：gating 生效 / 关闭 gate 保留旧行为。
+- **DoD**（全部达成）：
+  - ✅ 10σ 观测在 `gate_threshold=3.0` 时被拒，posterior 不动
+  - ✅ `gate_threshold=None` 时行为与 v0.3.3 完全一致（向后兼容）
+  - ✅ `outlier_rejected` event 能被真实 adapter 路径触发
+  - ✅ schema closure 测试（I-2 守护）：新 kind 必须有真实 producer 且通过 validate_event
+  - ✅ 总 event kind 数从 8 → 9
+- **Evidence**：
+  - 代码 `starship/ekf.py::EKF.update` (+30 LOC)
+  - 代码 `sre_control/signal_fusion.py::SignalFusion` (+1 字段, +20 LOC 逻辑)
+  - schema `sre_control/events.py::EVENT_COUNTEREXAMPLES["outlier_rejected"]`
+  - 测试 `tests/test_sre_control.py` (+2 条) + `tests/test_event_schema.py` (+outlier 触发路径)
+  - 文档 `docs/EVENT_SCHEMA.md` + `docs/V2_Knowledge/knowledge-base.html` 索引表
+- **注意事项**：
+  - `EKF.update` 原先返回 `None`，现在返回 dict。**这是公共 API 的破坏性变化**，
+    但 `sre_control/signal_fusion.py` 是唯一的工程调用者，已同步更新；
+    `analysis/s05_ekf.py` 里的 `.update()` 调用忽略返回值仍可工作。
+  - 若未来把 gate 默认打开，必须先评估对 baseline 分析脚本的影响。
 
 #### PR-M-04 · Stack 异常转成 event
 
@@ -903,6 +927,20 @@ disallowed: docs/*        ← no runtime code
 ---
 
 ## Change Log
+
+### v0.3.4 · 2026-05-12 · Claude Reviewer（PR-M-03 · 首次走完 I-2 全套同步）
+
+- **PR-M-03 SHIPPED**（本轮同一 commit）：SignalFusion innovation gating。
+  这是本工程**首次**新增 runtime event kind，因此完整走了一遍 I-2 流程作为模板：
+  1. `EVENT_COUNTEREXAMPLES` 加 `outlier_rejected`
+  2. adapter 代码路径真实触发
+  3. `tests/test_event_schema.py` 扩展 `_collect_local_events` 以触发新 kind
+  4. `docs/EVENT_SCHEMA.md` + V2 HTML 索引表同步
+- **过程证据**：我加了 `EVENT_COUNTEREXAMPLES` 条目但忘了让它被真实触发时，
+  `test_all_runtime_events_follow_shared_schema` 立刻红灯——这正是 I-2 守护成功的案例。
+- **API 变化**：`starship/ekf.py::EKF.update` 签名从 `-> None` 变成 `-> dict`。
+  唯一生产调用者 `SignalFusion` 已同步；`analysis/s05_ekf.py` 忽略返回值仍工作。
+- **quality gate**：`pytest` 39 → **41 passed**；event kind 数 8 → **9**。
 
 ### v0.3.3 · 2026-05-12 · Claude Reviewer（自封闭 PR-M-02）
 

@@ -160,6 +160,59 @@ def test_signal_fusion_marks_missing_sensor_as_local_event():
                for event in trace["events"])
 
 
+def test_signal_fusion_gates_outlier_when_threshold_is_set():
+    """Innovation gating skips a 10σ reading and emits an event."""
+    fusion = SignalFusion(
+        x0=np.array([1000.0, 25.0, 0.3]),
+        P0=np.diag([10**2, 2**2, 0.05**2]),
+        Q=np.diag([0.1, 0.01, 0.001]),
+        x_ref=np.array([1000.0, 25.0, 0.3]),
+        theta=0.2,
+        gate_threshold=3.0,
+    )
+    sig = Signal(
+        name="metrics",
+        h=lambda x: x[0:2],
+        H=lambda x: np.array([[1, 0, 0], [0, 1, 0]]),
+        R=np.diag([50**2, 4**2]),
+    )
+    x_before = fusion.state.copy()
+    trace = fusion.step(dt=1.0, readings=[(sig, np.array([5000.0, 200.0]))])
+
+    # Posterior must be unchanged (gated + predict was neutral OU pull)
+    assert np.allclose(fusion.state, x_before, atol=0.5)
+    assert trace["signals"][0]["used"] is False
+    assert trace["signals"][0]["gated"] is True
+    assert trace["signals"][0]["innovation_mahalanobis"] > 3.0
+    assert "outlier_rejected" in trace["local_states"]
+    assert any(event["kind"] == "outlier_rejected"
+               for event in trace["events"])
+
+
+def test_signal_fusion_without_gate_accepts_outlier_like_before():
+    """Disabling gating keeps legacy behaviour: big reading pulls posterior."""
+    fusion = SignalFusion(
+        x0=np.array([1000.0, 25.0, 0.3]),
+        P0=np.diag([10**2, 2**2, 0.05**2]),
+        Q=np.diag([0.1, 0.01, 0.001]),
+        x_ref=np.array([1000.0, 25.0, 0.3]),
+        theta=0.2,
+        # gate_threshold=None  ← default, legacy behaviour
+    )
+    sig = Signal(
+        name="metrics",
+        h=lambda x: x[0:2],
+        H=lambda x: np.array([[1, 0, 0], [0, 1, 0]]),
+        R=np.diag([50**2, 4**2]),
+    )
+    trace = fusion.step(dt=1.0, readings=[(sig, np.array([5000.0, 200.0]))])
+    # posterior should have moved toward the reading
+    assert fusion.state[0] > 1050.0
+    assert trace["signals"][0]["used"] is True
+    # gated key only appears when update was gated; absence == accepted
+    assert trace["signals"][0].get("gated", False) is False
+
+
 # ---------------------------------------------------------------------------
 # §6 PredictiveAutoscaler
 # ---------------------------------------------------------------------------

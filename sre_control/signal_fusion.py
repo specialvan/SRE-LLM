@@ -61,6 +61,8 @@ class SignalFusion:
     Q: np.ndarray
     x_ref: np.ndarray                           # pull target
     theta: float = 0.2                          # OU reversion rate
+    gate_threshold: Optional[float] = None      # Mahalanobis σ for outlier
+                                                # rejection; None = disabled
     _ekf: EKF = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -104,12 +106,35 @@ class SignalFusion:
                 ))
                 continue
             z = np.asarray(z, dtype=float)
-            self._ekf.update(z, signal.h, signal.H, signal.R)
+            update_info = self._ekf.update(
+                z, signal.h, signal.H, signal.R,
+                gate_threshold=self.gate_threshold,
+            )
+            mahal = update_info["innovation_mahalanobis"]
+            if update_info["gated"]:
+                if "outlier_rejected" not in local_states:
+                    local_states.append("outlier_rejected")
+                events.append(make_event(
+                    stage="SignalFusion",
+                    kind="outlier_rejected",
+                    detail=(f"{signal.name} innovation σ={mahal:.2f} exceeded "
+                            f"gate {self.gate_threshold}"),
+                    safe_action=(
+                        "skip update to protect posterior; raise gate only "
+                        "if measurement model h(x)/R are validated"),
+                ))
+                fused_trace.append({
+                    "signal": signal.name, "used": False,
+                    "gated": True,
+                    "innovation_mahalanobis": mahal,
+                })
+                continue
             if "update" not in local_states:
                 local_states.append("update")
             fused_trace.append({
                 "signal": signal.name, "used": True,
                 "residual": float(np.linalg.norm(z - signal.h(self._ekf.x))),
+                "innovation_mahalanobis": mahal,
             })
 
         return {

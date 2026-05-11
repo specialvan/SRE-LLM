@@ -592,6 +592,7 @@ make_event(stage, kind, detail, safe_action):
       <tr><td><code>bounded_ls_residual</code></td><td><code>WeightedLoadBalancer.allocate()</code></td><td>box 饱和或 residual 非零</td><td>报告 residual，不伪装精确匹配</td></tr>
       <tr><td><code>pool_capacity_clipped</code></td><td><code>PoolCapacityPlanner.plan()</code></td><td>预测需求超过 max 容量</td><td>clip 到 max_capacity，暴露 shortfall</td></tr>
       <tr><td><code>topology_state_repaired</code></td><td><code>TopologyState.step()</code></td><td>输入 quaternion 非有限/非单位</td><td>reset 或 renormalize 后再积分</td></tr>
+      <tr><td><code>outlier_rejected</code></td><td><code>SignalFusion.step()</code> (gate 启用时)</td><td>观测 Mahalanobis σ &gt; gate 阈值</td><td>跳过 update 保护 posterior</td></tr>
     </tbody>
   </table>
 

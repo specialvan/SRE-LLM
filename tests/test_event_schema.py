@@ -82,6 +82,20 @@ def _collect_local_events():
     )
     events.extend(alloc_info["events"])
 
+    # outlier_rejected: fusion with a tight gate and a 10σ reading
+    gated_fusion = SignalFusion(
+        x0=np.array([1000.0, 25.0, 0.3]),
+        P0=np.diag([10**2, 2**2, 0.05**2]),
+        Q=np.diag([0.1, 0.01, 0.001]),
+        x_ref=np.array([1000.0, 25.0, 0.3]),
+        theta=0.2,
+        gate_threshold=3.0,
+    )
+    events.extend(gated_fusion.step(
+        dt=1.0,
+        readings=[(sig, np.array([5000.0, 200.0]))],  # way outside 3σ
+    )["events"])
+
     return events
 
 

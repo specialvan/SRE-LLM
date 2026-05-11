@@ -2,9 +2,9 @@
   cone_margin_min           before=2.351e+05  after=5.27e+04  (×0.224)
   fuel                      before=1.279e+04  after=1.051e+04  (×0.822)
   pos_err                   before=148.3  after=2.125e-06  (×1.43e-08)
-  solve_ms                  before=0  after=294.1  (×inf)
+  solve_ms                  before=0  after=288.5  (×inf)
   vel_err                   before=30.92  after=3.799e-07  (×1.23e-08)
-    (elapsed 0.77s)
+    (elapsed 0.75s)
 
 === §2 Successive Convex Programming ===
   control_effort            before=19.61  after=19.78  (×1.01)
@@ -63,4 +63,4 @@
   distinct_kinds            before=0  after=4
   event_count_total         before=0  after=83
   mttr_seconds              before=0  after=115  (×inf)
-    (elapsed 0.30s)
+    (elapsed 0.31s)

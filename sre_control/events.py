@@ -41,6 +41,11 @@ EVENT_COUNTEREXAMPLES: dict[str, str] = {
         "Do not normalize arbitrary scalar metrics as if they lived on a manifold; "
         "repair only states that are explicitly quaternion topology states."
     ),
+    "outlier_rejected": (
+        "Do not raise the innovation-gate threshold just to silence this event; "
+        "a persistent outlier usually means the measurement model h(x) or noise R "
+        "is mis-specified, not that the sample is actually noise."
+    ),
 }
 
 
