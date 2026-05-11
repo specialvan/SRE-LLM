@@ -1,0 +1,886 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Starship Recovery · 知识库 V2 (agent handoff snapshot)</title>
+<style>
+  :root{
+    --bg: #fbfaf7;
+    --panel: #ffffff;
+    --ink: #1b2430;
+    --mute: #4b5b6b;
+    --rule: #e5e0d5;
+    --accent: #b4411b;
+    --accent-soft: #f6e4db;
+    --key: #1f5fa3;
+    --key-soft: #e0ecf8;
+    --green: #2f7d3a;
+    --green-soft: #e3f1e4;
+    --warn-soft: #fbf1d8;
+    --warn-ink: #a8711a;
+    --mono: 'SFMono-Regular','Consolas','Menlo',monospace;
+    --serif: 'Noto Serif SC','Songti SC','PingFang SC','Georgia',serif;
+    --sans: 'PingFang SC','Segoe UI','Microsoft YaHei','Helvetica Neue',Arial,sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--ink); }
+  body{ font-family: var(--sans); font-size: 16px; line-height: 1.72; }
+  a{ color: var(--key); text-decoration: none; border-bottom: 1px dashed rgba(31,95,163,.35); }
+  a:hover{ color: var(--accent); border-bottom-color: var(--accent); }
+  code, .mono{ font-family: var(--mono); font-size: 0.92em; }
+  code{ background:#f2eee4; padding: 1px 6px; border-radius:4px; color:#31425a; }
+  pre{ background:#1d2330; color:#eef0f3; padding: 14px 16px; border-radius: 6px; overflow:auto; font-family:var(--mono); font-size: 13px; line-height:1.5; }
+  pre .kw{ color:#f0a36a; }
+  pre .st{ color:#9ecb9e; }
+  pre .nm{ color:#82c7ff; }
+  pre .cm{ color:#8c9aae; font-style: italic; }
+
+  header.hero{
+    background: linear-gradient(140deg, #16283b 0%, #214661 50%, #356283 100%);
+    color:#f2f1ec; padding: 56px 48px 40px;
+  }
+  header.hero .kicker{ font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color:#d3b896; }
+  header.hero h1{ margin: 10px 0 4px; font-family: var(--serif); font-size: 36px; letter-spacing:.02em; }
+  header.hero h1 .en{ color:#f1c59d; }
+  header.hero h1 .ver{ font-size: 14px; color:#cbd6e0; vertical-align: middle; margin-left: 12px; padding: 2px 10px; border: 1px solid rgba(255,255,255,0.3); border-radius: 999px; font-family: var(--mono); }
+  header.hero .sub{ color:#cdd6df; max-width: 900px; font-size: 15.5px; }
+  header.hero .meta{ margin-top: 18px; font-size: 13px; color:#a9bac8; }
+  header.hero .banner-row{ display: flex; gap: 16px; margin-top: 20px; flex-wrap: wrap; }
+  header.hero .banner-row .chip{ background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); padding: 6px 12px; border-radius: 6px; font-size: 12.5px; color:#e6ecf2; }
+  header.hero .banner-row .chip b{ color:#f1c59d; font-weight: 600; margin-right: 4px; }
+
+  main{ max-width: 1200px; margin: 0 auto; padding: 0 24px 64px;
+        display: grid; grid-template-columns: 260px 1fr; gap: 40px; }
+  aside.toc{
+    position: sticky; top: 16px; align-self: start;
+    max-height: calc(100vh - 32px); overflow:auto;
+    padding: 22px 18px; background: var(--panel); border: 1px solid var(--rule);
+    border-radius: 8px; font-size: 14px;
+  }
+  aside.toc h2{ font-size: 12px; margin: 0 0 10px; color:#7a8797; letter-spacing:.12em; text-transform: uppercase;}
+  aside.toc ol{ list-style: none; padding: 0; margin: 0; }
+  aside.toc li{ margin: 6px 0; }
+  aside.toc li a{ border-bottom:none; color: var(--ink); }
+  aside.toc li a:hover{ color: var(--accent); }
+  aside.toc li .n{ color:#aab6c4; margin-right: 6px; font-family: var(--mono); }
+  aside.toc .group{ margin-top: 14px; padding-top: 10px; border-top: 1px dashed var(--rule); }
+  aside.toc .group-label{ font-size: 10px; color: #98a5b3; letter-spacing:.15em; text-transform: uppercase; margin-bottom: 6px; }
+
+  article section{ background: var(--panel); border: 1px solid var(--rule);
+                   border-radius: 10px; padding: 30px 32px; margin-top: 28px; }
+  article section:first-child{ margin-top: 18px; }
+  article section h2{ font-family: var(--serif); margin: 0 0 4px; font-size: 26px; }
+  article section h2 .tag{ font-size: 13px; color:#97886d; letter-spacing: .08em; margin-right: 10px; font-family: var(--sans); vertical-align: middle; }
+  article section .lead{ color: var(--mute); margin: 0 0 16px; font-size: 15px; }
+  article h3{ margin-top: 24px; font-size: 18px; font-family: var(--serif); }
+  article h4{ margin: 18px 0 6px; font-size: 13.5px; color:#39526a; text-transform: uppercase; letter-spacing:.1em; }
+  article p{ margin: 10px 0; }
+  article ul{ padding-left: 22px; }
+  article li{ margin: 4px 0; }
+
+  .pill{ display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px;
+         background: var(--key-soft); color: var(--key); margin-right: 6px; font-weight: 600; letter-spacing:.02em;}
+  .pill.accent{ background: var(--accent-soft); color: var(--accent); }
+  .pill.green{ background: var(--green-soft); color: var(--green); }
+  .pill.warn{ background: var(--warn-soft); color: var(--warn-ink); }
+
+  .formula{ background: #fdf7ef; border-left: 4px solid var(--accent);
+            padding: 12px 18px; margin: 14px 0; font-family: var(--mono);
+            font-size: 14.5px; white-space: pre-wrap; overflow:auto; border-radius: 0 6px 6px 0; color: #3a2f25; }
+  .note{ background: #f3efe4; border-left: 4px solid #caa96a; padding: 10px 14px; border-radius: 0 6px 6px 0; color:#524432; }
+  .warn{ background: #fbf1ed; border-left: 4px solid var(--accent); padding: 10px 14px; border-radius: 0 6px 6px 0; color: #6c2b14; }
+  .ok{ background: #eff6ee; border-left: 4px solid var(--green); padding: 10px 14px; border-radius: 0 6px 6px 0; color: #234d27; }
+  .info{ background: var(--key-soft); border-left: 4px solid var(--key); padding: 10px 14px; border-radius: 0 6px 6px 0; color: #1a3758; }
+
+  figure{ margin: 20px 0; padding: 14px; border: 1px solid var(--rule); background: #fbfaf5; border-radius: 8px; }
+  figure img{ display:block; margin: 0 auto; max-width: 100%; height: auto; }
+  figcaption{ margin-top: 8px; font-size: 13px; color: var(--mute); text-align: center; font-family: var(--serif); }
+
+  table{ width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px;}
+  th,td{ padding: 8px 10px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+  th{ background:#f5efe2; color:#4a3b22; font-weight: 600;}
+  tbody tr:nth-child(even){ background:#fbf8f1; }
+
+  .sre-card{ background: var(--green-soft); border-left: 4px solid var(--green);
+             padding: 12px 14px 6px; border-radius: 0 6px 6px 0; margin: 14px 0; }
+  .sre-card h4{ color: var(--green); margin-top: 0; letter-spacing: .08em; }
+  .sre-card table th{ background: #d6ead4; color: var(--green); }
+
+  .metric{ display: inline-flex; flex-direction: column; padding: 8px 14px; border: 1px solid var(--rule);
+           border-radius: 6px; background: #fdfcf7; margin: 4px 6px 4px 0; min-width: 120px; }
+  .metric .m-label{ font-size: 11px; color: var(--mute); letter-spacing: .06em; text-transform: uppercase; }
+  .metric .m-val{ font-family: var(--mono); font-size: 16px; color: var(--ink); font-weight: 600; }
+  .metric.before .m-val{ color: var(--accent); }
+  .metric.after  .m-val{ color: var(--key); }
+  .metric.gain   .m-val{ color: var(--green); }
+  .metric.warn   .m-val{ color: var(--warn-ink); }
+
+  .event-row{ background: #fdfcf7; border: 1px solid var(--rule); border-radius: 6px; padding: 10px 14px; margin: 8px 0; font-size: 14px; }
+  .event-row code.kind{ background: var(--accent-soft); color: var(--accent); }
+
+  hr.soft{ border:none; border-top: 1px dashed var(--rule); margin: 22px 0; }
+  footer{ text-align: center; color: var(--mute); font-size: 13px; padding: 28px; }
+
+  @media (max-width: 960px){
+    main{ grid-template-columns: 1fr; }
+    aside.toc{ position: static; max-height: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="kicker">Knowledge Base · V2 · multi-agent handoff snapshot</div>
+  <h1><span class="en">Starship Recovery </span>· 跨 agent 协同知识库<span class="ver">v2 · 2026-05-12</span></h1>
+  <p class="sub">
+    V2 在 V1 的"机制图 + 动画收益 + SRE 映射"基础上，**把 Codex session 1 沉淀下来的可观测性和契约作为一等公民**
+    收进知识库。目标：任何后来的 agent（Codex、Claude、人类评审）拿到本 HTML 就能开始工作，不用再翻 8 份独立
+    md。
+  </p>
+  <div class="meta">
+    原文：《星舰自动回收背后的数学》（黄大年茶思屋·结构智能） ·
+    代码：<code>spacex/starship/</code> + <code>sre_control/</code> ·
+    分析：<code>spacex/analysis/</code> ·
+    移交：<code>spacex/docs/claude-review/</code>
+  </div>
+  <div class="banner-row">
+    <div class="chip"><b>tests</b> 33 passed</div>
+    <div class="chip"><b>studies</b> 9 finished</div>
+    <div class="chip"><b>HTML</b> well-formed</div>
+    <div class="chip"><b>events</b> 8 kinds</div>
+    <div class="chip"><b>commits</b> cf9c8dc → 59389ee</div>
+  </div>
+</header>
+
+<main>
+
+<aside class="toc" aria-label="目录">
+  <h2>目录 / Contents</h2>
+  <ol>
+    <li><a href="#s0"><span class="n">00</span>导读 · 当前状态</a></li>
+    <li class="group">
+      <div class="group-label">8 · 数学支柱</div>
+      <a href="#s1"><span class="n">§1</span>Lossless Convexification</a>
+    </li>
+    <li><a href="#s2"><span class="n">§2</span>Successive Convex Programming</a></li>
+    <li><a href="#s3"><span class="n">§3</span>6-DoF 刚体动力学 SO(3)</a></li>
+    <li><a href="#s4"><span class="n">§4</span>推力指向 + 幅值锥</a></li>
+    <li><a href="#s5"><span class="n">§5</span>EKF 多源融合</a></li>
+    <li><a href="#s6"><span class="n">§6</span>MPC 滚动时域</a></li>
+    <li><a href="#s7"><span class="n">§7</span>Belly-Flop → Landing-Flip</a></li>
+    <li><a href="#s8"><span class="n">§8</span>塔架捕获推力分配</a></li>
+    <li class="group">
+      <div class="group-label">复利 · SRE 栈</div>
+      <a href="#stack"><span class="n">⊚</span>端到端装配</a>
+    </li>
+    <li><a href="#evidence"><span class="n">📊</span>前后证据汇总</a></li>
+    <li class="group">
+      <div class="group-label">V2 · 可观测性</div>
+      <a href="#events"><span class="n">🔔</span>Runtime Event 指南</a>
+    </li>
+    <li><a href="#lifecycle"><span class="n">⏱</span>事件生命周期 + 3 场景</a></li>
+    <li><a href="#failure"><span class="n">🛠</span>失效模式 &amp; 降级</a></li>
+    <li class="group">
+      <div class="group-label">架构与护栏</div>
+      <a href="#architecture"><span class="n">🏛</span>5 视图架构</a>
+    </li>
+    <li><a href="#contracts"><span class="n">📜</span>API 契约与运行态</a></li>
+    <li><a href="#invariants"><span class="n">🛡</span>三大不变量</a></li>
+    <li class="group">
+      <div class="group-label">下一轮</div>
+      <a href="#handoff"><span class="n">🤝</span>接手清单</a>
+    </li>
+    <li><a href="#next"><span class="n">🚀</span>演化蓝图</a></li>
+  </ol>
+</aside>
+
+<article>
+
+<!-- ===================== 00 导读 · 当前状态 ===================== -->
+<section id="s0">
+  <h2><span class="tag">00</span>导读 · V2 想解决什么</h2>
+  <p class="lead">V1 讲"为什么这 8 个数学支柱能跑"，V2 讲"**多个 agent 接力维护它时需要看到什么**"。</p>
+
+  <h3>V1 vs V2 的差别</h3>
+  <table>
+    <thead><tr><th>维度</th><th>V1 (2026-05-10)</th><th>V2 (2026-05-12)</th></tr></thead>
+    <tbody>
+      <tr><td>读者</td><td>人类 reviewer</td><td>人类 + 各种 agent（Codex/Claude/others）</td></tr>
+      <tr><td>重点</td><td>机制 + 证据</td><td>机制 + 证据 + <b>可观测性</b> + <b>契约</b></td></tr>
+      <tr><td>新材料</td><td>—</td><td>Runtime event schema、失效模式、依赖护栏、3 不变量</td></tr>
+      <tr><td>接口</td><td>`SREControlStack.step()` 返回基本 trace</td><td>返回 `runtime.states/events/degraded` + adapter 本地事件</td></tr>
+      <tr><td>测试规模</td><td>21</td><td>33</td></tr>
+      <tr><td>docs 广度</td><td>3 份</td><td>14 份（新增 claude-review/ 6 件套 + API_CONTRACTS + RUNTIME_STATES + EVENT_SCHEMA + V2_Knowledge 自己）</td></tr>
+    </tbody>
+  </table>
+
+  <h3>协同协议</h3>
+  <div class="info">
+    <b>任何 agent 接手前必读清单</b>：
+    <ol>
+      <li><a href="../claude-review/README.md"><code>docs/claude-review/README.md</code></a> — reviewer 移交包导航</li>
+      <li><a href="../claude-review/HANDOFF_CHECKLIST.md"><code>claude-review/HANDOFF_CHECKLIST.md</code></a> — 15 分钟环境核查</li>
+      <li>本 HTML 的 <a href="#invariants">§三大不变量</a> 和 <a href="#handoff">§接手清单</a></li>
+    </ol>
+    接手的第一个 commit message 末尾写一行 <code>Acknowledged: docs/claude-review/README.md</code>，表示认真接过手。
+  </div>
+
+  <h3>本文档的信息密度</h3>
+  <p>V2 不重复 V1 里已经讲透的推导（§1 的 ln m 变换、§3 的四元数 ½ 因子等，参见 <a href="../EQUATION_DEEP_DIVE.md"><code>EQUATION_DEEP_DIVE.md</code></a>）；每个支柱只给：<b>一张机制图 + 一张 GIF + 一组数字 + 一段 SRE 映射 + 一个 event kind</b>。</p>
+</section>
+
+
+<!-- ===================== §1 ===================== -->
+<section id="s1">
+  <h2><span class="tag">§1 · image-11 / image-12</span>Lossless Convexification</h2>
+  <p class="lead">非凸推力下界 <code>ρ₁ ≤ ‖Γ‖ ≤ ρ₂</code> 引入松弛 σ 变成凸问题，最优解里 σ 自动打到 ‖Γ‖——"无损"。</p>
+
+  <figure><img src="assets/s01_mechanism.png" alt="§1 mechanism"><figcaption>左：原始环形（donut）非凸可行集。右：凸化后的圆盘，σ 做幅值松弛。</figcaption></figure>
+  <figure><img src="assets/s01_benefit.gif" alt="§1 benefit"><figcaption>PDG 末端位置误差：baseline 全程满推 148 m，求解器 2×10⁻⁶ m。</figcaption></figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">末端位置误差</span><span class="m-val">148 m</span></span>
+    <span class="metric after"><span class="m-label">PDG</span><span class="m-val">2×10⁻⁶ m</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">×10⁸</span></span>
+  </div>
+
+  <div class="formula">min  −z(T)                       (= max 末端质量)
+s.t. ṙ=v,  v̇ = g + Γ/m,  z = ln m
+     ‖Γ‖ ≤ σ,  ρ1 ≤ σ ≤ ρ2,  Γ·n̂ ≥ σ·cos θ_max</div>
+
+  <div class="sre-card">
+    <h4>SRE 原语：<code>PoolCapacityPlanner</code></h4>
+    <p>对应场景：连接池"要么 0 要么 ≥ min_keep_alive"的非凸约束。同样引入 σ 表示"名义容量"，pool_size ≤ σ，σ ∈ [min_keep_alive, max_capacity]。</p>
+  </div>
+
+  <div class="event-row">
+    <span class="pill accent">EVENT</span>
+    <code class="kind">pool_capacity_clipped</code>
+    — 预测需求超过 <code>max_capacity * rps_per_conn</code> 时触发，同时暴露 <code>capacity_shortfall_rps</code>。
+    <b>counter-example</b>：撞上限未必是 planner 错，可能是 quota 或上游削峰。
+  </div>
+</section>
+
+
+<!-- ===================== §2 ===================== -->
+<section id="s2">
+  <h2><span class="tag">§2 · image-13 / image-14</span>Successive Convex Programming</h2>
+  <p class="lead">在参考点线性化 → 解凸子问题 → 用"改进比 ρ"动态调置信域，迭代收敛到非线性问题的解。</p>
+
+  <figure><img src="assets/s02_mechanism.png" alt="§2 mechanism"><figcaption>真曲线 = 非线性动力学；三条虚线 = 逐轮切线近似；虚线框 = 置信域收缩。</figcaption></figure>
+  <figure><img src="assets/s02_benefit.gif" alt="§2 benefit"><figcaption>位置轨迹随 SCP 迭代逼近目标；右侧 Δx 指数收敛。</figcaption></figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">单次线性化</span><span class="m-val">8.08 m</span></span>
+    <span class="metric after"><span class="m-label">SCP 6 轮</span><span class="m-val">2.87 m</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">×2.8</span></span>
+  </div>
+
+  <div class="formula">每轮：
+  δẋ = A(t)δx + B(t)δu + c(t)                  (线性化)
+  min  Σ(δx^T Q δx + δu^T R δu)
+  s.t. ‖δx‖∞ ≤ η_x,  ‖δu‖∞ ≤ η_u                (置信域)
+
+改进比自适应：
+  ρ > 0.7 → η × 1.5    (扩大)
+  ρ < 0.1 → η × 0.5    (收缩)</div>
+
+  <div class="sre-card">
+    <h4>SRE 原语：<code>CanaryScheduler</code></h4>
+    <p>灰度发布：每轮扩大 share，观测 error_rate，用 ρ = 实际改进 / 预期改进 决定下轮扩几%。ρ&gt;0.7 扩 2×、ρ&lt;0.1 缩 ½、burn SLO 立即冻结。</p>
+  </div>
+
+  <div class="event-row">
+    <span class="pill accent">EVENT</span>
+    <code class="kind">rollout_rejected</code>
+    — 灰度观测烧穿 SLO 预算时触发，trust region 缩半、<code>accepted=False</code>、<code>local_states</code> 加入 <code>freeze</code>。
+    <b>counter-example</b>：一次性迁移（没有流量比例 ramp）不适合这个事件。
+  </div>
+</section>
+
+
+<!-- ===================== §3 ===================== -->
+<section id="s3">
+  <h2><span class="tag">§3 · image-15 / image-16</span>6-DoF 刚体 SO(3)</h2>
+  <p class="lead">姿态 q 在单位四元数流形上演化 <code>q̇ = ½Ω(ω)q</code>，避免欧拉角奇异，长期数值稳定。</p>
+
+  <figure><img src="assets/s03_mechanism.png" alt="§3 mechanism"><figcaption>状态 (r, v, q, ω, m) 通过 4 个耦合 ODE 演化，RK4 + 四元数 exp-map 归一化。</figcaption></figure>
+  <figure><img src="assets/s03_benefit.gif" alt="§3 benefit"><figcaption>Euler 积分累积误差到 3°；四元数稳定在 1×10⁻⁴° 以下。</figcaption></figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">Euler RMSE</span><span class="m-val">3.2°</span></span>
+    <span class="metric after"><span class="m-label">四元数</span><span class="m-val">3.3×10⁻⁵°</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">×10⁵</span></span>
+  </div>
+
+  <div class="formula">q̇ = ½ · Ω(ω) · q           (运动学)
+ω̇ = J⁻¹·(τ − ω × J ω)    (Euler 动力学)</div>
+
+  <div class="sre-card">
+    <h4>SRE 原语：<code>TopologyState</code></h4>
+    <p>有向/周期性拓扑状态（一致性哈希环位置、Raft term、蓝绿切换角度）应在流形上建模，不要压成 ℝⁿ。</p>
+  </div>
+
+  <div class="event-row">
+    <span class="pill accent">EVENT</span>
+    <code class="kind">topology_state_repaired</code>
+    — 输入 quaternion 非有限、近零或偏离单位球时自动修复（reset → identity 或 renormalize）。
+    <b>counter-example</b>：不要把普通标量指标当成流形状态硬归一化。
+  </div>
+</section>
+
+
+<!-- ===================== §4 ===================== -->
+<section id="s4">
+  <h2><span class="tag">§4 · image-17 / image-18</span>推力指向锥 + 幅值球</h2>
+  <p class="lead">闭式 O(1) 投影，把任意候选推力 u_nom 拉回 cone ∩ ball。</p>
+
+  <figure><img src="assets/s04_mechanism.png" alt="§4 mechanism"><figcaption>锥内 = 指向合法；球内 = 幅值合法。红点在外，绿点是投影后。</figcaption></figure>
+  <figure><img src="assets/s04_benefit.gif" alt="§4 benefit"><figcaption>120 个 NN 候选推力流入：baseline 97.4% 违规，过滤器归零。</figcaption></figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">锥违规</span><span class="m-val">97.4%</span></span>
+    <span class="metric after"><span class="m-label">After filter</span><span class="m-val">0%</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">硬约束归硬约束</span></span>
+  </div>
+
+  <div class="formula">‖u‖ ≤ T_max                      (幅值)
+n̂ᵀu ≥ ‖u‖·cos θ_max               (指向)
+
+闭式投影 (Case C 侧投)：
+  t⋆ = (t₀ + α·‖x₀‖) / (1 + α²),   α = tan θ_max
+  x⋆ = α·t⋆ · (x₀/‖x₀‖)</div>
+
+  <div class="sre-card">
+    <h4>SRE 原语：<code>SLOGuardrail</code></h4>
+    <p>AI-driven 路由建议 / Autoscaler 建议先过硬护栏：方向偏离名义 ≤ θ_max、幅值 ≤ 全局 RPS 上限。闭式解 O(1)，每拍吃不了几微秒。</p>
+  </div>
+
+  <div class="event-row">
+    <span class="pill accent">EVENT</span>
+    <code class="kind">unsafe_proposal_projected</code>
+    — cone / magnitude 被违反时触发，本地 states 包含 <code>projected</code>，projection_distance 度量越界幅度。
+    <b>counter-example</b>：projection 小不等于 proposal 差，可能只是数值 clipping。
+  </div>
+</section>
+
+
+<!-- ===================== §5 ===================== -->
+<section id="s5">
+  <h2><span class="tag">§5 · image-1 / image-10 / image-19</span>EKF 多源融合</h2>
+  <p class="lead">predict + sequential update，把 radar/IMU/fiducial（或 metrics/traces/RUM）融合到统一 posterior。</p>
+
+  <figure><img src="assets/s05_mechanism.png" alt="§5 mechanism"><figcaption>三源观测 → predict/update → 融合态 → 回环到下拍 predict。</figcaption></figure>
+  <figure><img src="assets/s05_benefit.gif" alt="§5 benefit"><figcaption>位置误差接近（被雷达噪声主导）；速度误差差 9.4×——EKF 懂 v̇=g。</figcaption></figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">速度 RMSE 原始</span><span class="m-val">481 m/s</span></span>
+    <span class="metric after"><span class="m-label">EKF</span><span class="m-val">51 m/s</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">×9.4</span></span>
+  </div>
+
+  <div class="formula">Predict: x̂_{k|k−1} = f(x̂_{k−1}),  P_{k|k−1} = F P Fᵀ + Q
+Update:  y = z − h(x̂),  S = H P Hᵀ + R,  K = P Hᵀ S⁻¹
+         x̂_{k|k} = x̂ + K y,  P_{k|k} = (I − KH) P</div>
+
+  <div class="sre-card">
+    <h4>SRE 原语：<code>SignalFusion</code></h4>
+    <p>metrics + traces + RUM 三源融合。业务先验（QPS 连续、GC 停顿指数分布）塞进 Q 矩阵，观测噪声塞进各自 R，得到可告警的后验协方差，而不是 rolling avg。</p>
+  </div>
+
+  <div class="event-row">
+    <span class="pill accent">EVENT</span>
+    <code class="kind">missing_sensor</code>
+    — 某路观测本 tick 缺失时触发，skip update 保留 posterior prediction，本地 states 记 <code>skip_update</code>。
+    <b>counter-example</b>：一路低价值观测缺失不是全局事故，只有影响当前控制动作时才降低信心。
+  </div>
+</section>
+
+
+<!-- ===================== §6 ===================== -->
+<section id="s6">
+  <h2><span class="tag">§6 · image-2 / image-3 / image-4</span>MPC 滚动时域</h2>
+  <p class="lead">每拍解 N 步 QP，只施 u₀，下拍 shift + warm-start。把"预测"和"约束"原生放到控制器里。</p>
+
+  <figure><img src="assets/s06_mechanism.png" alt="§6 mechanism"><figcaption>每拍一个新 horizon；橙条是真正下发的 u₀；下拍 horizon 右移。</figcaption></figure>
+  <figure><img src="assets/s06_benefit.gif" alt="§6 benefit"><figcaption>扰动注入后 MPC 收得更准、更快；末态误差 ×3×10⁴ 好于 PD。</figcaption></figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">PD 末态误差</span><span class="m-val">1.2×10⁻²</span></span>
+    <span class="metric after"><span class="m-label">MPC</span><span class="m-val">3.5×10⁻⁷</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">×3.4×10⁴</span></span>
+  </div>
+
+  <div class="formula">min J = Σ(x_kᵀ Q x_k + u_kᵀ R u_k) + x_NᵀP x_N
+s.t. x_{k+1} = A_d x_k + B_d u_k
+     u_min ≤ u_k ≤ u_max,  x_0 = x̂_now</div>
+
+  <div class="sre-card">
+    <h4>SRE 原语：<code>PredictiveAutoscaler</code></h4>
+    <p>把 HPA 从"当前 CPU&gt;80% 则扩" (one-step) 升级为"未来 N 分钟 QPS 预测 + SLO 约束 QP"。warm-start 让跨拍迭代数降 ≥30%。</p>
+  </div>
+
+  <div class="event-row">
+    <span class="pill accent">EVENT</span>
+    <code class="kind">replica_bound_active</code>
+    — 下一拍副本数打到 <code>replicas_min</code> 或 <code>replicas_max</code> 时触发，返回 bounded integer。
+    <b>counter-example</b>：撞 <code>replicas_max</code> 未必是 autoscaler 错，真正瓶颈可能是 quota/依赖容量。
+  </div>
+</section>
+
+
+<!-- ===================== §7 ===================== -->
+<section id="s7">
+  <h2><span class="tag">§7 · image-5 / image-6 / image-7</span>Belly-Flop → Landing-Flip</h2>
+  <p class="lead">Pontryagin 最小值原理 → bang-bang 最短时间翻转。T_min = 2√(|Δθ|·J/τ_max)。</p>
+
+  <figure><img src="assets/s07_mechanism.png" alt="§7 mechanism"><figcaption>左：箭体三相姿态。右：τ(t) 的 bang-bang profile，T/2 处切换。</figcaption></figure>
+  <figure><img src="assets/s07_benefit.gif" alt="§7 benefit"><figcaption>恒定 0.3τ_max baseline 末态停在 36°；bang-bang 精确归零。</figcaption></figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">末态 pitch</span><span class="m-val">36.4°</span></span>
+    <span class="metric after"><span class="m-label">bang-bang</span><span class="m-val">0°</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">清零</span></span>
+  </div>
+
+  <div class="formula">T_min = 2·√(|Δθ| · J / τ_max)        (最短时间)
+τ*(t) = +τ_max   (t &lt; T/2)
+       −τ_max   (t ≥ T/2)
+
+终端条件: θ(T) = θ_end, ω(T) = 0</div>
+
+  <div class="sre-card">
+    <h4>SRE 原语：<code>FastTrafficSwitcher</code></h4>
+    <p>紧急切换（kill-switch、blue/green cut-over、regional failover）：bang-bang 公式给"这次切换最少要多久"的理论下界。</p>
+  </div>
+
+  <div class="event-row">
+    <span class="pill accent">EVENT</span>
+    <code class="kind">deadline_exceeded</code>
+    — 最短切换时间 T_min &gt; deadline 时触发，提示调用方冻结或走更简单 rollback。
+    <b>counter-example</b>：没有健康检查卡位时不要为了赶 deadline 强行 bang-bang。
+  </div>
+</section>
+
+
+<!-- ===================== §8 ===================== -->
+<section id="s8">
+  <h2><span class="tag">§8 · image / image-8 / image-9</span>塔架捕获推力分配</h2>
+  <p class="lead">3 台 Raptor 映射到 6 维 wrench：bounded LS 而非 pseudo-inverse。</p>
+
+  <figure><img src="assets/s08_mechanism.png" alt="§8 mechanism"><figcaption>左：俯视 3 台 120° 环绕。右：bounded LS 问题形式。</figcaption></figure>
+  <figure><img src="assets/s08_benefit.gif" alt="§8 benefit"><figcaption>pseudo-inverse 34% 样本超饱和；bounded LS 完全遵守 box。</figcaption></figure>
+
+  <div>
+    <span class="metric before"><span class="m-label">pinv 饱和违规</span><span class="m-val">34%</span></span>
+    <span class="metric after"><span class="m-label">Bounded LS</span><span class="m-val">0%</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">清零</span></span>
+  </div>
+
+  <div class="formula">A = [d₁ d₂ d₃; l₁×d₁ l₂×d₂ l₃×d₃]    (6 × N 几何矩阵)
+min ‖A·t − [F;τ]‖²  s.t. T_min ≤ t_i ≤ T_max</div>
+
+  <div class="sre-card">
+    <h4>SRE 原语：<code>WeightedLoadBalancer</code></h4>
+    <p>全局 RPS + 区域约束映射到多实例 box 约束。用 <code>scipy.optimize.lsq_linear</code> 而非 pinv，保证 box 不被破坏。</p>
+  </div>
+
+  <div class="event-row">
+    <span class="pill accent">EVENT</span>
+    <code class="kind">bounded_ls_residual</code>
+    — box 饱和或 residual 不为零时触发，报告 residual 而不是伪装精确匹配。
+    <b>counter-example</b>：不要 solve 后强行 renormalize shares，那会悄悄破坏 per-instance capacity box。
+  </div>
+</section>
+
+
+<!-- ===================== Stack ===================== -->
+<section id="stack">
+  <h2><span class="tag">⊚</span>SRE 端到端装配 · 一次 <code>step()</code> 的完整链路</h2>
+  <p class="lead">8 个 adapter 只有组合起来才产生复利。<code>SREControlStack.step()</code> 把它们串成 OBSERVE→PLAN→GUARD→ALLOCATE→EXECUTE。</p>
+
+  <div class="formula">SREControlStack.step(dt, sensors, forecast_rps, replicas, zone_target, nn_proposal):
+
+  ① OBSERVING    → SignalFusion.step()          §5
+                   ↳ events: missing_sensor
+  ② PLANNING     → PredictiveAutoscaler.step()  §6
+                   ↳ events: replica_bound_active
+                 + CanaryScheduler.observe()    §2 (可选)
+                   ↳ events: rollout_rejected
+  ③ GUARDING     → SLOGuardrail.audit()         §4
+                   ↳ events: unsafe_proposal_projected
+  ④ ALLOCATING   → WeightedLoadBalancer.allocate()  §8
+                   ↳ events: bounded_ls_residual
+  ⑤ EXECUTING    → 施加 shares
+
+静态约束：
+  §1 PoolCapacityPlanner.plan()  → pool_capacity_clipped
+  §3 TopologyState.step()        → topology_state_repaired
+
+应急路径：
+  §7 FastTrafficSwitcher.plan()  → deadline_exceeded
+
+返回：
+  entry = {
+    dt, runtime: {states, events, degraded},
+    state, replicas_current, replicas_next,
+    canary, guardrail, alloc_shares, alloc_info
+  }</div>
+
+  <h3>阶段不可穿透原则</h3>
+  <ul>
+    <li><b>OBSERVE 失败 → 继续 PLAN</b>（prediction 基于降级 posterior）</li>
+    <li><b>PLAN 失败 → 继续 GUARD</b>（即便规划弱，安全仍要跑）</li>
+    <li><b>GUARD 不可跳过</b>（任何 tick 都必须过 cone/ball）</li>
+    <li><b>ALLOCATE 必须执行</b>（哪怕满 residual，也要给出"尽力而为"的分配）</li>
+  </ul>
+
+  <div class="info">详细时序图见 <a href="../claude-review/EVENT_LIFECYCLE.md"><code>claude-review/EVENT_LIFECYCLE.md §2</code></a></div>
+</section>
+
+
+<!-- ===================== Evidence ===================== -->
+<section id="evidence">
+  <h2><span class="tag">📊</span>前后证据汇总 · 9 组 before/after</h2>
+  <p class="lead">来自 <code>analysis/artifacts/SUMMARY.txt</code>（固定 seed=0，本机可复现）。</p>
+
+  <table>
+    <thead><tr><th>§</th><th>主题</th><th>Before</th><th>After</th><th>Gain</th><th>Event kind</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Lossless PDG</td><td>pos_err 148.3 m</td><td>2.125×10⁻⁶ m</td><td>×10⁸</td><td><code>pool_capacity_clipped</code></td></tr>
+      <tr><td>2</td><td>SCP</td><td>final_pos_err 8.08 m</td><td>2.87 m</td><td>×2.8</td><td><code>rollout_rejected</code></td></tr>
+      <tr><td>3</td><td>6-DoF</td><td>angle_rmse 0.0558 rad</td><td>5.7×10⁻⁷ rad</td><td>×10⁵</td><td><code>topology_state_repaired</code></td></tr>
+      <tr><td>4</td><td>Cone filter</td><td>violations 97.4%</td><td>0%</td><td>归零</td><td><code>unsafe_proposal_projected</code></td></tr>
+      <tr><td>5</td><td>EKF</td><td>vel_rmse 481.1 m/s</td><td>51.07 m/s</td><td>×9.4</td><td><code>missing_sensor</code></td></tr>
+      <tr><td>6</td><td>MPC</td><td>final_err 0.01192</td><td>3.46×10⁻⁷</td><td>×3.4×10⁴</td><td><code>replica_bound_active</code></td></tr>
+      <tr><td>7</td><td>Flip</td><td>final_pitch 36.37°</td><td>0°</td><td>归零</td><td><code>deadline_exceeded</code></td></tr>
+      <tr><td>8</td><td>Allocation</td><td>saturation 33.75%</td><td>0%</td><td>归零</td><td><code>bounded_ls_residual</code></td></tr>
+      <tr style="background:#eff6ee;"><td>⊚</td><td>SRE 端到端</td><td>SLO 25%</td><td>10%</td><td>×2.5</td><td>综合</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note"><b>诚实的解读</b>：SRE 端到端栈用 ×1.44 的副本数（18.4→26.5）换来 ×2.5 的 SLO 稳定性——这是一个正常的 Pareto 取舍，通过 <code>q_slo / r_cost</code> 权重可滑动。</div>
+</section>
+
+
+<!-- ===================== Event Guide ===================== -->
+<section id="events">
+  <h2><span class="tag">🔔</span>Runtime Event 指南 · 8 种 kind 全景</h2>
+  <p class="lead">所有本地 event 通过 <code>sre_control/events.py</code> 的 <code>make_event()</code> 产生，四字段 schema 固定。新增 kind 必须同步 <code>EVENT_COUNTEREXAMPLES</code>。</p>
+
+  <h3>Schema</h3>
+  <div class="formula">REQUIRED_EVENT_FIELDS = ("stage", "kind", "detail", "safe_action")
+
+validate_event(event) 必须：
+  1. 四字段全存在且是非空字符串
+  2. kind ∈ EVENT_COUNTEREXAMPLES.keys()
+
+make_event(stage, kind, detail, safe_action):
+  if kind not in EVENT_COUNTEREXAMPLES:
+      raise ValueError   ← 强制配 counter-example 才能通过</div>
+
+  <h3>8 种 kind 索引</h3>
+  <table>
+    <thead><tr><th>Kind</th><th>Producer</th><th>Trigger</th><th>Safe action</th></tr></thead>
+    <tbody>
+      <tr><td><code>missing_sensor</code></td><td><code>SignalFusion.step()</code></td><td>某路观测为 None</td><td>skip update 保留 posterior prediction</td></tr>
+      <tr><td><code>rollout_rejected</code></td><td><code>CanaryScheduler.observe()</code></td><td>灰度观测烧穿 SLO 预算</td><td>trust region 缩半并冻结推进</td></tr>
+      <tr><td><code>unsafe_proposal_projected</code></td><td><code>SLOGuardrail.audit()</code></td><td>cone / magnitude 违例</td><td>只执行投影后的 action</td></tr>
+      <tr><td><code>replica_bound_active</code></td><td><code>PredictiveAutoscaler.step()</code></td><td>下一副本数打到 min/max</td><td>返回 bounded integer</td></tr>
+      <tr><td><code>deadline_exceeded</code></td><td><code>FastTrafficSwitcher.plan()</code></td><td>T_min &gt; deadline_s</td><td>冻结或走简单 rollback</td></tr>
+      <tr><td><code>bounded_ls_residual</code></td><td><code>WeightedLoadBalancer.allocate()</code></td><td>box 饱和或 residual 非零</td><td>报告 residual，不伪装精确匹配</td></tr>
+      <tr><td><code>pool_capacity_clipped</code></td><td><code>PoolCapacityPlanner.plan()</code></td><td>预测需求超过 max 容量</td><td>clip 到 max_capacity，暴露 shortfall</td></tr>
+      <tr><td><code>topology_state_repaired</code></td><td><code>TopologyState.step()</code></td><td>输入 quaternion 非有限/非单位</td><td>reset 或 renormalize 后再积分</td></tr>
+    </tbody>
+  </table>
+
+  <h3>栈级聚合</h3>
+  <p><code>SREControlStack.step()</code> 汇总每个 adapter 的 <code>local_events</code> 到 <code>runtime.events</code>，并按类别补上 <code>DEGRADED_*</code> 状态标签，最后合成 <code>runtime.degraded</code> 总开关。</p>
+  <div class="formula">adapter 本地 events   →   stack runtime.events
+                      →   DEGRADED_OBSERVE / _PLAN / _GUARD / _ALLOCATE
+                      →   runtime.degraded = any(DEGRADED_*)</div>
+</section>
+
+
+<!-- ===================== Event Lifecycle ===================== -->
+<section id="lifecycle">
+  <h2><span class="tag">⏱</span>事件生命周期 · 3 场景逐帧</h2>
+  <p class="lead">同一份代码在三种常见场景下的事件密度形态（完整时序图见 <a href="../claude-review/EVENT_LIFECYCLE.md"><code>EVENT_LIFECYCLE.md</code></a>）。</p>
+
+  <h3>场景 A · 常态</h3>
+  <div class="ok">
+    <b>事件密度</b>：接近 0。<br>
+    <b>健康指征</b>：<code>runtime.degraded = False</code>，<code>runtime.events = []</code> 或仅冷启动含 <code>replica_bound_active</code>。
+  </div>
+
+  <h3>场景 B · Brown-out（t=60..80s，trace 通道间歇缺失）</h3>
+  <div class="warn">
+    <b>事件密度</b>：burst，<code>missing_sensor</code> 每几 tick 一次；<code>unsafe_proposal_projected</code> 跟着升高（上游策略基于不完整观测给出过激建议）；<code>rollout_rejected</code> 可能跟随。<br>
+    <b>健康指征</b>：多个 adapter 同时出现 event；事件收敛滞后 observation 恢复 1-2 tick。
+  </div>
+
+  <h3>场景 C · Surge（t=180..200s，RPS 翻倍）</h3>
+  <div class="note">
+    <b>事件密度</b>：<code>replica_bound_active</code> 主导，随后 <code>bounded_ls_residual</code>。<br>
+    <b>健康指征</b>：<code>DEGRADED_PLAN</code> 前 1-2 拍出现，随后消失；<code>missing_sensor</code> 保持为 0。
+  </div>
+
+  <h3>共现模式 · 根因分类</h3>
+  <table>
+    <thead><tr><th>共现 kind</th><th>可能根因</th><th>推荐动作</th></tr></thead>
+    <tbody>
+      <tr><td><code>missing_sensor</code> 连续 ≥5 tick</td><td>观测链路故障</td><td>检查 Prometheus/trace pipeline，不要当业务事故</td></tr>
+      <tr><td><code>unsafe_proposal_projected</code> + <code>replica_bound_active</code></td><td>上游策略与容量预估不匹配</td><td>检查 forecast 模型与真实 RPS 的 bias</td></tr>
+      <tr><td><code>rollout_rejected</code> 单独出现</td><td>新版本带 regression</td><td>冻结灰度、启 incident</td></tr>
+      <tr><td><code>pool_capacity_clipped</code> + <code>replica_bound_active</code></td><td>容量配额全局不足</td><td>申请扩 quota，不是 autoscaler 的锅</td></tr>
+      <tr><td><code>bounded_ls_residual</code> 单独持续</td><td>zone 目标与 geometry 不匹配</td><td>检查 zone_vector 配置</td></tr>
+    </tbody>
+  </table>
+</section>
+
+
+<!-- ===================== Failure Modes ===================== -->
+<section id="failure">
+  <h2><span class="tag">🛠</span>失效模式 &amp; 降级路径</h2>
+  <p class="lead">完整矩阵见 <a href="../claude-review/FAILURE_MODES.md"><code>FAILURE_MODES.md</code></a>。这里只摘三种典型传播链路。</p>
+
+  <h3>链路 1 · 观测链失效 → 整栈降级</h3>
+  <div class="formula">sensor 失联 → SignalFusion: missing_sensor → DEGRADED_OBSERVE
+                                          ↓
+         autoscaler 基于降级 posterior → replica_bound_active
+                                          ↓
+                                       DEGRADED_PLAN
+                                          ↓
+         策略基于降级 plan → guardrail 投影 → unsafe_proposal_projected
+                                          ↓
+                                       DEGRADED_GUARD</div>
+  <div class="warn"><b>排查要点</b>：看到 runtime.events 多 kind 同时出现，<b>先追第一个时间戳</b>——单点失效会沿 observe→plan→guard→allocate 传播。</div>
+
+  <h3>链路 2 · 容量不足 → 局部降级</h3>
+  <div class="formula">forecast 跳 2× → replica_bound_active → DEGRADED_PLAN
+                                        ↓
+                forecast 满足但 zone 不均衡
+                                        ↓
+                              bounded_ls_residual → DEGRADED_ALLOCATE
+
+特征：observe 健康（missing_sensor 为空）</div>
+
+  <h3>链路 3 · 上游策略激进</h3>
+  <div class="formula">nn_proposal 越界 → unsafe_proposal_projected → DEGRADED_GUARD
+                                                       ↓
+                       下游 balancer 收到 safe_action，继续正常工作
+
+特征：只有 DEGRADED_GUARD，没有前后降级
+→ 上游模型有问题，不是运行时失控</div>
+
+  <h3>恢复优先级</h3>
+  <ol>
+    <li><b>先恢复观测</b> — 没有好的 posterior，下游全是在估错的数据上工作</li>
+    <li><b>再恢复约束</b> — guardrail / pool 的正确性决定了系统的安全包络</li>
+    <li><b>最后恢复优化</b> — autoscaler / canary 的优化质量是"锦上添花"</li>
+  </ol>
+  <div class="info">和星舰回收里"传感器比发动机精调更重要"是同一道理。</div>
+</section>
+
+
+<!-- ===================== Architecture ===================== -->
+<section id="architecture">
+  <h2><span class="tag">🏛</span>5 视图架构</h2>
+  <p class="lead">Context / Container / Component / Runtime / Deployment。完整 mermaid 图见 <a href="../claude-review/DETAILED_ARCHITECTURE.md"><code>DETAILED_ARCHITECTURE.md</code></a>。</p>
+
+  <h3>Container 视图 · 五层职责</h3>
+  <table>
+    <thead><tr><th>层</th><th>目录</th><th>职责</th><th>被谁依赖</th></tr></thead>
+    <tbody>
+      <tr><td>源材料</td><td><code>DOC/spacex/</code></td><td>只读公开材料（OCR 截图 + 原文叙述）</td><td>被 starship/ 参考</td></tr>
+      <tr><td>数学实现</td><td><code>starship/</code></td><td>把 8 支柱落成可运行代码</td><td>被 sre_control/ + analysis/ + tests/</td></tr>
+      <tr><td>SRE 迁移</td><td><code>sre_control/</code></td><td>把星舰原语翻译成 SRE 词汇</td><td>被 tests/ + examples/ + analysis/s09</td></tr>
+      <tr><td>证据</td><td><code>analysis/</code></td><td>9 组 before/after 证据</td><td>被 docs/ + SUMMARY.txt</td></tr>
+      <tr><td>知识</td><td><code>docs/</code></td><td>机制 / 契约 / 运行态 / 事件 / 评审</td><td>被 agent + 人类 reviewer</td></tr>
+    </tbody>
+  </table>
+
+  <h3>依赖方向护栏（必守）</h3>
+  <div class="formula">allowed   : starship/*    ← 不 import sre_control/
+allowed   : sre_control/* ← 可 import starship/
+allowed   : sre_control/events.py ← 不 import starship/
+disallowed: starship/*    ← 不能 import sre_control/events
+disallowed: docs/*        ← 无运行时代码</div>
+
+  <div class="warn">
+    <b>为什么护栏这么严</b>：
+    <ul>
+      <li>星舰层被迁移层污染后，任何 SRE 语义改名会传染到物理层</li>
+      <li><code>events.py</code> 是迁移层内部契约，星舰层依赖它后会被未来生产级 GNC 代码绑死</li>
+    </ul>
+  </div>
+
+  <h3>建议的依赖方向护栏测试（下轮 Codex 补）</h3>
+  <pre><span class="cm"># tests/test_import_graph.py</span>
+<span class="kw">import</span> ast, pathlib
+
+<span class="kw">def</span> test_starship_does_not_import_sre_control():
+    <span class="kw">for</span> p <span class="kw">in</span> pathlib.Path(<span class="st">"starship"</span>).rglob(<span class="st">"*.py"</span>):
+        tree = ast.parse(p.read_text(encoding=<span class="st">"utf-8"</span>))
+        <span class="kw">for</span> node <span class="kw">in</span> ast.walk(tree):
+            <span class="kw">if</span> <span class="nm">isinstance</span>(node, ast.ImportFrom):
+                <span class="kw">assert</span> <span class="kw">not</span> (node.module <span class="kw">or</span> <span class="st">""</span>).startswith(<span class="st">"sre_control"</span>), \
+                    f<span class="st">"{p} illegally imports {node.module}"</span></pre>
+</section>
+
+
+<!-- ===================== Contracts ===================== -->
+<section id="contracts">
+  <h2><span class="tag">📜</span>API 契约 + 运行态（入口）</h2>
+  <p class="lead">不重复全部内容，给 agent 一条最短路径：</p>
+
+  <table>
+    <thead><tr><th>你想做什么</th><th>先看哪份文档</th></tr></thead>
+    <tbody>
+      <tr><td>读/改某个 adapter 的 public method</td><td><a href="../API_CONTRACTS.md"><code>API_CONTRACTS.md §2</code></a></td></tr>
+      <tr><td>加一种 runtime event kind</td><td><a href="../EVENT_SCHEMA.md"><code>EVENT_SCHEMA.md</code></a> + <code>EVENT_COUNTEREXAMPLES</code></td></tr>
+      <tr><td>改降级/回退路径</td><td><a href="../RUNTIME_STATES.md"><code>RUNTIME_STATES.md</code></a></td></tr>
+      <tr><td>改架构（加层、改依赖）</td><td><a href="../claude-review/DETAILED_ARCHITECTURE.md"><code>claude-review/DETAILED_ARCHITECTURE.md</code></a></td></tr>
+      <tr><td>想找公式 / 代码对应</td><td><a href="../FORMULA_MAP.md"><code>FORMULA_MAP.md</code></a></td></tr>
+      <tr><td>想理解"为什么 ln m"之类的推导</td><td><a href="../EQUATION_DEEP_DIVE.md"><code>EQUATION_DEEP_DIVE.md</code></a></td></tr>
+      <tr><td>想找"上次评审发现了什么"</td><td><a href="../claude-review/REVIEW_OF_CODEX_SESSION.md"><code>claude-review/REVIEW_OF_CODEX_SESSION.md</code></a></td></tr>
+    </tbody>
+  </table>
+
+  <h3>改 API 的必经顺序</h3>
+  <ol>
+    <li>在 PR 描述或代码注释里写 RFC 说明</li>
+    <li>更新 <code>docs/API_CONTRACTS.md</code> 对应小节</li>
+    <li>同步 <code>claude-review/DETAILED_ARCHITECTURE.md</code> 的 container view</li>
+    <li>最后改代码</li>
+  </ol>
+
+  <h3>改 Event 的必经顺序</h3>
+  <ol>
+    <li>改 <code>sre_control/events.py::EVENT_COUNTEREXAMPLES</code></li>
+    <li>改产生 event 的 adapter 代码路径</li>
+    <li>改 <code>tests/test_event_schema.py</code> 让新 kind 被真实触发</li>
+    <li>改 <code>docs/EVENT_SCHEMA.md</code> 和本 HTML 的 <a href="#events">§Runtime Event 指南</a></li>
+  </ol>
+</section>
+
+
+<!-- ===================== Invariants ===================== -->
+<section id="invariants">
+  <h2><span class="tag">🛡</span>三大不变量 · 本轮评审确认</h2>
+  <p class="lead">下一轮 agent 不能破坏的 3 件事。每条都有验证方法和后果。</p>
+
+  <h3>Invariant 1 · 依赖方向单向</h3>
+  <div class="ok">
+    <b>规则</b>：<code>starship/</code> 不得 import <code>sre_control/</code>。<br>
+    <b>验证</b>：<code>grep -rE "^(from|import) sre_control" starship/</code> 必须为空。<br>
+    <b>后果</b>：违反 → 物理层被 SRE 语义污染 → 未来生产化时 coupling 难以拆。
+  </div>
+
+  <h3>Invariant 2 · 事件 schema 封闭</h3>
+  <div class="ok">
+    <b>规则</b>：新 kind 必须同步 <code>EVENT_COUNTEREXAMPLES</code> + <code>EVENT_SCHEMA.md</code> + 测试。<br>
+    <b>验证</b>：<code>test_all_runtime_events_follow_shared_schema</code> 必须 pass。<br>
+    <b>后果</b>：违反 → schema/实现/测试/文档四处 drift → 下游消费者误判事件类型。
+  </div>
+
+  <h3>Invariant 3 · 降级路径对齐</h3>
+  <div class="ok">
+    <b>规则</b>：<code>runtime.degraded = True</code> 必然伴随至少一个 <code>DEGRADED_*</code> 状态和至少一条 event。<br>
+    <b>验证</b>：<code>test_sre_stack_*_upward</code> 系列（5 条）必须 pass。<br>
+    <b>后果</b>：违反 → 降级被静默 → 告警/人值 on-call 漏触发。
+  </div>
+
+  <div class="note">
+    <b>上一轮评审发现的违反</b>：<code>DEGRADED_GUARD</code> 曾漏加，已在 <code>41cdea8</code> 修复。这条经验说明：**栈级状态和事件必须同时更新，单独更新任一都是漏洞**。
+  </div>
+</section>
+
+
+<!-- ===================== Handoff ===================== -->
+<section id="handoff">
+  <h2><span class="tag">🤝</span>接手清单 · 15 分钟完成环境核查</h2>
+
+  <h3>环境</h3>
+  <ul>
+    <li>分支 <code>spacex-session</code>，最新 commit 应该是 <code>59389ee review: ship claude-review handoff package with detailed architecture</code></li>
+    <li>Python ≥ 3.9（本地验证过 3.12）</li>
+    <li><code>pip install -r requirements.txt</code> 已执行</li>
+  </ul>
+
+  <h3>质量门（应全绿）</h3>
+  <table>
+    <thead><tr><th>命令</th><th>预期</th><th>耗时</th></tr></thead>
+    <tbody>
+      <tr><td><code>python -m pytest tests -q</code></td><td><b>33 passed</b></td><td>~1 s</td></tr>
+      <tr><td><code>python -m analysis.run_all</code></td><td>All 9 studies finished</td><td>~3 s</td></tr>
+      <tr><td><code>python -m examples.demo_sre_loop</code></td><td>12 行 tick trace</td><td>&lt;1 s</td></tr>
+      <tr><td><code>python -m examples.demo_powered_descent</code></td><td>PDG 末态 ~2e-6 m</td><td>~0.5 s</td></tr>
+      <tr><td><code>python -m examples.demo_catch_phase</code></td><td>末态 lateral_error 稳定</td><td>~1 s</td></tr>
+      <tr><td><code>python -m scripts.build_kb</code></td><td>16 assets 重建</td><td>~60 s</td></tr>
+    </tbody>
+  </table>
+
+  <h3>阅读顺序（20 分钟预算）</h3>
+  <ol>
+    <li>2 min — <a href="../claude-review/HANDOFF_CHECKLIST.md"><code>claude-review/HANDOFF_CHECKLIST.md</code></a></li>
+    <li>5 min — <a href="../claude-review/REVIEW_OF_CODEX_SESSION.md"><code>REVIEW_OF_CODEX_SESSION.md</code></a> §6 发现 + §8 结论</li>
+    <li>8 min — <a href="../claude-review/DETAILED_ARCHITECTURE.md"><code>DETAILED_ARCHITECTURE.md</code></a> §2 container + §4 runtime + §6 依赖护栏</li>
+    <li>5 min — <a href="../claude-review/EVENT_LIFECYCLE.md"><code>EVENT_LIFECYCLE.md</code></a> §3 三场景</li>
+  </ol>
+
+  <h3>第一个 commit 的约定</h3>
+  <div class="info">
+    在你接手后的 <b>第一个 commit message 末尾写一行</b>：
+    <pre>Acknowledged: docs/claude-review/README.md</pre>
+    这是一个轻量级的"接手仪式"，防止 agent 跳过前一轮评审直接改代码。
+  </div>
+</section>
+
+
+<!-- ===================== Next Work ===================== -->
+<section id="next">
+  <h2><span class="tag">🚀</span>演化蓝图 · 下一轮可以做什么</h2>
+  <p class="lead">按颗粒度分 3 档。每一档都是单原子 commit 的量级。</p>
+
+  <h3>小（非阻塞 / 清理）</h3>
+  <ul>
+    <li><code>test_event_schema.py</code> 的 <code>"Do not" in counterexample</code> 字符串签名脆</li>
+    <li><code>API_CONTRACTS.md §2.9 CatchController</code> 放在 SRE 文档里容易误导，加"属 starship 物理层"说明</li>
+    <li><code>ARCHITECTURE.md</code> 与 <code>CODEX_HANDOFF.md</code> 都提到 CatchController wrapper 建议，收敛到 handoff 一处</li>
+  </ul>
+
+  <h3>中（单 commit 可完成）</h3>
+  <ul>
+    <li>加 <code>tests/test_import_graph.py</code> 守依赖方向（见 §5 视图架构末尾的样例）</li>
+    <li>加 <code>analysis/s10_failure_trace.py</code>，用 <code>runtime.events</code> 做 failure-state before/after 可视化</li>
+    <li>给 <code>SignalFusion</code> 加 <code>innovation_gating</code>，防 outlier 观测污染 posterior</li>
+    <li>给 <code>SREControlStack.step()</code> 加 try/except，把 adapter 异常转成新 kind <code>stability_violation</code></li>
+  </ul>
+
+  <h3>大（跨 session）</h3>
+  <ul>
+    <li>新增 <code>starship/stability_monitor.py</code>（§2.1 Lyapunov dV/dt ≤ 0 监视器），并同步 SRE 侧的指标自激震荡识别</li>
+    <li>用 <a href="./knowledge-base.html">本 V2 知识库</a>的模板整体重排 V1 的 <a href="../knowledge-base.html">docs/knowledge-base.html</a></li>
+  </ul>
+
+  <h3>评估"可以合并"的签收标准</h3>
+  <ol>
+    <li>能复现 <code>analysis/artifacts/SUMMARY.txt</code> 里的所有 (before, after) 数字（误差 ±5%）</li>
+    <li>P0 审查点无 correctness issue（见 <a href="../claude-review/REVIEW_OF_CODEX_SESSION.md"><code>REVIEW_OF_CODEX_SESSION.md §3.3</code></a>）</li>
+    <li>三大不变量不被破坏（依赖方向 / 事件 schema / 降级路径对齐）</li>
+    <li>33 tests 仍然 pass，并为新加功能补至少一条测试</li>
+  </ol>
+</section>
+
+</article>
+</main>
+
+<footer>
+  <p>starship-recovery · knowledge base <b>v2 · 2026-05-12</b> · generated at commit <code>59389ee</code></p>
+  <p>本 HTML 与 <a href="../claude-review/README.md"><code>docs/claude-review/</code></a> 是一对接手包：可视化入口在这里，详尽细节在 claude-review/。</p>
+</footer>
+
+</body>
+</html>
