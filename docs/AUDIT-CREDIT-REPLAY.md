@@ -28,6 +28,18 @@ replay.replay_jsonl(audit_jsonl_text)
 top = tca.attribute(incident_tick=1234, window=60, top_k=10)
 ```
 
+For live log tailing, use `StreamingAuditCreditReplay`:
+
+```python
+from attention_residuals.sre_math import StreamingAuditCreditReplay
+
+tail = StreamingAuditCreditReplay(replay, "audit.jsonl", missing_ok=True)
+new_records = tail.poll()
+```
+
+See [`STREAMING-AUDIT-REPLAY.md`](./STREAMING-AUDIT-REPLAY.md) for the
+cursor contract and rotation behavior.
+
 ## Record Shape
 
 The replay adapter expects the same shape emitted by `AuditTrail`:

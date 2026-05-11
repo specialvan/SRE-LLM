@@ -161,6 +161,7 @@
     <li><a href="#s23"><span class="n">23</span>软标签 · 归因修正的自学习外壳</a></li>
     <li><a href="#s24"><span class="n">24</span>Audit JSONL · 事故归因回放</a></li>
     <li><a href="#s25"><span class="n">25</span>指标源接入 · Prometheus / OpenTelemetry</a></li>
+    <li><a href="#s26"><span class="n">26</span>Streaming Audit Replay · JSONL tail cursor</a></li>
     <li><a href="#appendix"><span class="n">A</span>附录 · 公式索引 / FAQ</a></li>
   </ol>
 </aside>
@@ -2964,6 +2965,77 @@ raw:      value / scale</div>
     Demo：<code>python -m examples.demo_metric_source_replay</code>。示例使用 fake Prometheus transport 与 OTLP JSON，
     但走的是同一套生产接口：指标源 → context → AuditTrail → AuditCreditReplay → TemporalCreditAssigner。
   </p>
+</section>
+
+<section id="s26">
+  <h2><span class="tag">26</span>Streaming Audit Replay · JSONL tail cursor</h2>
+  <p class="lead">
+    Round 10 把 Round 8 的离线 audit replay 推到在线 tail 模式：控制面持续 append JSONL，
+    `StreamingAuditCreditReplay.poll()` 只消费新增且换行完整的记录，并把它们送进 temporal credit。
+  </p>
+
+  <figure>
+    <svg viewBox="0 0 920 260" role="img" aria-label="Streaming audit replay tail cursor">
+      <defs>
+        <marker id="arr26" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#1b2430"/>
+        </marker>
+      </defs>
+      <rect x="25" y="52" width="165" height="72" rx="8" fill="#eaf1fa" stroke="#1f5fa3"/>
+      <text x="108" y="82" text-anchor="middle" font-weight="700">AuditTrail JSONL</text>
+      <text x="108" y="104" text-anchor="middle" font-size="12" class="muted">append-only log</text>
+
+      <rect x="248" y="35" width="190" height="105" rx="8" fill="#fff" stroke="#394557"/>
+      <text x="343" y="66" text-anchor="middle" font-weight="700">AuditReplayCursor</text>
+      <text x="343" y="91" text-anchor="middle" font-size="12" class="muted">offset · pending · resets</text>
+      <text x="343" y="113" text-anchor="middle" font-size="12" class="muted">byte-stable tail state</text>
+
+      <rect x="505" y="35" width="190" height="105" rx="8" fill="#fdf3ea" stroke="#b4411b"/>
+      <text x="600" y="66" text-anchor="middle" font-weight="700">complete lines only</text>
+      <text x="600" y="91" text-anchor="middle" font-size="12" class="muted">partial JSON stays buffered</text>
+      <text x="600" y="113" text-anchor="middle" font-size="12" class="muted">bad JSON fails loudly</text>
+
+      <rect x="760" y="52" width="140" height="72" rx="8" fill="#eff6ee" stroke="#2f7d3a"/>
+      <text x="830" y="82" text-anchor="middle" font-weight="700">TemporalCredit</text>
+      <text x="830" y="104" text-anchor="middle" font-size="12" class="muted">incident blame</text>
+
+      <rect x="248" y="175" width="447" height="54" rx="8" fill="#f7f3ea" stroke="#c6b98b"/>
+      <text x="472" y="198" text-anchor="middle" font-size="13">If file size &lt; offset: treat as truncation / rotation and reset cursor.</text>
+      <text x="472" y="218" text-anchor="middle" font-size="13">If file is missing and missing_ok=True: poll returns zero.</text>
+
+      <g stroke="#1b2430" fill="none" stroke-width="1.8">
+        <path d="M190 88 L248 88" marker-end="url(#arr26)"/>
+        <path d="M438 88 L505 88" marker-end="url(#arr26)"/>
+        <path d="M695 88 L760 88" marker-end="url(#arr26)"/>
+        <path d="M472 175 C472 145, 343 150, 343 140" marker-end="url(#arr26)"/>
+      </g>
+    </svg>
+    <figcaption>图 30 · streaming replay 的关键不是更复杂的归因，而是可靠地界定“哪些日志行已经完整可消费”。</figcaption>
+  </figure>
+
+  <h3>26.1 API</h3>
+  <div class="sig">
+    <span class="file">attention_residuals/sre_math.py</span><br/>
+    <span class="mono">
+    StreamingAuditCreditReplay(replay, path, encoding='utf-8', missing_ok=False, cursor=None)<br/>
+    StreamingAuditCreditReplay.poll() -&gt; int<br/>
+    AuditReplayCursor(path, offset=0, pending=b'', resets=0)
+    </span>
+  </div>
+
+  <p>
+    这个接口保持与 `AuditCreditReplay` 同构：loss mapping、weight normalisation、context validation
+    都沿用已有路径；新增部分只负责 offset、partial line 与 truncation reset。
+  </p>
+
+  <h3>26.2 Guardrails</h3>
+  <ul>
+    <li>byte offset 避免文本解码导致的 seek 偏移问题。</li>
+    <li>没有换行的尾部记录会留在 `pending`，直到下一次 poll 看到 newline。</li>
+    <li>`AuditReplayCursor` 可以由外部持久化，再以 `cursor=` 传回 tailer 恢复 offset。</li>
+    <li>文件被截断时清空 `pending` 并把 `offset` 归零，`resets` 用于审计。</li>
+    <li>Demo：<code>python -m examples.demo_streaming_audit_replay</code>。</li>
+  </ul>
 </section>
 
 <!-- ========================= Appendix ========================= -->

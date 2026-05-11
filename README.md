@@ -38,6 +38,10 @@
 > — 把 `AuditTrail.to_jsonl()` 直接重放进 `TemporalCreditAssigner`，用于离线复盘或流式事故归因。
 > Demo：[`examples/demo_audit_credit_replay.py`](./examples/demo_audit_credit_replay.py)。
 >
+> **🪵 流式 Audit tail：** [`docs/STREAMING-AUDIT-REPLAY.md`](./docs/STREAMING-AUDIT-REPLAY.md)
+> — 以 byte cursor 增量消费 audit JSONL，只在完整换行后回放，支持截断 reset 与缺失文件策略。
+> Demo：[`examples/demo_streaming_audit_replay.py`](./examples/demo_streaming_audit_replay.py)。
+>
 > **📡 指标源接入：** [`docs/METRIC-SOURCES.md`](./docs/METRIC-SOURCES.md)
 > — 用标准库适配 Prometheus instant query 与 OpenTelemetry OTLP JSON，把真实指标转成 audit context。
 > Demo：[`examples/demo_metric_source_replay.py`](./examples/demo_metric_source_replay.py)。

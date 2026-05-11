@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pytest
 
 from attention_residuals.sre_control import SignalSpec
 from attention_residuals.sre_math import (
     AuditCreditReplay,
+    AuditReplayCursor,
     CreditEntry,
     FTRLLearner,
     JacobianContractionMonitor,
@@ -15,6 +18,7 @@ from attention_residuals.sre_math import (
     MetricLossSpec,
     MultiViewCombiner,
     ScaleInvariantNormalizer,
+    StreamingAuditCreditReplay,
     TemperatureScheduler,
     TemporalCreditAssigner,
     ViewSpec,
@@ -421,6 +425,109 @@ def test_audit_credit_replay_rejects_bad_records():
                               "context": {"loss": 1.0}})
     with pytest.raises(ValueError):
         replay.replay_jsonl("{bad-json}")
+
+
+def _audit_jsonl_line(step: int, loss: float = 1.0) -> str:
+    return json.dumps({
+        "step": step,
+        "signals": ["a"],
+        "weights": [1.0],
+        "context": {"loss": loss},
+    })
+
+
+def _streaming_replay(path):
+    tca = TemporalCreditAssigner(decay=1.0)
+    replay = AuditCreditReplay(
+        tca,
+        MetricLossMapper({"a": MetricLossSpec("loss", mode="raw")}),
+    )
+    return tca, replay, StreamingAuditCreditReplay(replay, str(path))
+
+
+def test_streaming_audit_replay_polls_only_appended_lines(tmp_path):
+    path = tmp_path / "audit.jsonl"
+    tca, replay, tail = _streaming_replay(path)
+    path.write_text(_audit_jsonl_line(0, 1.0) + "\n", encoding="utf-8")
+
+    assert tail.poll() == 1
+    assert tail.poll() == 0
+
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(_audit_jsonl_line(1, 2.0) + "\n")
+    assert tail.poll() == 1
+    assert replay.replayed == 2
+    assert tca.attribute(incident_tick=1, top_k=1)[0].loss == pytest.approx(2.0)
+
+
+def test_streaming_audit_replay_waits_for_complete_line(tmp_path):
+    path = tmp_path / "audit.jsonl"
+    _tca, replay, tail = _streaming_replay(path)
+    path.write_text(_audit_jsonl_line(0, 1.0), encoding="utf-8")
+
+    assert tail.poll() == 0
+    assert replay.replayed == 0
+    assert tail.cursor.pending
+
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write("\n")
+    assert tail.poll() == 1
+    assert replay.replayed == 1
+    assert tail.cursor.pending == b""
+
+
+def test_streaming_audit_replay_resets_after_truncation(tmp_path):
+    path = tmp_path / "audit.jsonl"
+    tca, _replay, tail = _streaming_replay(path)
+    path.write_text(_audit_jsonl_line(0, 1.0) + "\n", encoding="utf-8")
+    assert tail.poll() == 1
+
+    tail.cursor.offset = 10_000
+    path.write_text(_audit_jsonl_line(2, 3.0) + "\n", encoding="utf-8")
+
+    assert tail.poll() == 1
+    assert tail.cursor.resets == 1
+    assert tca.attribute(incident_tick=2, top_k=1)[0].loss == pytest.approx(3.0)
+
+
+def test_streaming_audit_replay_missing_file_policy(tmp_path):
+    path = tmp_path / "missing.jsonl"
+    _tca, replay, _tail = _streaming_replay(path)
+    missing_ok_tail = StreamingAuditCreditReplay(replay, str(path), missing_ok=True)
+
+    assert missing_ok_tail.poll() == 0
+    with pytest.raises(FileNotFoundError):
+        StreamingAuditCreditReplay(replay, str(path)).poll()
+
+
+def test_streaming_audit_replay_bad_json_does_not_advance_cursor(tmp_path):
+    path = tmp_path / "audit.jsonl"
+    _tca, replay, tail = _streaming_replay(path)
+    path.write_text("{bad-json}\n", encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        tail.poll()
+    assert tail.cursor.offset == 0
+    assert replay.replayed == 0
+
+    path.write_text(_audit_jsonl_line(0, 1.0) + "\n", encoding="utf-8")
+    assert tail.poll() == 1
+    assert replay.replayed == 1
+
+
+def test_streaming_audit_replay_accepts_restored_cursor(tmp_path):
+    path = tmp_path / "audit.jsonl"
+    first = _audit_jsonl_line(0, 1.0) + "\n"
+    second = _audit_jsonl_line(1, 2.0) + "\n"
+    path.write_text(first + second, encoding="utf-8")
+    cursor = AuditReplayCursor(path=str(path), offset=len(first.encode("utf-8")))
+
+    tca, replay, _tail = _streaming_replay(path)
+    restored_tail = StreamingAuditCreditReplay(replay, str(path), cursor=cursor)
+
+    assert restored_tail.poll() == 1
+    assert replay.replayed == 1
+    assert tca.attribute(incident_tick=1, top_k=1)[0].loss == pytest.approx(2.0)
 
 
 # ---------------------------------------------------------------------------

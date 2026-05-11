@@ -62,6 +62,7 @@ from .sre_math import (
     JacobianContractionMonitor,
     CreditEntry, TemporalCreditAssigner,
     LossMapper, MetricLossSpec, MetricLossMapper, AuditCreditReplay,
+    AuditReplayCursor, StreamingAuditCreditReplay,
     WassersteinDriftDetector,
 )
 from . import sre_metrics
@@ -114,6 +115,7 @@ __all__ = [
     "JacobianContractionMonitor",
     "CreditEntry", "TemporalCreditAssigner",
     "LossMapper", "MetricLossSpec", "MetricLossMapper", "AuditCreditReplay",
+    "AuditReplayCursor", "StreamingAuditCreditReplay",
     "WassersteinDriftDetector",
     # Metric source adapters
     "sre_metrics",

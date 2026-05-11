@@ -20,6 +20,7 @@ can be dropped into a control-plane service without a PyTorch dependency.
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
@@ -755,6 +756,83 @@ class AuditCreditReplay:
             return self.replay_jsonl(fh.read())
 
 
+@dataclass
+class AuditReplayCursor:
+    """Byte cursor for incremental AuditTrail JSONL replay."""
+
+    path: str
+    offset: int = 0
+    pending: bytes = b""
+    resets: int = 0
+
+
+class StreamingAuditCreditReplay:
+    """Tail a JSONL audit log and replay only complete appended records."""
+
+    def __init__(
+        self,
+        replay: AuditCreditReplay,
+        path: str,
+        *,
+        encoding: str = "utf-8",
+        missing_ok: bool = False,
+        cursor: Optional[AuditReplayCursor] = None,
+    ) -> None:
+        self.replay = replay
+        if cursor is not None and cursor.path != path:
+            raise ValueError("cursor path must match path")
+        self.cursor = cursor if cursor is not None else AuditReplayCursor(path=path)
+        self.encoding = encoding
+        self.missing_ok = bool(missing_ok)
+
+    def poll(self) -> int:
+        """Read newly appended complete JSONL records and return replay count."""
+
+        path = self.cursor.path
+        if not os.path.exists(path):
+            if self.missing_ok:
+                return 0
+            raise FileNotFoundError(path)
+
+        size = os.path.getsize(path)
+        if size < self.cursor.offset:
+            self.cursor.offset = 0
+            self.cursor.pending = b""
+            self.cursor.resets += 1
+
+        with open(path, "rb") as fh:
+            fh.seek(self.cursor.offset)
+            chunk = fh.read()
+            next_offset = fh.tell()
+
+        if not chunk:
+            return 0
+
+        buffer = self.cursor.pending + chunk
+        raw_lines = buffer.split(b"\n")
+        if buffer.endswith(b"\n"):
+            next_pending = b""
+        else:
+            next_pending = raw_lines.pop()
+
+        records: List[Mapping[str, Any]] = []
+        for lineno, raw in enumerate(raw_lines, start=1):
+            stripped = raw.strip()
+            if not stripped:
+                continue
+            try:
+                decoded = stripped.decode(self.encoding)
+                record = json.loads(decoded)
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise ValueError(f"invalid JSONL record in {path!r} during poll line {lineno}") from exc
+            records.append(record)
+
+        count = self.replay.replay_records(records)
+        self.cursor.offset = next_offset
+        self.cursor.pending = next_pending
+        return count
+
+
 # ---------------------------------------------------------------------------
 # §18  Wasserstein drift  —  alternative to KL for weight drift
 # ---------------------------------------------------------------------------
@@ -858,6 +936,7 @@ __all__ = [
     "JacobianContractionMonitor",
     "CreditEntry", "TemporalCreditAssigner",
     "LossMapper", "MetricLossSpec", "MetricLossMapper", "AuditCreditReplay",
+    "AuditReplayCursor", "StreamingAuditCreditReplay",
     # §18
     "WassersteinDriftDetector",
 ]
