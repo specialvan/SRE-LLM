@@ -95,4 +95,4 @@ def test_every_event_kind_has_a_specific_counterexample():
     for kind, counterexample in EVENT_COUNTEREXAMPLES.items():
         assert kind
         assert len(counterexample) >= 60
-        assert "Do not" in counterexample
+        assert counterexample.startswith(("Do not", "Avoid"))

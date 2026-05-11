@@ -12,26 +12,30 @@
 | [`EVENT_LIFECYCLE.md`](./EVENT_LIFECYCLE.md) | 一个 tick 的事件时序图 + 3 种典型场景（正常/brown-out/surge）的逐帧追踪 |
 | [`FAILURE_MODES.md`](./FAILURE_MODES.md) | 每个模块的失效模式、检测手段、降级路径、恢复条件 |
 | [`HANDOFF_CHECKLIST.md`](./HANDOFF_CHECKLIST.md) | Codex 接手前逐项检查表（读文件顺序 / 复现命令 / 预期输出 / 已知不阻塞项） |
+| [`CODEX_TRIAGE.md`](./CODEX_TRIAGE.md) | Codex 对本评审包的二次梳理：打回点、已修事实、漂移口径、下一步队列 |
 
 ## 阅读顺序
 
-**Codex 只有 20 分钟预算怎么读？**
+**Codex 只有 25 分钟预算怎么读？**
 
 1. [`HANDOFF_CHECKLIST.md`](./HANDOFF_CHECKLIST.md) — 2 分钟，看跑哪几条命令应该看到什么
-2. [`REVIEW_OF_CODEX_SESSION.md`](./REVIEW_OF_CODEX_SESSION.md) 第 6、8 节 — 5 分钟，看发现的问题和结论
-3. [`DETAILED_ARCHITECTURE.md`](./DETAILED_ARCHITECTURE.md) §2/§4 — 8 分钟，看 container + runtime 两个视图
-4. [`EVENT_LIFECYCLE.md`](./EVENT_LIFECYCLE.md) §3 — 5 分钟，看 brown-out 场景逐帧事件
+2. [`CODEX_TRIAGE.md`](./CODEX_TRIAGE.md) — 5 分钟，看哪些打回点已修、哪些仍是 backlog
+3. [`REVIEW_OF_CODEX_SESSION.md`](./REVIEW_OF_CODEX_SESSION.md) 第 6、8 节 — 5 分钟，看原始发现和结论
+4. [`DETAILED_ARCHITECTURE.md`](./DETAILED_ARCHITECTURE.md) §2/§4 — 8 分钟，看 container + runtime 两个视图
+5. [`EVENT_LIFECYCLE.md`](./EVENT_LIFECYCLE.md) §3 — 5 分钟，看 brown-out 场景逐帧事件
 
-**有 60 分钟全读？** 按上面顺序 1→2→3→4→[`FAILURE_MODES.md`](./FAILURE_MODES.md)。
+**有 60 分钟全读？** 按上面顺序 1→2→3→4→5→[`FAILURE_MODES.md`](./FAILURE_MODES.md)。
 
 ## 本轮移交的主要结论
 
 | 维度 | 状态 |
 | --- | --- |
-| 质量门 | 33 passed / 9 studies / HTML well-formed / JSON OK |
+| 质量门 | 35 passed / 9 studies / HTML well-formed / JSON OK |
 | 架构方向 | ✅ 依赖方向正确，starship 不反向依赖 sre_control |
 | 可观测性 | ✅ 8 种 runtime event 已与 adapter 一一对应 |
 | 评审发现 | 1 中等（已修）+ 3 非阻塞建议 |
+| Codex triage | ✅ 已补 [`CODEX_TRIAGE.md`](./CODEX_TRIAGE.md)，标注已修项、未修项和评审包口径漂移 |
+| 依赖护栏 | ✅ 已补 `tests/test_import_graph.py` 固化 `starship/` 不反向依赖 `sre_control/` |
 | 下轮建议 | `analysis/s10_failure_trace.py` 把 events 本身变成 before/after 图 |
 
 ## Claude Reviewer 的关注点（给 Codex）

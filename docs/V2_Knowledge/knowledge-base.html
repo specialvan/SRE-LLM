@@ -145,7 +145,7 @@
     移交：<code>spacex/docs/claude-review/</code>
   </div>
   <div class="banner-row">
-    <div class="chip"><b>tests</b> 33 passed</div>
+    <div class="chip"><b>tests</b> 35 passed</div>
     <div class="chip"><b>studies</b> 9 finished</div>
     <div class="chip"><b>HTML</b> well-formed</div>
     <div class="chip"><b>events</b> 8 kinds</div>
@@ -804,7 +804,7 @@ disallowed: docs/*        ← 无运行时代码</div>
 
   <h3>环境</h3>
   <ul>
-    <li>分支 <code>spacex-session</code>，最新 commit 应该是 <code>59389ee review: ship claude-review handoff package with detailed architecture</code></li>
+    <li>分支 <code>spacex-session</code>，最近日志应包含 <code>e2658f6</code>、<code>59389ee</code>、<code>41cdea8</code> 三个关键交接 / 评审 commit；若已有后续 triage commit，出现在它们上方也正常</li>
     <li>Python ≥ 3.9（本地验证过 3.12）</li>
     <li><code>pip install -r requirements.txt</code> 已执行</li>
   </ul>
@@ -813,7 +813,7 @@ disallowed: docs/*        ← 无运行时代码</div>
   <table>
     <thead><tr><th>命令</th><th>预期</th><th>耗时</th></tr></thead>
     <tbody>
-      <tr><td><code>python -m pytest tests -q</code></td><td><b>33 passed</b></td><td>~1 s</td></tr>
+      <tr><td><code>python -m pytest tests -q</code></td><td><b>35 passed</b></td><td>~1 s</td></tr>
       <tr><td><code>python -m analysis.run_all</code></td><td>All 9 studies finished</td><td>~3 s</td></tr>
       <tr><td><code>python -m examples.demo_sre_loop</code></td><td>12 行 tick trace</td><td>&lt;1 s</td></tr>
       <tr><td><code>python -m examples.demo_powered_descent</code></td><td>PDG 末态 ~2e-6 m</td><td>~0.5 s</td></tr>
@@ -846,8 +846,8 @@ disallowed: docs/*        ← 无运行时代码</div>
 
   <h3>小（非阻塞 / 清理）</h3>
   <ul>
-    <li><code>test_event_schema.py</code> 的 <code>"Do not" in counterexample</code> 字符串签名脆</li>
-    <li><code>API_CONTRACTS.md §2.9 CatchController</code> 放在 SRE 文档里容易误导，加"属 starship 物理层"说明</li>
+    <li><code>test_event_schema.py</code> 的 counter-example 文案签名已放宽为 <code>Do not</code> / <code>Avoid</code> 前缀</li>
+    <li><code>API_CONTRACTS.md §2.9 CatchController</code> 已说明属 <code>starship/</code> 物理层，不反向依赖 SRE event schema</li>
     <li><code>ARCHITECTURE.md</code> 与 <code>CODEX_HANDOFF.md</code> 都提到 CatchController wrapper 建议，收敛到 handoff 一处</li>
   </ul>
 

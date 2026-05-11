@@ -2,7 +2,7 @@
 
 - 分支: `spacex-session`
 - 更新时间: 2026-05-12
-- 上一次编辑者: Claude Reviewer (commit `59389ee`)
+- 上一次编辑者: Codex triage (Claude review follow-up)
 - 作用: 给下一位 Codex 的交接页，重点是当前状态、证据、风险和下一步
 
 ## 当前状态
@@ -13,9 +13,9 @@
 - `sre_control/` 已经有同构适配层和端到端 `SREControlStack`
 - `analysis/` 里有 8 组单主题 + 1 组端到端 before/after 证据和总表
 - `docs/` 里已经有架构、契约、运行态、事件 schema、知识库和审查入口
-- `docs/claude-review/` 新增 6 份独立的 Reviewer 移交包（架构 + 失效模式 + 事件生命周期 + 清单）
+- `docs/claude-review/` 新增 Reviewer 移交包，并补了 Codex 二次 triage
 - `docs/V2_Knowledge/` 新增一版面向跨 agent 协同的知识库快照（本轮新增）
-- `tests/` 里已经补了模块级合同测试、堆栈级 trace 测试、event schema 测试，共 33 passed
+- `tests/` 里已经补了模块级合同测试、堆栈级 trace 测试、event schema 测试和 import graph 护栏，共 35 passed
 
 ## 先读哪些
 
@@ -23,16 +23,17 @@
 
 1. [claude-review/README.md](./claude-review/README.md) — Reviewer 移交包导航（2 min）
 2. [claude-review/HANDOFF_CHECKLIST.md](./claude-review/HANDOFF_CHECKLIST.md) — 环境核查 + 阅读预算（2 min）
-3. [claude-review/REVIEW_OF_CODEX_SESSION.md](./claude-review/REVIEW_OF_CODEX_SESSION.md) — 对上一 session 的评审与结论（5 min）
-4. [claude-review/DETAILED_ARCHITECTURE.md](./claude-review/DETAILED_ARCHITECTURE.md) — 5 视图架构 + 依赖护栏（8 min）
-5. [claude-review/EVENT_LIFECYCLE.md](./claude-review/EVENT_LIFECYCLE.md) — 单 tick 时序 + 3 场景逐帧追踪（5 min）
-6. [claude-review/FAILURE_MODES.md](./claude-review/FAILURE_MODES.md) — 每模块 symptom/cause/degrade/recover
-7. [V2_Knowledge/knowledge-base.html](./V2_Knowledge/knowledge-base.html) — 最新知识库快照（可视化入口）
-8. [API_CONTRACTS.md](./API_CONTRACTS.md)
-9. [RUNTIME_STATES.md](./RUNTIME_STATES.md)
-10. [EVENT_SCHEMA.md](./EVENT_SCHEMA.md)
-11. [ARCHITECTURE.md](./ARCHITECTURE.md)
-12. [analysis/artifacts/SUMMARY.txt](../analysis/artifacts/SUMMARY.txt)
+3. [claude-review/CODEX_TRIAGE.md](./claude-review/CODEX_TRIAGE.md) — Codex 对 Claude 评审的二次梳理（5 min）
+4. [claude-review/REVIEW_OF_CODEX_SESSION.md](./claude-review/REVIEW_OF_CODEX_SESSION.md) — 对上一 session 的评审与结论（5 min）
+5. [claude-review/DETAILED_ARCHITECTURE.md](./claude-review/DETAILED_ARCHITECTURE.md) — 5 视图架构 + 依赖护栏（8 min）
+6. [claude-review/EVENT_LIFECYCLE.md](./claude-review/EVENT_LIFECYCLE.md) — 单 tick 时序 + 3 场景逐帧追踪（5 min）
+7. [claude-review/FAILURE_MODES.md](./claude-review/FAILURE_MODES.md) — 每模块 symptom/cause/degrade/recover
+8. [V2_Knowledge/knowledge-base.html](./V2_Knowledge/knowledge-base.html) — 最新知识库快照（可视化入口）
+9. [API_CONTRACTS.md](./API_CONTRACTS.md)
+10. [RUNTIME_STATES.md](./RUNTIME_STATES.md)
+11. [EVENT_SCHEMA.md](./EVENT_SCHEMA.md)
+12. [ARCHITECTURE.md](./ARCHITECTURE.md)
+13. [analysis/artifacts/SUMMARY.txt](../analysis/artifacts/SUMMARY.txt)
 
 ## 8 个支柱地图
 
@@ -78,6 +79,12 @@
 - 动态化 `analysis/run_all.py` 的 `"All X studies"` 文案
 - 建立 [`docs/claude-review/`](./claude-review/) 六件套移交包（REVIEW + DETAILED_ARCHITECTURE + EVENT_LIFECYCLE + FAILURE_MODES + HANDOFF_CHECKLIST + README）
 
+### Claude review triage（本轮）
+- 新增 [claude-review/CODEX_TRIAGE.md](./claude-review/CODEX_TRIAGE.md)，逐项标注 Claude 发现的已修 / 未修 / 口径漂移
+- 修正 [claude-review/HANDOFF_CHECKLIST.md](./claude-review/HANDOFF_CHECKLIST.md) 和 [V2_Knowledge/knowledge-base.html](./V2_Knowledge/knowledge-base.html) 里固定旧 commit 的说法
+- 新增 `tests/test_import_graph.py`，固化 `starship/` 不得 import `sre_control/`，并守住 `sre_control/events.py` 不依赖 `starship`
+- 放宽 `tests/test_event_schema.py` 的 counter-example 文案签名，允许 `Do not` / `Avoid` 前缀
+
 ## 关键证据
 
 最新总表里，最值得记住的几组数是：
@@ -95,7 +102,7 @@
 ## 已验证
 
 ```bash
-python -m pytest tests -q          # 33 passed
+python -m pytest tests -q          # 35 passed
 python -m analysis.run_all         # 9 studies finished in ~3s
 python -m examples.demo_sre_loop   # 12-tick trace printed
 python -m examples.demo_powered_descent
@@ -115,15 +122,12 @@ python -m scripts.build_kb         # 16 assets rebuilt (~60s)
 ## 下一步（按优先级）
 
 ### 小（非阻塞）
-1. `test_event_schema.py` 的 `"Do not" in counterexample` 字符串签名脆，考虑改用更宽松匹配
-2. `API_CONTRACTS.md §2.9 CatchController` 放在 SRE 文档里容易误导，建议加"属 starship 物理层"说明
-3. `ARCHITECTURE.md` 与本 handoff 都提到 CatchController wrapper 建议，未来收敛到一处
+1. `ARCHITECTURE.md` 与本 handoff 都提到 CatchController wrapper 建议，未来收敛到一处
 
 ### 中（单 commit 可完成）
-1. 加 `tests/test_import_graph.py` 守依赖方向（见 `claude-review/DETAILED_ARCHITECTURE.md §6`）
-2. 加 `analysis/s10_failure_trace.py`，用 `runtime.events` 做 failure-state before/after 可视化
-3. 给 `SignalFusion` 加 `innovation_gating`，防 outlier 观测污染 posterior
-4. 给 `SREControlStack.step()` 加 try/except，把 adapter 异常转成新 kind `stability_violation`
+1. 加 `analysis/s10_failure_trace.py`，用 `runtime.events` 做 failure-state before/after 可视化
+2. 给 `SignalFusion` 加 `innovation_gating`，防 outlier 观测污染 posterior
+3. 给 `SREControlStack.step()` 加 try/except，把 adapter 异常转成新 kind `stability_violation`
 
 ### 大（跨 session）
 1. 新增 `starship/stability_monitor.py`（§2.1 Lyapunov dV/dt ≤ 0 监视器），并同步 SRE 侧的指标自激震荡识别
