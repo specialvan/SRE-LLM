@@ -1,0 +1,52 @@
+{
+  "name": "artifact_canary",
+  "config": {
+    "seed": 0
+  },
+  "artifacts": {
+    "retention": {
+      "weights": [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+      "bias": -9.5
+    },
+    "cox": {
+      "beta": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+      "baseline_t": [1.0, 24.0],
+      "baseline_H": [0.01, 0.05]
+    }
+  },
+  "context": {
+    "service": {
+      "id": "svc-artifact",
+      "mu": 0.995,
+      "sigma": 0.005,
+      "win_streak": 5,
+      "total_releases": 40,
+      "tier": "standard"
+    },
+    "candidates": [
+      {
+        "id": "c-canary",
+        "strategy": "canary",
+        "canary_fraction": 0.05,
+        "rollback_budget_seconds": 300,
+        "expected_success": 0.98
+      },
+      {
+        "id": "c-full",
+        "strategy": "full",
+        "canary_fraction": 0.0,
+        "rollback_budget_seconds": 600,
+        "expected_success": 0.965
+      }
+    ],
+    "error_budget_remaining": 0.8,
+    "correlation_id": "replay-artifact-canary"
+  },
+  "expected": {
+    "kind": "canary",
+    "chosen_id": "c-canary",
+    "risk_level": "ok",
+    "artifact_version": "fitted",
+    "eomm_source": "artifact"
+  }
+}

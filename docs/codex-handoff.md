@@ -4,7 +4,7 @@
 - 当前分支：`gan-session`
 - 当前方向：把 matchmaking / rating / decision 方案稳定成可审计、可训练、可回放的 SRE 决策流水线
 - 现状：九个机制的语义映射、架构拆解、模块契约、状态生命周期、实施路线图、ADR 已经成体系
-- 最新进展：runtime artifact 版本化已经接入在线决策链路，`Decision.artifact_version`、SQLite 决策审计表、训练产物元数据、runtime hydrate 都已打通
+- 最新进展：runtime artifact 版本化已经接入在线决策链路，`Decision.artifact_version`、SQLite 决策审计表、训练产物元数据、runtime hydrate 都已打通；golden replay corpus 已覆盖 fallback / fitted artifact / freeze / rollback / escalation
 
 ## 机制地图
 | 数学机制 | SRE 映射 | 代码位置 |
@@ -18,6 +18,12 @@
 | Entropy | 过滤“过于确定”的候选 | `gan_matchmaking/entropy_match.py`，`sre/self_iteration.py` |
 | Cox Survival | 故障/流失风险预警 | `gan_matchmaking/survival.py`，`training/cox.py`，`sre/artifacts.py` |
 | Minimax / BP | SLO 与稳定性之间的策略张力 | `gan_matchmaking/minimax_bp.py`，当前仍偏研究态 |
+
+## Replay Corpus
+- 入口：`tests/fixtures/replay/*.json`
+- 测试：`tests/test_replay_corpus.py`
+- 覆盖：bootstrap fallback、fitted artifact、freeze hold、budget rollback、unknown strategy escalation
+- 作用：把“可回放”从 runbook 描述推进到可执行回归资产
 
 ## 生产化模块
 ### 已经接近生产形态
@@ -35,19 +41,22 @@
   - 已把决策落回存储
 - `training/`
   - 已能从 store 训练 Cox / Retention，并输出权重 + 元数据
+- `tests/fixtures/replay/`
+  - 已有第一组 golden replay fixtures，可作为事故复盘和回归基线
 
 ### 仍偏研究态
 - `minimax_bp.py`
   - 更像解释性辅助层，不是主生产路径
 - `gnn_synergy.py`
   - 现在是轻量图推理，不是完整图服务
-- `EOMM / Cox` 的特征空间仍需要继续统一和校准
-- replay corpus 还没有成为一等资产
+- `EOMM / Cox` 的特征空间已经开始共享 feature builders，但还需要更多真实观测校准
+- replay corpus 已经起步，但还不是完整事故场景库
 
 ## 风险与边界
 1. **训练/运行特征不完全同构**
-   - Cox 训练和 runtime 现在能降级兼容，但语义上还没完全统一
-   - 这是最需要继续补的边界
+   - Cox 训练已经切到 runtime 同构的 6 维语义
+   - EOMM 训练已复用 runtime match config / history vector
+   - 后续重点是用真实观测校准，而不是再改接口形状
 
 2. **artifact 与 fallback 的切换要可见**
    - 线上必须能看出当前是 artifact 路径还是 bootstrap 路径
@@ -82,9 +91,9 @@
 这个结构可以迁移到发布控制、容量调度、故障分流、巡检节流、告警降噪、回滚决策等场景。
 
 ## 下一步
-1. 把 Cox / EOMM 的训练特征空间彻底对齐，消掉“能跑但不够同构”的边角
-2. 给 runtime artifact 增加更强的校验与 manifest
-3. 建 golden replay corpus，覆盖 happy path / fallback / rollback / escalation
+1. 给 runtime artifact 增加更强的校验与 manifest，显式校验 feature_names / shape / baseline
+2. 扩展 golden replay corpus，从分支覆盖升级成事故叙事场景
+3. 给 replay 增加从 SQLite 决策审计表导出 fixture 的工具
 4. 给多实例部署补外部锁或 lease
 5. 把 `PR-REQUIREMENTS.md` 继续收敛成可执行的 phase 任务单
 

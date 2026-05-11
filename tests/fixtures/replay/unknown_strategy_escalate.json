@@ -1,0 +1,33 @@
+{
+  "name": "unknown_strategy_escalate",
+  "config": {
+    "seed": 0
+  },
+  "context": {
+    "service": {
+      "id": "svc-escalate",
+      "mu": 0.995,
+      "sigma": 0.005,
+      "win_streak": 3,
+      "total_releases": 30
+    },
+    "candidates": [
+      {
+        "id": "c-weird",
+        "strategy": "mystery",
+        "canary_fraction": 0.0,
+        "rollback_budget_seconds": 300,
+        "expected_success": 0.99
+      }
+    ],
+    "error_budget_remaining": 1.0,
+    "correlation_id": "replay-unknown-escalate"
+  },
+  "expected": {
+    "kind": "escalate",
+    "chosen_id": "c-weird",
+    "risk_level": "ok",
+    "artifact_version": "bootstrap",
+    "eomm_source": "fallback"
+  }
+}

@@ -9,6 +9,8 @@ same inputs.
 - Git SHA of the pipeline at decision time (from the deploy manifest).
 - The `trace` dict (or its JSONL export).
 - The config JSON used at decision time.
+- The runtime artifact directory, if `trace.artifacts.version` is not
+  `bootstrap`.
 
 ## Steps
 
@@ -39,10 +41,32 @@ same inputs.
 5. Compare `decision.kind`, `decision.risk_level`, `decision.chosen.id`
    against the archived `Decision`. They must match bit-for-bit.
 
+## Golden Corpus
+
+The repository ships a regression corpus under
+`tests/fixtures/replay/*.json`. Each fixture contains:
+
+- `config`: minimal `AppConfig` input.
+- `artifacts`: optional fitted retention / Cox artifact specs.
+- `context`: the `ReleaseContext` payload.
+- `expected`: stable decision fields and selected trace assertions.
+
+Run the corpus with:
+
+```
+python -m pytest -q tests/test_replay_corpus.py
+```
+
+Add a fixture whenever a post-incident replay exposes a new branch,
+fallback, or policy boundary.
+
 ## If they don't match
 
 - Double-check the config SHA and the commit SHA — even a whitespace
   config diff re-seeds the SeedManager.
+- Check `trace.artifacts.version` first. A decision may differ because the
+  runtime loaded a different retention / Cox artifact even when the code
+  and config are unchanged.
 - Look for *shared-registry* test pollution: if two pipelines run in the
   same process and share `default_registry`, metrics snapshot may differ
   but the `Decision` should still match.

@@ -1,0 +1,41 @@
+{
+  "name": "fallback_go",
+  "config": {
+    "seed": 0
+  },
+  "context": {
+    "service": {
+      "id": "svc-replay",
+      "mu": 0.995,
+      "sigma": 0.005,
+      "win_streak": 3,
+      "total_releases": 30,
+      "tier": "standard"
+    },
+    "candidates": [
+      {
+        "id": "c-canary",
+        "strategy": "canary",
+        "canary_fraction": 0.1,
+        "rollback_budget_seconds": 300,
+        "expected_success": 0.98
+      },
+      {
+        "id": "c-full",
+        "strategy": "full",
+        "canary_fraction": 0.0,
+        "rollback_budget_seconds": 600,
+        "expected_success": 0.97
+      }
+    ],
+    "error_budget_remaining": 0.8,
+    "correlation_id": "replay-fallback-go"
+  },
+  "expected": {
+    "kind": "go",
+    "chosen_id": "c-full",
+    "risk_level": "ok",
+    "artifact_version": "bootstrap",
+    "eomm_source": "fallback"
+  }
+}

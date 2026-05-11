@@ -23,6 +23,18 @@ from ..types import MatchConfig, Player, Rating
 from .domain import ReleaseCandidate, Service
 
 
+EOMM_FEATURE_NAMES = (
+    "win_streak",
+    "loss_streak",
+    "last_duration",
+    "avg_duration",
+    "rating_gap",
+    "total_sigma",
+    "service_mu",
+    "candidate_mu",
+)
+
+
 def _json_safe(value: Any) -> Any:
     if isinstance(value, Path):
         return str(value)

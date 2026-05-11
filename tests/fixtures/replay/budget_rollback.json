@@ -1,0 +1,32 @@
+{
+  "name": "budget_rollback",
+  "config": {
+    "seed": 0
+  },
+  "context": {
+    "service": {
+      "id": "svc-budget",
+      "mu": 0.94,
+      "sigma": 0.03,
+      "loss_streak": 1,
+      "total_releases": 15
+    },
+    "candidates": [
+      {
+        "id": "c-canary",
+        "strategy": "canary",
+        "canary_fraction": 0.05,
+        "rollback_budget_seconds": 300,
+        "expected_success": 0.95
+      }
+    ],
+    "error_budget_remaining": 0.0,
+    "correlation_id": "replay-budget-rollback"
+  },
+  "expected": {
+    "kind": "rollback",
+    "chosen_id": null,
+    "risk_level": "alarm",
+    "artifact_version": "bootstrap"
+  }
+}

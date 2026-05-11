@@ -1,0 +1,32 @@
+{
+  "name": "freeze_hold",
+  "config": {
+    "seed": 0
+  },
+  "context": {
+    "service": {
+      "id": "svc-freeze",
+      "mu": 0.995,
+      "sigma": 0.005,
+      "win_streak": 2,
+      "total_releases": 20
+    },
+    "candidates": [
+      {
+        "id": "c-full",
+        "strategy": "full",
+        "canary_fraction": 0.0,
+        "rollback_budget_seconds": 600,
+        "expected_success": 0.99
+      }
+    ],
+    "freeze_window": true,
+    "correlation_id": "replay-freeze-hold"
+  },
+  "expected": {
+    "kind": "hold",
+    "chosen_id": null,
+    "risk_level": "warn",
+    "artifact_version": "bootstrap"
+  }
+}

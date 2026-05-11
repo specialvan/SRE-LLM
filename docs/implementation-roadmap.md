@@ -123,6 +123,8 @@ Goal: make the system easy to review and evolve.
 
 The best next increment is:
 
-1. add versioned artifact loading for retention and Cox models
-2. write those versions into trace and decision persistence
-3. add replay coverage for fitted vs fallback model paths
+1. turn artifact metadata into a stricter manifest with shape and feature
+   contract validation
+2. add external lease / lock guidance for multi-instance deployment
+3. expand the replay corpus from branch coverage into incident-style
+   scenario coverage

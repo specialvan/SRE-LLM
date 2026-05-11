@@ -78,6 +78,7 @@ from .domain import (
     RiskLevel,
     Service,
 )
+from .features import build_risk_feature_vector
 from .locking import PerServiceLock
 from .shadow import ShadowMode, coerce as _coerce_shadow
 from ..persistence.base import Observation, PipelineStore
@@ -98,19 +99,6 @@ def _sre_risk_level(p: float) -> RiskLevel:
     if p >= 0.3:
         return RiskLevel.WARN
     return RiskLevel.OK
-
-
-def _risk_feature_vector(service: Service, candidate: ReleaseCandidate,
-                         ctx: ReleaseContext) -> List[float]:
-    """Assemble the feature vector fed into the Cox monitor."""
-    return [
-        float(service.loss_streak),
-        float(service.win_streak),
-        float(1.0 - service.mu),          # unreliability signal.
-        float(service.sigma),
-        float(candidate.canary_fraction),
-        float(1.0 - ctx.error_budget_remaining),
-    ]
 
 
 # ---------------------------------------------------------------------------
@@ -752,7 +740,7 @@ class SelfIterationPipeline:
     def _stage_risk(self, ctx: ReleaseContext, chosen: ReleaseCandidate,
                     trace: Dict[str, Any]) -> tuple[float, RiskLevel]:
         with span(self.logger, "stage.risk") as s:
-            feats = _risk_feature_vector(ctx.service, chosen, ctx)
+            feats = build_risk_feature_vector(ctx.service, chosen, ctx)
             try:
                 p = self.risk.predict(feats)
             except Exception as exc:

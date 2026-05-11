@@ -1,6 +1,7 @@
 """Tests for offline training pipelines."""
 from __future__ import annotations
 
+import json
 import time
 
 import pytest
@@ -11,6 +12,8 @@ from gan_matchmaking.persistence import (
     Observation,
     SQLitePipelineStore,
 )
+from gan_matchmaking.sre.artifacts import EOMM_FEATURE_NAMES
+from gan_matchmaking.sre.features import RISK_FEATURE_NAMES
 from gan_matchmaking.training import (
     train_cox_from_store,
     train_retention_from_store,
@@ -39,13 +42,15 @@ def test_train_cox_from_memory_store(tmp_path):
     _seed(store)
     report = train_cox_from_store(store, output_dir=tmp_path)
     assert report.n_events >= 3
-    assert len(report.beta) == 2
+    assert len(report.beta) == len(RISK_FEATURE_NAMES)
     assert report.output_path.endswith("cox_beta.npz")
     assert report.artifact_version
     assert report.metadata_path.endswith("cox_artifact.json")
     assert (tmp_path / "cox_beta.npz").exists()
     assert (tmp_path / "cox_artifact.json").exists()
     assert (tmp_path / "cox_report.json").exists()
+    metadata = json.loads((tmp_path / "cox_artifact.json").read_text(encoding="utf-8"))
+    assert metadata["extra"]["feature_names"] == list(RISK_FEATURE_NAMES)
 
 
 def test_train_cox_errors_on_empty_store(tmp_path):
@@ -71,3 +76,5 @@ def test_train_retention_from_sqlite_store(tmp_path):
     assert (tmp_path / "retention_artifact.json").exists()
     assert report.artifact_version
     assert report.metadata_path.endswith("retention_artifact.json")
+    metadata = json.loads((tmp_path / "retention_artifact.json").read_text(encoding="utf-8"))
+    assert metadata["extra"]["feature_names"] == list(EOMM_FEATURE_NAMES)

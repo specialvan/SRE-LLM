@@ -3,9 +3,9 @@
 The observation log stores ``(service_id, success, timestamp,
 duration_seconds, features, correlation_id)``. We treat each *failure* as
 an "event" and each *success* as "censored at duration_seconds past the
-previous event". The feature vector defaults to ``[loss_streak_so_far,
-time_since_prev]`` so the pipeline's untrained fallback sees a compatible
-input shape.
+previous event". The feature vector follows the runtime Cox contract:
+``[loss_streak, win_streak, unreliability, sigma, canary_fraction,
+budget_spent]``.
 """
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ from ..core.errors import DataError
 from ..persistence import Observation, PipelineStore
 from ..survival import CoxModel
 from ..sre.artifacts import build_metadata, save_cox_artifact
+from ..sre.features import RISK_FEATURE_NAMES, build_observation_risk_vector
 
 
 @dataclass
@@ -48,30 +49,44 @@ class CoxTrainingReport:
 def _build_matrices(observations: Iterable[Observation]):
     """Turn ``Observation`` stream into ``(X, durations, events)`` numpy arrays.
 
-    Feature vector convention:
+    Feature vector convention matches runtime:
 
-        x = [loss_streak_so_far, gap_seconds_since_previous]
+        x = [loss_streak, win_streak, unreliability, sigma,
+             canary_fraction, budget_spent]
     """
     X: List[List[float]] = []
     durations: List[float] = []
     events: List[int] = []
     loss_streaks: Dict[str, int] = defaultdict(int)
-    last_ts: Dict[str, float] = {}
+    win_streaks: Dict[str, int] = defaultdict(int)
+    successes: Dict[str, int] = defaultdict(int)
+    totals: Dict[str, int] = defaultdict(int)
 
     # We iterate in chronological order.
     sorted_obs = sorted(observations, key=lambda o: (o.service_id, o.timestamp))
     for obs in sorted_obs:
         sid = obs.service_id
-        prev_ts = last_ts.get(sid, obs.timestamp)
-        gap = max(obs.timestamp - prev_ts, 0.0)
-        last_ts[sid] = obs.timestamp
 
         loss_streak = loss_streaks[sid]
+        win_streak = win_streaks[sid]
         # Update streak after recording the feature vector for this obs.
-        X.append([float(loss_streak), float(gap)])
+        X.append(build_observation_risk_vector(
+            obs,
+            win_streak=int(win_streak),
+            loss_streak=int(loss_streak),
+            successes=int(successes[sid]),
+            total_observations=int(totals[sid]),
+        ))
         durations.append(max(float(obs.duration_seconds), 1e-3))
         events.append(0 if obs.success else 1)
-        loss_streaks[sid] = 0 if obs.success else loss_streak + 1
+        totals[sid] += 1
+        if obs.success:
+            successes[sid] += 1
+            win_streaks[sid] = win_streak + 1
+            loss_streaks[sid] = 0
+        else:
+            win_streaks[sid] = 0
+            loss_streaks[sid] = loss_streak + 1
 
     return (np.asarray(X, dtype=float),
             np.asarray(durations, dtype=float),
@@ -115,7 +130,8 @@ def train_cox_from_store(
         config={
             "min_events": min_events,
         },
-        extra={"feature_dim": int(X.shape[1])},
+        extra={"feature_dim": int(X.shape[1]),
+               "feature_names": list(RISK_FEATURE_NAMES)},
     )
     np_path = save_cox_artifact(
         output_dir,
