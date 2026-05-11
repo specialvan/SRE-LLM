@@ -947,8 +947,9 @@ t_per_engine, residual = allocator.allocate(F_demand, tau_demand)</pre>
     canary   ← CanaryScheduler(current_share)  §2 adaptive trust region (可选)
     safe     ← SLOGuardrail.audit(nn_proposal) §4 cone + ball projection
     shares   ← WeightedLoadBalancer.allocate(  §8 bounded LS
-                  ‖safe‖, zone_target)
-    trace    ← {observe, plan, canary, safe, shares}</div>
+                   ‖safe‖, zone_target)
+    runtime  ← {states, degraded, events}       runtime-state review trace
+    trace    ← {runtime, observe, plan, canary, safe, shares}</div>
 
   <h3>端到端示例数据（<code>analysis/s09_sre_stack.py</code>）</h3>
   <p>300 s 合成流量，两次人为事故：t=60-80 s <b>brown-out</b>（延迟 +40 ms，RPS 不涨）、t=180-200 s <b>流量翻倍</b>。比较反应式 HPA vs <code>SREControlStack</code>。</p>

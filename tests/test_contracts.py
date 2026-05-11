@@ -63,10 +63,14 @@ def test_sre_stack_emits_a_jsonish_contract_trace():
         nn_proposal=np.array([500.0, 50.0, 10.0]),
     )
 
-    assert {"dt", "state", "replicas_current", "replicas_next",
+    assert {"dt", "runtime", "state", "replicas_current", "replicas_next",
             "canary", "guardrail", "alloc_shares", "alloc_info"} <= entry.keys()
     assert isinstance(entry["replicas_next"], int)
     assert entry["canary"] is None
+    assert entry["runtime"]["states"][0] == "OBSERVING"
+    assert entry["runtime"]["states"][-1] == "EXECUTING"
+    assert "GUARDING" in entry["runtime"]["states"]
+    assert "ALLOCATING" in entry["runtime"]["states"]
     assert len(entry["alloc_shares"]) == 2
     assert all(isinstance(flag, bool) for flag in entry["alloc_info"]["saturation"])
     assert np.linalg.norm(entry["guardrail"]["approved"]) <= 10_000.0 + 1e-6
@@ -86,6 +90,10 @@ def test_sre_stack_survives_missing_sensor_readings():
     )
 
     assert entry["state"]["signals"][0]["used"] is False
+    assert entry["runtime"]["degraded"] is True
+    assert "DEGRADED_OBSERVE" in entry["runtime"]["states"]
+    assert any(event["kind"] == "missing_sensor"
+               for event in entry["runtime"]["events"])
     assert isinstance(entry["replicas_next"], int)
     assert len(entry["alloc_shares"]) == 2
     json.dumps(entry)

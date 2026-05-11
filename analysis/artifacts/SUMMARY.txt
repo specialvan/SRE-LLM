@@ -2,22 +2,22 @@
   cone_margin_min           before=2.351e+05  after=5.27e+04  (×0.224)
   fuel                      before=1.279e+04  after=1.051e+04  (×0.822)
   pos_err                   before=148.3  after=2.125e-06  (×1.43e-08)
-  solve_ms                  before=0.9999  after=295  (×295)
+  solve_ms                  before=0.5023  after=295.1  (×587)
   vel_err                   before=30.92  after=3.799e-07  (×1.23e-08)
-    (elapsed 0.86s)
+    (elapsed 0.77s)
 
 === §2 Successive Convex Programming ===
   control_effort            before=19.61  after=19.78  (×1.01)
   final_pos_err             before=8.08  after=2.87  (×0.355)
   final_speed               before=0.1185  after=2.826  (×23.8)
   iters                     before=1  after=6
-    (elapsed 0.63s)
+    (elapsed 0.62s)
 
 === §3 6-DoF Rigid-Body Dynamics ===
   angle_rmse_rad            before=0.05576  after=5.715e-07  (×1.02e-05)
   final_body_z_err          before=0.04464  after=1.384e-12  (×3.1e-11)
   quat_norm_drift           before=0  after=1e-12  (×inf)
-    (elapsed 0.07s)
+    (elapsed 0.06s)
 
 === §4 Thrust Pointing Cone ===
   cone_violations           before=0.974  after=0  (×0)
@@ -36,7 +36,7 @@
   control_var               before=0.2791  after=0.411  (×1.47)
   final_err                 before=0.01192  after=3.463e-07  (×2.9e-05)
   tracking_rmse             before=2.098  after=2.083  (×0.993)
-    (elapsed 0.19s)
+    (elapsed 0.20s)
 
 === §7 Belly-Flop → Landing-Flip ===
   duration_s                before=3.236  after=3.236  (×1)

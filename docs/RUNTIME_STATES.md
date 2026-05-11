@@ -186,6 +186,29 @@ This means:
 - bad planning should degrade action quality, not bypass bounds;
 - bad allocation should still report residuals, not fake correctness.
 
+`SREControlStack.step()` now emits this runtime layer directly:
+
+```python
+entry["runtime"] = {
+    "states": ["OBSERVING", "PLANNING", "GUARDING", "ALLOCATING", "EXECUTING"],
+    "degraded": False,
+    "events": [],
+}
+```
+
+When a module degrades, the stack appends the matching `DEGRADED_*` state and an event:
+
+```python
+{
+    "stage": "SignalFusion",
+    "kind": "missing_sensor",
+    "detail": "...",
+    "safe_action": "...",
+}
+```
+
+This is intentionally coarse. It is a review trace, not a full production incident timeline.
+
 ---
 
 ## 4. Degradation Matrix
@@ -207,4 +230,3 @@ API contracts tell you what they are allowed to do.
 Runtime states tell you how they behave when the world is messy.
 
 That last one is the part that makes the abstraction operational instead of decorative.
-

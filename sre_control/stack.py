@@ -60,6 +60,17 @@ class SREControlStack:
     trace: List[dict] = field(default_factory=list)
 
     # ------------------------------------------------------------------
+    @staticmethod
+    def _event(stage: str, kind: str, detail: str,
+               safe_action: str) -> dict:
+        return {
+            "stage": stage,
+            "kind": kind,
+            "detail": detail,
+            "safe_action": safe_action,
+        }
+
+    # ------------------------------------------------------------------
     def step(self, dt: float,
              sensor_readings: list,
              forecast_rps: float,
@@ -70,13 +81,35 @@ class SREControlStack:
              canary_observed_error: Optional[float] = None,
              ) -> dict:
         """Run one control tick and return a structured trace entry."""
+        runtime_states = ["OBSERVING"]
+        runtime_events = []
+
         # 1) Fuse observations
         fuse_trace = self.fusion.step(dt, sensor_readings)
         observed_rps = float(self.fusion.state[0])
+        if any(not signal_trace.get("used", False)
+               for signal_trace in fuse_trace["signals"]):
+            runtime_states.append("DEGRADED_OBSERVE")
+            runtime_events.append(self._event(
+                stage="SignalFusion",
+                kind="missing_sensor",
+                detail="one or more readings were absent in this tick",
+                safe_action="keep posterior prediction and avoid bypassing guardrails",
+            ))
 
         # 2) Plan replicas via MPC autoscaler
+        runtime_states.append("PLANNING")
         next_replicas = self.autoscaler.step(
             current_replicas, observed_rps, forecast_rps)
+        if next_replicas in (self.autoscaler.replicas_min,
+                             self.autoscaler.replicas_max):
+            runtime_states.append("DEGRADED_PLAN")
+            runtime_events.append(self._event(
+                stage="PredictiveAutoscaler",
+                kind="replica_bound_active",
+                detail="next replica count is clipped at a hard bound",
+                safe_action="return bounded integer replicas",
+            ))
 
         # 3) Canary (optional) with trust-region
         canary_step: Optional[CanaryStep] = None
@@ -86,17 +119,55 @@ class SREControlStack:
                 canary_step = self.canary.observe(
                     current_canary_share, proposed_share,
                     canary_observed_error)
+                if not canary_step.accepted:
+                    runtime_states.append("DEGRADED_PLAN")
+                    runtime_events.append(self._event(
+                        stage="CanaryScheduler",
+                        kind="rollout_rejected",
+                        detail="observed error burned the canary budget",
+                        safe_action="shrink trust region and freeze rollout progress",
+                    ))
 
         # 4) SLO guardrail — project the NN proposal onto the feasible set
+        runtime_states.append("GUARDING")
         audit = self.guardrail.audit(nn_proposal)
         safe_action = np.array(audit["approved"])
+        if (audit["cone_violated_before"]
+                or audit["magnitude_violated_before"]):
+            runtime_events.append(self._event(
+                stage="SLOGuardrail",
+                kind="unsafe_proposal_projected",
+                detail="proposal violated cone or magnitude constraints",
+                safe_action="execute only the projected action",
+            ))
 
         # 5) Allocate — weighted load balancer
+        runtime_states.append("ALLOCATING")
         rps_demand = float(np.linalg.norm(safe_action))
         shares, alloc_info = self.balancer.allocate(rps_demand, zone_target)
+        residual_active = (
+            alloc_info["rps_residual"] > 1e-6
+            or any(z > 1e-6 for z in alloc_info["zone_residual"])
+        )
+        if any(alloc_info["saturation"]) or residual_active:
+            runtime_states.append("DEGRADED_ALLOCATE")
+            runtime_events.append(self._event(
+                stage="WeightedLoadBalancer",
+                kind="bounded_ls_residual",
+                detail="box constraints or residuals were active",
+                safe_action="report residual instead of pretending exact matching",
+            ))
+
+        runtime_states.append("EXECUTING")
 
         entry = {
             "dt":                dt,
+            "runtime":           {
+                "states": runtime_states,
+                "degraded": any(state.startswith("DEGRADED")
+                                for state in runtime_states),
+                "events": runtime_events,
+            },
             "state":              fuse_trace,
             "replicas_current":   current_replicas,
             "replicas_next":      next_replicas,

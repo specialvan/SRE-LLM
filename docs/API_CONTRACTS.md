@@ -272,6 +272,8 @@ Contract:
 - 一次 tick 必须产出完整 trace。
 - 必须能串起 observation、planning、guardrail、allocation。
 - 任意子模块可以 optional 化，但 trace 不能丢。
+- `runtime.states` 必须记录本 tick 经过的栈级状态。
+- `runtime.events` 必须暴露缺失观测、硬边界命中、投影和分配残差等降级信号。
 
 State:
 
@@ -300,7 +302,7 @@ Counter-example:
 | `PredictiveAutoscaler` | `tests/test_sre_control.py` | forecast growth triggers scaling |
 | `FastTrafficSwitcher` | `tests/test_sre_control.py` | target share is reached under rate limits |
 | `WeightedLoadBalancer` | `tests/test_sre_control.py` | demand is matched without saturating |
-| `SREControlStack` | `tests/test_contracts.py` | trace stays JSON-serializable and degraded observe ticks survive |
+| `SREControlStack` | `tests/test_contracts.py` | trace stays JSON-serializable and runtime degradation states are visible |
 
 ---
 
