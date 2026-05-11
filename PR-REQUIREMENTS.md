@@ -1,10 +1,10 @@
 ---
 spec: starship-recovery · PR-level functional requirements
-version: 0.3.4
+version: 0.3.5
 updated: 2026-05-12
 owner: spacex-session
 baseline-commit: cf9c8dc
-head-commit: (post-v0.3.4 commit · see git log)
+head-commit: (post-v0.3.5 commit · see git log)
 status-legend:
   - "✅ SHIPPED  · 已实现 · 有测试 + 证据"
   - "🟡 IN-PROG  · 已开工 · 尚未合并"
@@ -15,13 +15,14 @@ invariants:
   - I-2 事件 schema 封闭：新 kind 必须同步 EVENT_COUNTEREXAMPLES + schema + 测试
   - I-3 降级路径对齐：runtime.degraded=True 必然伴随 DEGRADED_* 状态和至少 1 条 event
   - I-4 文档不钉死 HEAD：不得在文档里写"最新 commit = <具体 SHA>"，用"近期日志包含 <关键 commit>"表达
+  - I-5 adapter 异常不崩栈：任何 SREControlStack 阶段抛异常必须转为 stability_violation event + DEGRADED_<stage>
 quality-gates:
-  - pytest tests -q                 # 41 passed
+  - pytest tests -q                 # 43 passed
   - python -m analysis.run_all      # 10 studies finish <4s
   - python -m scripts.build_kb      # 16 assets rebuild
   - python -m examples.demo_sre_loop
   - HTML well-formed (html.parser)
-event-kinds-total: 9
+event-kinds-total: 10
 ---
 
 # PR 级功能需求清单 — 星舰筷子塔回收 + SRE 复利栈
@@ -67,7 +68,7 @@ event-kinds-total: 9
 
 | Gate | 命令 | 预期 |
 |---|---|---|
-| 单元测试 | `python -m pytest tests -q` | **41 passed** |
+| 单元测试 | `python -m pytest tests -q` | **43 passed** |
 | 基准证据 | `python -m analysis.run_all` | All 10 studies finish in ~3 s |
 | 资产构建 | `python -m scripts.build_kb` | 16 assets rebuilt |
 | 端到端 Demo | `python -m examples.demo_sre_loop` | 12 行 trace 无异常 |
@@ -97,6 +98,13 @@ event-kinds-total: 9
   - 应改写为"近期日志应包含 `<关键 review commit>`"
   - 否则每次新增文档 commit 就会让清单过期、误导下一轮 agent
   - 例：`HANDOFF_CHECKLIST.md` 和 `V2_Knowledge/knowledge-base.html` 已被 `dd9cd7a` 按此规则修正
+- **I-5 adapter 异常不崩栈**（2026-05-12 新增，来自 PR-M-04）：
+  - `SREControlStack.step()` 的 5 个阶段每一步都必须包在 try/except 里
+  - 任何 stage 抛异常必须转为 `stability_violation` event + `DEGRADED_<stage>`
+  - 必须提供安全回退值（fusion→x̂=forecast，plan→replicas 不变，
+    guard→零动作，allocate→零 shares），让剩余阶段继续运行
+  - 验证：`tests/test_contracts.py::test_sre_stack_survives_adapter_exception`
+    + `tests/test_contracts.py::test_sre_stack_survives_autoscaler_exception`
 
 ### NFR-3 · 依赖图护栏
 
@@ -768,13 +776,34 @@ disallowed: docs/*        ← no runtime code
 
 #### PR-M-04 · Stack 异常转成 event
 
-- **Status**: 🔵 PROPOSED
-- **背景**：当前 `SREControlStack.step()` 不做 try/except，adapter 抛异常会中断循环。
-- **范围**：给每个 stage 加 try/except；异常时转成新 kind `stability_violation` event
-  并进入 `DEGRADED_*` 状态。
-- **DoD**：
-  - 新 kind `stability_violation` 进 `EVENT_COUNTEREXAMPLES`
-  - 故意在 adapter 里 `raise RuntimeError` 的测试：stack 能存活且 trace 完整
+- **Status**: ✅ SHIPPED (本轮 commit · 见 git log)
+- **背景**：`FAILURE_MODES.md §哨兵测试` + `CODEX_TRIAGE.md §3` 都指出：当前
+  `SREControlStack.step()` 任意 adapter 抛异常会中断控制循环——这是生产级不能接受的。
+- **范围**：
+  1. 给 step 的 5 个阶段（observe / plan / canary / guard / allocate）分别包
+     try/except，异常时产 `stability_violation` event 并用**安全回退值**保证
+     下游阶段继续跑。
+  2. 注册新 event kind `stability_violation` 走完 I-2 全套同步。
+  3. **升格 I-5 为新不变量**：任何 stage 抛异常必须转为
+     `stability_violation` event + `DEGRADED_<stage>` + 安全回退。
+  4. 新增 2 条专门测试：fusion 崩 + autoscaler 崩，分别验证回退。
+- **DoD**（全部达成）：
+  - ✅ `test_sre_stack_survives_adapter_exception` pass（fusion 抛 → 返完整 trace）
+  - ✅ `test_sre_stack_survives_autoscaler_exception` pass（autoscaler 抛 → replicas 不变）
+  - ✅ I-2 schema closure 测试通过（stability_violation 必须被真实触发）
+  - ✅ 总 event kind 数从 9 → **10**
+  - ✅ I-5 明文写入 NFR-2
+- **安全回退值策略**：
+  - SignalFusion 崩 → `observed_rps = forecast_rps`，清空 signals
+  - PredictiveAutoscaler 崩 → `replicas_next = clip(current)`，不扩不缩
+  - CanaryScheduler 崩 → `canary_step = None`
+  - SLOGuardrail 崩 → `approved = 0` 向量（零动作永远安全）
+  - WeightedLoadBalancer 崩 → `shares = zeros(n)`（等同于关掉流量）
+- **Evidence**：
+  - 代码 `sre_control/stack.py` (+~90 LOC，`_stability_event` 静态方法)
+  - schema `sre_control/events.py::EVENT_COUNTEREXAMPLES["stability_violation"]`
+  - 测试 `tests/test_contracts.py` (+2 条) + `tests/test_event_schema.py` 扩展
+  - 文档 `docs/EVENT_SCHEMA.md` + V2 HTML 索引表 + 新增 I-5 不变量
 
 ### 大档（跨 session）
 
@@ -927,6 +956,17 @@ disallowed: docs/*        ← no runtime code
 ---
 
 ## Change Log
+
+### v0.3.5 · 2026-05-12 · Claude Reviewer（PR-M-04 · 不变量升格到 5 条）
+
+- **PR-M-04 SHIPPED**（本轮 commit）：`SREControlStack.step()` 5 个阶段全部包进
+  try/except，adapter 抛异常转为 `stability_violation` event + 安全回退，不再崩栈。
+- **I-5 升格为不变量**：与 I-2 / I-3 并列，任何未来修改 stack 都必须保持"异常不崩栈 +
+  转事件 + 回退"三件事同步。
+- **第二次演练 I-2 全套同步**：这次是带着 PR-M-03 的经验，schema 封闭测试在第一次
+  `git run` 就发红，立刻修补路径——比上一轮更丝滑。
+- **quality gate**：`pytest` 41 → **43 passed**；event kind 数 9 → **10**。
+- **Backlog 剩余从 4 降到 3**。
 
 ### v0.3.4 · 2026-05-12 · Claude Reviewer（PR-M-03 · 首次走完 I-2 全套同步）
 

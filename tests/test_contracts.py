@@ -174,3 +174,78 @@ def test_sre_stack_carries_allocator_events_upward():
     assert any(event["kind"] == "bounded_ls_residual"
                for event in entry["runtime"]["events"])
     json.dumps(entry)
+
+
+
+def test_sre_stack_survives_adapter_exception():
+    """A crashing adapter must produce a ``stability_violation`` event
+    and a ``DEGRADED_*`` state without terminating the tick."""
+    from sre_control import SignalFusion
+
+    class _CrashingFusion(SignalFusion):
+        def step(self, dt, readings):
+            raise RuntimeError("synthetic crash")
+
+    # Build the usual stack but swap in the crashing fusion
+    stack, metrics = _make_stack()
+    stack.fusion = _CrashingFusion(
+        x0=np.array([700.0, 25.0, 0.3]),
+        P0=np.diag([100.0 ** 2, 8.0 ** 2, 0.1 ** 2]),
+        Q=np.diag([8.0, 0.3, 0.01]),
+        x_ref=np.array([700.0, 25.0, 0.3]),
+        theta=0.15,
+    )
+
+    entry = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([750.0, 28.0]))],
+        forecast_rps=800.0,
+        current_replicas=6,
+        zone_target=np.array([480.0, 320.0]),
+        nn_proposal=np.array([500.0, 50.0, 10.0]),
+    )
+
+    # The tick must still produce a complete trace
+    assert isinstance(entry, dict)
+    assert "runtime" in entry
+    # Degraded state with stability_violation event
+    assert "DEGRADED_OBSERVE" in entry["runtime"]["states"]
+    kinds = {e["kind"] for e in entry["runtime"]["events"]}
+    assert "stability_violation" in kinds
+    # Downstream stages still ran (autoscaler + guardrail + balancer)
+    assert isinstance(entry["replicas_next"], int)
+    assert "guardrail" in entry
+    assert len(entry["alloc_shares"]) == 2
+    # Event reports which stage blew up
+    stab = [e for e in entry["runtime"]["events"]
+            if e["kind"] == "stability_violation"]
+    assert stab[0]["stage"] == "SignalFusion"
+    assert "synthetic crash" in stab[0]["detail"]
+    json.dumps(entry)
+
+
+def test_sre_stack_survives_autoscaler_exception():
+    """If the predictive autoscaler raises, next_replicas stays bounded."""
+    stack, metrics = _make_stack()
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("autoscaler explosion")
+    stack.autoscaler.step = _boom  # monkey-patch
+
+    entry = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([750.0, 28.0]))],
+        forecast_rps=800.0,
+        current_replicas=6,
+        zone_target=np.array([480.0, 320.0]),
+        nn_proposal=np.array([500.0, 50.0, 10.0]),
+    )
+
+    # Safe fallback: replicas stays inside [min, max]
+    assert stack.autoscaler.replicas_min <= entry["replicas_next"] \
+        <= stack.autoscaler.replicas_max
+    assert "DEGRADED_PLAN" in entry["runtime"]["states"]
+    assert any(e["kind"] == "stability_violation"
+               and e["stage"] == "PredictiveAutoscaler"
+               for e in entry["runtime"]["events"])
+    json.dumps(entry)

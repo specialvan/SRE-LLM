@@ -19,6 +19,20 @@ recovery pipeline::
 
 Each adapter is small enough to be tested in isolation; ``stack.py``
 simply wires them together so a team can see the end-to-end shape.
+
+Robustness policy
+-----------------
+Every stage is wrapped in try/except.  If an adapter raises, the stack:
+
+  1. emits a ``stability_violation`` runtime event naming the stage and
+     exception text,
+  2. appends the matching ``DEGRADED_*`` state,
+  3. substitutes a safe fallback for the stage's output so downstream
+     stages (especially guardrail + allocator) can keep running,
+  4. records the full trace as usual.
+
+The design goal is "any one adapter failing must not crash the tick".
+See ``tests/test_contracts.py::test_sre_stack_survives_adapter_exception``.
 """
 
 from __future__ import annotations
@@ -29,6 +43,7 @@ from typing import List, Optional
 import numpy as np
 
 from .canary_scheduler import CanaryScheduler, CanaryStep
+from .events import make_event
 from .pool_planner import PoolCapacityPlanner
 from .predictive_autoscaler import PredictiveAutoscaler
 from .signal_fusion import SignalFusion, Signal
@@ -60,6 +75,18 @@ class SREControlStack:
     trace: List[dict] = field(default_factory=list)
 
     # ------------------------------------------------------------------
+    @staticmethod
+    def _stability_event(stage_label: str, exc: BaseException) -> dict:
+        return make_event(
+            stage=stage_label,
+            kind="stability_violation",
+            detail=f"{type(exc).__name__}: {exc}",
+            safe_action=(
+                "substitute the stage's safe fallback, continue the tick, "
+                "and record DEGRADED_<stage>"),
+        )
+
+    # ------------------------------------------------------------------
     def step(self, dt: float,
              sensor_readings: list,
              forecast_rps: float,
@@ -69,59 +96,118 @@ class SREControlStack:
              current_canary_share: Optional[float] = None,
              canary_observed_error: Optional[float] = None,
              ) -> dict:
-        """Run one control tick and return a structured trace entry."""
+        """Run one control tick and return a structured trace entry.
+
+        Each stage is wrapped in try/except; if any stage raises, the
+        tick still produces a trace and the stack surfaces a
+        ``stability_violation`` event plus the appropriate DEGRADED_*
+        state so the caller can decide whether to alert or retry.
+        """
         runtime_states = ["OBSERVING"]
         runtime_events = []
 
-        # 1) Fuse observations
-        fuse_trace = self.fusion.step(dt, sensor_readings)
-        observed_rps = float(self.fusion.state[0])
-        if any(not signal_trace.get("used", False)
-               for signal_trace in fuse_trace["signals"]):
+        # ========================= 1) OBSERVE =========================
+        try:
+            fuse_trace = self.fusion.step(dt, sensor_readings)
+            observed_rps = float(self.fusion.state[0])
+            if any(not s.get("used", False) for s in fuse_trace["signals"]):
+                runtime_states.append("DEGRADED_OBSERVE")
+                runtime_events.extend(fuse_trace.get("events", []))
+        except Exception as exc:  # noqa: BLE001 — robustness boundary
+            fuse_trace = {"x": None, "P_trace": None, "signals": [],
+                          "local_states": ["error"],
+                          "events": [self._stability_event("SignalFusion", exc)]}
+            observed_rps = float(forecast_rps)      # safe fallback
             runtime_states.append("DEGRADED_OBSERVE")
-            runtime_events.extend(fuse_trace.get("events", []))
+            runtime_events.extend(fuse_trace["events"])
 
-        # 2) Plan replicas via MPC autoscaler
+        # ========================= 2) PLAN ============================
         runtime_states.append("PLANNING")
-        next_replicas = self.autoscaler.step(
-            current_replicas, observed_rps, forecast_rps)
-        if next_replicas in (self.autoscaler.replicas_min,
-                             self.autoscaler.replicas_max):
+        try:
+            next_replicas = self.autoscaler.step(
+                current_replicas, observed_rps, forecast_rps)
+            if next_replicas in (self.autoscaler.replicas_min,
+                                 self.autoscaler.replicas_max):
+                runtime_states.append("DEGRADED_PLAN")
+                runtime_events.extend(
+                    self.autoscaler.last_trace.get("events", []))
+        except Exception as exc:  # noqa: BLE001
+            # Safe fallback: keep current replica count, don't scale.
+            next_replicas = int(np.clip(
+                current_replicas,
+                self.autoscaler.replicas_min,
+                self.autoscaler.replicas_max))
             runtime_states.append("DEGRADED_PLAN")
-            runtime_events.extend(self.autoscaler.last_trace.get("events", []))
+            runtime_events.append(
+                self._stability_event("PredictiveAutoscaler", exc))
 
-        # 3) Canary (optional) with trust-region
+        # Canary (optional) — never crash the tick if it fails
         canary_step: Optional[CanaryStep] = None
         if self.canary is not None and current_canary_share is not None:
-            proposed_share = self.canary.propose(current_canary_share)
-            if canary_observed_error is not None:
-                canary_step = self.canary.observe(
-                    current_canary_share, proposed_share,
-                    canary_observed_error)
-                if not canary_step.accepted:
-                    runtime_states.append("DEGRADED_PLAN")
-                    runtime_events.extend(canary_step.events)
+            try:
+                proposed_share = self.canary.propose(current_canary_share)
+                if canary_observed_error is not None:
+                    canary_step = self.canary.observe(
+                        current_canary_share, proposed_share,
+                        canary_observed_error)
+                    if not canary_step.accepted:
+                        runtime_states.append("DEGRADED_PLAN")
+                        runtime_events.extend(canary_step.events)
+            except Exception as exc:  # noqa: BLE001
+                runtime_states.append("DEGRADED_PLAN")
+                runtime_events.append(
+                    self._stability_event("CanaryScheduler", exc))
+                canary_step = None
 
-        # 4) SLO guardrail — project the NN proposal onto the feasible set
+        # ========================= 3) GUARD ===========================
         runtime_states.append("GUARDING")
-        audit = self.guardrail.audit(nn_proposal)
-        safe_action = np.array(audit["approved"])
-        if (audit["cone_violated_before"]
-                or audit["magnitude_violated_before"]):
+        try:
+            audit = self.guardrail.audit(nn_proposal)
+            safe_action = np.array(audit["approved"])
+            if (audit["cone_violated_before"]
+                    or audit["magnitude_violated_before"]):
+                runtime_states.append("DEGRADED_GUARD")
+                runtime_events.extend(audit.get("events", []))
+        except Exception as exc:  # noqa: BLE001
+            # Safe fallback: zero-action guarantees no SLO burn.
+            audit = {"proposal": np.asarray(nn_proposal, dtype=float).tolist(),
+                     "approved": [0.0] * int(np.asarray(nn_proposal).size),
+                     "cone_violated_before": False,
+                     "magnitude_violated_before": False,
+                     "cone_margin_before": 0.0,
+                     "cone_margin_after":  0.0,
+                     "projection_distance": 0.0,
+                     "local_states": ["error"],
+                     "events": [self._stability_event("SLOGuardrail", exc)]}
+            safe_action = np.zeros(int(np.asarray(nn_proposal).size))
             runtime_states.append("DEGRADED_GUARD")
-            runtime_events.extend(audit.get("events", []))
+            runtime_events.extend(audit["events"])
 
-        # 5) Allocate — weighted load balancer
+        # ========================= 4) ALLOCATE ========================
         runtime_states.append("ALLOCATING")
-        rps_demand = float(np.linalg.norm(safe_action))
-        shares, alloc_info = self.balancer.allocate(rps_demand, zone_target)
-        residual_active = (
-            alloc_info["rps_residual"] > 1e-6
-            or any(z > 1e-6 for z in alloc_info["zone_residual"])
-        )
-        if any(alloc_info["saturation"]) or residual_active:
+        try:
+            rps_demand = float(np.linalg.norm(safe_action))
+            shares, alloc_info = self.balancer.allocate(rps_demand, zone_target)
+            residual_active = (
+                alloc_info["rps_residual"] > 1e-6
+                or any(z > 1e-6 for z in alloc_info["zone_residual"])
+            )
+            if any(alloc_info["saturation"]) or residual_active:
+                runtime_states.append("DEGRADED_ALLOCATE")
+                runtime_events.extend(alloc_info.get("events", []))
+        except Exception as exc:  # noqa: BLE001
+            n = len(self.balancer.instances)
+            # Safe fallback: zero shares → upstream LB will route nothing.
+            shares = np.zeros(n)
+            alloc_info = {"rps_residual": float("nan"),
+                          "zone_residual": [],
+                          "saturation": [False] * n,
+                          "cost": float("nan"),
+                          "local_states": ["error"],
+                          "events": [self._stability_event(
+                              "WeightedLoadBalancer", exc)]}
             runtime_states.append("DEGRADED_ALLOCATE")
-            runtime_events.extend(alloc_info.get("events", []))
+            runtime_events.extend(alloc_info["events"])
 
         runtime_states.append("EXECUTING")
 

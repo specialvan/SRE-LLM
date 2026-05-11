@@ -96,6 +96,49 @@ def _collect_local_events():
         readings=[(sig, np.array([5000.0, 200.0]))],  # way outside 3σ
     )["events"])
 
+    # stability_violation: force an adapter to raise inside SREControlStack.step
+    # by monkey-patching a trivial failing SignalFusion subclass.  This keeps
+    # the test deterministic instead of relying on numerical edge cases.
+    from sre_control import SREControlStack
+
+    class _CrashingFusion(SignalFusion):
+        def step(self, dt, readings):
+            raise RuntimeError("synthetic fusion crash")
+
+    crashing = _CrashingFusion(
+        x0=np.array([700.0, 25.0, 0.3]),
+        P0=np.diag([100.0 ** 2, 8.0 ** 2, 0.1 ** 2]),
+        Q=np.diag([8.0, 0.3, 0.01]),
+        x_ref=np.array([700.0, 25.0, 0.3]),
+        theta=0.15,
+    )
+    autoscaler = PredictiveAutoscaler(
+        per_replica_rps=100.0, replicas_min=4, replicas_max=30,
+        max_step=4, dt=5.0, horizon=6, q_slo=120.0, r_cost=0.6,
+    )
+    guard_stack = SLOGuardrail(
+        nominal_direction=np.array([1.0, 0.0, 0.0]),
+        theta_max_deg=20.0, magnitude_cap=10_000.0,
+    )
+    balancer_stack = WeightedLoadBalancer(instances=[
+        Instance("east", np.array([1.0, 0.0]), rps_min=1.0, rps_max=500.0),
+        Instance("west", np.array([0.0, 1.0]), rps_min=1.0, rps_max=500.0),
+    ])
+    stack = SREControlStack(
+        fusion=crashing, autoscaler=autoscaler,
+        guardrail=guard_stack, balancer=balancer_stack,
+    )
+    entry = stack.step(
+        dt=5.0,
+        sensor_readings=[(sig, np.array([750.0, 28.0]))],
+        forecast_rps=800.0,
+        current_replicas=6,
+        zone_target=np.array([480.0, 320.0]),
+        nn_proposal=np.array([500.0, 50.0, 10.0]),
+    )
+    events.extend([e for e in entry["runtime"]["events"]
+                    if e["kind"] == "stability_violation"])
+
     return events
 
 

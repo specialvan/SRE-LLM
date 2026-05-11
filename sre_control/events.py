@@ -46,6 +46,11 @@ EVENT_COUNTEREXAMPLES: dict[str, str] = {
         "a persistent outlier usually means the measurement model h(x) or noise R "
         "is mis-specified, not that the sample is actually noise."
     ),
+    "stability_violation": (
+        "Do not swallow an adapter exception as 'just an event'; use this kind "
+        "to record that a stage crashed so the tick can continue safely, but "
+        "always investigate the root cause rather than widening the safe path."
+    ),
 }
 
 
