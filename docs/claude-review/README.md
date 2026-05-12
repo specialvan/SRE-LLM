@@ -5,13 +5,15 @@
 
 ## 当前轮（2026-06 C+A2，已完成 ✅）
 
-1. [`2026-06-session-review.md`](2026-06-session-review.md) — 2026-06 轮入口
-2. [`2026-06-spec-completion.md`](2026-06-spec-completion.md) — 收尾报告
+1. [`2026-06-codex-package-review.md`](2026-06-codex-package-review.md) — 对
+   `docs/codex-review/` 的二次深度评审；结论 merge-ready，无 P1/P2 blocker
+2. [`2026-06-session-review.md`](2026-06-session-review.md) — 2026-06 轮入口
+3. [`2026-06-spec-completion.md`](2026-06-spec-completion.md) — 收尾报告
    （F-005 / F-006 / F-007 / F-008 / F-009 / F-010 全部 resolved，138 passed，p99=1.39ms）
-3. [`spec-v2/README.md`](spec-v2/README.md) — 本轮 spec（25 条 T-XXX，6 PR）
-4. [`spec-v2/tasks.md`](spec-v2/tasks.md) — 按 PR 排序的 T-XXX 编码任务；
+4. [`spec-v2/README.md`](spec-v2/README.md) — 本轮 spec（25 条 T-XXX，6 PR）
+5. [`spec-v2/tasks.md`](spec-v2/tasks.md) — 按 PR 排序的 T-XXX 编码任务；
    [`spec-v2/verification.md`](spec-v2/verification.md) — 验证命令 + 契约快照
-5. [`patches/F-005-rating-scaling-contract.md`](patches/F-005-rating-scaling-contract.md)、
+6. [`patches/F-005-rating-scaling-contract.md`](patches/F-005-rating-scaling-contract.md)、
    [`patches/F-007-release-context-from-dict.md`](patches/F-007-release-context-from-dict.md)、
    [`patches/F-008-sqlite-migration.md`](patches/F-008-sqlite-migration.md) — 核心补丁草案
 

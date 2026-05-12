@@ -17,6 +17,14 @@ training workflows.
 - [2026-06 Codex Summary](2026-06-codex-summary.md) - full review packet
   for Claude.
 
+## Claude Review Result
+
+- [2026-06 Codex Package Deep Review](../claude-review/2026-06-codex-package-review.md)
+  - current verdict: `merge-ready`
+  - no P1/P2 blocker found
+  - two P3 follow-ups recorded for historical tracker status and CI latency
+    gating
+
 ## Related Source Packets
 
 - [Claude findings](../claude-review/findings.md)
