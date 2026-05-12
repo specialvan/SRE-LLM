@@ -710,7 +710,7 @@ disallowed: docs/*        ← no runtime code
 - **DoD**：
   - 对现有代码通过
   - 故意在 starship 里加一行 `from sre_control import events` 会失败
-- **Evidence**：新增文件 `tests/test_import_graph.py`；`pytest` 现为 **35 passed**。
+- **Evidence**：新增文件 `tests/test_import_graph.py`；后续质量门已推进到 **51 passed**。
 
 #### PR-M-02 · Failure-trace before/after · event-level 证据
 
@@ -884,7 +884,7 @@ disallowed: docs/*        ← no runtime code
 | PR-8-03 | image-9 | Catch controller | `catch_controller.py :: CatchController` | 同上 + demo | `demo_catch_phase.py` | `cf9c8dc` |
 | PR-9-01 | — | Pipeline compose | `starship/pipeline.py` | — | `demo_powered_descent.py` | `cf9c8dc` |
 | PR-9-02 | — | JSONL trace | 同上 | — | trace output | `cf9c8dc` |
-| PR-9-03 | — | pytest + CI | `tests/*.py` | 33 passed | — | `cf9c8dc` |
+| PR-9-03 | — | pytest + CI | `tests/*.py` | 51 passed | — | `cf9c8dc` + 后续 PR |
 
 ### SRE 翻译层（Epic 10）
 
@@ -1053,7 +1053,7 @@ disallowed: docs/*        ← no runtime code
   的可拉取清单，含反面案例和依赖声明。
 - **新增 Spec ↔ Triage 反馈循环节**：显式描述 Claude（纵向深入）+ Codex（横向清单化）
   + Spec（状态账本）三端协议，并给出健康度验收信号。
-- **quality gate 注脚更新**：`analysis.run_all` 目前 9 studies，PR-M-02 合并后 → 10。
+- **quality gate 注脚更新**：`analysis.run_all` 已扩展到 10 studies。
 - head-commit 维持 `dd9cd7a`；本轮无代码改动。
 
 ### v0.3.1 · 2026-05-12 · 同步 Codex 下轮产出
@@ -1062,7 +1062,7 @@ disallowed: docs/*        ← no runtime code
   放宽为 `startswith(("Do not", "Avoid"))`。
 - **PR-M-01** 状态 `🔵 PROPOSED → ✅ SHIPPED`（commit `dd9cd7a`）：新增
   `tests/test_import_graph.py` 用 AST 固化依赖方向护栏。
-- quality gate 从 33 passed → **35 passed**。
+- quality gate 从 33 passed → **35 passed**（后续 PR-M-02/M-03/M-04/L-01 已继续推进到 **51 passed**）。
 - head-commit 从 `e2658f6` → `dd9cd7a`。
 
 这说明 spec 的 Backlog 节本身就是可执行的任务列表——Codex 已经照清单做了 2 项。

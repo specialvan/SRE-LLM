@@ -9,7 +9,7 @@
 - `spacex/analysis/`：9 个 before/after 研究脚本可复现，汇总写入 `analysis/artifacts/SUMMARY.txt`。
 - `spacex/docs/`：`knowledge-base.html`、`FORMULA_MAP.md`、`EQUATION_DEEP_DIVE.md` 已形成三层知识库。
 - `spacex/docs/assets/`：8 张机制图 + 8 个 benefit GIF + `s09_sre_stack.png` 已重建。
-- `spacex/sre_control/events.py`：8 种 runtime event 已覆盖本地 adapter 的主要边界条件。
+- `spacex/sre_control/events.py`：10 种 runtime event 已覆盖本地 adapter、innovation gating 与 stability guard 的主要边界条件。
 
 ## 8 个支柱地图
 

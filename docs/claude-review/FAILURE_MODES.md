@@ -104,10 +104,10 @@ flowchart LR
 |---|---|---|---|
 | `missing_sensor` 事件 + `signals[i].used=False` | 一个 sensor 本 tick 没数据 | predict 仍执行；仅 skip 该 sensor 的 update | 下 tick sensor 回归 |
 | `P_trace` 单调上升 | 多个 sensor 同时失效，posterior uncertainty 放大 | 需要外部判断是否可信 | 足够多 sensor 恢复 |
-| `residual` 异常大（>3σ） | 观测模型 `h(x)` 与真实偏差大，或 `R` 设置过小 | EKF 内 innovation filtering 没开，**这是风险** | 加 innovation gating（下轮建议） |
+| `outlier_rejected` 事件 / `signals[i].gated=True` | 观测模型 `h(x)` 与真实偏差大，或 `R` 设置过小 | 跳过该次 update，保护 posterior prediction | 修正 `h(x)` / `R`，或为该 sensor 调整 gate 阈值 |
 
-**下一轮应加**：`innovation_gating`——把 `‖y‖ > 3√(Sᵢᵢ)` 的观测标记为 outlier 不做 update。
-否则单次尖峰观测会把 posterior 拉飞。
+**注意**：`innovation_gating` 已接入 `SignalFusion.gate_threshold`。不要靠无限调高 gate
+来让 `outlier_rejected` 消失；持续 outlier 通常说明观测模型或噪声矩阵本身错了。
 
 ### §6 · PredictiveAutoscaler
 

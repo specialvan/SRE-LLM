@@ -11,11 +11,11 @@
 
 - `starship/` 的 8 个数学支柱已经都落成可运行模块
 - `sre_control/` 已经有同构适配层和端到端 `SREControlStack`
-- `analysis/` 里有 8 组单主题 + 1 组端到端 before/after 证据和总表
+- `analysis/` 里有 8 组单主题 + 1 组端到端 + 1 组 failure-trace before/after 证据和总表
 - `docs/` 里已经有架构、契约、运行态、事件 schema、知识库和审查入口
 - `docs/claude-review/` 新增 Reviewer 移交包，并补了 Codex 二次 triage
 - `docs/V2_Knowledge/` 新增一版面向跨 agent 协同的知识库快照（本轮新增）
-- `tests/` 里已经补了模块级合同测试、堆栈级 trace 测试、event schema 测试和 import graph 护栏，共 35 passed
+- `tests/` 里已经补了模块级合同测试、堆栈级 trace 测试、event schema 测试、failure-trace 测试、stability monitor 测试和 import graph 护栏，共 51 passed
 
 ## 先读哪些
 
@@ -48,7 +48,7 @@
 | 7 | Flip | 最短时间切换 | `FastTrafficSwitcher` | `deadline_exceeded` |
 | 8 | Allocation | 有界最小二乘分配 | `WeightedLoadBalancer` | `bounded_ls_residual` |
 
-8 个支柱 × 8 种 runtime event 一一对应，通过 `sre_control/events.py` 的 `EVENT_COUNTEREXAMPLES` 封闭命名空间。
+8 个支柱 × 8 个核心 runtime event 已一一对应；另外 `outlier_rejected` 和 `stability_violation` 覆盖观测门控与稳定性红线。全部 kind 通过 `sre_control/events.py` 的 `EVENT_COUNTEREXAMPLES` 封闭命名空间。
 
 ## 三大不变量（继续守护）
 
@@ -85,6 +85,13 @@
 - 新增 `tests/test_import_graph.py`，固化 `starship/` 不得 import `sre_control/`，并守住 `sre_control/events.py` 不依赖 `starship`
 - 放宽 `tests/test_event_schema.py` 的 counter-example 文案签名，允许 `Do not` / `Avoid` 前缀
 
+### 可观测性与稳定性补强（后续本地提交）
+- 新增 `analysis/s10_failure_trace.py` 和 `tests/test_failure_trace.py`，把 event lifecycle 变成可复现 before/after 证据
+- `analysis.run_all` 已扩展到 10 studies，`SUMMARY.txt` 包含 `§10 · Failure trace`
+- `SignalFusion` 增加 innovation gating，新增 `outlier_rejected` event，防止异常观测污染 posterior
+- `SREControlStack.step()` 增加 adapter 异常兜底，异常转 `stability_violation` event 并继续 tick
+- 新增 `starship/stability_monitor.py` 与 `sre_control/stability_guard.py`，用 Lyapunov `dV/dt` 监视稳定性红线
+
 ## 关键证据
 
 最新总表里，最值得记住的几组数是：
@@ -96,14 +103,15 @@
 - `final_err 0.01192 -> 3.463e-7` （§6 MPC）
 - `saturation_violation 33.75% -> 0%` （§8 有界分配）
 - SRE 栈：`slo_violation_pct 25 -> 10`, `mean_replicas 18.43 -> 26.5` （§9 端到端）
+- Failure trace：`0 events / 0 kinds -> 83 events / 4 kinds` （§10 事件级证据）
 
 这些数说明的是"场景内可复利"，不是"官方内部实现"，也不是跨场景普适定理。
 
 ## 已验证
 
 ```bash
-python -m pytest tests -q          # 35 passed
-python -m analysis.run_all         # 9 studies finished in ~3s
+python -m pytest tests -q          # 51 passed
+python -m analysis.run_all         # 10 studies finished in ~3s
 python -m examples.demo_sre_loop   # 12-tick trace printed
 python -m examples.demo_powered_descent
 python -m examples.demo_catch_phase
@@ -125,13 +133,13 @@ python -m scripts.build_kb         # 16 assets rebuilt (~60s)
 1. `ARCHITECTURE.md` 与本 handoff 都提到 CatchController wrapper 建议，未来收敛到一处
 
 ### 中（单 commit 可完成）
-1. 加 `analysis/s10_failure_trace.py`，用 `runtime.events` 做 failure-state before/after 可视化
-2. 给 `SignalFusion` 加 `innovation_gating`，防 outlier 观测污染 posterior
-3. 给 `SREControlStack.step()` 加 try/except，把 adapter 异常转成新 kind `stability_violation`
+1. 给 `SREControlStack` 的 try/except fallback 增加更细的 stage-specific rollback 策略
+2. 给 `analysis/s10_failure_trace.py` 增加 event JSONL 全量导出与 dashboard 查询示例
+3. 把 `docs/knowledge-base.html` 按 `V2_Knowledge/knowledge-base.html` 的新模板整体重排
 
 ### 大（跨 session）
-1. 新增 `starship/stability_monitor.py`（§2.1 Lyapunov dV/dt ≤ 0 监视器），并同步 SRE 侧的指标自激震荡识别
-2. 把 `docs/knowledge-base.html` 按 `V2_Knowledge/knowledge-base.html` 的新模板整体重排
+1. 给 `StabilityMonitor` 增加更真实的能量函数样例（例如 kinetic + potential + attitude error）
+2. 给 `SignalFusion` 的 gating 增加分传感器阈值和恢复策略
 
 ## 备注
 

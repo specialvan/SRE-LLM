@@ -12,7 +12,7 @@ Claude 这次不是 P0 打回。它的明确结论是 **P0 通过，建议合并
 - 当前分支：`spacex-session`
 - triage 基线：`e2658f6 docs: refresh CODEX_HANDOFF and ship V2_Knowledge snapshot` 及其后的本地 follow-up
 - 本地分支是否领先 `origin/spacex-session` 以 `git status -sb` 为准，不再在文档里固定写死
-- `python -m pytest tests -q`：35 passed
+- `python -m pytest tests -q`：51 passed
 - Claude 主问题 `DEGRADED_GUARD` 已由 `41cdea8` 修复，并已有 contract 测试覆盖
 
 因此，下一轮不应再把 `DEGRADED_GUARD` 当成未修 blocker；真正要接的是“把评审包中的剩余建议工程化”。
@@ -38,9 +38,9 @@ Claude 这次不是 P0 打回。它的明确结论是 **P0 通过，建议合并
 | `API_CONTRACTS.md §2.9 CatchController` 容易误导为 SRE adapter | 小 | 代码/主文档已解释，评审包仍把它列为 open | `API_CONTRACTS.md` 已写明它属于 `starship/` 物理层，不直接依赖 `sre_control/events.py` | 清理 handoff/open-list 口径，别让已解决事项继续漂着 |
 | `ARCHITECTURE.md` 与 handoff 都提 CatchController wrapper | 小 | 部分成立 | 两处都仍有“未来 wrapper”提醒 | 保留一处即可；建议收敛到 handoff，架构文档只写依赖边界 |
 | 缺少 import graph 测试保护 `starship/` 不 import `sre_control/` | 中 | 已修 | 新增 `tests/test_import_graph.py`，同时守住 `sre_control/events.py` 不 import `starship` | 以后改依赖边界时同步更新该测试 |
-| 缺少 failure-state before/after 图 | 中 | 未修 | `EVENT_LIFECYCLE.md` 有事件密度叙事，但 `analysis/s09_sre_stack.py` 还没有事件热力图或 JSONL | 新增 `analysis/s10_failure_trace.py`，把 events 本身变成证据 |
-| `SignalFusion` 没有 innovation gating | 中 | 未修 | `FAILURE_MODES.md` 明确指出 outlier 会污染 posterior | 单独设计 gating threshold，不要顺手改其他 fusion 行为 |
-| `SREControlStack.step()` 没有 adapter 异常转 event 的 try/except | 大 | 未修 | 当前 stack 任意 adapter 抛错会中断 tick | 需要先设计新 event kind，比如 `stability_violation`，再改 schema/测试/文档 |
+| 缺少 failure-state before/after 图 | 中 | 已修 | `analysis/s10_failure_trace.py` 输出 event density、co-occurrence 和 JSONL sample；`analysis.run_all` 已扩到 10 studies | 后续可导出全量 JSONL 和 dashboard 查询样例 |
+| `SignalFusion` 没有 innovation gating | 中 | 已修 | `SignalFusion.gate_threshold` + `outlier_rejected` event + 单测覆盖 | 后续可做 per-sensor gate 和恢复窗口 |
+| `SREControlStack.step()` 没有 adapter 异常转 event 的 try/except | 大 | 已修 | `SREControlStack.step()` 每阶段 try/except，异常转 `stability_violation` 并继续 tick；contract tests 覆盖 | 后续细化 stage-specific rollback 策略 |
 
 ## 4. 评审包自身的漂移
 
@@ -135,23 +135,17 @@ observe -> fuse -> predict/plan -> guard -> allocate -> execute
 
 下一轮如果要声称“处理完 Claude 打回”，至少应该满足：
 
-- `python -m pytest tests -q` 继续 35+ passed
+- `python -m pytest tests -q` 继续 51+ passed
 - import graph 测试通过
 - `DEGRADED_*` 与 `runtime.events` 的同步规则有测试守护
 - Claude 包里的过期 commit 口径被消除或明确标注为快照
-- 至少一个 event-level 证据产物落地，最好是 `analysis/s10_failure_trace.py`
+- event-level 证据产物已落地；后续关注全量导出和 dashboard 查询
 
 ## 9. 当前建议
 
-不要先做 `stability_violation` 这类大改。下一步最稳的是一个小 commit：
+下一步不要再重复做 s10 / gating / stability fallback。最稳的是：
 
-1. 给 `analysis/` 增加 `s10_failure_trace.py`；
-2. 输出 event density / co-occurrence 证据图；
-3. 把新产物接入知识库；
-4. commit message 末尾继续保留：
-
-```text
-Acknowledged: docs/claude-review/README.md
-```
-
-这样会把 Claude 包里还停留在叙事层的 event lifecycle，推进成可复现的 before/after 证据。
+1. 给 `analysis/s10_failure_trace.py` 增加全量 JSONL trace 导出；
+2. 在 V2 知识库补一段 dashboard 查询示例；
+3. 细化 `SREControlStack.step()` 的 stage-specific rollback 策略；
+4. 如果继续动 events，仍然先改 `EVENT_COUNTEREXAMPLES`，再改真实触发路径和测试。

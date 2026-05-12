@@ -56,6 +56,6 @@ Adapter 先产生本地 `events`，然后 `SREControlStack.step()` 做两件事�
 
 - 每个 event 必须满足 `validate_event`
 - 每个已知 `kind` 必须有 counter-example
-- 八种当前 event kind 都必须能由本地 adapter 真实生成
+- 十种当前 event kind 都必须能由本地 adapter 真实生成
 
 如果新增 event kind，先补 `EVENT_COUNTEREXAMPLES`，再补测试。

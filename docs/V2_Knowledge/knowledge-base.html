@@ -145,10 +145,10 @@
     移交：<code>spacex/docs/claude-review/</code>
   </div>
   <div class="banner-row">
-    <div class="chip"><b>tests</b> 35 passed</div>
-    <div class="chip"><b>studies</b> 9 finished</div>
+    <div class="chip"><b>tests</b> 51 passed</div>
+    <div class="chip"><b>studies</b> 10 finished</div>
     <div class="chip"><b>HTML</b> well-formed</div>
-    <div class="chip"><b>events</b> 8 kinds</div>
+    <div class="chip"><b>events</b> 10 kinds</div>
     <div class="chip"><b>commits</b> cf9c8dc → 59389ee</div>
   </div>
 </header>
@@ -843,8 +843,8 @@ disallowed: docs/*        ← 无运行时代码</div>
   <table>
     <thead><tr><th>命令</th><th>预期</th><th>耗时</th></tr></thead>
     <tbody>
-      <tr><td><code>python -m pytest tests -q</code></td><td><b>35 passed</b></td><td>~1 s</td></tr>
-      <tr><td><code>python -m analysis.run_all</code></td><td>All 9 studies finished</td><td>~3 s</td></tr>
+      <tr><td><code>python -m pytest tests -q</code></td><td><b>51 passed</b></td><td>~1 s</td></tr>
+      <tr><td><code>python -m analysis.run_all</code></td><td>All 10 studies finished</td><td>~3 s</td></tr>
       <tr><td><code>python -m examples.demo_sre_loop</code></td><td>12 行 tick trace</td><td>&lt;1 s</td></tr>
       <tr><td><code>python -m examples.demo_powered_descent</code></td><td>PDG 末态 ~2e-6 m</td><td>~0.5 s</td></tr>
       <tr><td><code>python -m examples.demo_catch_phase</code></td><td>末态 lateral_error 稳定</td><td>~1 s</td></tr>
@@ -884,14 +884,14 @@ disallowed: docs/*        ← 无运行时代码</div>
   <h3>中（单 commit 可完成）</h3>
   <ul>
     <li>加 <code>tests/test_import_graph.py</code> 守依赖方向（见 §5 视图架构末尾的样例）</li>
-    <li>加 <code>analysis/s10_failure_trace.py</code>，用 <code>runtime.events</code> 做 failure-state before/after 可视化</li>
-    <li>给 <code>SignalFusion</code> 加 <code>innovation_gating</code>，防 outlier 观测污染 posterior</li>
-    <li>给 <code>SREControlStack.step()</code> 加 try/except，把 adapter 异常转成新 kind <code>stability_violation</code></li>
+    <li>给 <code>analysis/s10_failure_trace.py</code> 增加全量 JSONL trace 导出和 dashboard 查询样例</li>
+    <li>给 <code>SREControlStack.step()</code> 的 try/except fallback 增加更细的 stage-specific rollback 策略</li>
+    <li>给 <code>SignalFusion</code> 的 innovation gate 增加 per-sensor 阈值和恢复窗口</li>
   </ul>
 
   <h3>大（跨 session）</h3>
   <ul>
-    <li>新增 <code>starship/stability_monitor.py</code>（§2.1 Lyapunov dV/dt ≤ 0 监视器），并同步 SRE 侧的指标自激震荡识别</li>
+    <li>给 <code>StabilityMonitor</code> 增加更真实的能量函数样例（kinetic + potential + attitude error）</li>
     <li>用 <a href="./knowledge-base.html">本 V2 知识库</a>的模板整体重排 V1 的 <a href="../knowledge-base.html">docs/knowledge-base.html</a></li>
   </ul>
 

@@ -965,6 +965,8 @@ t_per_engine, residual = allocator.allocate(F_demand, tau_demand)</pre>
       <tr><td><code>PredictiveAutoscaler.step()</code></td><td><code>replica_bound_active</code></td><td>副本数撞到 min/max 时返回有界整数，不隐藏 cap</td></tr>
       <tr><td><code>FastTrafficSwitcher.plan()</code></td><td><code>deadline_exceeded</code></td><td>最短切换时间超过 deadline 时不要硬赶窗口</td></tr>
       <tr><td><code>WeightedLoadBalancer.allocate()</code></td><td><code>bounded_ls_residual</code></td><td>box 饱和或 residual 非零时报告残差，不重归一化</td></tr>
+      <tr><td><code>SignalFusion.step()</code></td><td><code>outlier_rejected</code></td><td>innovation gate 拒绝异常观测，保护 posterior</td></tr>
+      <tr><td><code>SREControlStack.step()</code> / <code>StabilityGuard.step()</code></td><td><code>stability_violation</code></td><td>adapter 异常或 Lyapunov 红线触发时转成可审查事件</td></tr>
     </tbody>
   </table>
 
@@ -1112,7 +1114,7 @@ second-order cone 标准形 : ‖x‖ ≤ a·t
   <pre><span class="cm"># 从仓库根目录</span>
 cd spacex
 pip install -r requirements.txt
-pytest tests -q                         <span class="cm"># 31 用例（含 runtime event schema）</span>
+pytest tests -q                         <span class="cm"># 51 用例（含 runtime event schema / failure trace / stability monitor）</span>
 python -m analysis.run_all              <span class="cm"># 9 主题 before/after 对照，~3 s</span>
 python -m examples.demo_sre_loop        <span class="cm"># 端到端 60 s SRE 循环</span>
 python -m scripts.build_mechanism_diagrams <span class="cm"># 机制图</span>

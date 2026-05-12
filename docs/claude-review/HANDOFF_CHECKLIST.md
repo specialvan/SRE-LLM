@@ -13,8 +13,8 @@
 
 | 命令 | 预期 | 大致耗时 |
 |---|---|---|
-| `python -m pytest tests -q` | `35 passed` | ~1 s |
-| `python -m analysis.run_all` | `All 9 studies finished in ~2-3s` | ~3 s |
+| `python -m pytest tests -q` | `51 passed` | ~1 s |
+| `python -m analysis.run_all` | `All 10 studies finished in ~3s` | ~3 s |
 | `python -m examples.demo_sre_loop` | 打印 12 行 tick trace，无异常 | <1 s |
 | `python -m examples.demo_powered_descent` | PDG 末态位置 ~2e-6 m | ~0.5 s |
 | `python -m examples.demo_catch_phase` | 末态 lateral_error 稳定在窗口内 | ~1 s |
@@ -67,15 +67,15 @@
 
 来自 `DETAILED_ARCHITECTURE.md §8 演化蓝图`：
 
-- [中] 加 `starship/stability_monitor.py`（§2.1 Lyapunov）
+- [中] 加 `starship/stability_monitor.py`（§2.1 Lyapunov）（已完成）
 - [中] 加 `tests/test_import_graph.py` 护栏住依赖方向（已完成）
-- [中] 加 `analysis/s10_failure_trace.py` 把事件本身变成 before/after 图
-- [中] 加 `innovation_gating` 到 `SignalFusion` 防 outlier 污染 posterior
+- [中] 加 `analysis/s10_failure_trace.py` 把事件本身变成 before/after 图（已完成）
+- [中] 加 `innovation_gating` 到 `SignalFusion` 防 outlier 污染 posterior（已完成）
 
 来自 `FAILURE_MODES.md §哨兵测试`：
 
 - [中] 加 `tests/test_sentinels.py` 三条哨兵
-- [大] 给 `SREControlStack.step()` 加 try/except 把 adapter 异常转成 stability 事件
+- [大] 给 `SREControlStack.step()` 加 try/except 把 adapter 异常转成 stability 事件（已完成；后续可细化 fallback 策略）
 
 ## 7. 如果要动 API，请先做这三件事
 

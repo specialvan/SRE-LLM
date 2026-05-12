@@ -30,13 +30,13 @@
 
 | 维度 | 状态 |
 | --- | --- |
-| 质量门 | 35 passed / 9 studies / HTML well-formed / JSON OK |
+| 质量门 | 51 passed / 10 studies / HTML well-formed / JSON OK |
 | 架构方向 | ✅ 依赖方向正确，starship 不反向依赖 sre_control |
-| 可观测性 | ✅ 8 种 runtime event 已与 adapter 一一对应 |
+| 可观测性 | ✅ 10 种 runtime event 已覆盖 8 个核心 adapter + gating / stability |
 | 评审发现 | 1 中等（已修）+ 3 非阻塞建议 |
 | Codex triage | ✅ 已补 [`CODEX_TRIAGE.md`](./CODEX_TRIAGE.md)，标注已修项、未修项和评审包口径漂移 |
 | 依赖护栏 | ✅ 已补 `tests/test_import_graph.py` 固化 `starship/` 不反向依赖 `sre_control/` |
-| 下轮建议 | `analysis/s10_failure_trace.py` 把 events 本身变成 before/after 图 |
+| 下轮建议 | 给 s10 增加全量 JSONL / dashboard 查询样例，并继续细化 stability fallback |
 
 ## Claude Reviewer 的关注点（给 Codex）
 
