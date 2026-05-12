@@ -14,6 +14,7 @@
 - `analysis/` 里有 8 组单主题 + 1 组端到端 + 1 组 failure-trace before/after 证据和总表
 - `docs/` 里已经有架构、契约、运行态、事件 schema、知识库和审查入口
 - `docs/claude-review/` 新增 Reviewer 移交包，并补了 Codex 二次 triage
+- `docs/codex-review/` 新增 Codex 侧汇总包，专门提交给 Claude 继续评审
 - `docs/V2_Knowledge/` 新增一版面向跨 agent 协同的知识库快照（本轮新增）
 - `tests/` 里已经补了模块级合同测试、堆栈级 trace 测试、event schema 测试、failure-trace 测试、stability monitor 测试和 import graph 护栏，共 51 passed
 
@@ -21,19 +22,22 @@
 
 下一轮最值得先读的是：
 
-1. [claude-review/README.md](./claude-review/README.md) — Reviewer 移交包导航（2 min）
-2. [claude-review/HANDOFF_CHECKLIST.md](./claude-review/HANDOFF_CHECKLIST.md) — 环境核查 + 阅读预算（2 min）
-3. [claude-review/CODEX_TRIAGE.md](./claude-review/CODEX_TRIAGE.md) — Codex 对 Claude 评审的二次梳理（5 min）
-4. [claude-review/REVIEW_OF_CODEX_SESSION.md](./claude-review/REVIEW_OF_CODEX_SESSION.md) — 对上一 session 的评审与结论（5 min）
-5. [claude-review/DETAILED_ARCHITECTURE.md](./claude-review/DETAILED_ARCHITECTURE.md) — 5 视图架构 + 依赖护栏（8 min）
-6. [claude-review/EVENT_LIFECYCLE.md](./claude-review/EVENT_LIFECYCLE.md) — 单 tick 时序 + 3 场景逐帧追踪（5 min）
-7. [claude-review/FAILURE_MODES.md](./claude-review/FAILURE_MODES.md) — 每模块 symptom/cause/degrade/recover
-8. [V2_Knowledge/knowledge-base.html](./V2_Knowledge/knowledge-base.html) — 最新知识库快照（可视化入口）
-9. [API_CONTRACTS.md](./API_CONTRACTS.md)
-10. [RUNTIME_STATES.md](./RUNTIME_STATES.md)
-11. [EVENT_SCHEMA.md](./EVENT_SCHEMA.md)
-12. [ARCHITECTURE.md](./ARCHITECTURE.md)
-13. [analysis/artifacts/SUMMARY.txt](../analysis/artifacts/SUMMARY.txt)
+1. [codex-review/README.md](./codex-review/README.md) — Codex 提交给 Claude 的最新汇总包（2 min）
+2. [codex-review/CLAUDE_REVIEW_REQUEST.md](./codex-review/CLAUDE_REVIEW_REQUEST.md) — 请 Claude 按 P0/P1/P2 挑刺的清单（5 min）
+3. [codex-review/CODEX_SUMMARY.md](./codex-review/CODEX_SUMMARY.md) — 当前能力、证据、风险与下一步主汇总（8 min）
+4. [claude-review/README.md](./claude-review/README.md) — Reviewer 移交包导航（2 min）
+5. [claude-review/HANDOFF_CHECKLIST.md](./claude-review/HANDOFF_CHECKLIST.md) — 环境核查 + 阅读预算（2 min）
+6. [claude-review/CODEX_TRIAGE.md](./claude-review/CODEX_TRIAGE.md) — Codex 对 Claude 评审的二次梳理（5 min）
+7. [claude-review/REVIEW_OF_CODEX_SESSION.md](./claude-review/REVIEW_OF_CODEX_SESSION.md) — 对上一 session 的评审与结论（5 min）
+8. [claude-review/DETAILED_ARCHITECTURE.md](./claude-review/DETAILED_ARCHITECTURE.md) — 5 视图架构 + 依赖护栏（8 min）
+9. [claude-review/EVENT_LIFECYCLE.md](./claude-review/EVENT_LIFECYCLE.md) — 单 tick 时序 + 3 场景逐帧追踪（5 min）
+10. [claude-review/FAILURE_MODES.md](./claude-review/FAILURE_MODES.md) — 每模块 symptom/cause/degrade/recover
+11. [V2_Knowledge/knowledge-base.html](./V2_Knowledge/knowledge-base.html) — 最新知识库快照（可视化入口）
+12. [API_CONTRACTS.md](./API_CONTRACTS.md)
+13. [RUNTIME_STATES.md](./RUNTIME_STATES.md)
+14. [EVENT_SCHEMA.md](./EVENT_SCHEMA.md)
+15. [ARCHITECTURE.md](./ARCHITECTURE.md)
+16. [analysis/artifacts/SUMMARY.txt](../analysis/artifacts/SUMMARY.txt)
 
 ## 8 个支柱地图
 
@@ -91,6 +95,13 @@
 - `SignalFusion` 增加 innovation gating，新增 `outlier_rejected` event，防止异常观测污染 posterior
 - `SREControlStack.step()` 增加 adapter 异常兜底，异常转 `stability_violation` event 并继续 tick
 - 新增 `starship/stability_monitor.py` 与 `sre_control/stability_guard.py`，用 Lyapunov `dV/dt` 监视稳定性红线
+
+### Codex review package（本轮）
+- 新增 [`codex-review/README.md`](./codex-review/README.md)，作为提交给 Claude 的汇总入口
+- 新增 [`codex-review/CODEX_SUMMARY.md`](./codex-review/CODEX_SUMMARY.md)，汇总当前状态、8 支柱地图、before/after 证据和 Codex 自评
+- 新增 [`codex-review/CLAUDE_REVIEW_REQUEST.md`](./codex-review/CLAUDE_REVIEW_REQUEST.md)，把评审问题拆成 P0/P1/P2
+- 新增 [`codex-review/QUALITY_GATES.md`](./codex-review/QUALITY_GATES.md)，列出测试、analysis、demo 和证据资产
+- 新增 [`codex-review/OPEN_RISKS.md`](./codex-review/OPEN_RISKS.md)，登记数值、建模、边界条件与文档漂移风险
 
 ## 关键证据
 
