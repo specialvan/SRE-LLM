@@ -68,8 +68,8 @@
 
   <div class="metrics-row">
     <span><b>基线 (V2 结尾)：</b>123 passed · p99 1.03 ms</span>
-    <span><b>本轮目标：</b>≥ 135 passed · p99 &lt; 2.5 ms</span>
-    <span><b>本轮状态：</b><span class="tag pending">pending PR</span></span>
+    <span><b>本轮结果：</b>138 passed · p99 1.39 ms</span>
+    <span><b>本轮状态：</b><span class="tag resolved">closed (2026-05-12)</span></span>
   </div>
   <nav style="margin-top: 10px;">
     <a href="#scope">#1 范围</a>
@@ -138,22 +138,22 @@
         <td><span class="tag resolved">resolved (6834ab3)</span></td></tr>
       <tr><td>F-005</td><td><span class="tag p3">P3</span></td>
         <td>rating scaling 常数合同</td><td>2026-06 C+A2</td>
-        <td><span class="tag pending">pending PR-fix-05</span></td></tr>
+        <td><span class="tag resolved">resolved (PR-fix-05)</span></td></tr>
       <tr><td>F-006</td><td><span class="tag p3">P3</span></td>
         <td>artifacts.py 488 行拆包</td><td>2026-06 C+A2</td>
-        <td><span class="tag pending">pending PR-fix-06</span></td></tr>
+        <td><span class="tag resolved">resolved (PR-fix-06)</span></td></tr>
       <tr><td>F-007</td><td><span class="tag p3">P3</span></td>
         <td>_ctx_from_dict 跨模块私有 import</td><td>2026-06 C+A2</td>
-        <td><span class="tag pending">pending PR-fix-07</span></td></tr>
+        <td><span class="tag resolved">resolved (PR-fix-07)</span></td></tr>
       <tr><td>F-008</td><td><span class="tag p3">P3</span></td>
         <td>SQLite migration v5 特判</td><td>2026-06 C+A2</td>
-        <td><span class="tag pending">pending PR-fix-08</span></td></tr>
+        <td><span class="tag resolved">resolved (PR-fix-08)</span></td></tr>
       <tr><td>F-009</td><td><span class="tag p4">P4</span></td>
         <td>handoff 与 roadmap 重叠</td><td>2026-06 C+A2</td>
-        <td><span class="tag pending">pending PR-fix-09</span></td></tr>
+        <td><span class="tag resolved">resolved (PR-fix-09)</span></td></tr>
       <tr><td>F-010</td><td><span class="tag p4">P4</span></td>
         <td>replay fixture 命名风格</td><td>2026-06 C+A2</td>
-        <td><span class="tag pending">pending PR-fix-10</span></td></tr>
+        <td><span class="tag resolved">resolved (PR-fix-10)</span></td></tr>
     </tbody>
   </table>
 </section>
@@ -328,10 +328,10 @@ def from_dict(cls, payload: Mapping[str, Any]) -> "ReleaseContext":
   </ol>
 
   <div class="callout success">
-    <b>交接：</b>所有 PR merge 后回此文件把 "本轮状态" 从
-    <span class="tag pending">pending PR</span> 改为
-    <span class="tag resolved">closed</span>，并把每个 PR 行的
-    <code>pending</code> tag 替换为 <code>resolved (commit &lt;sha&gt;)</code>。
+    <b>本轮已完成 (2026-05-12)：</b>所有 pending PR 均已合入并通过测试。
+    收尾报告请看
+    <a href="../claude-review/2026-06-spec-completion.md">2026-06-spec-completion.md</a>。
+    V3 目录已冻结；下一轮请新建 <code>docs/V4_Knowledge/</code>。
   </div>
 </section>
 

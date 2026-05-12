@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import os
+import re as _re
 import sqlite3
 import threading
 import time
@@ -124,6 +125,29 @@ _MIGRATIONS: List[Tuple[int, str, str]] = [
 ]
 
 
+_ADD_COLUMN_RE = _re.compile(
+    r"^ALTER\s+TABLE\s+(?P<table>\w+)\s+ADD\s+COLUMN\s+(?P<col>\w+)\s",
+    _re.IGNORECASE,
+)
+
+
+def _idempotent_statement_skip(conn: sqlite3.Connection, statement: str) -> bool:
+    """Return True if ``statement`` is a safe no-op given current schema.
+
+    Covers SQLite's lack of ``ALTER TABLE ... ADD COLUMN IF NOT EXISTS``:
+    if the column already exists on the target table, we treat the DDL as
+    already applied rather than fail. Any other statement shape falls
+    through and runs unconditionally.
+    """
+    match = _ADD_COLUMN_RE.match(statement.strip())
+    if not match:
+        return False
+    table = match.group("table")
+    column = match.group("col")
+    existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+    return column in existing
+
+
 def _split_sql(script: str) -> List[str]:
     """Split a DDL string into individual statements (naive semicolon split).
 
@@ -172,24 +196,18 @@ class _SqliteConnection:
             for version, name, ddl in _MIGRATIONS:
                 if version in applied:
                     continue
-                if version == 5:
-                    cols = {
-                        row["name"]
-                        for row in self._conn.execute("PRAGMA table_info(decisions)")
-                    }
-                    if "artifact_version" in cols:
-                        self._conn.execute(
-                            "INSERT INTO schema_migrations(version, name, applied_at) "
-                            "VALUES (?, ?, ?)",
-                            (version, name, time.time()),
-                        )
-                        continue
                 # ``executescript`` issues an implicit COMMIT, so we run the
                 # statement list ourselves and wrap it in an explicit
-                # transaction for atomicity.
+                # transaction for atomicity. Each statement is first filtered
+                # through ``_idempotent_statement_skip`` so legacy databases
+                # that already have an ``ALTER TABLE ... ADD COLUMN`` applied
+                # (e.g. because they were hand-patched before the schema
+                # version catalogue tracked it) still move forward cleanly.
                 try:
                     self._conn.execute("BEGIN IMMEDIATE")
                     for statement in _split_sql(ddl):
+                        if _idempotent_statement_skip(self._conn, statement):
+                            continue
                         self._conn.execute(statement)
                     self._conn.execute(
                         "INSERT INTO schema_migrations(version, name, applied_at) VALUES (?, ?, ?)",

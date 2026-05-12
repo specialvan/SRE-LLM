@@ -118,3 +118,21 @@ def test_golden_replay_corpus(fixture_path, tmp_path):
 
     for path, value in expected.get("trace_values", {}).items():
         assert _get_path(payload["trace"], path) == value
+
+
+_ALLOWED_FIXTURE_SUFFIXES = ("_go", "_canary", "_hold", "_rollback", "_escalate")
+
+
+def test_fixture_naming_matches_convention():
+    """R-710: every replay fixture follows {scenario}_{expected_kind}.json."""
+    fixtures = sorted(Path("tests/fixtures/replay").glob("*.json"))
+    assert fixtures, "expected at least one replay fixture"
+    offenders = [
+        p.name for p in fixtures
+        if not any(p.stem.endswith(s) for s in _ALLOWED_FIXTURE_SUFFIXES)
+    ]
+    assert not offenders, (
+        f"fixtures not matching convention: {offenders}. "
+        f"Expected suffix in {_ALLOWED_FIXTURE_SUFFIXES}; "
+        f"see tests/fixtures/replay/README.md"
+    )

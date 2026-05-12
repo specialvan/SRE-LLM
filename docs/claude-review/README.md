@@ -3,14 +3,15 @@
 本目录存放 Claude 对 codex 分支的评审输出，按时间线和关注点归档。codex
 在拿回仓库后，应该按以下顺序阅读并消化：
 
-## 当前轮（2026-06 C+A2，进行中）
+## 当前轮（2026-06 C+A2，已完成 ✅）
 
 1. [`2026-06-session-review.md`](2026-06-session-review.md) — 2026-06 轮入口
-2. [`spec-v2/README.md`](spec-v2/README.md) — 本轮可执行 spec，覆盖
-   F-005 / F-006 / F-007 / F-008 / F-009 / F-010
-3. [`spec-v2/tasks.md`](spec-v2/tasks.md) — 按 PR 排序的 T-XXX 编码任务；
+2. [`2026-06-spec-completion.md`](2026-06-spec-completion.md) — 收尾报告
+   （F-005 / F-006 / F-007 / F-008 / F-009 / F-010 全部 resolved，138 passed，p99=1.39ms）
+3. [`spec-v2/README.md`](spec-v2/README.md) — 本轮 spec（25 条 T-XXX，6 PR）
+4. [`spec-v2/tasks.md`](spec-v2/tasks.md) — 按 PR 排序的 T-XXX 编码任务；
    [`spec-v2/verification.md`](spec-v2/verification.md) — 验证命令 + 契约快照
-4. [`patches/F-005-rating-scaling-contract.md`](patches/F-005-rating-scaling-contract.md)、
+5. [`patches/F-005-rating-scaling-contract.md`](patches/F-005-rating-scaling-contract.md)、
    [`patches/F-007-release-context-from-dict.md`](patches/F-007-release-context-from-dict.md)、
    [`patches/F-008-sqlite-migration.md`](patches/F-008-sqlite-migration.md) — 核心补丁草案
 

@@ -1,5 +1,5 @@
 {
-  "name": "critical_tier_canary_downgrade",
+  "name": "critical_tier_downgrade_canary",
   "scenario": {
     "type": "policy_guardrail",
     "summary": "A critical service has low measured risk and EOMM prefers full rollout, but policy downgrades the action to CANARY."

@@ -65,6 +65,7 @@ from ..survival import ChurnRiskMonitor, CoxModel
 from ..trueskill import TrueSkillRater
 from .artifacts import (
     RuntimeArtifactBundle,
+    _rating_scaling_version,
     build_history_vector,
     build_match_config,
     load_runtime_artifacts,
@@ -304,6 +305,26 @@ class SelfIterationPipeline:
     def _hydrate_runtime_artifacts(self) -> None:
         """Load fitted runtime weights into the online models when available."""
         retention = self.artifacts.retention
+        if retention is not None:
+            # F-005: refuse to hydrate retention weights when the artifact's
+            # rating_scaling_version does not match the runtime constants —
+            # loading them anyway would silently drift EOMM features away
+            # from what the weights were trained against.
+            expected_version = _rating_scaling_version()
+            actual_version = retention.metadata.extra.get("rating_scaling_version")
+            if actual_version is None:
+                self.artifacts = self.artifacts.with_scaling_status("unknown")
+            elif actual_version != expected_version:
+                self.logger.warning(
+                    "artifacts.retention.scaling_mismatch",
+                    expected=expected_version,
+                    actual=actual_version,
+                    artifact_version=retention.metadata.version,
+                )
+                self.artifacts = self.artifacts.with_scaling_status("mismatch")
+                retention = None
+            else:
+                self.artifacts = self.artifacts.with_scaling_status("match")
         if retention is not None:
             try:
                 weights = np.asarray(retention.weights, dtype=float)

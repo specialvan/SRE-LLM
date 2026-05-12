@@ -134,7 +134,7 @@
 ### F-005 · `_service_player` / `_candidate_player` 里硬编码常数影响 artifact 稳定性
 
 - **severity**: P3
-- **status**: open
+- **status**: resolved (2026-05-12, spec-v2 PR-fix-05)
 - **文件**: `gan_matchmaking/sre/artifacts.py`
 - **问题**:
   ```python
@@ -160,7 +160,7 @@
 ### F-006 · `sre/artifacts.py` 单文件过大（488 行）
 
 - **severity**: P3
-- **status**: open
+- **status**: resolved (2026-05-12, spec-v2 PR-fix-06)
 - **影响面**: 可读性 / 导航
 - **修复建议**: 拆成
   - `sre/artifacts/__init__.py` — re-export
@@ -173,7 +173,7 @@
 ### F-007 · `cli._ctx_from_dict` 被跨模块 `_` 私有 import
 
 - **severity**: P3
-- **status**: resolved (commit 2278868, 2026-05-12)
+- **status**: resolved (2026-05-12, spec-v2 PR-fix-07)
 - **文件**:
   - `gan_matchmaking/service/app.py`: `from ..cli import _ctx_from_dict`
   - `gan_matchmaking/sre/replay.py`: `from ..cli import _ctx_from_dict`（间接使用其契约）
@@ -188,7 +188,7 @@
 ### F-008 · SQLite migration v5 有"列已存在跳过"特殊处理
 
 - **severity**: P3
-- **status**: open
+- **status**: resolved (2026-05-12, spec-v2 PR-fix-08)
 - **文件**: `gan_matchmaking/persistence/sqlite.py::_migrate`
 - **问题**:
   ```python
@@ -219,7 +219,7 @@
 ### F-009 · `codex-handoff.md` 与 `implementation-roadmap.md` 内容重叠约 30%
 
 - **severity**: P4
-- **status**: open
+- **status**: resolved (2026-05-12, spec-v2 PR-fix-09)
 - **修复建议**:
   - `codex-handoff.md` 只留：**当前状态 + 机制地图 + 下一位该做什么 + 风险边界**
   - `implementation-roadmap.md` 只留：**phase 定义 + PR 映射 + 未来方向**
@@ -228,7 +228,7 @@
 ### F-010 · replay fixture 命名风格不统一
 
 - **severity**: P4
-- **status**: open
+- **status**: resolved (2026-05-12, spec-v2 PR-fix-10)
 - **现有命名**:
   - `fallback_go.json`
   - `artifact_canary.json`

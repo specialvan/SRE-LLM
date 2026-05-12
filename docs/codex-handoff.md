@@ -20,54 +20,31 @@
 | Minimax / BP | SLO 与稳定性之间的策略张力 | `gan_matchmaking/minimax_bp.py`，当前仍偏研究态 |
 
 ## Replay Corpus
-- 入口：`tests/fixtures/replay/*.json`
-- 测试：`tests/test_replay_corpus.py`
-- 导出：`python -m gan_matchmaking.cli export-replay --state-db state.sqlite --correlation-id <id> --output tests/fixtures/replay/<name>.json`
+- 入口 + 命名约定 + catalog：[`tests/fixtures/replay/README.md`](../tests/fixtures/replay/README.md)
+- 测试：`tests/test_replay_corpus.py`（含 `test_fixture_naming_matches_convention`）
+- 导出：`python -m gan_matchmaking.cli export-replay --state-db state.sqlite --correlation-id <id> --output tests/fixtures/replay/<scenario>_<kind>.json`
 - fitted promotion：追加 `--allow-fitted-artifacts --artifact-dir <runtime-artifacts> --artifact-output-dir tests/fixtures/replay/<name>-artifacts`
-- 覆盖：bootstrap fallback、fitted artifact、freeze hold、budget rollback、unknown strategy escalation
-- 事故叙事样本：critical-tier canary downgrade、risk-WARN canary、shadow strategy hold
-- 断言能力：除最终 decision 字段外，fixture 现在可声明 `expected.rationale_contains` 和 `expected.trace_values`
-- 作用：把“可回放”从 runbook 描述推进到可执行回归资产
 - 边界：bootstrap 决策可直接导出成 standalone fixture；fitted artifact 决策必须显式允许并提供匹配 artifact bundle，导出器会校验版本和 manifest 后再归档
 
 ## 生产化模块
+> Phase/PR 编号详见 [`docs/implementation-roadmap.md`](implementation-roadmap.md)；
+> 本节只列"哪些文件已到生产形态、哪些仍偏研究态"，不重复 phase 定义。
+
 ### 已经接近生产形态
-- `core/`
-  - 配置、错误类型、指标、日志、seed 管理都比较完整
-- `persistence/`
-  - SQLite / memory 双实现
-  - 决策审计表已支持 `artifact_version`
-- `service/`
-  - HTTP boundary 已可用
-  - 健康检查、准备就绪、观测写入、决策查询都齐了
-- `sre/self_iteration.py`
-  - 主决策链路可运行
-  - 已接 runtime artifact hydrate
-  - 已把决策落回存储
-  - 已在 trace 中写入可回放输入快照
-- `sre/artifacts.py`
-  - 已支持 runtime artifact manifest 校验
-  - 校验失败会跳过对应 artifact，并把错误写入 `trace["artifacts"]["validation_errors"]`
-- `sre/replay.py`
-  - 已支持从 SQLite `decisions` 审计行导出 replay fixture
-  - 会识别缺失 `trace.input.context` 的旧审计行，避免伪造不可复现样本
-  - fitted artifact replay promotion 已要求 bundle 校验和归档，避免把只有 artifact id、没有权重的样本放进 corpus
-- `sre/leases.py`
-  - 已支持本地文件 writer lease、TTL、token 校验释放和后台续租
-  - 适用于单节点 / ReadWriteOnce PVC 的重复进程防护，不是分布式锁
-- `training/`
-  - 已能从 store 训练 Cox / Retention，并输出权重 + 元数据
-- `tests/fixtures/replay/`
-  - 已有第一组 golden replay fixtures，可作为事故复盘和回归基线
-  - 已开始从“分支覆盖”升级到“事故叙事 + rationale/trace 断言”
+- `core/`：配置 / 错误 / 指标 / 日志 / seed
+- `persistence/`：SQLite + memory 双实现，决策审计表带 `artifact_version`，migration 通过 idempotent guard 兼容遗留列（F-008 已修）
+- `service/`：HTTP boundary 完整，含 `/healthz`、`/readyz`（含 lease-healthy 翻转）、`/metrics`、`/v1/observe`、`/v1/decide`；`handle_decide` 走 `ReleaseContext.from_dict` 公共 API（F-007 已修）
+- `sre/self_iteration.py`：主决策链路 + artifact hydrate + decision persist + trace 输入快照；shadow/advisory 在边界后才发 metric / log（F-002 已修）
+- `sre/artifacts/`：拆分为 metadata / retention / cox / bundle 四个子模块（F-006 已修），rating scaling 常数带 version 合同（F-005 已修），runtime manifest + feature contract 校验失败会写 `trace["artifacts"]["validation_errors"]`
+- `sre/leases.py`：本地 writer lease + TTL + 后台续租 + on-failure 回调（F-001 已修）
+- `sre/replay.py`：从 SQLite 审计行导出 replay fixture，含 fitted artifact promotion
+- `training/`：Cox / Retention 训练 + 权重 + 元数据（含 rating_scaling_version）
+- `tests/fixtures/replay/`：8 个 golden fixture + README 命名约定 + naming-convention 测试（F-010 已修）
 
 ### 仍偏研究态
-- `minimax_bp.py`
-  - 更像解释性辅助层，不是主生产路径
-- `gnn_synergy.py`
-  - 现在是轻量图推理，不是完整图服务
-- `EOMM / Cox` 的特征空间已经开始共享 feature builders，但还需要更多真实观测校准
-- replay corpus 已经起步，但还不是完整事故场景库
+- `minimax_bp.py`：解释性辅助层，不是主生产路径
+- `gnn_synergy.py`：轻量图推理，不是完整图服务
+- EOMM / Cox 特征空间已共享 feature builders，但还需要更多真实观测校准
 
 ## 风险与边界
 1. **训练/运行特征不完全同构**
@@ -131,23 +108,18 @@
 1. **✅ B+A2 本轮已关闭** (commits `704765d` + `6834ab3`, 2026-05-12)：F-001 / F-002 / F-003 / F-004 全部 resolved。收尾报告见
    [`docs/claude-review/2026-05-spec-completion.md`](claude-review/2026-05-spec-completion.md)，
    `pytest -q` = 123 passed, `bench p99` = 1.03 ms。
-2. **🔵 C+A2 下一轮 spec 已备好**：入口 [`docs/claude-review/2026-06-session-review.md`](claude-review/2026-06-session-review.md)，
-   覆盖 F-005 / F-006 / F-007 / F-008 / F-009 / F-010。按
-   [`docs/claude-review/spec-v2/tasks.md`](claude-review/spec-v2/tasks.md)
-   的 T-XXX 编码；验证命令见
-   [`docs/claude-review/spec-v2/verification.md`](claude-review/spec-v2/verification.md)；
-   补丁草案在
-   [`patches/F-005-rating-scaling-contract.md`](claude-review/patches/F-005-rating-scaling-contract.md)、
-   [`patches/F-007-release-context-from-dict.md`](claude-review/patches/F-007-release-context-from-dict.md)、
-   [`patches/F-008-sqlite-migration.md`](claude-review/patches/F-008-sqlite-migration.md)。
-3. V3 Knowledge 差量快照已就绪：[`docs/V3_Knowledge/knowledge-base.html`](V3_Knowledge/knowledge-base.html)
-   （2026-06 轮的变更面 + findings 状态表 + PR 编排图）；系统全景仍读
-   [`docs/V2_Knowledge/knowledge-base.html`](V2_Knowledge/knowledge-base.html)。本轮
-   PR 落地后用真实 commit sha 回填 V3 的 findings 状态表。
-4. 继续扩展 incident-style replay，优先覆盖 artifact validation failure、breaker short-circuit、shadow/advisory rollout transition
-5. 如果目标部署需要多写者，原型化 Kubernetes Lease / PostgreSQL advisory lock / Redis lease 之一
-6. 增加 artifact bundle 存储策略文档：本地 corpus、对象存储、CI 下载缓存如何组织
-7. 用真实观测数据校准 Cox / Retention 的阈值和学习率
+2. **✅ C+A2 本轮已关闭** (2026-05-12)：F-005 / F-006 / F-007 / F-008 / F-009 / F-010 全部 resolved。
+   收尾报告：[`docs/claude-review/2026-06-spec-completion.md`](claude-review/2026-06-spec-completion.md)；
+   `pytest -q` = 138 passed，`bench p99` = 1.39 ms；新增 ADR-0008
+   [artifact rating scaling compatibility](adr/0008-artifact-rating-scaling-compat.md)。
+3. V3 Knowledge 差量快照：[`docs/V3_Knowledge/knowledge-base.html`](V3_Knowledge/knowledge-base.html)
+   （本轮 PR 落地后，请把 pending PR 状态翻成 resolved (commit `<sha>`)，
+   然后冻结该目录）；系统全景仍读
+   [`docs/V2_Knowledge/knowledge-base.html`](V2_Knowledge/knowledge-base.html)。
+4. 下一轮评审可开 `docs/claude-review/2026-07-session-review.md` 与
+   `docs/V4_Knowledge/`。本轮没有新增 blocking finding；建议覆盖
+   [`docs/implementation-roadmap.md#5-next-delivery-target`](implementation-roadmap.md#5-next-delivery-target)
+   列出的 4 项（incident replay 扩展 / 分布式 lease 原型 / artifact bundle 存储策略 / 真实观测校准）。
 
 ## Claude 评审结论（2026-05 session）
 - 评审报告：[`docs/claude-review/2026-05-session-review.md`](claude-review/2026-05-session-review.md)

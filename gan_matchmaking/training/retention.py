@@ -17,6 +17,7 @@ from ..eomm import RetentionModel, _features as _eomm_features
 from ..persistence import Observation, PipelineStore
 from ..sre.artifacts import (
     EOMM_FEATURE_NAMES,
+    _rating_scaling_version,
     build_history_vector,
     build_match_config,
     build_metadata,
@@ -150,7 +151,8 @@ def train_retention_from_store(
             "iters": iters,
         },
         extra={"feature_dim": int(X0.shape[1]),
-               "feature_names": list(EOMM_FEATURE_NAMES)},
+               "feature_names": list(EOMM_FEATURE_NAMES),
+               "rating_scaling_version": _rating_scaling_version()},
     )
     np_path = save_retention_artifact(
         output_dir,

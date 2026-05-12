@@ -130,11 +130,21 @@ Goal: make the system easy to review and evolve.
 
 ## 5. Next Delivery Target
 
-The best next increment is:
+Current round (2026-06 C+A2): F-005 / F-006 / F-007 / F-008 / F-009 /
+F-010 are landed (see
+[`docs/claude-review/2026-06-spec-completion.md`](claude-review/2026-06-spec-completion.md)).
+
+Next increments, in priority order:
 
 1. expand incident-style replay coverage for artifact validation failures
    and breaker/shadow-mode transitions
 2. prototype a distributed lease backend if the deployment target needs
-   multiple writable replicas
+   multiple writable replicas (see [ADR-0007](adr/0007-single-writer-lease-boundary.md))
 3. define artifact bundle storage policy for local corpus, object storage,
    and CI cache hydration
+4. calibrate Cox / Retention thresholds with real production observations
+   (replaces synthetic training data)
+
+See [`docs/codex-handoff.md`](codex-handoff.md) for the narrative "下一位
+该做什么" view. Keep each increment behind an explicit ADR when it
+changes the decision contract or the artifact format.
