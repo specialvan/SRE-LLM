@@ -28,7 +28,7 @@ runtime event 最小字段：
 | `detail` | 当前 tick 发生了什么 |
 | `safe_action` | 控制栈采取的保守动作 |
 
-当前 registry 共 10 种 kind：
+当前 registry 共 11 种 kind：
 
 | Kind | Producer | 语义 |
 |---|---|---|
@@ -41,21 +41,15 @@ runtime event 最小字段：
 | `bounded_ls_residual` | `WeightedLoadBalancer.allocate()` | bounded LS residual 无法清零 |
 | `pool_capacity_clipped` | `PoolCapacityPlanner.plan()` | pool 被容量上限钳制 |
 | `topology_state_repaired` | `TopologyState.step()` | quaternion 被 reset / renormalize |
-| `stability_violation` | `StabilityGuard.step()` / stack fallback | Lyapunov 红线或当前过宽异常兜底 |
+| `stability_violation` | `StabilityGuard.step()` | Lyapunov 红线 |
+| `adapter_exception` | `SREControlStack.step()` | 可恢复控制域异常触发 validated fallback |
 
 ## 当前语义风险
 
-- `stability_violation` 同时承载 Lyapunov 红线和 adapter 异常兜底，语义压力过大。
-- `SREControlStack.step()` 当前 fallback 口径仍需区分 recoverable control-domain error 与 programmer error。
-- `docs/RUNTIME_STATES.md` 的 local emitter 表曾按 8 个 core adapter 写法表达；阅读时应结合 `docs/EVENT_SCHEMA.md` 的 10 kinds。
+- `adapter_exception` 只表达 recoverable control-domain failure；`AttributeError` / `TypeError` 等 programmer error 必须 fail fast。
+- `stability_violation` 现在只承载 Lyapunov / 稳定性红线，不再混用为 adapter 异常兜底。
+- `docs/RUNTIME_STATES.md` 的 local emitter 表包含 8 个 core adapter events 和 stack-level cross-cutting events；阅读时应结合 `docs/EVENT_SCHEMA.md` 的 11 kinds。
 
 ## 下一步合同
-
-PR-B 应引入 stage-specific fallback taxonomy，事件 payload 至少应能区分：
-
-- `stage`
-- `exception_type`
-- `cause_type`
-- `recoverable`
 
 PR-C 固化 StabilityGuard manual-reset latch 语义：触发后保持 triggered，直到显式 `reset()`。

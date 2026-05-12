@@ -25,6 +25,7 @@ The stack can be understood as a small finite-state machine:
 | `DEGRADED_OBSERVE` | some sensors are missing or stale | missing reading / large residual | freeze confidence growth |
 | `DEGRADED_PLAN` | prediction is weak | horizon mismatch / model drift | shorten horizon, raise conservatism |
 | `DEGRADED_ALLOCATE` | residual cannot be driven to zero | rank loss / box saturation | keep residual trace, do not fake exactness |
+| `DEGRADED_GUARD` | proposal was unsafe or guardrail fallback was used | cone/magnitude violation or recoverable guard failure | project into feasible set or use zero-action fallback |
 | `EMERGENCY_CUTOVER` | fast switch is required | incident / rollback / deadline breach | use bang-bang switcher |
 
 Rule of thumb:
@@ -260,6 +261,15 @@ Current local event emitters:
 | `PredictiveAutoscaler.step()` | `last_trace["events"]` | `replica_bound_active` |
 | `FastTrafficSwitcher.plan()` | `info["events"]` | `deadline_exceeded` |
 | `WeightedLoadBalancer.allocate()` | `info["events"]` | `bounded_ls_residual` |
+| `StabilityGuard.step()` | `trace["events"]` | `stability_violation` |
+| `SREControlStack.step()` | `entry["runtime"]["events"]` | `adapter_exception` |
+
+Recoverable fallback policy is explicit:
+
+- `ControlDomainError` marks expected control-domain failures.
+- `RecoverableControlError` means a validated fallback can safely complete the tick.
+- `AdapterInputError` is a recoverable invalid/missing adapter input case.
+- programmer errors such as `AttributeError` and `TypeError` are not swallowed; they propagate to the caller.
 
 The exact schema and counter-examples are pinned in `docs/EVENT_SCHEMA.md`.
 This is intentionally coarse. It is a review trace, not a full production incident timeline.
@@ -275,6 +285,8 @@ This is intentionally coarse. It is a review trace, not a full production incide
 | missing sensor | `used=False` in trace | keep fused state, reduce confidence |
 | invalid topology quaternion | `repair_unit_norm` | repair state before using topology distance / angle |
 | model mismatch | repeated residuals | shorten horizon / freeze rollout |
+| recoverable adapter failure | `adapter_exception` with `recoverable=True` | use validated stage fallback and continue tick |
+| programmer error | uncaught `AttributeError` / `TypeError` / invariant break | fail fast instead of emitting runtime event |
 | unsafe proposal | cone or magnitude violation | project before execution |
 | rank loss | residual stays non-zero | keep bounded LS and report residual |
 | incident deadline | switch time too long | enter emergency cutover |

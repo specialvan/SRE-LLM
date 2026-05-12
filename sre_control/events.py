@@ -47,15 +47,20 @@ EVENT_COUNTEREXAMPLES: dict[str, str] = {
         "is mis-specified, not that the sample is actually noise."
     ),
     "stability_violation": (
-        "Do not swallow an adapter exception as 'just an event'; use this kind "
-        "to record that a stage crashed so the tick can continue safely, but "
-        "always investigate the root cause rather than widening the safe path."
+        "Do not treat Lyapunov red-lines as ordinary alert noise; a sustained "
+        "stability violation means the control objective is moving in the wrong "
+        "direction and needs explicit operator review."
+    ),
+    "adapter_exception": (
+        "Do not swallow programmer bugs as recoverable adapter exceptions; only "
+        "control-domain failures with validated fallbacks should use this event."
     ),
 }
 
 
-def make_event(stage: str, kind: str, detail: str,
-               safe_action: str) -> dict[str, str]:
+def make_event(
+    stage: str, kind: str, detail: str, safe_action: str, **fields: object
+) -> dict[str, object]:
     """Create one JSON-serializable runtime event.
 
     The counter-example is kept in ``EVENT_COUNTEREXAMPLES`` rather than
@@ -69,15 +74,28 @@ def make_event(stage: str, kind: str, detail: str,
         "kind": kind,
         "detail": detail,
         "safe_action": safe_action,
+        **fields,
     }
 
 
 def validate_event(event: Mapping[str, object]) -> bool:
     """Return True when an event follows the shared review schema."""
-    return (
+    base_valid = (
         all(field in event for field in REQUIRED_EVENT_FIELDS)
-        and all(isinstance(event[field], str)
-                and bool(event[field])
-                for field in REQUIRED_EVENT_FIELDS)
+        and all(
+            isinstance(event[field], str) and bool(event[field])
+            for field in REQUIRED_EVENT_FIELDS
+        )
         and event["kind"] in EVENT_COUNTEREXAMPLES
+    )
+    if not base_valid:
+        return False
+    if event["kind"] != "adapter_exception":
+        return True
+    return (
+        isinstance(event.get("exception_type"), str)
+        and bool(event.get("exception_type"))
+        and isinstance(event.get("cause_type"), str)
+        and bool(event.get("cause_type"))
+        and isinstance(event.get("recoverable"), bool)
     )

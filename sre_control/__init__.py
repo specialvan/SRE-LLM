@@ -29,22 +29,35 @@ from .fast_switcher import FastTrafficSwitcher
 from .weighted_balancer import WeightedLoadBalancer, Instance
 from .stability_guard import StabilityGuard
 from .stack import SREControlStack
-from .events import (EVENT_COUNTEREXAMPLES, REQUIRED_EVENT_FIELDS,
-                     make_event, validate_event)
+from .exceptions import AdapterInputError, ControlDomainError, RecoverableControlError
+from .events import (
+    EVENT_COUNTEREXAMPLES,
+    REQUIRED_EVENT_FIELDS,
+    make_event,
+    validate_event,
+)
 
 __all__ = [
     "PoolCapacityPlanner",
-    "CanaryScheduler", "CanaryStep",
+    "CanaryScheduler",
+    "CanaryStep",
     "TopologyState",
     "SLOGuardrail",
-    "SignalFusion", "Signal",
+    "SignalFusion",
+    "Signal",
     "PredictiveAutoscaler",
     "FastTrafficSwitcher",
-    "WeightedLoadBalancer", "Instance",
+    "WeightedLoadBalancer",
+    "Instance",
     "StabilityGuard",
     "SREControlStack",
-    "EVENT_COUNTEREXAMPLES", "REQUIRED_EVENT_FIELDS",
-    "make_event", "validate_event",
+    "AdapterInputError",
+    "ControlDomainError",
+    "RecoverableControlError",
+    "EVENT_COUNTEREXAMPLES",
+    "REQUIRED_EVENT_FIELDS",
+    "make_event",
+    "validate_event",
 ]
 
 __version__ = "0.1.0"

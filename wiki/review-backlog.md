@@ -18,14 +18,16 @@
 
 ### PR-B: Add stage-specific fallback taxonomy
 
+状态：已实现，待最终提交。
+
 目标：让 recoverable control-domain failure 可恢复，让 programmer error fail fast。
 
 验收要点：
 
-- 引入异常 taxonomy，例如 `ControlDomainError` / `RecoverableControlError` / `AdapterInputError`。
-- 不吞 `AttributeError` / `TypeError` 等 programmer error。
-- event payload 包含 `stage`、`exception_type`、`cause_type`、`recoverable`。
-- docs 说明 exception taxonomy。
+- 已引入 `ControlDomainError` / `RecoverableControlError` / `AdapterInputError`。
+- `SREControlStack.step()` 只捕获 `RecoverableControlError`，不吞 `AttributeError` / `TypeError` 等 programmer error。
+- `adapter_exception` event payload 包含 `stage`、`exception_type`、`cause_type`、`recoverable`。
+- docs 已说明 exception taxonomy。
 
 ### PR-C: Lock StabilityGuard semantics
 
