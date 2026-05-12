@@ -66,26 +66,24 @@
 </header>
 
 <div class="goal">
-  <strong>目标</strong>：在 P0/P1 已收口的基础上，把 benchmark / invariant 守门接进 CI，并继续拆解 best_effort 恢复态。不扩新功能。
+  <strong>目标</strong>：在 P0/P1/P3 守门已收口的基础上，把 metrics、失败树和 trace 解释接回主架构文档。不扩新功能。
 </div>
 
 <h4>开工前 · 10 分钟准备</h4>
 <ol class="step-list">
-  <li>跑 <code>pytest -q</code>，确认 27 tests 全绿。</li>
+  <li>跑 <code>pytest -q</code>，确认 32 tests 全绿。</li>
   <li>跑 canonical benchmark，重点看 <code>emergency_rate</code>、<code>best_effort_rate</code>、<code>cbf_fallback_rate</code> 三个数。</li>
   <li>打开 <a href="./01-current-state.html">01-current-state.html</a> 与 <a href="../claude-review/08-benchmark-log.md">08-benchmark-log.md</a>，对齐当前状态。</li>
   <li>打开 <a href="../claude-review/07-codex-directives.md">07-codex-directives.md</a>，默念 10 DO + 10 DON'T。</li>
 </ol>
 
 <h4>开工中 · 推荐的 PR 序列</h4>
-<p>AI-01 / AI-02 / AI-03b 已完成。接下来按剩余风险面推进：</p>
+<p>AI-01 / AI-02 / AI-03b / AI-11 / AI-12 / AI-13 / AI-14 已完成。接下来按剩余文档整合风险推进：</p>
 
 <ol class="step-list">
-  <li><strong>先做 CI invariant</strong>：AI-11（grep-based scanner）。</li>
-  <li><strong>再做状态组合回归</strong>：AI-12（含 <code>best_effort</code> 与 <code>fallback_brake</code> 的非法组合）。</li>
-  <li><strong>再固化 benchmark</strong>：AI-14（JSON artifact + 历史基线）。</li>
-  <li><strong>再接主文档</strong>：AI-05/07/08（metrics、失败树、trace 章节）。</li>
-  <li><strong>最后扫尾</strong>：AI-10/06/13（入口、调试日志、图剪枝测试）。</li>
+  <li><strong>先接主文档</strong>：AI-05/07/08（metrics、失败树、trace 章节）。</li>
+  <li><strong>再扫入口</strong>：AI-10（README / hub primary entry）。</li>
+  <li><strong>最后补调试可见性</strong>：AI-06（trace._jsonable debug logging）。</li>
 </ol>
 
 <h4>必用工具</h4>
@@ -122,7 +120,7 @@
 
 <h4>成功标志</h4>
 <ul>
-  <li>AI-11 / AI-12 / AI-14 close，CI 绿；</li>
+  <li>AI-05 / AI-07 / AI-08 close，CI 绿；</li>
   <li>benchmark artifact 中同时保留 <code>planner_emergency_rate</code> 与 <code>planner_best_effort_rate</code>；</li>
   <li><code>test_structural_pipeline_respects_availability_budget</code> 保持 pass，不再出现 xfail；</li>
   <li>所有 PR 描述里都明示关闭的 finding / AI 编号。</li>

@@ -29,7 +29,7 @@
   <small>一页看清整个工程此刻的健康度、主线阻塞、完成度</small>
 </h1>
 <div class="meta">
-  <span>快照时间：2026-05-12T17:55+08:00</span>
+  <span>快照时间：2026-05-12T18:25+08:00</span>
   <span>对应机器可读：<a href="./state.json">state.json</a></span>
   <span>review 轮次：round 2（Claude Opus 4.7）</span>
 </div>
@@ -95,7 +95,7 @@
 
   <rect class="warn" x="420" y="160" width="160" height="130"/>
   <text class="t" x="500" y="184" text-anchor="middle">invariant.py</text>
-  <text class="s" x="500" y="204" text-anchor="middle">emergency 4.18%</text>
+  <text class="s" x="500" y="204" text-anchor="middle">emergency 4.82%</text>
   <text class="m" x="500" y="222" text-anchor="middle">best_effort 恢复态高</text>
   <text class="s" x="500" y="252" text-anchor="middle">contract 全部保持</text>
   <text class="s" x="500" y="270" text-anchor="middle">fallback 路径正确</text>
@@ -111,7 +111,7 @@
   <text class="s" x="700" y="272" text-anchor="middle">✓ v1.1 契约落地</text>
 
   <rect class="ok" x="800" y="160" width="220" height="130"/>
-  <text class="t" x="910" y="184" text-anchor="middle">测试 27 / 27 绿</text>
+  <text class="t" x="910" y="184" text-anchor="middle">测试 32 / 32 绿</text>
   <text class="s" x="910" y="204" text-anchor="middle">test_trace · test_benchmark</text>
   <text class="s" x="910" y="222" text-anchor="middle">test_cbf（+2 case） · 其它</text>
   <text class="s" x="910" y="250" text-anchor="middle">test_policies 已补</text>
@@ -150,16 +150,16 @@
     <tr>
       <td>planner_emergency_rate</td>
       <td>&lt; 0.5 %</td>
-      <td>4.18 %</td>
+      <td>4.82 %</td>
       <td class="warn">PASS demo · FAIL prod</td>
-      <td>继续压降 CBF fallback</td>
+      <td>与 CBF fallback 对齐</td>
     </tr>
     <tr>
       <td>planner_best_effort_rate</td>
       <td>&lt; 5 %（生产观测项）</td>
       <td>63.76 %</td>
       <td class="warn">WARN</td>
-      <td><a href="../claude-review/05-action-items.md#ai-12">AI-12</a> 后续细分</td>
+      <td>后续按 recovery reason 细分</td>
     </tr>
     <tr>
       <td>cbf_fallback_rate</td>
@@ -185,7 +185,7 @@
     <tr>
       <td>测试通过率</td>
       <td>= 100 %</td>
-      <td>27 / 27</td>
+      <td>32 / 32</td>
       <td class="pass">PASS</td>
       <td>—</td>
     </tr>
@@ -194,13 +194,13 @@
 
 <div class="callout warn">
 <span class="tag">关键洞察</span>
-<strong>AI-02 已把硬 emergency 从 42.18% 降到 4.18%</strong>，但 `best_effort=63.76%` 暴露出大量“CBF 安全、Lyapunov 恢复中”的帧。
-下一轮重点不再是 P0/P1 unblock，而是把这个恢复态拆细、测试非法组合，并让 CI 固化 benchmark artifact。
+<strong>AI-12 已把 CBF fallback 的 planner 语义清干净</strong>：`fallback_brake` 不再被标成 `non_increasing`，而是统一计入 `emergency_brake`。
+下一轮重点不再是 P0/P1 unblock，而是把 metrics、失败树和 trace 解释接进主文档。
 </div>
 
 <h2 id="progress">3 · Action Items 完成进度</h2>
 
-<p>14 条 action items 中，已完成 7 项：Claude 清理 AI-03a / AI-03c / AI-04 / AI-09，Codex 收口 AI-01 / AI-02 / AI-03b。剩余 7 项进入 CI、文档可视化与生产化风险收敛。</p>
+<p>16 条 action items 中，已完成 11 项：Claude 清理 AI-03a / AI-03c / AI-04 / AI-09，Codex 收口 AI-01 / AI-02 / AI-03b / AI-11 / AI-12 / AI-13 / AI-14。剩余 5 项集中在文档可视化、入口与 trace 调试可见性。</p>
 
 <table>
   <thead><tr><th>Priority</th><th>ID</th><th>状态</th><th>简述</th></tr></thead>
@@ -217,23 +217,25 @@
     <tr><td><span class="badge info">P2</span></td><td>AI-08</td><td>⬜ pending</td><td>deep-dive.html §4.10 for trace.py</td></tr>
     <tr><td><span class="badge info">P2</span></td><td>AI-09</td><td>✅ done</td><td>标注 _pure_e2e_step 合法例外（2026-05-12）</td></tr>
     <tr><td><span class="badge info">P2</span></td><td>AI-10</td><td>⬜ pending</td><td>primary entry 写进 README</td></tr>
-    <tr><td><span class="badge info">P2</span></td><td>AI-11</td><td>⬜ pending</td><td>CI invariant scanner</td></tr>
-    <tr><td><span class="badge info">P2</span></td><td>AI-12</td><td>⬜ pending</td><td>T_inv / CBF 非法组合测试</td></tr>
+    <tr><td><span class="badge info">P2</span></td><td>AI-11</td><td>✅ done</td><td>CI invariant scanner</td></tr>
+    <tr><td><span class="badge info">P2</span></td><td>AI-12</td><td>✅ done</td><td>T_inv / CBF 非法组合测试</td></tr>
+    <tr><td><span class="badge info">P3</span></td><td>AI-13</td><td>✅ done</td><td>图剪枝一致性回归</td></tr>
+    <tr><td><span class="badge info">P3</span></td><td>AI-14</td><td>✅ done</td><td>benchmark artifact runner</td></tr>
   </tbody>
 </table>
 
-<p><strong>进度条（按 priority 加权 · total 26 · done 18）</strong>：</p>
+<p><strong>进度条（按 priority 加权 · total 26 · done 22）</strong>：</p>
 <div style="display:flex;gap:1px;margin:8px 0">
-  <div class="progress-seg" style="background:#0b6b58;width:69.2%"></div>
-  <div class="progress-seg" style="background:#d9dde5;width:30.8%"></div>
+  <div class="progress-seg" style="background:#0b6b58;width:84.6%"></div>
+  <div class="progress-seg" style="background:#d9dde5;width:15.4%"></div>
 </div>
-<p style="font-size:11.5px;color:var(--fg-mute);margin-top:0">完成 7 / 14（权重 18 / 26 ≈ 69%）· P0 剩 0 · P1 剩 0 · P2/P3 剩 7</p>
+<p style="font-size:11.5px;color:var(--fg-mute);margin-top:0">完成 11 / 16（权重 22 / 26 ≈ 85%）· P0/P1/P3 剩 0 · P2 剩 5</p>
 
 <h2 id="branch">4 · 代码状态</h2>
 
 <dl class="kv-grid">
   <dt>分支</dt><dd><code>auto-decide-session</code></dd>
-  <dt>HEAD</dt><dd>以当前分支最新提交为准；本页记录 AI-01/02/03b 收口后的状态</dd>
+  <dt>HEAD</dt><dd>以当前分支最新提交为准；本页记录 AI-11/12/13/14 收口后的状态</dd>
   <dt>main 基线</dt><dd><code>f0070c0</code></dd>
   <dt>工作树</dt><dd>`.local-artifacts/` 已忽略；benchmark JSON 不入库</dd>
   <dt>代码行数</dt><dd>auto_decide/ + tests/ + examples/ ≈ 2k 行</dd>
@@ -249,7 +251,8 @@
   <tbody>
     <tr><td>策略升级</td><td>小</td><td>2</td><td>`PredictiveBrakePolicy` + planner 自动包裹</td></tr>
     <tr><td>测试守门</td><td>小</td><td>3</td><td>status enum、policy 行为、benchmark SLO</td></tr>
-    <tr><td>benchmark 可观测性</td><td>小</td><td>2</td><td>新增 `planner_best_effort_rate`，避免隐藏恢复态</td></tr>
+    <tr><td>benchmark 可观测性</td><td>小</td><td>3</td><td>新增 `planner_best_effort_rate` 与 `scripts/run_benchmark.py` artifact helper</td></tr>
+    <tr><td>invariant 守门</td><td>小</td><td>2</td><td>`scripts/check_invariants.py` + pytest 桥接测试</td></tr>
     <tr><td>知识库同步</td><td>中</td><td>多</td><td>action items、benchmark log、state.json、handoff 对齐</td></tr>
   </tbody>
 </table>
@@ -257,12 +260,10 @@
 <h2 id="next">6 · 立即行动建议</h2>
 
 <ol>
-  <li>先跑 <code>pytest -q</code> 确认 27 绿；</li>
+  <li>先跑 <code>pytest -q</code> 确认 32 绿；</li>
   <li>再跑 canonical benchmark，把 `planner_best_effort_rate` 一起看；</li>
-  <li>优先做 <a href="../claude-review/05-action-items.md#ai-11">AI-11</a>：CI invariant scanner；</li>
-  <li>接着做 <a href="../claude-review/05-action-items.md#ai-12">AI-12</a>：禁止 `(best_effort, fallback_brake)` 等非法组合；</li>
-  <li>再做 <a href="../claude-review/05-action-items.md#ai-14">AI-14</a>：benchmark JSON 固化为 CI artifact；</li>
-  <li>随后进入 AI-05 / AI-07 / AI-08，把 metrics、失败树和 trace 章节接进主文档；</li>
+  <li>进入 AI-05 / AI-07 / AI-08，把 metrics、失败树和 trace 章节接进主文档；</li>
+  <li>随后做 AI-10 / AI-06，清理入口和 trace debug logging；</li>
   <li>每完成一个 AI，更新本页的"Action Items 完成进度"表。</li>
 </ol>
 

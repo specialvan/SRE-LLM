@@ -45,3 +45,16 @@ def test_orthogonal_motion_has_small_weight():
     g.update()
     A = g.to_adjacency()
     assert A[0, 1] < 1e-2
+
+
+def test_edges_respect_eps_cutoff():
+    """INV-M-GRAPH-2: edges below EPS are pruned from _edges."""
+    g = InteractionIntentGraph()
+    g.add_node(_mk("ego", (0, 0), (10, 0)))
+    g.add_node(_mk("near", (5, 0), (-10, 0)))
+    g.add_node(_mk("far", (1000, 0), (-10, 0)))
+
+    g.update()
+
+    assert all(edge.weight >= g.EPS for edge in g.edges)
+    assert ("ego", "far") not in g._edges

@@ -1,7 +1,7 @@
 {
   "schema_version": "v2_knowledge.state.v1",
-  "generated_at": "2026-05-12T17:55:00+08:00",
-  "generated_by": "Codex (AI-01/AI-02/AI-03b implementation round)",
+  "generated_at": "2026-05-12T18:25:00+08:00",
+  "generated_by": "Codex (AI-11/AI-12/AI-13/AI-14 hardening round)",
   "project": {
     "name": "auto-decide",
     "branch": "auto-decide-session",
@@ -23,8 +23,8 @@
       "auto_decide/planner.py",
       "auto_decide/trace.py"
     ],
-    "tests_total": 27,
-    "tests_passing": 27,
+    "tests_total": 32,
+    "tests_passing": 32,
     "examples": [
       "examples/demo_intersection.py",
       "examples/compare_e2e_vs_structural.py"
@@ -34,17 +34,21 @@
       "benchmark_metrics_schema": "benchmark.metrics.v1",
       "single_entry": "StructuralPlanner.step",
       "fallback_control": "Control(steer=0, jerk=-jerk_max)"
-    }
+    },
+    "scripts": [
+      "scripts/check_invariants.py",
+      "scripts/run_benchmark.py"
+    ]
   },
   "benchmark": {
     "canonical_config": "--n 50 --seed 0 --horizon 100 --dt 0.1",
     "last_run_n": 50,
     "last_run_seed": 0,
-    "last_run_at": "2026-05-12T17:55:00+08:00",
+    "last_run_at": "2026-05-12T18:25:00+08:00",
     "last_run_artifact": ".local-artifacts/benchmark-metrics-seed0-n50.json",
     "structural": {
       "collision_rate": 0,
-      "planner_emergency_rate": 0.0418,
+      "planner_emergency_rate": 0.0482,
       "cbf_fallback_rate": 0.0482,
       "guard_intervention_rate": 0.0508,
       "avg_clearance_m": 4.42,
@@ -77,7 +81,7 @@
       "total": 12
     },
     "action_items": {
-      "total": 14,
+      "total": 16,
       "done_by_claude_post_review": [
         "AI-03a",
         "AI-03c",
@@ -92,24 +96,23 @@
           "AI-06",
           "AI-07",
           "AI-08",
-          "AI-10",
-          "AI-11",
-          "AI-12"
+          "AI-10"
         ],
-        "p3": [
-          "AI-13",
-          "AI-14"
-        ]
+        "p3": []
       },
       "progress_weight": {
-        "completed": 18,
+        "completed": 22,
         "total": 26,
-        "fraction": 0.692
+        "fraction": 0.846
       },
       "done_by_codex": [
         "AI-01",
         "AI-02",
-        "AI-03b"
+        "AI-03b",
+        "AI-11",
+        "AI-12",
+        "AI-13",
+        "AI-14"
       ]
     }
   },
@@ -203,15 +206,11 @@
     ]
   },
   "next_round_pr_sequence_remaining": [
-    "PR-AI-11   ci:   invariant scanner",
-    "PR-AI-12   test: forbidden status combinations incl. best_effort",
-    "PR-AI-14   ci:   benchmark runner & log automation",
     "PR-AI-05   docs: architecture.html consumes metrics.json",
     "PR-AI-07   docs: failure tree + scenario matrix",
-    "PR-AI-08   docs: deep-dive §4.10 for trace.py",
+    "PR-AI-08   docs: deep-dive ?4.10 for trace.py",
     "PR-AI-10   docs: primary entry in README",
-    "PR-AI-06   refactor: trace debug logging",
-    "PR-AI-13   test: graph eps cutoff"
+    "PR-AI-06   refactor: trace debug logging"
   ],
   "changelog": {
     "2026-05-12T00:00:00Z": {
@@ -239,6 +238,17 @@
         "AI-03b"
       ],
       "benchmark_current": "docs/claude-review/08-benchmark-log.md#2026-05-12--post-ai-02--predictivebrakepolicy--best_effort-recovery"
+    },
+    "2026-05-12T18:25:00+08:00": {
+      "agent": "Codex",
+      "summary": "AI-11/AI-12/AI-13/AI-14 completed: invariant scanner, forbidden T_inv/CBF status regression, benchmark artifact runner, and graph EPS cutoff test. AI-12 also fixed fallback_brake being mislabeled non_increasing.",
+      "action_items_completed": [
+        "AI-11",
+        "AI-12",
+        "AI-13",
+        "AI-14"
+      ],
+      "benchmark_current": "docs/claude-review/08-benchmark-log.md#2026-05-12--post-ai-12--invariant-scanner--forbidden-status-cleanup"
     }
   }
 }

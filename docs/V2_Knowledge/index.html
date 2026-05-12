@@ -50,11 +50,11 @@
   <h1>auto-decide 知识库 V2</h1>
   <p class="lede">给任何一个新接手的 agent（人 / Codex / 其它 LLM）<strong>一个入口</strong>。
     你不需要翻 4 份文档 —— 从本页的"agent 分流" 或"5 分钟速览" 开始即可。
-    <span style="color:#8a6500;"><span class="pulse amber"></span>当前主线：<strong>P0/P1 已收口，benchmark 进入 best_effort 恢复态与 CI 守门阶段</strong>。</span></p>
+    <span style="color:#8a6500;"><span class="pulse amber"></span>当前主线：<strong>CI 守门已补齐，剩余工作转向 architecture / trace 文档整合</strong>。</span></p>
 
   <div class="quickstats">
     <div class="stat ok">
-      <div class="num">27 / 27</div>
+      <div class="num">32 / 32</div>
       <div class="lbl">pytest 全绿</div>
     </div>
     <div class="stat ok">
@@ -62,16 +62,16 @@
       <div class="lbl">结构化链路碰撞率（n=50 baseline）</div>
     </div>
     <div class="stat info">
-      <div class="num">4.18 %</div>
-      <div class="lbl">emergency_brake 率（demo SLO 通过）</div>
+      <div class="num">4.82 %</div>
+      <div class="lbl">emergency_brake 率（语义修正后）</div>
     </div>
     <div class="stat crit">
       <div class="num">63.76 %</div>
       <div class="lbl">best_effort 恢复态（生产化风险）</div>
     </div>
     <div class="stat info">
-      <div class="num">7 / 14</div>
-      <div class="lbl">Action items 剩余（P0/P1 = 0）</div>
+      <div class="num">5 / 16</div>
+      <div class="lbl">Action items 剩余（P0/P1/P3 = 0）</div>
     </div>
   </div>
 </section>
@@ -90,9 +90,10 @@
       <li>9 个模块的完整 pre/post 合约</li>
       <li>29 条不变式目录</li>
       <li>Claude review pack · 12 findings</li>
-      <li>14 条 action items · 5 个可 cherry-pick patch</li>
-      <li>🆕 AI-03a/c/04/09 · Claude 亲手清理（4/14）</li>
+      <li>16 条 action items · 5 个可 cherry-pick patch</li>
+      <li>🆕 AI-03a/c/04/09 · Claude 亲手清理（4 项）</li>
       <li>🆕 AI-01/02/03b · Codex 收口（P0/P1 清零）</li>
+      <li>🆕 AI-11/12/13/14 · Codex 守门补齐</li>
       <li>🆕 canonical benchmark baseline（n=50 seed=0）</li>
       <li>🆕 schema 演进策略（trace + benchmark）</li>
     </ol>
@@ -100,17 +101,17 @@
   <div class="flow-col">
     <h4 style="color:#b08800">🟡 进行中 / 剩余</h4>
     <ol>
-      <li><strong>AI-11</strong>：CI invariant scanner</li>
-      <li><strong>AI-12</strong>：T_inv / CBF 非法组合测试</li>
-      <li><strong>AI-14</strong>：benchmark JSON 固化为 CI artifact</li>
-      <li>AI-05 ~ AI-10 / AI-13：文档可视化与边界测试</li>
+      <li><strong>AI-05</strong>：architecture.html 消费 metrics JSON</li>
+      <li><strong>AI-07</strong>：失败决策树 / 场景矩阵搬入主架构</li>
+      <li><strong>AI-08</strong>：deep-dive trace.py 独立章节</li>
+      <li>AI-10 / AI-06：入口和 trace debug logging</li>
     </ol>
   </div>
   <div class="flow-col">
     <h4 style="color:#b04018">🔴 已知风险</h4>
     <ol>
       <li>best_effort_rate = 63.76%（恢复态仍高）</li>
-      <li>emergency_rate = 4.18%（demo pass，production fail）</li>
+      <li>emergency_rate = 4.82%（demo pass，production fail）</li>
       <li>cbf_fallback_rate = 4.82%（贴近 5% 阈值）</li>
       <li>benchmark canonical config 已固化，便于对比</li>
     </ol>
@@ -124,7 +125,7 @@
 <div class="role-row">
   <div class="who">👷 下一轮 Codex</div>
   <div class="what">
-    <strong>目标</strong>：推进 CI 守门、非法组合测试和 best_effort 风险收敛。<br>
+    <strong>目标</strong>：推进主架构文档消费 metrics、补失败树/trace 章节，并保持 CI 守门不回退。<br>
     <strong>路径</strong>：
     <a href="./02-agent-triage.html#codex">角色详情</a> →
     <a href="../claude-review/07-codex-directives.md">directives</a> →
@@ -211,8 +212,8 @@
 <div class="quicklink">
   <a href="../claude-review/00-executive-summary.html">00-executive-summary.html</a>
   <a href="../claude-review/08-benchmark-log.md">post-AI-02 benchmark</a>
-  <a href="../claude-review/05-action-items.md#ai-11">AI-11 invariant scanner</a>
-  <a href="../claude-review/05-action-items.md#ai-12">AI-12 forbidden combos</a>
+  <a href="../claude-review/05-action-items.md#ai-05">AI-05 metrics in architecture</a>
+  <a href="../claude-review/05-action-items.md#ai-07">AI-07 failure tree</a>
 </div>
 
 <h3>4.2 我要修 bug / 做 action item</h3>
@@ -243,7 +244,7 @@
 pip install -r requirements.txt
 
 # 运行测试
-pytest -q                                                      # 27 tests
+pytest -q                                                      # 32 tests
 
 # 跑 demo
 python -m examples.demo_intersection                           # 产出 trace.jsonl
@@ -273,7 +274,7 @@ python -m examples.compare_e2e_vs_structural --n 50 --seed 0 \
 <dl class="kv-grid">
   <dt>知识库版本</dt><dd>V2 · 2026-05-12</dd>
   <dt>前序</dt><dd>v1 = <a href="../knowledge-base.html">knowledge-base.html</a>（首次评审）</dd>
-  <dt>生成 agent</dt><dd>Claude Opus 4.7（Review & Knowledge Pack round）+ Codex AI-01/02/03b 收口补丁</dd>
+  <dt>生成 agent</dt><dd>Claude Opus 4.7（Review & Knowledge Pack round）+ Codex AI-01/02/03b 与 AI-11/12/13/14 收口补丁</dd>
   <dt>机器可读状态</dt><dd><a href="./state.json">state.json</a>（本轮所有结构化元数据）</dd>
   <dt>CHANGELOG</dt><dd><a href="./CHANGELOG.md">v1 → v2 差异</a></dd>
 </dl>

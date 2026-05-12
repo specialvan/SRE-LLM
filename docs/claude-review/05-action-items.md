@@ -7,8 +7,8 @@
 
 | 状态 | 计数 | 项目 |
 | --- | --- | --- |
-| ✅ done | 7 | AI-01 · AI-02 · AI-03a · AI-03b · AI-03c · AI-04 · AI-09 |
-| 🔄 unassigned | 7 | AI-05 ~ AI-08 · AI-10 ~ AI-14 |
+| ✅ done | 11 | AI-01 · AI-02 · AI-03a · AI-03b · AI-03c · AI-04 · AI-09 · AI-11 · AI-12 · AI-13 · AI-14 |
+| 🔄 unassigned | 5 | AI-05 · AI-06 · AI-07 · AI-08 · AI-10 |
 | **P0 剩余** | **0** | — |
 | **P1 剩余** | **0** | — |
 
@@ -30,10 +30,10 @@
 | [AI-08](#ai-08) | deep-dive.html 给 trace.py 独立一节 | P2 | — | — |
 | [AI-09](#ai-09) | 标注 _pure_e2e_step 为 INV-G2 合法例外 | P2 | — | — ✅ **done 2026-05-12** |
 | [AI-10](#ai-10) | hub 文档明示 primary entry | P2 | — | — |
-| [AI-11](#ai-11) | CI 脚本：grep-based invariant 扫描 | P2 | AI-03b | [patch 05](./06-suggested-patches/05-ci-invariants.md) |
-| [AI-12](#ai-12) | T_inv / CBF 非法组合的单元测试 | P2 | AI-03b | — |
-| [AI-13](#ai-13) | 图剪枝一致性回归 | P3 | — | — |
-| [AI-14](#ai-14) | benchmark JSON 固化为 CI artifact | P3 | AI-01 | [patch 02](./06-suggested-patches/02-benchmark-ci.md) |
+| [AI-11](#ai-11) | CI 脚本：grep-based invariant 扫描 | P2 | AI-03b | [patch 05](./06-suggested-patches/05-ci-invariants.md) ✅ **done 2026-05-12** |
+| [AI-12](#ai-12) | T_inv / CBF 非法组合的单元测试 | P2 | AI-03b | — ✅ **done 2026-05-12** |
+| [AI-13](#ai-13) | 图剪枝一致性回归 | P3 | — | — ✅ **done 2026-05-12** |
+| [AI-14](#ai-14) | benchmark JSON 固化为 CI artifact | P3 | AI-01 | [patch 02](./06-suggested-patches/02-benchmark-ci.md) ✅ **done 2026-05-12** |
 
 ---
 
@@ -61,7 +61,7 @@
 ## AI-02 · 升级 nominal policy 到 barrier-aware
 
 - **Priority**：P0
-- **Status**：✅ done 2026-05-12。已新增 `auto_decide/policies/PredictiveBrakePolicy` 并在 `StructuralPlanner.__post_init__` 自动包裹默认 `GradientPolicy`；canonical benchmark 达到 demo SLO：`collision_rate=0%`、`planner_emergency_rate=4.18%`、`cbf_fallback_rate=4.82%`。
+- **Status**：✅ done 2026-05-12。已新增 `auto_decide/policies/PredictiveBrakePolicy` 并在 `StructuralPlanner.__post_init__` 自动包裹默认 `GradientPolicy`；canonical benchmark 达到 demo SLO：`collision_rate=0%`、`planner_emergency_rate=4.82%`、`cbf_fallback_rate=4.82%`。
 - **Finding**：[F-P0-02](./01-findings.md#f-p0-02)
 - **Why**：当前 `GradientPolicy` 与 CBF 结构性不匹配，benchmark 里 42.5% 的命令都触发 emergency。
 - **What**：实现 `auto_decide/policies/barrier_aware.py` 中的 `BarrierAwareMPC` 或 `PredictiveBrakePolicy`（详见 [patch 01](./06-suggested-patches/01-barrier-aware-policy.md)）。
@@ -249,6 +249,7 @@
 ## AI-11 · CI 脚本：grep-based invariant 扫描
 
 - **Priority**：P2
+- **Status**：✅ done 2026-05-12。已新增 `scripts/check_invariants.py`，并通过 `tests/test_invariants.py` 接入 pytest，当前覆盖 INV-G2 / INV-G9 / INV-G10。
 - **Depends**：AI-03b、AI-09
 - **What**：`scripts/check_invariants.py`，见 [patch 05](./06-suggested-patches/05-ci-invariants.md)：
   ```bash
@@ -264,6 +265,7 @@
 ## AI-12 · T_inv / CBF 非法组合的单元测试
 
 - **Priority**：P2
+- **Status**：✅ done 2026-05-12。`tests/test_planner.py::test_no_forbidden_tinv_cbf_status_combinations` 已落地；该测试发现并修复了 `(non_increasing, fallback_brake)` 语义漂移，当前 fallback 帧统一归入 `emergency_brake`。
 - **Depends**：AI-03b
 - **What**：`tests/test_planner.py` 加：
   ```python
@@ -287,6 +289,7 @@
 ## AI-13 · 图剪枝一致性回归
 
 - **Priority**：P3
+- **Status**：✅ done 2026-05-12。`tests/test_graph.py::test_edges_respect_eps_cutoff` 验证 `_edges` 不保留 `w < EPS` 的边。
 - **Finding**：[INV-M-GRAPH-2](./03-invariants-catalog.md#inv-m-graph-2)
 - **What**：`test_graph.py` 加一个测试，验证 `_edges` 中不包含 `w < EPS` 的边：
   ```python
@@ -304,6 +307,7 @@
 ## AI-14 · benchmark JSON 固化为 CI artifact
 
 - **Priority**：P3
+- **Status**：✅ done 2026-05-12。已新增 `scripts/run_benchmark.py`，支持写出 `artifacts/benchmark-metrics.json` 并把摘要 newest-first 插入 `docs/claude-review/08-benchmark-log.md`；helper 由 `tests/test_benchmark_runner.py` 覆盖。
 - **Depends**：AI-01
 - **What**：见 [patch 02](./06-suggested-patches/02-benchmark-ci.md)。在 CI 里跑 benchmark，产出的 JSON 保存为 artifact + 附加到 `docs/claude-review/08-benchmark-log.md` 形成历史基线。
 - **验收**：
@@ -320,6 +324,10 @@
   "AI-02": "done",
   "AI-03b": "done",
   "AI-03a": "done",
+  "AI-11": "done",
+  "AI-12": "done",
+  "AI-13": "done",
+  "AI-14": "done",
   ...
 }
 ```

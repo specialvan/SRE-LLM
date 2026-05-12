@@ -30,7 +30,7 @@ manifold.min_distance(x) ≥ 0
 **合法例外**（记录在 [01-findings.md](./01-findings.md#f-p2-06)）：
 - `cbf.py` / `lyapunov.py` 内部用 `dynamics.step` 做 `h_dot` / `dV_dt` 的有限差分评估；
 - `examples/compare_e2e_vs_structural.py::_pure_e2e_step` 作为对比基线刻意绕过。
-**测试**：手工 grep（待加入 CI · 见 AI-11）。
+**测试**：`scripts/check_invariants.py` + `tests/test_invariants.py::test_invariant_script_passes` ✅（AI-11）。
 **违反后果**：硬约束被绕过——P0 回退 PR。
 **标注**：`AUTO`（grep 脚本）
 
@@ -132,7 +132,7 @@ cbf_slack, cbf_violations, cbf
 
 原因：CBF 退化为 fallback 时，T_inv 不应再标成稳定、松弛成功或 `best_effort`——因为此时用的是 `Control(0, -j_max)` 而不是名义轨迹上的命令。
 **守护者**：`invariant.py::apply` 的返回逻辑。
-**测试**：<strong>缺失</strong> — AI-12 会补。
+**测试**：`tests/test_planner.py::test_no_forbidden_tinv_cbf_status_combinations` ✅（AI-12）。
 **违反后果**：trace 统计逻辑矛盾，reviewer 会质疑。
 **标注**：`AUTO`（新加）
 
@@ -148,7 +148,7 @@ cbf_slack, cbf_violations, cbf
 ### INV-M-GRAPH-2 · 图剪枝一致
 **陈述**：`w_ij < EPS (1e-3)` 的边不得出现在 `_edges` 字典。
 **守护者**：`update()` 的 `if w >= self.EPS` 分支。
-**测试**：应补（AI-13）。
+**测试**：`tests/test_graph.py::test_edges_respect_eps_cutoff` ✅（AI-13）。
 
 ### INV-M-DYN-1 · f 输出形状
 **陈述**：`BicycleModel.f(state, u)` 返回 `np.ndarray(shape=(6,), dtype=float)`。

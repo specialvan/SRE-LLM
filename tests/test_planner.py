@@ -50,3 +50,29 @@ def test_emergency_brake_when_obstacle_ahead():
     # Planner must have triggered at least one safety response
     statuses = {t["status"] for t in traces}
     assert statuses & {"stable", "relaxed", "emergency_brake"}
+
+
+def test_no_forbidden_tinv_cbf_status_combinations():
+    """INV-G13: recovery/success statuses cannot hide CBF fallback."""
+    obstacles = [CircleObstacle(22.0, 0.0, 2.0)]
+    manifold = Manifold(obstacles=obstacles)
+    pot = PotentialField(goal=np.array([60.0, 0.0]), w_goal=0.05)
+    planner = StructuralPlanner(dynamics=BicycleModel(), manifold=manifold,
+                                target_speed=10.0, potential=pot)
+    graph = InteractionIntentGraph()
+    graph.update()
+
+    start = State(px=0, py=0, psi=0, v=10.0, a=0.0, mu=0.7)
+    _states, _controls, traces = planner.run(start, graph, horizon_steps=80,
+                                             dt=0.1)
+
+    forbidden = {
+        ("stable", "fallback_brake"),
+        ("relaxed_exp", "fallback_brake"),
+        ("relaxed", "fallback_brake"),
+        ("non_increasing", "fallback_brake"),
+        ("best_effort", "fallback_brake"),
+    }
+    observed = {(trace["status"], trace["cbf_status"]) for trace in traces}
+
+    assert not (observed & forbidden)

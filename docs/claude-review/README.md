@@ -5,7 +5,7 @@
 > Review 日期：2026-05-12
 > 目的：为下一轮 Codex 提供可执行的 review 反馈 + 更深的架构参考
 
-> Codex 更新：AI-01 / AI-02 / AI-03b 已于 2026-05-12 收口。最新状态见 [09-codex-synthesis.md](./09-codex-synthesis.md) 与 [08-benchmark-log.md](./08-benchmark-log.md) 顶部记录。
+> Codex 更新：AI-01 / AI-02 / AI-03b / AI-11 / AI-12 / AI-13 / AI-14 已于 2026-05-12 收口。最新状态见 [09-codex-synthesis.md](./09-codex-synthesis.md) 与 [08-benchmark-log.md](./08-benchmark-log.md) 顶部记录。
 
 ## TL;DR
 
@@ -39,11 +39,11 @@
 | 指标 | 承诺 SLO | 实测 | 差距 |
 | --- | --- | --- | --- |
 | 碰撞率（结构化链路） | &lt; 10⁻⁶/mile | 0%（20 场景） | ✅ 达标 |
-| `planner_emergency_rate` | &lt; 0.5% | **4.18%**（post-AI-02） | ✅ demo pass / ⚠️ prod fail |
+| `planner_emergency_rate` | &lt; 0.5% | **4.82%**（post-AI-12） | ✅ demo pass / ⚠️ prod fail |
 | `planner_best_effort_rate` | &lt; 5%（生产观测项） | **63.76%** | ⚠️ 恢复态偏高 |
 | `cbf_fallback_rate` | &lt; 5%（告警线） | **4.82%** | ✅ 贴线通过 |
 | 单步时延 P99 | &lt; 15 ms | ~1.83 ms mean | ✅ |
-| 测试覆盖 | — | 27 / 27 绿 | ✅ |
+| 测试覆盖 | — | 32 / 32 绿 | ✅ |
 | trace 契约 | schema_version 稳定 | ✅ v1.1，JSONL 严格可解析 | ✅ |
 
 最关键的洞察写在这里：**AI-02 已把硬刹停显著压低，但大量帧仍处于 best_effort 恢复态**。这不是 bug——这是 benchmark 契约继续把"安全 vs 可用性 vs 稳定恢复"的真实权衡量化出来。下一轮必须把 best_effort 纳入 CI / 回归分析，而不是只看 emergency 是否过线。

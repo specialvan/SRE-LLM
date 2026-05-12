@@ -1,0 +1,28 @@
+{
+  "schema_version": "claude-review.progress.v1",
+  "updated_at": "2026-05-12T18:25:00+08:00",
+  "done": [
+    "AI-01",
+    "AI-02",
+    "AI-03a",
+    "AI-03b",
+    "AI-03c",
+    "AI-04",
+    "AI-09",
+    "AI-11",
+    "AI-12",
+    "AI-13",
+    "AI-14"
+  ],
+  "remaining": [
+    "AI-05",
+    "AI-06",
+    "AI-07",
+    "AI-08",
+    "AI-10"
+  ],
+  "notes": {
+    "AI-12": "Added forbidden status combination regression and fixed fallback_brake being mislabeled non_increasing.",
+    "AI-14": "scripts/run_benchmark.py writes JSON artifacts and inserts markdown summaries newest-first."
+  }
+}

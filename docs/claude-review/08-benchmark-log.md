@@ -11,6 +11,46 @@
 
 ---
 
+## 2026-05-12 · post-AI-12 · invariant scanner + forbidden status cleanup
+
+**触发**：Codex 完成 AI-11 / AI-12 / AI-13 / AI-14；新增 invariant scanner、benchmark runner、非法状态组合回归和图剪枝回归。AI-12 发现并修复了 `cbf_status=fallback_brake` 时 `T_inv` 仍标成 `non_increasing` 的语义漂移。
+**代码状态**：`auto-decide-session` 分支，32/32 tests 绿。
+**命令**：
+```bash
+python -m examples.compare_e2e_vs_structural --n 50 --seed 0 --horizon 100 --dt 0.1 \
+    --metrics-out .local-artifacts/benchmark-metrics-seed0-n50.json
+```
+
+| 指标 | post-AI-02 | post-AI-12 current | Δ |
+| --- | ---: | ---: | ---: |
+| `collision_rate` | 0.00 % | **0.00 %** | ✅ 持平 |
+| `worst_clearance_m` | +3.20 m | **+3.20 m** | ✅ 持平 |
+| `planner_emergency_rate` | 4.18 % | **4.82 %** | +0.64 pp，语义修正后与 CBF fallback 对齐 |
+| `planner_best_effort_rate` | 63.76 % | **63.76 %** | 持平 |
+| `cbf_fallback_rate` | 4.82 % | **4.82 %** | 持平 |
+| `guard_intervention_rate` | 5.08 % | **5.08 %** | 持平 |
+| `avg_jerk_rms_mps3` | 3.88 | **3.88** | 持平 |
+| `mean_step_time_ms` | 1.86 ms | **1.86 ms** | ✅ 仍低于 15 ms |
+
+**Planner status 分布**（total steps = 5000）：
+- `best_effort` = 3188 (63.76%) ⚠️
+- `relaxed` = 1197 (23.94%)
+- `non_increasing` = 367 (7.34%)
+- `emergency_brake` = 241 (4.82%)
+- `stable` = 7 (0.14%)
+
+**CBF status 分布**：
+- `nom_ok` = 4746 (94.92%)
+- `fallback_brake` = 241 (4.82%)
+- `qp_ok` = 13 (0.26%)
+
+**诊断**：
+- 语义更干净：凡是 CBF 已经 fallback 的帧，planner 不再伪装成 `non_increasing`；
+- AI-11 把 INV-G2 / INV-G9 / INV-G10 变成自动扫描；
+- AI-14 提供 `scripts/run_benchmark.py`，可生成 JSON artifact 并把摘要插入本 log。
+
+---
+
 ## 2026-05-12 · post-AI-02 · PredictiveBrakePolicy + best_effort recovery
 
 **触发**：Codex 完成 AI-01 / AI-02 / AI-03b；默认 `GradientPolicy` 被 `PredictiveBrakePolicy` 包裹，trace status 枚举锁定并新增 `best_effort`。

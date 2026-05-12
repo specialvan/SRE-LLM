@@ -9,6 +9,25 @@
 **生成 agent**：Claude Opus 4.7（Review & Knowledge Pack round）
 **触发事件**：Codex round-1 完成 trace / benchmark 契约后，Claude 做第一轮深度 review，同时建立统一入口层。
 
+### 2026-05-12（Codex 补丁 · AI-11/AI-12/AI-13/AI-14 守门收口）
+
+Codex 在 P0/P1 收口后继续完成 CI 与回归守门：
+
+| AI | 类型 | 改动 |
+| --- | --- | --- |
+| AI-11 | CI 守门 | 新增 `scripts/check_invariants.py`，通过 `tests/test_invariants.py` 接入 pytest，覆盖 INV-G2 / INV-G9 / INV-G10 |
+| AI-12 | 状态组合 | 新增 forbidden T_inv/CBF status 测试，并修复 `(non_increasing, fallback_brake)` 语义漂移 |
+| AI-13 | 图回归 | 新增 `test_edges_respect_eps_cutoff`，锁定 `_edges` 不保留 `w < EPS` |
+| AI-14 | benchmark artifact | 新增 `scripts/run_benchmark.py`，支持 JSON artifact + benchmark log newest-first 摘要 |
+
+canonical benchmark（n=50 seed=0）在 AI-12 语义修正后更新：
+
+- `collision_rate = 0.00%`；
+- `planner_emergency_rate = 4.82%`（与 `cbf_fallback_rate` 对齐，demo SLO 仍通过）；
+- `cbf_fallback_rate = 4.82%`；
+- `planner_best_effort_rate = 63.76%`；
+- 32 / 32 tests 绿。
+
 ### 2026-05-12（Codex 补丁 · AI-01/AI-02/AI-03b 收口）
 
 Codex 接手 Claude review pack 后关闭 P0 与剩余 P1：
@@ -144,7 +163,7 @@ Claude 在 V2 发布后同日清理了 4 项与策略无关的 action items，�
 3. `state.json` 的 schema_version 遵循 [schema 演进策略](../benchmark-metrics.md)；
 4. 保留 v1 所有文档的链接不断。
 
-### CI 可以自动做的事（未来 AI-14 完成后）：
+### CI 可以自动做的事（AI-14 runner 已具备后）：
 
 - 扫描本目录所有相对链接是否断链；
 - 比较 `state.json` 中 `benchmark.structural.*` 与最新实测差距，触发 `01-current-state` 更新提醒；

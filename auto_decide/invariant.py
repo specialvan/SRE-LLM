@@ -76,6 +76,12 @@ class ControlInvariantOperator:
         dv = _dv(u)
         info["dV_dt"] = float(dv)
 
+        if cbf_info.get("status") == "fallback_brake":
+            brake = Control(steer=0.0, jerk=-self.params.jerk_max)
+            info["dV_dt"] = float(_dv(brake))
+            info["status"] = "emergency_brake"
+            return brake, info
+
         # Fast path: already stable enough
         if dv <= self.tol:
             info["status"] = "stable" if dv <= exp_target + 1e-6 else "non_increasing"
