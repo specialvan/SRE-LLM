@@ -94,6 +94,8 @@ T_total(t) = Σ_{i=1..3} T_i · (1 + w_off,i(t)) + w_att · τ_demand
 
 ## 3. 目录结构
 
+跨会话项目知识库入口见 [`wiki/README.md`](./wiki/README.md)，用于沉淀当前架构、证据边界和 review backlog。
+
 ```
 spacex/
 ├── README.md                  # 你正在看的这份
