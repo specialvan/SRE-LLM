@@ -1,0 +1,1019 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Attention-Residuals · V3 Knowledge Navigation (2026-05-12)</title>
+<style>
+  :root{
+    --bg: #f8f9fa;
+    --panel: #ffffff;
+    --ink: #1a1d23;
+    --mute: #5a6577;
+    --rule: #e2e5ea;
+    --accent: #c0392b;
+    --key: #2563eb;
+    --key-soft: #eff6ff;
+    --green: #16a34a;
+    --green-soft: #f0fdf4;
+    --warn: #d97706;
+    --warn-soft: #fffbeb;
+    --purple: #7c3aed;
+    --purple-soft: #f5f3ff;
+    --mono: 'JetBrains Mono','SFMono-Regular','Consolas','Menlo',monospace;
+    --serif: 'Noto Serif SC','Songti SC','Georgia',serif;
+    --sans: 'Inter','PingFang SC','Segoe UI','Helvetica Neue',Arial,sans-serif;
+  }
+  *{ box-sizing: border-box; margin:0; padding:0; }
+  html{ scroll-behavior: smooth; }
+  body{ font-family: var(--sans); font-size: 14.5px; line-height: 1.65; background: var(--bg); color: var(--ink); }
+  a{ color: var(--key); text-decoration: none; border-bottom: 1px dashed rgba(37,99,235,.3); transition: all .15s; }
+  a:hover{ color: var(--accent); border-bottom-color: var(--accent); }
+  code{ font-family: var(--mono); font-size: 0.88em; background:#f1f5f9; padding:2px 6px; border-radius:4px; color:#334155; }
+  kbd{ font-family: var(--mono); font-size: 11px; background:#1e293b; color:#f1f5f9; padding:2px 7px; border-radius:3px; }
+
+  /* Hero */
+  header.hero{
+    background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #c0392b 150%);
+    color:#f8fafc; padding: 48px 56px 32px; position: relative; overflow: hidden;
+  }
+  header.hero::after{
+    content:''; position:absolute; top:0; right:0; width:400px; height:100%;
+    background: radial-gradient(ellipse at 80% 20%, rgba(192,57,43,.15) 0%, transparent 70%);
+  }
+  header.hero .kicker{ font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color:#94a3b8; font-weight:500; }
+  header.hero h1{ margin: 10px 0 6px; font-family: var(--serif); font-size: 34px; letter-spacing:.01em; font-weight:700; }
+  header.hero h1 .ver{ font-size: 14px; font-family: var(--mono); background: rgba(255,255,255,.12); padding: 3px 10px; border-radius: 14px; vertical-align: middle; margin-left: 12px; }
+  header.hero .sub{ color:#cbd5e1; max-width: 900px; font-size: 14px; margin-top: 4px; }
+  header.hero .badges{ margin-top: 20px; display:flex; flex-wrap:wrap; gap:8px; position:relative; z-index:1; }
+  header.hero .badge{ font-family: var(--mono); font-size: 11px; padding: 4px 12px; border-radius: 20px; background: rgba(255,255,255,0.08); color:#e2e8f0; border: 1px solid rgba(255,255,255,.12); }
+  header.hero .badge.green{ background: rgba(22,163,74,.2); border-color: rgba(22,163,74,.4); color:#86efac; }
+  header.hero .badge.warn{ background: rgba(217,119,6,.2); border-color: rgba(217,119,6,.4); color:#fde68a; }
+  header.hero .badge.accent{ background: rgba(192,57,43,.2); border-color: rgba(192,57,43,.4); color:#fca5a5; }
+
+  /* Layout */
+  main{ max-width: 1280px; margin: 0 auto; padding: 28px 28px 64px; display:grid; grid-template-columns: 240px 1fr; gap: 36px; }
+  aside.toc{
+    position: sticky; top: 20px; align-self: start;
+    max-height: calc(100vh - 40px); overflow-y:auto;
+    padding: 20px 16px; background: var(--panel); border: 1px solid var(--rule); border-radius: 10px;
+    font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  }
+  aside.toc h2{ font-size: 10px; margin: 0 0 12px; color:#94a3b8; letter-spacing:.16em; text-transform: uppercase; font-weight:600; }
+  aside.toc ol{ list-style: none; }
+  aside.toc li{ margin: 5px 0; }
+  aside.toc li a{ border-bottom: none; color: var(--ink); display:block; padding: 5px 8px; border-radius: 5px; transition: background .1s; }
+  aside.toc li a:hover{ background: var(--key-soft); color: var(--key); }
+  aside.toc li .n{ color: #94a3b8; margin-right: 6px; font-family: var(--mono); font-size: 11px; font-weight:600; }
+
+  /* Sections */
+  article section{ background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 28px 32px; margin-top: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.03); }
+  article section:first-child{ margin-top: 0; }
+  article section h2{ font-family: var(--serif); margin: 0 0 10px; font-size: 22px; display:flex; align-items:center; gap:10px; }
+  article section h2 .zone{ font-size: 10px; letter-spacing:.12em; font-weight:700; font-family:var(--sans); color:#fff; background: var(--accent); padding: 3px 10px; border-radius: 12px; text-transform:uppercase; }
+  article section .lead{ color: var(--mute); margin: 0 0 16px; font-size: 13.5px; }
+  article h3{ margin-top: 20px; font-size: 16px; font-family: var(--serif); color: var(--ink); }
+  article p{ margin: 8px 0; }
+  article ul,article ol{ padding-left: 22px; margin: 6px 0; }
+  article li{ margin: 4px 0; }
+
+  .pill{ display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing:.02em; }
+  .pill.accent{ background: #fef2f2; color: var(--accent); }
+  .pill.green{ background: var(--green-soft); color: var(--green); }
+  .pill.warn{ background: var(--warn-soft); color: var(--warn); }
+  .pill.key{ background: var(--key-soft); color: var(--key); }
+  .pill.purple{ background: var(--purple-soft); color: var(--purple); }
+  .pill.mono{ font-family: var(--mono); }
+
+  table{ width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  th,td{ padding: 8px 10px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+  th{ background:#f8fafc; color:#475569; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing:.04em; }
+  tbody tr:hover{ background:#f8fafc; }
+  td code{ font-size: 0.86em; }
+
+  .callout{ border-left: 4px solid var(--key); background: var(--key-soft); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 13.5px; }
+  .callout.accent{ border-color: var(--accent); background: #fef2f2; }
+  .callout.green{ border-color: var(--green); background: var(--green-soft); }
+  .callout.warn{ border-color: var(--warn); background: var(--warn-soft); }
+  .callout.purple{ border-color: var(--purple); background: var(--purple-soft); }
+
+  .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .grid3{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  @media (max-width: 960px){
+    main{ grid-template-columns: 1fr; }
+    aside.toc{ position: static; max-height: none; }
+    .grid2, .grid3{ grid-template-columns: 1fr; }
+  }
+
+  figure{ margin: 16px 0; padding: 16px; border: 1px solid var(--rule); background: #fefefe; border-radius: 10px; }
+  figure svg{ display:block; margin: 0 auto; max-width: 100%; height: auto; }
+  figcaption{ margin-top: 10px; font-size: 12px; color: var(--mute); text-align: center; font-family: var(--serif); font-style: italic; }
+
+  .status-row{ display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin: 10px 0 16px; }
+  .stat{ background:#fafbfc; border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; text-align:center; }
+  .stat .num{ font-family: var(--mono); font-size: 28px; color: var(--ink); line-height: 1.1; font-weight:700; }
+  .stat .num.green{ color: var(--green); }
+  .stat .num.warn{ color: var(--warn); }
+  .stat .num.accent{ color: var(--accent); }
+  .stat .num.purple{ color: var(--purple); }
+  .stat .lbl{ font-size: 11px; color: var(--mute); text-transform: uppercase; letter-spacing:.08em; margin-top: 4px; }
+
+  .cmd{ background: #1e293b; color:#e2e8f0; font-family: var(--mono); font-size: 12px; line-height: 1.6; padding: 12px 16px; border-radius: 8px; overflow-x: auto; white-space: pre; margin: 10px 0; }
+  .cmd .comment{ color: #64748b; }
+
+  svg text{ font-family: 'Inter','PingFang SC','Segoe UI',sans-serif; fill: #1a1d23; }
+  svg .muted{ fill:#64748b; }
+  svg .label{ font-size: 11px; }
+
+  footer{ text-align: center; color: var(--mute); font-size: 12px; padding: 32px; border-top: 1px solid var(--rule); margin-top: 40px; }
+
+  /* Print */
+  @media print{
+    body{ background:#fff; font-size: 10.5pt; line-height: 1.4; }
+    header.hero{ background: #fff !important; color: #1a1d23; padding: 10pt 0 6pt; border-bottom: 1.5pt solid #666; }
+    header.hero .kicker, header.hero .sub{ color: #333; }
+    header.hero h1{ font-size: 18pt; color: #1a1d23; }
+    header.hero .badges .badge{ background: #eee !important; color: #222 !important; border-color: #ccc !important; }
+    main{ display: block; max-width: 100%; padding: 0; }
+    aside.toc{ display: none; }
+    article section{ background: #fff; border: 0.5pt solid #999; border-radius: 0; padding: 8pt 10pt; margin-top: 8pt; break-inside: avoid; }
+    figure{ break-inside: avoid; border: 0.3pt solid #888; background: #fff; }
+    .cmd{ background: #f5f5f5; color: #222; border: 0.3pt solid #bbb; }
+    a{ color: #1a1d23; border-bottom: none; }
+    footer{ color: #666; }
+  }
+</style>
+</head>
+
+<body>
+<header class="hero">
+  <div class="kicker">V3 Knowledge Navigation · Round 10 Close-out + Round 11 Inline</div>
+  <h1>Attention-Residuals<span class="ver">v3</span></h1>
+  <p class="sub">
+    为中途接手的 agent / reviewer / 开发者设计的单页导航。在 V2 基础上增加了模块依赖图、闭环数据流、变更日志。
+    深度拆解仍在 <code><a href="../knowledge-base.html" style="color:#93c5fd;border-color:rgba(147,197,253,.4)">V1 knowledge-base.html</a></code>。
+  </p>
+  <div class="badges">
+    <span class="badge green">tests 174/174</span>
+    <span class="badge green">demos 11/11</span>
+    <span class="badge green">diagnostics 0</span>
+    <span class="badge green">all 7 follow-ups closed</span>
+    <span class="badge">branch: attention-residuals-session</span>
+    <span class="badge">HEAD: 3dbfd50 (patches pending push)</span>
+    <span class="badge accent">snapshot: 2026-05-12</span>
+  </div>
+</header>
+
+<main>
+
+<aside class="toc" aria-label="Navigation">
+  <h2>Zones</h2>
+  <ol>
+    <li><a href="#z1"><span class="n">Z1</span>Architecture & data flow</a></li>
+    <li><a href="#z2"><span class="n">Z2</span>Paper-to-code traceability</a></li>
+    <li><a href="#z3"><span class="n">Z3</span>Module map</a></li>
+    <li><a href="#z4"><span class="n">Z4</span>Demos & verification</a></li>
+    <li><a href="#z5"><span class="n">Z5</span>Hard invariants</a></li>
+    <li><a href="#z6"><span class="n">Z6</span>Actions & backlog</a></li>
+    <li><a href="#z7"><span class="n">Z7</span>Status & handback</a></li>
+    <li><a href="#z8"><span class="n">Z8</span>Dependency graph</a></li>
+    <li><a href="#z9"><span class="n">Z9</span>Changelog & evolution</a></li>
+    <li><a href="#glossary"><span class="n">GL</span>Glossary</a></li>
+  </ol>
+  <hr style="border:none; border-top:1px dashed var(--rule); margin:14px 0;"/>
+  <h2>Quick links</h2>
+  <ul style="list-style:none; font-size:12px;">
+    <li><a href="../claude-review/">claude-review/</a></li>
+    <li><a href="../knowledge-base.html">V1 deep dive</a></li>
+    <li><a href="../V2_Knowledge/index.html">V2 navigation</a></li>
+    <li><a href="../ARCHITECTURE.md">ARCHITECTURE.md</a></li>
+    <li><a href="../CODEX-HANDOFF.md">CODEX-HANDOFF.md</a></li>
+    <li><a href="./state.json">state.json (SSOT)</a></li>
+    <li><a href="../adr/">ADR directory</a></li>
+  </ul>
+</aside>
+
+<article>
+
+<!-- ============================================================= Z1 -->
+<section id="z1">
+  <h2><span class="zone">Z1</span>Architecture & closed-loop data flow</h2>
+  <p class="lead">7 层架构 + 一个 tick 内的完整数据路径。约束只向下传递（收紧），观测只向上汇报（只读）。</p>
+
+  <figure>
+    <svg viewBox="0 0 1000 520" role="img" aria-label="7-layer architecture with data flow">
+      <defs>
+        <marker id="arr-down" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#1e293b"/></marker>
+        <marker id="arr-up" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/></marker>
+        <marker id="arr-loop" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/></marker>
+      </defs>
+
+      <!-- Layer blocks -->
+      <g font-size="12.5">
+        <rect x="60" y="16" width="880" height="44" rx="8" fill="#fef2f2" stroke="#c0392b" stroke-width="1.2"/>
+        <text x="80" y="42" font-weight="700" fill="#c0392b">L7 Operator</text>
+        <text x="220" y="42" fill="#7f1d1d" font-size="11.5">env.relax() | registry.register() | alert ack | ADR gate</text>
+
+        <rect x="60" y="70" width="880" height="52" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.2"/>
+        <text x="80" y="96" font-weight="700" fill="#2563eb">L6 Self-Learning Envelope</text>
+        <text x="80" y="112" font-size="11" class="muted">sre_self_envelope: LearnedSafetyEnvelope | ContractionAwareEnvelope | EnvelopeLearner | CreditAwareLabeler</text>
+
+        <rect x="60" y="132" width="880" height="52" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.2"/>
+        <text x="80" y="158" font-weight="700" fill="#16a34a">L5 Industrial Safety</text>
+        <text x="80" y="174" font-size="11" class="muted">sre_safety: SafetyEnvelope | ShadowRunner | CounterfactualExplainer | WeightDriftDetector</text>
+
+        <rect x="60" y="194" width="880" height="52" rx="8" fill="#fffbeb" stroke="#d97706" stroke-width="1.2"/>
+        <text x="80" y="220" font-weight="700" fill="#d97706">L4 Closed-Loop Adaptation</text>
+        <text x="80" y="236" font-size="11" class="muted">sre_adaptive: HedgeRegretLearner | AdaptiveCombiner (bias = static + learner_logit)</text>
+
+        <rect x="60" y="256" width="880" height="56" rx="8" fill="#fef2f2" stroke="#c0392b" stroke-width="1.2"/>
+        <text x="80" y="282" font-weight="700" fill="#c0392b">L3 Math Primitives & Observers</text>
+        <text x="80" y="300" font-size="11" class="muted">sre_math: ScaleInvariantNorm | TempScheduler | MultiView | FTRL | JacobianMonitor | CreditAssigner | Replay</text>
+
+        <rect x="60" y="322" width="880" height="52" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.2"/>
+        <text x="80" y="348" font-weight="700" fill="#2563eb">L2 Control Primitives</text>
+        <text x="80" y="364" font-size="11" class="muted">sre_control: WeightedConvexCombiner | AuditTrail | MustAttendRegistry | BudgetGate | HierarchicalBlockCtrl</text>
+
+        <rect x="60" y="384" width="440" height="48" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.2"/>
+        <text x="80" y="410" font-weight="700" fill="#16a34a">L1 Metric Ingress</text>
+        <text x="80" y="424" font-size="11" class="muted">sre_metrics: Prometheus + OTel (stdlib)</text>
+
+        <rect x="510" y="384" width="430" height="48" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.2"/>
+        <text x="530" y="410" font-weight="700" fill="#7c3aed">L0 Paper Primitives (PyTorch)</text>
+        <text x="530" y="424" font-size="11" class="muted">attn_residual | blocks | transformer_layer | stack</text>
+      </g>
+
+      <!-- Constraint arrows (downward, solid) -->
+      <g stroke="#1e293b" fill="none" stroke-width="1.5">
+        <path d="M 920 60 L 920 70" marker-end="url(#arr-down)"/>
+        <path d="M 920 122 L 920 132" marker-end="url(#arr-down)"/>
+        <path d="M 920 184 L 920 194" marker-end="url(#arr-down)"/>
+        <path d="M 920 246 L 920 256" marker-end="url(#arr-down)"/>
+        <path d="M 920 312 L 920 322" marker-end="url(#arr-down)"/>
+        <path d="M 920 374 L 920 384" marker-end="url(#arr-down)"/>
+      </g>
+      <text x="935" y="230" transform="rotate(90 935 230)" font-size="10" class="muted">constraints (tighten only)</text>
+
+      <!-- Observation arrows (upward, dashed) -->
+      <g stroke="#64748b" fill="none" stroke-dasharray="4 3" stroke-width="1.2">
+        <path d="M 72 374 L 72 318" marker-end="url(#arr-up)"/>
+        <path d="M 72 312 L 72 252" marker-end="url(#arr-up)"/>
+        <path d="M 72 246 L 72 190" marker-end="url(#arr-up)"/>
+        <path d="M 72 184 L 72 128" marker-end="url(#arr-up)"/>
+        <path d="M 72 122 L 72 66" marker-end="url(#arr-up)"/>
+      </g>
+      <text x="42" y="230" transform="rotate(-90 42 230)" font-size="10" class="muted">observations (read-only)</text>
+
+      <!-- Closed-loop feedback arc -->
+      <g stroke="#2563eb" fill="none" stroke-width="1.8" stroke-dasharray="6 3">
+        <path d="M 480 440 C 480 490, 200 490, 200 440 L 200 374" marker-end="url(#arr-loop)"/>
+      </g>
+      <text x="300" y="485" font-size="11" fill="#2563eb" font-weight="600">audit feedback loop (plant -> L2 AuditTrail -> L3 credit -> L6 envelope)</text>
+
+      <!-- Tick data flow annotation -->
+      <rect x="60" y="450" width="880" height="56" rx="6" fill="#f8fafc" stroke="#e2e5ea"/>
+      <text x="80" y="470" font-size="11.5" font-weight="600" fill="#334155">Single tick data path:</text>
+      <text x="80" y="488" font-size="11" class="muted">L1 read_context -> L3 z-score -> L4 AdaptiveCombiner.step -> L6 ContractionAware.apply -> L6 Envelope.check -> actuator</text>
+      <text x="80" y="502" font-size="11" class="muted">actuator -> plant -> L2 AuditTrail.record(action, context, delta) -> L3 CreditAssigner -> L6 EnvelopeLearner.observe</text>
+    </svg>
+    <figcaption>Fig 1. 7-layer architecture with closed-loop feedback. Solid arrows = constraints (tighten). Dashed gray = observations (read-only). Blue dashed = audit feedback loop.</figcaption>
+  </figure>
+
+  <div class="callout">
+    <b>Key constraint</b>: L6 envelope can only auto-tighten (ratchet). <code>relax()</code> is the sole widening path (L7 operator).
+    L4 learner adjusts <code>bias</code> but cannot breach L2's floor/ceiling hard bounds.
+    L3 observers are pure readers. See <a href="#z5">Z5 invariants</a>.
+  </div>
+
+  <h3>Three closed loops in the system</h3>
+  <table>
+    <thead><tr><th>Loop</th><th>Path</th><th>Latency</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill key">Primary</span></td><td>combiner -> audit -> replay -> credit -> envelope</td><td>1 tick (synchronous)</td></tr>
+      <tr><td><span class="pill green">Ingress</span></td><td>prometheus/otel -> context -> combiner -> audit</td><td>1 tick</td></tr>
+      <tr><td><span class="pill purple">Contraction</span></td><td>plant gain -> JacobianMonitor -> ContractionWrapper -> effective_max_delta</td><td>1 tick</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================= Z2 -->
+<section id="z2">
+  <h2><span class="zone">Z2</span>Paper-to-code traceability</h2>
+  <p class="lead">论文每条方程 -> 代码文件 -> 核心测试 -> demo。一张表定位所有实现。</p>
+
+  <h3>Paper layer (Attention Residuals, arXiv:2603.15031)</h3>
+  <table>
+    <thead><tr><th>Section</th><th>Mechanism</th><th>Equation</th><th>Code</th><th>Test</th><th>Demo</th></tr></thead>
+    <tbody>
+      <tr><td>2</td><td>Classic residual</td><td><code>x + F(x)</code></td><td><code>classic_residual.py</code></td><td><code>test_classic_residual_*</code></td><td><code>compare_residual_variants</code></td></tr>
+      <tr><td>3</td><td>Pre/Post-Norm</td><td><code>LN(x+F(x))</code></td><td><code>norm.py</code></td><td><code>test_norm_wrapper_shapes</code></td><td>-</td></tr>
+      <tr><td>4</td><td>HC / mHC</td><td><code>Sum_n A_mn X^(n)</code></td><td><code>hyper_connections.py</code></td><td><code>test_mhc_block_diagonal_mask</code></td><td><code>compare_residual_variants</code></td></tr>
+      <tr><td>5.1</td><td>Attention Residual</td><td><code>a_lk = softmax(q*K/sqrt(d)), Sum=1</code></td><td><code>attn_residual.py</code></td><td><code>test_weights_sum_to_one</code></td><td><code>demo_attn_residual</code></td></tr>
+      <tr><td>5.2</td><td>Block segmentation</td><td><code>O(L^2) -> O((L/B)^2+L)</code></td><td><code>blocks.py</code></td><td><code>test_layers_per_block_one_*</code></td><td><code>demo_block_attn_residual</code></td></tr>
+      <tr><td>6.1</td><td>Multi-head vertical</td><td><code>concat_h * W_O</code></td><td><code>multi_head_vertical.py</code></td><td><code>test_multi_head_weights_*</code></td><td>-</td></tr>
+      <tr><td>6.2</td><td>Layer skip gate</td><td><code>g_l = sigma(w_l)</code></td><td><code>layer_skip.py</code></td><td>-</td><td>-</td></tr>
+      <tr><td>7</td><td>Decoupled transformer</td><td>Dual W_Q</td><td><code>transformer_layer.py</code></td><td><code>test_decoupled_layer_*</code></td><td>-</td></tr>
+      <tr><td>8</td><td>Unified stack</td><td>6 modes</td><td><code>stack.py</code></td><td><code>test_stack_*</code> x6</td><td>-</td></tr>
+    </tbody>
+  </table>
+
+  <h3>SRE control primitives (derived from paper mechanics)</h3>
+  <table>
+    <thead><tr><th>Primitive</th><th>Paper analogy</th><th>Code</th><th>Key invariant</th></tr></thead>
+    <tbody>
+      <tr><td>WeightedConvexCombiner</td><td>5.1 softmax normalization</td><td><code>sre_control.py</code></td><td>I-01, I-02</td></tr>
+      <tr><td>MustAttendRegistry</td><td>5.2 mandatory attention</td><td><code>sre_control.py</code></td><td>-</td></tr>
+      <tr><td>BudgetGate</td><td>6.2 dynamic skip</td><td><code>sre_control.py</code></td><td>-</td></tr>
+      <tr><td>HierarchicalBlockController</td><td>5.2 block segmentation</td><td><code>sre_control.py</code></td><td>-</td></tr>
+      <tr><td>DecoupledControlLoop</td><td>7 horizontal/vertical decouple</td><td><code>sre_control.py</code></td><td>-</td></tr>
+      <tr><td>AuditTrail</td><td>Deterministic audit</td><td><code>sre_control.py</code></td><td>I-09</td></tr>
+      <tr><td>HedgeRegretLearner</td><td>5.1 mirror descent dual</td><td><code>sre_adaptive.py</code></td><td>I-13</td></tr>
+      <tr><td>AdaptiveCombiner</td><td>Closed-loop combiner</td><td><code>sre_adaptive.py</code></td><td>I-13</td></tr>
+      <tr><td>LearnedSafetyEnvelope</td><td>Self-learning ratchet</td><td><code>sre_self_envelope.py</code></td><td>I-05, I-06, I-07</td></tr>
+      <tr><td>ContractionAwareEnvelope</td><td>Jacobian contraction</td><td><code>sre_self_envelope.py</code></td><td>I-08</td></tr>
+      <tr><td>CreditAwareLabeler</td><td>Temporal credit routing</td><td><code>sre_self_envelope.py</code></td><td>I-11</td></tr>
+      <tr><td>StreamingAuditCreditReplay</td><td>Tail-mode byte cursor</td><td><code>sre_math.py</code></td><td>I-10</td></tr>
+      <tr><td>Prometheus/OTel Reader</td><td>Metric ingress</td><td><code>sre_metrics.py</code></td><td>I-12</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================= Z3 -->
+<section id="z3">
+  <h2><span class="zone">Z3</span>Module map</h2>
+  <p class="lead">文件系统结构 + 每个文件的一句话用途 + 行数规模。</p>
+
+  <div class="grid2">
+    <div>
+      <h3><span class="pill accent">L0</span> Paper layer (PyTorch)</h3>
+      <table>
+        <tbody>
+          <tr><td><code>classic_residual.py</code></td><td>x + F(x) baseline</td></tr>
+          <tr><td><code>norm.py</code></td><td>Pre/Post-Norm wrapper</td></tr>
+          <tr><td><code>hyper_connections.py</code></td><td>HC / mHC multi-channel</td></tr>
+          <tr><td><code>attn_residual.py</code></td><td>Core AttnRes (share_key=T/F)</td></tr>
+          <tr><td><code>blocks.py</code></td><td>Block Attention Residuals</td></tr>
+          <tr><td><code>multi_head_vertical.py</code></td><td>Multi-head vertical attention</td></tr>
+          <tr><td><code>layer_skip.py</code></td><td>Sigmoid gate skip</td></tr>
+          <tr><td><code>transformer_layer.py</code></td><td>Horizontal + vertical decoupled</td></tr>
+          <tr><td><code>stack.py</code></td><td>6-mode unified entry</td></tr>
+          <tr><td><code>metrics.py</code></td><td>Paper-layer observation metrics</td></tr>
+          <tr><td><code>types.py</code></td><td>AttnResConfig / BlockConfig / enums</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3><span class="pill key">L1-L6</span> SRE control plane (numpy/stdlib)</h3>
+      <table>
+        <tbody>
+          <tr><td><code>sre_metrics.py</code></td><td><span class="pill mono key">L1</span> Prometheus + OTel + histogram</td></tr>
+          <tr><td><code>sre_control.py</code></td><td><span class="pill mono key">L2</span> 7 control primitives + audit</td></tr>
+          <tr><td><code>sre_math.py</code></td><td><span class="pill mono key">L3</span> z-score, FTRL, credit, replay</td></tr>
+          <tr><td><code>sre_adaptive.py</code></td><td><span class="pill mono key">L4</span> Hedge + AdaptiveCombiner</td></tr>
+          <tr><td><code>sre_safety.py</code></td><td><span class="pill mono key">L5</span> envelope, shadow, counterfactual</td></tr>
+          <tr><td><code>sre_self_envelope.py</code></td><td><span class="pill mono key">L6</span> Self-learning + credit routing</td></tr>
+          <tr><td><code>__init__.py</code></td><td>71 public symbols exported</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>Tests / Examples / Docs</h3>
+  <div class="grid3">
+    <div>
+      <h3 style="margin-top:0">tests/ (174 cases)</h3>
+      <table>
+        <tbody>
+          <tr><td><code>test_attn_residual</code></td><td>8</td></tr>
+          <tr><td><code>test_blocks</code></td><td>3</td></tr>
+          <tr><td><code>test_hyper_connections</code></td><td>3</td></tr>
+          <tr><td><code>test_norm</code></td><td>3</td></tr>
+          <tr><td><code>test_sre_adaptive</code></td><td>12</td></tr>
+          <tr><td><code>test_sre_control</code></td><td>14</td></tr>
+          <tr><td><code>test_sre_math</code></td><td>50</td></tr>
+          <tr><td><code>test_sre_metrics</code></td><td>16</td></tr>
+          <tr><td><code>test_sre_safety</code></td><td>14</td></tr>
+          <tr><td><code>test_sre_self_envelope</code></td><td>44</td></tr>
+          <tr><td><code>test_stack</code></td><td>7</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3 style="margin-top:0">examples/ (11 demos)</h3>
+      <table>
+        <tbody>
+          <tr><td><code>compare_residual_variants</code></td><td>L0</td></tr>
+          <tr><td><code>demo_attn_residual</code></td><td>L0</td></tr>
+          <tr><td><code>demo_block_attn_residual</code></td><td>L0</td></tr>
+          <tr><td><code>demo_sre_autoscaler</code></td><td>L2</td></tr>
+          <tr><td><code>demo_sre_math_primitives</code></td><td>L3</td></tr>
+          <tr><td><code>demo_sre_adaptive_safety</code></td><td>L4/5</td></tr>
+          <tr><td><code>demo_self_learning_envelope</code></td><td>L6</td></tr>
+          <tr><td><code>demo_credit_aware_envelope</code></td><td>L6</td></tr>
+          <tr><td><code>demo_audit_credit_replay</code></td><td>L3</td></tr>
+          <tr><td><code>demo_streaming_audit_replay</code></td><td>L3</td></tr>
+          <tr><td><code>demo_metric_source_replay</code></td><td>L1</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3 style="margin-top:0">docs/ (16 files)</h3>
+      <table>
+        <tbody>
+          <tr><td><code>ARCHITECTURE.md</code></td><td>High-level</td></tr>
+          <tr><td><code>DEEP-DIVE.md</code></td><td>Math + safety</td></tr>
+          <tr><td><code>EQUATIONS-AND-SRE.md</code></td><td>7 equations</td></tr>
+          <tr><td><code>SRE-CONTROL-PLAYBOOK.md</code></td><td>Scenarios</td></tr>
+          <tr><td><code>SELF-LEARNING-ENVELOPE.md</code></td><td>Ratchet design</td></tr>
+          <tr><td><code>SOFT-LABEL-CREDIT.md</code></td><td>Soft labels</td></tr>
+          <tr><td><code>AUDIT-CREDIT-REPLAY.md</code></td><td>Offline replay</td></tr>
+          <tr><td><code>STREAMING-AUDIT-REPLAY.md</code></td><td>Streaming</td></tr>
+          <tr><td><code>METRIC-SOURCES.md</code></td><td>Prom/OTel</td></tr>
+          <tr><td><code>knowledge-base.html</code></td><td>V1 (27 sec)</td></tr>
+          <tr><td><code>claude-review/</code></td><td>R10 review</td></tr>
+          <tr><td><code>V2_Knowledge/</code></td><td>V2 nav</td></tr>
+          <tr><td><code>V3_Knowledge/</code></td><td>V3 (this)</td></tr>
+          <tr><td><code>adr/</code></td><td>ADRs</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= Z4 -->
+<section id="z4">
+  <h2><span class="zone">Z4</span>Demos & verification</h2>
+  <p class="lead">一键验证全套。按"基础 -> 组合 -> 生产风味"排序。</p>
+
+  <h3>Quick start (5 min total)</h3>
+  <div class="cmd"><span class="comment"># Step 1: baseline gate</span>
+cd D:\workspace\SRE-LLM\Attention-Residuals
+python -m pytest --ignore=tests/skill -q     <span class="comment"># expect: 174 passed</span>
+
+<span class="comment"># Step 2: demo sweep (set UTF-8 for Windows cmd)</span>
+set PYTHONIOENCODING=utf-8
+python -m examples.compare_residual_variants
+python -m examples.demo_attn_residual
+python -m examples.demo_block_attn_residual
+python -m examples.demo_sre_autoscaler
+python -m examples.demo_sre_math_primitives
+python -m examples.demo_sre_adaptive_safety
+python -m examples.demo_self_learning_envelope
+python -m examples.demo_credit_aware_envelope
+python -m examples.demo_audit_credit_replay
+python -m examples.demo_streaming_audit_replay
+python -m examples.demo_metric_source_replay</div>
+
+  <div class="callout accent">
+    <b>Windows note</b>: demos contain Unicode chars (checkmarks, arrows). Set <code>PYTHONIOENCODING=utf-8</code> before running,
+    or use PowerShell with <code>$env:PYTHONIOENCODING="utf-8"</code>.
+  </div>
+
+  <h3>Recommended reading order (no execution needed)</h3>
+  <table>
+    <thead><tr><th>#</th><th>Demo</th><th>What to observe</th><th>Layer</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><code>demo_attn_residual</code></td><td>softmax weights sum-to-1 invariant</td><td>L0</td></tr>
+      <tr><td>2</td><td><code>demo_block_attn_residual</code></td><td>O(L^2) -> O((L/B)^2+L) complexity</td><td>L0</td></tr>
+      <tr><td>3</td><td><code>demo_sre_autoscaler</code></td><td>7 control primitives in 30-tick autoscaler</td><td>L2</td></tr>
+      <tr><td>4</td><td><code>demo_sre_math_primitives</code></td><td>7 equation-level primitives in concert</td><td>L3</td></tr>
+      <tr><td>5</td><td><code>demo_sre_adaptive_safety</code></td><td>Closed-loop learning + 4-lock safety</td><td>L4/5</td></tr>
+      <tr><td>6</td><td><code>demo_self_learning_envelope</code></td><td>6 envelope invariants proven</td><td>L6</td></tr>
+      <tr><td>7</td><td><b><code>demo_credit_aware_envelope</code></b></td><td><b>Most valuable</b>: credit routing prevents over-tightening</td><td>L6</td></tr>
+      <tr><td>8</td><td><code>demo_audit_credit_replay</code></td><td>Offline JSONL blame reconstruction</td><td>L3</td></tr>
+      <tr><td>9</td><td><code>demo_streaming_audit_replay</code></td><td>Tail-mode byte cursor incremental replay</td><td>L3</td></tr>
+      <tr><td>10</td><td><code>demo_metric_source_replay</code></td><td>Prometheus/OTel -> context -> controller (incl. histogram p50/p95)</td><td>L1</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout green">
+    <b>If you only run one demo</b>: <code>demo_credit_aware_envelope</code>. It demonstrates the system's convergence point:
+    self-learning envelope tightens on UNSAFE, credit routing identifies external-cause incidents, and envelope does NOT
+    over-tighten on external faults.
+  </div>
+</section>
+
+<!-- ============================================================= Z5 -->
+<section id="z5">
+  <h2><span class="zone">Z5</span>Hard invariants & guardrails</h2>
+  <p class="lead">13 conditions that code must never violate. SSOT: <a href="./state.json"><code>state.json.hard_invariants</code></a>.</p>
+
+  <table>
+    <thead><tr><th>ID</th><th>Tier</th><th>Invariant</th><th>Enforced at</th><th>Primary test</th><th>Break impact</th></tr></thead>
+    <tbody>
+      <tr><td>I-01</td><td><span class="pill accent">T1</span></td><td>Sum weights = 1</td><td><code>_project_to_simplex_with_bounds</code></td><td><code>test_combiner_weights_sum_to_one</code></td><td>Signal over/under-allocation; cascading drift</td></tr>
+      <tr><td>I-02</td><td><span class="pill accent">T1</span></td><td>floor &le; weight &le; ceiling</td><td><code>WeightedConvexCombiner.combine</code></td><td><code>test_combiner_respects_floor</code></td><td>Operator intent bypassed</td></tr>
+      <tr><td>I-03</td><td><span class="pill accent">T1</span></td><td>Sum a_lk = 1 (vertical)</td><td><code>AttentionResidual._compute_weights</code></td><td><code>test_weights_sum_to_one</code></td><td>Information leak/loss between layers</td></tr>
+      <tr><td>I-04</td><td><span class="pill accent">T1</span></td><td>share_key=False per-slot key alive</td><td><code>AttentionResidual.forward</code></td><td><code>test_attn_residual_independent_key_bank_contributes</code></td><td>Per-layer specialization dead</td></tr>
+      <tr><td>I-05</td><td><span class="pill accent">T1</span></td><td>fit() only tightens (ratchet)</td><td><code>LearnedSafetyEnvelope.fit</code></td><td><code>test_multiple_fits_never_widen_bounds</code></td><td>Envelope silently widens; safety regression</td></tr>
+      <tr><td>I-06</td><td><span class="pill accent">T1</span></td><td>relax() is sole widening path</td><td>Source grep: <code>current_* =</code></td><td><code>test_relax_widens_but_stays_inside_hard_bounds</code></td><td>Unaudited widening; operator loses control</td></tr>
+      <tr><td>I-07</td><td><span class="pill accent">T1</span></td><td>learned bounds within hard bounds</td><td><code>LearnedSafetyEnvelope.fit</code> (clip)</td><td><code>test_learned_bounds_never_exceed_hard_bounds_after_fit</code></td><td>Hard safety boundary breached</td></tr>
+      <tr><td>I-08</td><td><span class="pill accent">T1</span></td><td>ContractionWrapper no inner mutation</td><td><code>try/finally</code> restore</td><td><code>test_contraction_wrapper_does_not_mutate_inner_state</code></td><td>Side-channel state corruption</td></tr>
+      <tr><td>I-09</td><td><span class="pill accent">T1</span></td><td>AuditTrail append-only</td><td><code>AuditTrail</code> (no mutate API)</td><td><code>test_audit_trail_records_and_serializes</code></td><td>Audit chain broken; compliance failure</td></tr>
+      <tr><td>I-10</td><td><span class="pill accent">T1</span></td><td>Streaming: only newline-complete lines</td><td><code>StreamingAuditCreditReplay.poll</code></td><td><code>test_streaming_audit_replay_bad_json_does_not_advance_cursor</code></td><td>Partial JSON parsed; silent data corruption</td></tr>
+      <tr><td>I-11</td><td><span class="pill accent">T1</span></td><td>Soft labels cannot bypass hard bounds</td><td><code>OutcomeEvidence</code></td><td><code>test_adaptive_combiner_respects_floor_even_after_learning</code></td><td>ML feedback overrides safety</td></tr>
+      <tr><td>I-12</td><td><span class="pill green">T2</span></td><td>Metric sources are read-only</td><td><code>sre_metrics</code> (entire file)</td><td><code>test_prometheus_context_reader_populates_context</code></td><td>Architecture boundary erosion</td></tr>
+      <tr><td>I-13</td><td><span class="pill accent">T1</span></td><td>AdaptiveCombiner preserves static bias</td><td><code>AdaptiveCombiner.step</code></td><td><code>test_adaptive_combiner_preserves_static_bias_under_learning</code></td><td>Operator prior silently overwritten</td></tr>
+    </tbody>
+  </table>
+
+  <h3>PR review guardrails (quick checklist)</h3>
+  <table>
+    <thead><tr><th>G#</th><th>Rule</th><th>Maps to</th></tr></thead>
+    <tbody>
+      <tr><td>G1</td><td>Hard bounds cannot be auto-breached</td><td>I-07</td></tr>
+      <tr><td>G2</td><td><code>relax()</code> is sole widening path</td><td>I-06</td></tr>
+      <tr><td>G3</td><td>Sum=1 is hard constraint, not loss term</td><td>I-01, I-03</td></tr>
+      <tr><td>G4</td><td>AuditTrail append-only</td><td>I-09</td></tr>
+      <tr><td>G5</td><td>External deps injected as callable (HTTP/file/RNG/time)</td><td>Convention</td></tr>
+      <tr><td>G6</td><td>Public API additive-only (no breaking changes)</td><td>Convention</td></tr>
+      <tr><td>G7</td><td>Each feature = module + test + demo + doc</td><td>Convention</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <b>If you must break an invariant</b>: write an ADR to <code>docs/adr/NNNN-slug.md</code> FIRST (Context/Options/Decision/Consequences).
+    Get explicit approval. Then proceed. See <a href="../adr/0001-contraction-wrapper-uses-rlock.md">ADR-0001</a> as template.
+  </div>
+</section>
+
+<!-- ============================================================= Z6 -->
+<section id="z6">
+  <h2><span class="zone">Z6</span>Actions & backlog</h2>
+  <p class="lead">Round 10 follow-ups: all 7 closed. Round 11 backlog below.</p>
+
+  <div class="status-row">
+    <div class="stat"><div class="num green">7</div><div class="lbl">closed (R10)</div></div>
+    <div class="stat"><div class="num green">0</div><div class="lbl">open</div></div>
+    <div class="stat"><div class="num">+20</div><div class="lbl">tests added (R10.5+R11)</div></div>
+    <div class="stat"><div class="num purple">1</div><div class="lbl">ADR written</div></div>
+    <div class="stat"><div class="num green">1</div><div class="lbl">gap closed (histogram)</div></div>
+  </div>
+
+  <h3>Closed follow-ups (Round 10)</h3>
+  <table>
+    <thead><tr><th>ID</th><th>P</th><th>Title</th><th>Closed by</th><th>Tests added</th></tr></thead>
+    <tbody>
+      <tr><td>AI-1</td><td><span class="pill warn">P1</span></td><td>Bound TemporalCreditAssigner._history</td><td>codex</td><td>2</td></tr>
+      <tr><td>AI-2</td><td><span class="pill warn">P1</span></td><td>Disambiguate min_safe_samples vs evidence</td><td>codex</td><td>3</td></tr>
+      <tr><td>AI-3</td><td><span class="pill green">P2</span></td><td>Thread-safe ContractionAwareEnvelope</td><td>codex (RLock, ADR-0001)</td><td>1</td></tr>
+      <tr><td>AI-4</td><td><span class="pill green">P2</span></td><td>skip_bad_lines + max_dead_letters</td><td>codex + Claude</td><td>4</td></tr>
+      <tr><td>AI-5</td><td><span class="pill key">P3</span></td><td>Document dual-evidence in observe()</td><td>codex</td><td>0</td></tr>
+      <tr><td>AI-6</td><td><span class="pill key">P3</span></td><td>Empty-input check in _weighted_quantile</td><td>codex</td><td>1</td></tr>
+      <tr><td>AI-7</td><td><span class="pill key">P3</span></td><td>DDP caveat for share_key=False</td><td>codex + Claude</td><td>0</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Round 11 backlog (not yet scheduled)</h3>
+  <table>
+    <thead><tr><th>Item</th><th>Status</th><th>Gap ID</th></tr></thead>
+    <tbody>
+      <tr><td>OTLP histogram -> p50/p95/burn-rate expansion</td><td><span class="pill green">DONE</span> (2026-05-12, +9 tests)</td><td><s>otel_no_histogram_expansion</s></td></tr>
+      <tr><td>Shadow envelope with policy gradient</td><td><span class="pill">backlog</span></td><td>no_rl_policy_gradient</td></tr>
+      <tr><td>Cross-service envelope federation</td><td><span class="pill">backlog</span></td><td>no_cross_service_federation</td></tr>
+      <tr><td>Prometheus matrix queries / remote-read</td><td><span class="pill">backlog</span></td><td>prometheus_no_matrix_or_remote_read</td></tr>
+      <tr><td>CreditAwareLabeler recent-window cache</td><td><span class="pill">backlog</span></td><td>-</td></tr>
+      <tr><td>Per-dimension unsafe quorum</td><td><span class="pill">backlog</span></td><td>-</td></tr>
+      <tr><td>Streaming cursor persistence helper</td><td><span class="pill">backlog</span></td><td>-</td></tr>
+      <tr><td>Automated V1 knowledge-base TOC generation</td><td><span class="pill">backlog</span></td><td>knowledge_base_hand_maintained</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Open gaps (capabilities not yet built)</h3>
+  <div class="grid2">
+    <div class="callout purple">
+      <b>no_http_runtime</b> — No HTTP server; library-only. Integration layer is caller's responsibility.
+    </div>
+    <div class="callout purple">
+      <b>no_sqlite_persistence</b> — All state is in-memory. Callers persist via AuditTrail JSONL export.
+    </div>
+    <div class="callout purple">
+      <b>no_rl_policy_gradient</b> — Shadow envelope exists but no RL policy optimization.
+    </div>
+    <div class="callout purple">
+      <b>no_cross_service_federation</b> — Single-service scope. No distributed envelope sync.
+    </div>
+    <div class="callout purple">
+      <b>prometheus_no_matrix_or_remote_read</b> — Only instant vector/scalar queries supported.
+    </div>
+    <div class="callout purple">
+      <b>knowledge_base_hand_maintained</b> — V1 HTML is manually updated; no auto-generation.
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= Z7 -->
+<section id="z7">
+  <h2><span class="zone">Z7</span>Status & handback</h2>
+  <p class="lead">Snapshot: 2026-05-12, HEAD <code>3dbfd50</code> (in-tree patches pending push).</p>
+
+  <div class="status-row">
+    <div class="stat"><div class="num green">174</div><div class="lbl">tests passing</div></div>
+    <div class="stat"><div class="num green">11</div><div class="lbl">demos OK</div></div>
+    <div class="stat"><div class="num green">0</div><div class="lbl">diagnostics</div></div>
+    <div class="stat"><div class="num purple">71</div><div class="lbl">public symbols</div></div>
+    <div class="stat"><div class="num">16</div><div class="lbl">modules</div></div>
+    <div class="stat"><div class="num accent">13</div><div class="lbl">hard invariants</div></div>
+  </div>
+
+  <h3>What codex needs to do next</h3>
+  <div class="callout green">
+    <ol style="margin:6px 0;">
+      <li>Commit the in-tree working copy changes (19 modified + 9 untracked files).</li>
+      <li>Suggested commit split:
+        <ul>
+          <li><code>feat(sre): round-10 follow-ups (AI-1..AI-7) + adr/0001 + claude-review/</code></li>
+          <li><code>feat(sre_metrics): OTLP histogram expansion</code></li>
+          <li><code>docs: V3_Knowledge + CODEX-HANDOFF update</code></li>
+        </ul>
+      </li>
+      <li><code>git push -u origin attention-residuals-session</code></li>
+      <li>After push: follow <a href="../claude-review/05-round-11-opening.md">05-round-11-opening.md</a> to open Round 11.</li>
+    </ol>
+  </div>
+
+  <h3>If you are a new agent picking this up</h3>
+  <div class="callout">
+    <ol style="margin:6px 0;">
+      <li>Pull latest -> <code>pytest -q --ignore=tests/skill</code> (expect 174 passed)</li>
+      <li>Read this page (Z1-Z9) for full context (5 min)</li>
+      <li>Check <a href="./state.json">state.json</a> for machine-readable state</li>
+      <li>If evaluating: Z7 -> Z6 -> Z5 -> Z8</li>
+      <li>If developing: Z7 -> Z8 (impact) -> Z6 (pick task) -> Z4 (verify)</li>
+    </ol>
+  </div>
+
+  <h3>10-round timeline</h3>
+  <figure>
+    <svg viewBox="0 0 1000 260" role="img" aria-label="10-round evolution timeline">
+      <defs>
+        <marker id="arr-t" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/></marker>
+      </defs>
+      <!-- Axis -->
+      <line x1="50" y1="180" x2="950" y2="180" stroke="#cbd5e1" stroke-width="2"/>
+      <path d="M 945 175 L 955 180 L 945 185" fill="none" stroke="#cbd5e1" stroke-width="2"/>
+
+      <!-- Round dots -->
+      <g font-size="11">
+        <circle cx="100" cy="180" r="8" fill="#2563eb"/><text x="100" y="165" text-anchor="middle" font-weight="700" fill="#2563eb">R1</text>
+        <text x="100" y="205" text-anchor="middle" class="muted" font-size="10">Paper x11</text>
+
+        <circle cx="200" cy="180" r="7" fill="#2563eb"/><text x="200" y="165" text-anchor="middle" font-weight="700" fill="#2563eb">R3</text>
+        <text x="200" y="205" text-anchor="middle" class="muted" font-size="10">Control x7</text>
+
+        <circle cx="300" cy="180" r="7" fill="#2563eb"/><text x="300" y="165" text-anchor="middle" font-weight="700" fill="#2563eb">R4</text>
+        <text x="300" y="205" text-anchor="middle" class="muted" font-size="10">Adaptive+Safety</text>
+
+        <circle cx="400" cy="180" r="7" fill="#2563eb"/><text x="400" y="165" text-anchor="middle" font-weight="700" fill="#2563eb">R5</text>
+        <text x="400" y="205" text-anchor="middle" class="muted" font-size="10">Math x7</text>
+
+        <circle cx="500" cy="180" r="9" fill="#16a34a"/><text x="500" y="162" text-anchor="middle" font-weight="700" fill="#16a34a">R6</text>
+        <text x="500" y="205" text-anchor="middle" class="muted" font-size="10">Envelope</text>
+
+        <circle cx="600" cy="180" r="7" fill="#c0392b"/><text x="600" y="165" text-anchor="middle" font-weight="700" fill="#c0392b">R7</text>
+        <text x="600" y="205" text-anchor="middle" class="muted" font-size="10">Soft labels</text>
+
+        <circle cx="700" cy="180" r="7" fill="#c0392b"/><text x="700" y="165" text-anchor="middle" font-weight="700" fill="#c0392b">R8</text>
+        <text x="700" y="205" text-anchor="middle" class="muted" font-size="10">Replay+Metrics</text>
+
+        <circle cx="780" cy="180" r="7" fill="#c0392b"/><text x="780" y="165" text-anchor="middle" font-weight="700" fill="#c0392b">R9</text>
+        <text x="780" y="205" text-anchor="middle" class="muted" font-size="10">Streaming</text>
+
+        <circle cx="880" cy="180" r="10" fill="#d97706"/><text x="880" y="160" text-anchor="middle" font-weight="700" fill="#d97706">R10</text>
+        <text x="880" y="205" text-anchor="middle" class="muted" font-size="10">Review+Close</text>
+      </g>
+
+      <!-- Legend -->
+      <g transform="translate(60,30)" font-size="11">
+        <circle cx="8" cy="0" r="5" fill="#2563eb"/><text x="20" y="4">Claude (R1-R6)</text>
+        <circle cx="150" cy="0" r="5" fill="#c0392b"/><text x="162" y="4">Codex (R7-R9)</text>
+        <circle cx="280" cy="0" r="5" fill="#d97706"/><text x="292" y="4">Review/Handback (R10)</text>
+        <circle cx="440" cy="0" r="5" fill="#16a34a"/><text x="452" y="4">Milestone (R6 envelope)</text>
+      </g>
+
+      <!-- Test count growth -->
+      <g font-size="10" class="muted">
+        <text x="100" y="225">+23</text>
+        <text x="200" y="225">+14</text>
+        <text x="300" y="225">+25</text>
+        <text x="400" y="225">+33</text>
+        <text x="500" y="225">+32</text>
+        <text x="600" y="225">+7</text>
+        <text x="700" y="225">+14</text>
+        <text x="780" y="225">+4</text>
+        <text x="880" y="225">+20</text>
+        <text x="500" y="245" text-anchor="middle" font-size="11">cumulative test growth per round</text>
+      </g>
+    </svg>
+    <figcaption>Fig 2. 10-round timeline. Blue = Claude foundation, Red = Codex extension, Gold = Review, Green = milestone.</figcaption>
+  </figure>
+
+  <h3>Per-round summary</h3>
+  <table>
+    <thead><tr><th>Round</th><th>By</th><th>Headline</th><th>+Tests</th><th>+Modules</th></tr></thead>
+    <tbody>
+      <tr><td>R1</td><td>Claude</td><td>Paper layer (11 PyTorch modules)</td><td>+23</td><td>+11</td></tr>
+      <tr><td>R3</td><td>Claude</td><td>sre_control (7 control primitives)</td><td>+14</td><td>+1</td></tr>
+      <tr><td>R4</td><td>Claude</td><td>sre_adaptive + sre_safety</td><td>+25</td><td>+2</td></tr>
+      <tr><td>R5</td><td>Claude</td><td>sre_math (7 equation primitives)</td><td>+33</td><td>+1</td></tr>
+      <tr><td>R6</td><td>Claude</td><td>sre_self_envelope (ratchet, 6 invariants)</td><td>+32</td><td>+1</td></tr>
+      <tr><td>R7</td><td>Codex</td><td>Soft labels + CreditAwareLabeler</td><td>+7</td><td>0</td></tr>
+      <tr><td>R8</td><td>Codex</td><td>Audit replay + MetricLossMapper + sre_metrics</td><td>+14</td><td>+1</td></tr>
+      <tr><td>R9</td><td>Codex</td><td>Streaming audit replay (byte cursor)</td><td>+4</td><td>0</td></tr>
+      <tr><td>R10</td><td>Claude</td><td>Review + 7 follow-ups closed + ADR-0001</td><td>+11</td><td>0</td></tr>
+      <tr><td>R11a</td><td>Claude</td><td>OTLP histogram expansion</td><td>+9</td><td>0</td></tr>
+      <tr><th colspan="3">Total</th><th>174</th><th>16</th></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================= Z8 -->
+<section id="z8">
+  <h2><span class="zone">Z8</span>Dependency & interaction graph</h2>
+  <p class="lead">模块间的 import 依赖关系。改一个文件前先看它被谁依赖、它依赖谁。</p>
+
+  <figure>
+    <svg viewBox="0 0 1000 600" role="img" aria-label="Module dependency graph">
+      <defs>
+        <marker id="dep-arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/></marker>
+        <marker id="dep-arr-key" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/></marker>
+      </defs>
+
+      <!-- Module nodes -->
+      <!-- L0 Paper layer -->
+      <g transform="translate(600,500)">
+        <rect x="-80" y="-18" width="160" height="36" rx="6" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
+        <text text-anchor="middle" y="5" font-size="12" font-weight="600" fill="#7c3aed">L0: attn_residual</text>
+      </g>
+      <g transform="translate(800,500)">
+        <rect x="-60" y="-18" width="120" height="36" rx="6" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.2"/>
+        <text text-anchor="middle" y="5" font-size="11" fill="#7c3aed">blocks / stack</text>
+      </g>
+      <g transform="translate(400,500)">
+        <rect x="-60" y="-18" width="120" height="36" rx="6" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.2"/>
+        <text text-anchor="middle" y="5" font-size="11" fill="#7c3aed">norm / HC</text>
+      </g>
+
+      <!-- L1 -->
+      <g transform="translate(150,420)">
+        <rect x="-80" y="-18" width="160" height="36" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+        <text text-anchor="middle" y="5" font-size="12" font-weight="600" fill="#16a34a">L1: sre_metrics</text>
+      </g>
+
+      <!-- L2 -->
+      <g transform="translate(150,330)">
+        <rect x="-80" y="-18" width="160" height="36" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+        <text text-anchor="middle" y="5" font-size="12" font-weight="600" fill="#2563eb">L2: sre_control</text>
+      </g>
+
+      <!-- L3 -->
+      <g transform="translate(450,330)">
+        <rect x="-80" y="-18" width="160" height="36" rx="6" fill="#fef2f2" stroke="#c0392b" stroke-width="1.5"/>
+        <text text-anchor="middle" y="5" font-size="12" font-weight="600" fill="#c0392b">L3: sre_math</text>
+      </g>
+
+      <!-- L4 -->
+      <g transform="translate(300,230)">
+        <rect x="-80" y="-18" width="160" height="36" rx="6" fill="#fffbeb" stroke="#d97706" stroke-width="1.5"/>
+        <text text-anchor="middle" y="5" font-size="12" font-weight="600" fill="#d97706">L4: sre_adaptive</text>
+      </g>
+
+      <!-- L5 -->
+      <g transform="translate(600,230)">
+        <rect x="-80" y="-18" width="160" height="36" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+        <text text-anchor="middle" y="5" font-size="12" font-weight="600" fill="#16a34a">L5: sre_safety</text>
+      </g>
+
+      <!-- L6 -->
+      <g transform="translate(450,120)">
+        <rect x="-100" y="-20" width="200" height="40" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+        <text text-anchor="middle" y="6" font-size="13" font-weight="700" fill="#2563eb">L6: sre_self_envelope</text>
+      </g>
+
+      <!-- Dependency edges (A imports B = arrow from A to B) -->
+      <g stroke="#475569" fill="none" stroke-width="1.2">
+        <!-- L6 -> L4 (uses AdaptiveCombiner concepts) -->
+        <path d="M 380 130 L 320 218" marker-end="url(#dep-arr)"/>
+        <!-- L6 -> L5 (uses SafetyEnvelope) -->
+        <path d="M 520 130 L 580 218" marker-end="url(#dep-arr)"/>
+        <!-- L6 -> L3 (uses JacobianMonitor, CreditAssigner) -->
+        <path d="M 450 140 L 450 310" marker-end="url(#dep-arr)"/>
+        <!-- L6 -> L2 (uses AuditTrail) -->
+        <path d="M 370 135 L 200 318" marker-end="url(#dep-arr)"/>
+
+        <!-- L4 -> L2 (uses WeightedConvexCombiner, SignalSpec) -->
+        <path d="M 240 240 L 180 318" marker-end="url(#dep-arr)"/>
+
+        <!-- L5 -> L2 (uses AuditTrail for shadow) -->
+        <path d="M 540 240 L 210 340" marker-end="url(#dep-arr)"/>
+
+        <!-- L3 -> L2 (uses AuditTrail for replay) -->
+        <path d="M 390 340 L 230 335" marker-end="url(#dep-arr)"/>
+      </g>
+
+      <!-- Key dependency (blue, thicker) -->
+      <g stroke="#2563eb" fill="none" stroke-width="1.8">
+        <!-- L4 -> L3 (uses FTRL) -->
+        <path d="M 340 248 L 410 318" marker-end="url(#dep-arr-key)"/>
+      </g>
+
+      <!-- No-dependency note for L0 <-> SRE -->
+      <g>
+        <line x1="350" y1="460" x2="350" y2="380" stroke="#e2e5ea" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <text x="360" y="440" font-size="10" class="muted">L0 and L1-L6 are independent</text>
+        <text x="360" y="455" font-size="10" class="muted">(no cross-imports)</text>
+      </g>
+
+      <!-- Legend -->
+      <g transform="translate(700,50)" font-size="11">
+        <text y="0" font-weight="600">Dependency legend:</text>
+        <line x1="0" y1="15" x2="40" y2="15" stroke="#475569" stroke-width="1.2" marker-end="url(#dep-arr)"/>
+        <text x="50" y="19">A imports B</text>
+        <line x1="0" y1="35" x2="40" y2="35" stroke="#2563eb" stroke-width="1.8" marker-end="url(#dep-arr-key)"/>
+        <text x="50" y="39">Critical path</text>
+        <line x1="0" y1="55" x2="40" y2="55" stroke="#e2e5ea" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <text x="50" y="59">No dependency</text>
+      </g>
+
+      <!-- Impact annotations -->
+      <g font-size="10.5" class="muted">
+        <text x="60" y="50">Impact analysis: changing sre_control (L2) affects L3, L4, L5, L6</text>
+        <text x="60" y="68">Changing sre_math (L3) affects L4, L6</text>
+        <text x="60" y="86">Changing sre_self_envelope (L6) is leaf — no downstream dependents</text>
+        <text x="60" y="104">L0 (PyTorch) is fully isolated from SRE plane</text>
+      </g>
+    </svg>
+    <figcaption>Fig 3. Module dependency graph. Arrows point from importer to importee. L0 (Paper/PyTorch) and L1-L6 (SRE/numpy) are independent stacks.</figcaption>
+  </figure>
+
+  <h3>Impact matrix: "If I change X, what breaks?"</h3>
+  <table>
+    <thead><tr><th>If you change...</th><th>Direct dependents</th><th>Tests to re-run</th><th>Risk level</th></tr></thead>
+    <tbody>
+      <tr><td><code>sre_control.py</code> (L2)</td><td>L3, L4, L5, L6 + all demos</td><td>All 174</td><td><span class="pill accent">HIGH</span></td></tr>
+      <tr><td><code>sre_math.py</code> (L3)</td><td>L4, L6 + 5 demos</td><td>test_sre_math + test_sre_adaptive + test_sre_self_envelope</td><td><span class="pill warn">MEDIUM</span></td></tr>
+      <tr><td><code>sre_adaptive.py</code> (L4)</td><td>L6 + 2 demos</td><td>test_sre_adaptive + test_sre_self_envelope</td><td><span class="pill warn">MEDIUM</span></td></tr>
+      <tr><td><code>sre_safety.py</code> (L5)</td><td>L6 + 1 demo</td><td>test_sre_safety + test_sre_self_envelope</td><td><span class="pill warn">MEDIUM</span></td></tr>
+      <tr><td><code>sre_self_envelope.py</code> (L6)</td><td>None (leaf)</td><td>test_sre_self_envelope</td><td><span class="pill green">LOW</span></td></tr>
+      <tr><td><code>sre_metrics.py</code> (L1)</td><td>None (leaf)</td><td>test_sre_metrics</td><td><span class="pill green">LOW</span></td></tr>
+      <tr><td><code>attn_residual.py</code> (L0)</td><td>blocks, stack, transformer_layer</td><td>test_attn_residual + test_blocks + test_stack</td><td><span class="pill warn">MEDIUM</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================= Z9 -->
+<section id="z9">
+  <h2><span class="zone">Z9</span>Changelog & evolution</h2>
+  <p class="lead">从 Round 1 到当前的完整变更日志。每轮的关键决策和产出。</p>
+
+  <table>
+    <thead><tr><th>Round</th><th>Date</th><th>Author</th><th>Key decisions</th><th>Artifacts</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="pill key">R1-R2</span></td><td>2026-05</td><td>Claude</td>
+        <td>Paper -> PyTorch; 11 modules; share_key=False design; V1 knowledge base</td>
+        <td>11 .py + 23 tests + knowledge-base.html</td>
+      </tr>
+      <tr>
+        <td><span class="pill key">R3</span></td><td>2026-05</td><td>Claude</td>
+        <td>Abstract paper mechanics to SRE control primitives; simplex projection; audit-first</td>
+        <td>sre_control.py + 14 tests + SRE-CONTROL-PLAYBOOK.md</td>
+      </tr>
+      <tr>
+        <td><span class="pill key">R4</span></td><td>2026-05</td><td>Claude</td>
+        <td>Hedge regret learner; 4-lock safety (envelope/shadow/counterfactual/drift)</td>
+        <td>sre_adaptive.py + sre_safety.py + 25 tests + DEEP-DIVE.md</td>
+      </tr>
+      <tr>
+        <td><span class="pill key">R5</span></td><td>2026-05</td><td>Claude</td>
+        <td>7 equation-level primitives; FTRL unification; Wasserstein drift</td>
+        <td>sre_math.py + 33 tests + EQUATIONS-AND-SRE.md</td>
+      </tr>
+      <tr>
+        <td><span class="pill green">R6</span></td><td>2026-05</td><td>Claude</td>
+        <td>Self-learning ratchet envelope; 6 invariants proven; contraction-aware wrapper</td>
+        <td>sre_self_envelope.py + 32 tests + SELF-LEARNING-ENVELOPE.md</td>
+      </tr>
+      <tr>
+        <td><span class="pill accent">R7</span></td><td>2026-05</td><td>Codex</td>
+        <td>Soft labels (OutcomeEvidence); CreditAwareLabeler; I-11 established</td>
+        <td>+7 tests + SOFT-LABEL-CREDIT.md</td>
+      </tr>
+      <tr>
+        <td><span class="pill accent">R8</span></td><td>2026-05</td><td>Codex</td>
+        <td>Offline JSONL replay; MetricLossMapper; Prometheus/OTel adapters</td>
+        <td>sre_metrics.py + +14 tests + AUDIT-CREDIT-REPLAY.md + METRIC-SOURCES.md</td>
+      </tr>
+      <tr>
+        <td><span class="pill accent">R9</span></td><td>2026-05</td><td>Codex</td>
+        <td>Streaming byte-cursor replay; pending-bytes buffer; I-10 established</td>
+        <td>+4 tests + STREAMING-AUDIT-REPLAY.md</td>
+      </tr>
+      <tr>
+        <td><span class="pill warn">R10</span></td><td>2026-05-12</td><td>Claude</td>
+        <td>Full review of R7-R9; 7 follow-ups identified and closed; ADR-0001 (RLock); V2 Knowledge</td>
+        <td>claude-review/ (5 files) + V2_Knowledge/ + adr/ + +11 tests</td>
+      </tr>
+      <tr>
+        <td><span class="pill green">R11a</span></td><td>2026-05-12</td><td>Claude</td>
+        <td>OTLP histogram expansion; quantile_from_histogram helper; closes otel gap</td>
+        <td>+9 tests + demo_metric_source_replay updated</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Key architectural decisions (ADRs)</h3>
+  <table>
+    <thead><tr><th>ADR</th><th>Decision</th><th>Context</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><a href="../adr/0001-contraction-wrapper-uses-rlock.md">ADR-0001</a></td>
+        <td>ContractionAwareEnvelope uses RLock (not Lock)</td>
+        <td>AI-3 required thread safety; RLock allows re-entrant calls from same thread (e.g. envelope.apply -> inner.check -> contraction monitor)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Design philosophy (accumulated across 10 rounds)</h3>
+  <div class="grid2">
+    <div class="callout">
+      <b>Safety-first</b>: Every layer can only tighten constraints downward. Widening requires explicit operator action (<code>relax()</code>).
+      This is the ratchet principle.
+    </div>
+    <div class="callout">
+      <b>Audit-first</b>: Every decision is recorded in AuditTrail before execution. Replay and credit assignment work on this immutable log.
+    </div>
+    <div class="callout green">
+      <b>Library, not service</b>: No HTTP runtime, no DB, no message queue. Callers integrate these primitives into their own infrastructure.
+      External dependencies are injected as callables.
+    </div>
+    <div class="callout green">
+      <b>Testable invariants</b>: Every hard constraint has a regression test. If the test passes, the invariant holds. No "trust me" guarantees.
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= Glossary -->
+<section id="glossary">
+  <h2><span class="zone">GL</span>Glossary & references</h2>
+  <p class="lead">Quick-reference terminology + external sources.</p>
+
+  <div class="grid2">
+    <div>
+      <h3>Core terms</h3>
+      <table>
+        <tbody>
+          <tr><th>AttnRes</th><td>Attention Residual: vertical inter-layer softmax-weighted residual</td></tr>
+          <tr><th>Sum a=1</th><td>Softmax normalization: weights always sum to 1 (information conservation)</td></tr>
+          <tr><th>floor/ceiling</th><td>Per-signal weight bounds (hard constraint from operator)</td></tr>
+          <tr><th>ratchet</th><td>Envelope can only auto-tighten, never auto-widen</td></tr>
+          <tr><th>relax()</th><td>The sole API for operator-initiated envelope widening</td></tr>
+          <tr><th>quorum</th><td>Minimum UNSAFE evidence quality to trigger tightening</td></tr>
+          <tr><th>hysteresis</th><td>Margin retained during tightening to prevent boundary oscillation</td></tr>
+          <tr><th>OutcomeEvidence</th><td>(safety_score, confidence) soft label tuple</td></tr>
+          <tr><th>contraction</th><td>Jacobian spectral radius &lt; 1 ensures residual stability</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3>Algorithm terms</h3>
+      <table>
+        <tbody>
+          <tr><th>FTRL</th><td>Follow-The-Regularized-Leader (Hedge is neg-entropy special case)</td></tr>
+          <tr><th>Hedge</th><td>Multiplicative weights update; O(sqrt(T ln n)) regret</td></tr>
+          <tr><th>credit</th><td>Temporal credit assignment: post-incident signal blame</td></tr>
+          <tr><th>shadow</th><td>Shadow run: new controller parallel to baseline, no actuation</td></tr>
+          <tr><th>counterfactual</th><td>Mask one signal, recompute decision, measure delta</td></tr>
+          <tr><th>drift (KL/W1)</th><td>KL catches collapse; Wasserstein catches translation</td></tr>
+          <tr><th>dead letter</th><td>Unparseable audit line retained for debugging (FIFO capped)</td></tr>
+          <tr><th>ADR</th><td>Architecture Decision Record: required before breaking invariants</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>External references</h3>
+  <ul style="font-size:13px;">
+    <li>Kimi Team. <em>Attention Residuals</em>. arXiv:2603.15031 (primary paper)</li>
+    <li>Vaswani et al. (2017). <em>Attention Is All You Need</em> (sqrt(d) scaling)</li>
+    <li>Freund & Schapire (1997). <em>Decision-theoretic generalization of on-line learning</em> (Hedge/MWU)</li>
+    <li>Shalev-Shwartz (2011). <em>Online Learning and Online Convex Optimization</em> (FTRL framework)</li>
+    <li>Wang & Carreira-Perpignan (2013). <em>Projection onto the probability simplex</em> (O(n log n) algorithm)</li>
+    <li>Villani (2009). <em>Optimal Transport: Old and New</em> (Wasserstein distance)</li>
+    <li>Khalil (2002). <em>Nonlinear Systems</em> (contraction mapping)</li>
+    <li>Ames et al. (2019). <em>Control Barrier Functions</em> (SafetyEnvelope alignment)</li>
+    <li>Werbos (1990). <em>Backpropagation Through Time</em> (TemporalCreditAssigner theory)</li>
+  </ul>
+</section>
+
+</article>
+</main>
+
+<footer>
+  V3 Knowledge Navigation · Attention-Residuals · snapshot 2026-05-12 · HEAD 3dbfd50 (pending push)
+  <br/>
+  Generated from <code>state.json</code> (SSOT). Previous versions: <a href="../V2_Knowledge/index.html">V2</a> | <a href="../knowledge-base.html">V1</a>
+</footer>
+
+</body>
+</html>

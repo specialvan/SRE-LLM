@@ -207,6 +207,24 @@ flowchart TB
 
 ## 5. Recommended next slice
 
+### 5.1 Distributed-training caveat for `share_key=False`
+
+`AttentionResidual(share_key=False)` uses a lazy `nn.ModuleList` to
+allocate one `W_K` projection per history slot on demand. This is fine
+for single-process training and local ablations, but distributed wrappers
+such as DDP/FSDP expect every rank to have the same parameter set when
+the wrapper is constructed.
+
+For distributed training, use one of these patterns:
+
+1. Prefer `share_key=True` when the ablation does not require per-slot
+   key projections.
+2. If `share_key=False` is required, run a warm-up forward pass with the
+   maximum expected history depth before wrapping the module in DDP/FSDP.
+
+The invariant is simple: no new `W_K` parameters should be created after
+distributed parameter synchronization has started.
+
 如果下一轮继续深挖，我建议顺序是：
 
 1. 再把 `sre_control` 的原语换成真实 metric source demo。

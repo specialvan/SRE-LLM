@@ -26,6 +26,34 @@ Hard labels are just special cases:
 `OutcomeLabel` values or the new `OutcomeEvidence` values. SAFE samples
 feed weighted quantiles; UNSAFE samples accumulate weighted quorum.
 
+### Dual Accounting
+
+Soft labels are deliberately split into two evidence streams:
+
+```text
+safe_weight   = safety_score * confidence
+unsafe_weight = (1 - safety_score) * confidence
+```
+
+For example, `OutcomeEvidence(safety_score=0.3, confidence=1.0)` adds
+`0.3` SAFE evidence to the quantile buffer and `0.7` UNSAFE evidence to
+the quorum counter. `UNKNOWN` is represented with `confidence=0`, so it
+does not change either side.
+
+### `min_safe_samples` vs `min_safe_evidence`
+
+Soft labels make "how many records did we see?" and "how much SAFE
+evidence did those records carry?" different questions.
+
+- `min_safe_samples` is a record-count gate.
+- `min_safe_evidence` is a weighted-evidence gate.
+- If `min_safe_evidence` is omitted, it defaults to
+  `float(min_safe_samples)` so hard-label behavior remains unchanged.
+
+This keeps operator tuning explicit: low-confidence SAFE records can
+prove that the system has seen enough events without pretending those
+events carry full evidence mass.
+
 ## 2. Credit-Aware Unsafe Downgrading
 
 An SLO breach is not always caused by the action that happened near it.

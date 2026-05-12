@@ -36,6 +36,7 @@ Public API
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
@@ -173,7 +174,8 @@ class LearnedSafetyEnvelope:
 
     On each :meth:`fit` call (typically triggered every N observations):
 
-      1. If fewer than ``min_safe_samples`` SAFE records exist, do nothing.
+      1. If fewer than ``min_safe_samples`` SAFE records or
+         ``min_safe_evidence`` weighted SAFE evidence exist, do nothing.
       2. If fewer than ``unsafe_quorum`` UNSAFE records have been seen
          *since the last fit*, do nothing.
       3. Otherwise, compute the quantile bounds of recent SAFE actions
@@ -212,8 +214,13 @@ class LearnedSafetyEnvelope:
         Minimum UNSAFE observations *since last fit* required to trigger
         tightening. Prevents single-fluke adjustments.
     min_safe_samples : int
-        Minimum SAFE observations in the buffer required to compute a
+        Minimum SAFE records in the buffer required to compute a
         trustworthy quantile.
+    min_safe_evidence : float, optional
+        Minimum weighted SAFE evidence required to compute a trustworthy
+        quantile. Defaults to ``float(min_safe_samples)`` so hard-label
+        behaviour stays unchanged while soft labels can tune record count
+        and evidence mass separately.
     buffer_size : int
         Rolling window of retained SAFE observations.
     """
@@ -233,6 +240,7 @@ class LearnedSafetyEnvelope:
         hysteresis: float = 0.1,
         unsafe_quorum: int = 5,
         min_safe_samples: int = 20,
+        min_safe_evidence: Optional[float] = None,
         buffer_size: int = 500,
     ) -> None:
         if action_dim < 1:
@@ -245,6 +253,10 @@ class LearnedSafetyEnvelope:
             raise ValueError("unsafe_quorum must be ≥ 1")
         if min_safe_samples < 1:
             raise ValueError("min_safe_samples must be ≥ 1")
+        if min_safe_evidence is None:
+            min_safe_evidence = float(min_safe_samples)
+        if min_safe_evidence < 0:
+            raise ValueError("min_safe_evidence must be >= 0")
         if buffer_size < min_safe_samples:
             raise ValueError("buffer_size must be ≥ min_safe_samples")
 
@@ -289,6 +301,7 @@ class LearnedSafetyEnvelope:
         self.hysteresis = float(hysteresis)
         self.unsafe_quorum = int(unsafe_quorum)
         self.min_safe_samples = int(min_safe_samples)
+        self.min_safe_evidence = float(min_safe_evidence)
         self.buffer_size = int(buffer_size)
 
         # Rolling state.
@@ -346,6 +359,14 @@ class LearnedSafetyEnvelope:
         ``delta`` — if provided, is used to learn ``max_delta``. Callers
         that don't have a previous action (e.g. the very first tick)
         can simply leave it as ``None``.
+
+        Dual accounting
+        ----------------
+        Soft labels can contribute to both sides of the learning gate.
+        For example, ``OutcomeEvidence(safety_score=0.3, confidence=1.0)``
+        adds ``0.3`` SAFE weight to the quantile buffer and ``0.7`` UNSAFE
+        weight to the quorum counter. ``UNKNOWN`` evidence uses
+        ``confidence=0`` and is therefore a no-op.
         """
         del step
         action = _as_1d(action, self.action_dim, "action")
@@ -378,21 +399,29 @@ class LearnedSafetyEnvelope:
         Returns a summary dictionary describing what happened. Always
         appended to :meth:`fit_history`.
         """
+        safe_evidence = float(sum(self._safe_weights))
         summary: Dict[str, Any] = {
+            "n_safe_records": len(self._safe_actions),
             "n_safe": len(self._safe_actions),
-            "safe_evidence": float(sum(self._safe_weights)),
+            "safe_evidence": safe_evidence,
+            "min_safe_samples": self.min_safe_samples,
+            "min_safe_evidence": self.min_safe_evidence,
             "n_unsafe_since_fit": self._unsafe_since_fit,
             "unsafe_evidence_since_fit": float(self._unsafe_since_fit),
             "tightened_high": False,
             "tightened_low": False,
             "tightened_max_delta": False,
         }
+        reasons: List[str] = []
+        if len(self._safe_actions) < self.min_safe_samples:
+            reasons.append("insufficient_safe_samples")
+        if safe_evidence + 1e-12 < self.min_safe_evidence:
+            reasons.append("insufficient_safe_evidence")
         if self._unsafe_since_fit + 1e-12 < self.unsafe_quorum:
-            summary["reason"] = "no_unsafe_quorum"
-            self._fit_history.append(summary)
-            return summary
-        if sum(self._safe_weights) + 1e-12 < self.min_safe_samples:
-            summary["reason"] = "insufficient_safe_samples"
+            reasons.append("no_unsafe_quorum")
+        if reasons:
+            summary["reason"] = "+".join(reasons)
+            summary["reasons"] = reasons
             self._fit_history.append(summary)
             return summary
 
@@ -556,6 +585,8 @@ def _weighted_quantile(values: np.ndarray, weights: np.ndarray, q: float) -> np.
     weights = np.asarray(weights, dtype=float)
     if values.ndim != 2:
         raise ValueError("values must have shape (n, d)")
+    if values.shape[0] == 0:
+        raise ValueError("values must contain at least one row")
     if weights.shape != (values.shape[0],):
         raise ValueError("weights length must match values")
     if np.any(weights < 0):
@@ -593,6 +624,10 @@ class ContractionAwareEnvelope:
     scale factor — a conservative "slow down, plant is hot" response.
     The inner envelope's state is untouched; this wrapper only narrows
     during application.
+
+    ``apply`` is serialized by default because it temporarily overrides
+    ``inner.current_max_delta`` while delegating to the inner envelope.
+    Pass ``thread_safe=False`` only when calls are externally serialized.
     """
 
     def __init__(
@@ -602,6 +637,7 @@ class ContractionAwareEnvelope:
         *,
         target_gain: float = 1.0,
         min_scale: float = 0.1,
+        thread_safe: bool = True,
     ) -> None:
         if target_gain <= 0:
             raise ValueError("target_gain must be > 0")
@@ -612,9 +648,19 @@ class ContractionAwareEnvelope:
         self.target_gain = float(target_gain)
         self.min_scale = float(min_scale)
         self._last_scale = 1.0
+        # RLock chosen over Lock because a future labeler that re-enters apply()
+        # via the observe() path would deadlock under a non-reentrant lock.
+        # See docs/adr/0001-contraction-wrapper-uses-rlock.md.
+        self._lock = threading.RLock() if thread_safe else None
 
     # ---------------------------------------------------- apply
     def apply(self, action: np.ndarray) -> Tuple[np.ndarray, Dict[str, Any]]:
+        if self._lock is not None:
+            with self._lock:
+                return self._apply_unlocked(action)
+        return self._apply_unlocked(action)
+
+    def _apply_unlocked(self, action: np.ndarray) -> Tuple[np.ndarray, Dict[str, Any]]:
         scale = self._current_scale()
         self._last_scale = scale
         # Temporarily tighten max_delta inside the inner envelope.
@@ -641,12 +687,25 @@ class ContractionAwareEnvelope:
 
     # ---------------------------------------------------- observe / fit pass-through
     def observe(self, *args, **kwargs) -> None:
+        if self._lock is not None:
+            with self._lock:
+                self.inner.observe(*args, **kwargs)
+                return
         self.inner.observe(*args, **kwargs)
 
     def fit(self) -> Dict[str, Any]:
+        if self._lock is not None:
+            with self._lock:
+                return self.inner.fit()
         return self.inner.fit()
 
     def current_bounds(self) -> Dict[str, np.ndarray]:
+        if self._lock is not None:
+            with self._lock:
+                return self._current_bounds_unlocked()
+        return self._current_bounds_unlocked()
+
+    def _current_bounds_unlocked(self) -> Dict[str, np.ndarray]:
         bounds = self.inner.current_bounds()
         bounds["effective_max_delta"] = bounds["max_delta"] * self._last_scale
         return bounds

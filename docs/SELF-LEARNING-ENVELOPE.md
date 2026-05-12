@@ -187,6 +187,23 @@ env.relax(to_hard=True)              # back to hard bounds
 env.relax(dim=0, factor=2.0)         # per-dim
 ```
 
+### 6.1 Soft-label fit gates
+
+Under hard labels, one SAFE record carries one unit of SAFE evidence, so
+`min_safe_samples` and the evidence threshold are numerically identical.
+Under soft labels they diverge:
+
+- `min_safe_samples` counts SAFE records admitted to the rolling buffer.
+- `min_safe_evidence` sums the SAFE weights used by the weighted
+  quantile estimator.
+- If `min_safe_evidence` is not provided, it defaults to
+  `float(min_safe_samples)` to preserve hard-label behavior.
+
+Example: ten `OutcomeEvidence(1.0, confidence=0.2)` observations satisfy
+`min_safe_samples=10`, but only contribute `safe_evidence=2.0`. Operators
+can lower `min_safe_evidence` when they want count-based exploration, or
+raise it when low-confidence labels should not move the envelope.
+
 ---
 
 ## 7. Demo 跑出的六大不变量

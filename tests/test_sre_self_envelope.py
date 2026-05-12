@@ -7,6 +7,9 @@ escape hard bounds, and can't self-lockdown to zero.
 
 from __future__ import annotations
 
+import time
+from concurrent.futures import ThreadPoolExecutor
+
 import numpy as np
 import pytest
 
@@ -18,6 +21,7 @@ from attention_residuals.sre_self_envelope import (
     LearnedSafetyEnvelope,
     OutcomeEvidence,
     OutcomeLabel,
+    _weighted_quantile,
 )
 from attention_residuals.sre_math import TemporalCreditAssigner
 
@@ -89,6 +93,11 @@ def test_construction_rejects_bad_unsafe_quorum():
         _fresh_env(unsafe_quorum=0)
 
 
+def test_construction_rejects_bad_min_safe_evidence():
+    with pytest.raises(ValueError):
+        _fresh_env(min_safe_evidence=-0.1)
+
+
 # ---------------------------------------------------------------------------
 # Core invariants: never escape hard bounds
 # ---------------------------------------------------------------------------
@@ -151,7 +160,35 @@ def test_fit_does_nothing_below_min_safe_samples():
     for _ in range(5):
         env.observe(np.array([9.5]), OutcomeLabel.UNSAFE)
     s = env.fit()
-    assert s["reason"] == "insufficient_safe_samples"
+    assert "insufficient_safe_samples" in s["reasons"]
+    assert "insufficient_safe_evidence" in s["reasons"]
+
+
+def test_fit_distinguishes_safe_records_from_safe_evidence():
+    env = _fresh_env(min_safe_samples=3, min_safe_evidence=5.0, unsafe_quorum=1)
+    for _ in range(10):
+        env.observe(np.array([0.0]), OutcomeEvidence(1.0, confidence=0.2))
+    env.observe(np.array([9.5]), OutcomeLabel.UNSAFE)
+
+    s = env.fit()
+    assert s["n_safe_records"] == 10
+    assert s["safe_evidence"] == pytest.approx(2.0)
+    assert "insufficient_safe_samples" not in s["reasons"]
+    assert "insufficient_safe_evidence" in s["reasons"]
+
+
+def test_fit_can_gate_only_on_safe_records_when_evidence_floor_is_zero():
+    env = _fresh_env(min_safe_samples=3, min_safe_evidence=0.0, unsafe_quorum=1)
+    for _ in range(2):
+        env.observe(np.array([0.0]), OutcomeEvidence(1.0, confidence=0.1))
+    env.observe(np.array([9.5]), OutcomeLabel.UNSAFE)
+
+    s1 = env.fit()
+    assert s1["reason"] == "insufficient_safe_samples"
+
+    env.observe(np.array([0.0]), OutcomeEvidence(1.0, confidence=0.1))
+    s2 = env.fit()
+    assert "reason" not in s2
 
 
 def test_fit_tightens_after_quorum_and_enough_samples():
@@ -355,6 +392,38 @@ def test_contraction_wrapper_does_not_mutate_inner_state():
     assert np.allclose(before, after), "wrapper must not mutate inner max_delta"
 
 
+def test_contraction_wrapper_serializes_apply_by_default():
+    class SlowEnvelope(LearnedSafetyEnvelope):
+        def __init__(self):
+            super().__init__(
+                action_dim=1,
+                hard_low=np.array([-10.0]),
+                hard_high=np.array([10.0]),
+                hard_max_delta=np.array([5.0]),
+                initial_max_delta=np.array([2.0]),
+                min_max_delta=np.array([0.1]),
+            )
+            self.active = 0
+            self.max_active = 0
+
+        def apply(self, action: np.ndarray):
+            self.active += 1
+            self.max_active = max(self.max_active, self.active)
+            try:
+                time.sleep(0.02)
+                return super().apply(action)
+            finally:
+                self.active -= 1
+
+    env = SlowEnvelope()
+    wrapper = ContractionAwareEnvelope(env, gain_provider=lambda: 4.0)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(lambda _: wrapper.apply(np.array([1.0])), range(8)))
+
+    assert env.max_active == 1
+    assert np.allclose(env.current_bounds()["max_delta"], [2.0])
+
+
 def test_contraction_wrapper_no_gain_behaves_as_inner():
     env = _fresh_env(initial_max_delta=np.array([2.0]))
     wrapper = ContractionAwareEnvelope(env, gain_provider=lambda: None)
@@ -510,6 +579,11 @@ def test_credit_aware_labeler_without_credit_leaves_label_unchanged():
     )
     evidence = labeler({"tick": 99})
     assert evidence.unsafe_weight == pytest.approx(1.0)
+
+
+def test_weighted_quantile_rejects_empty_values():
+    with pytest.raises(ValueError, match="at least one row"):
+        _weighted_quantile(np.empty((0, 2)), np.empty(0), 0.5)
 
 
 # ---------------------------------------------------------------------------

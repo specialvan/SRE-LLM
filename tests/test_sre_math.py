@@ -336,9 +336,33 @@ def test_credit_assigner_window_filters_old_records():
     assert entries[0].tick == 100
 
 
+def test_credit_assigner_bounds_history_by_default_window():
+    tca = TemporalCreditAssigner(decay=1.0, max_history_ticks=3)
+    for tick in range(5):
+        tca.record(tick, np.array([1.0]), np.array([1.0]), ["s"])
+
+    assert len(tca) == 3
+    assert tca.evicted_count == 2
+    entries = tca.attribute(incident_tick=4, window=10)
+    assert {entry.tick for entry in entries} == {2, 3, 4}
+
+
+def test_credit_assigner_can_keep_unbounded_history():
+    tca = TemporalCreditAssigner(decay=1.0, max_history_ticks=None)
+    for tick in range(5):
+        tca.record(tick, np.array([1.0]), np.array([1.0]), ["s"])
+
+    assert len(tca) == 5
+    assert tca.evicted_count == 0
+
+
 def test_credit_assigner_param_errors():
     with pytest.raises(ValueError):
         TemporalCreditAssigner(decay=0.0)
+    with pytest.raises(ValueError):
+        TemporalCreditAssigner(max_history_ticks=0)
+    with pytest.raises(ValueError):
+        TemporalCreditAssigner(max_history_ticks=-1)
     tca = TemporalCreditAssigner()
     with pytest.raises(ValueError):
         tca.record(0, np.zeros(2), np.zeros(3))
@@ -513,6 +537,70 @@ def test_streaming_audit_replay_bad_json_does_not_advance_cursor(tmp_path):
     path.write_text(_audit_jsonl_line(0, 1.0) + "\n", encoding="utf-8")
     assert tail.poll() == 1
     assert replay.replayed == 1
+
+
+def test_streaming_audit_replay_skip_bad_lines_recovers(tmp_path):
+    path = tmp_path / "audit.jsonl"
+    tca, replay, _tail = _streaming_replay(path)
+    tail = StreamingAuditCreditReplay(replay, str(path), skip_bad_lines=True)
+    path.write_text(
+        "{bad-json}\n" + _audit_jsonl_line(0, 2.0) + "\n",
+        encoding="utf-8",
+    )
+
+    assert tail.poll() == 1
+    assert replay.replayed == 1
+    assert tail.dead_letters_count == 1
+    assert len(tail.dead_letters) == 1
+    assert "bad-json" in tail.dead_letters[0]["line"]
+    assert tail.dead_letters[0]["lineno"] == 1
+    assert tail.dead_letters[0]["byte_offset"] == 0
+    assert "error" in tail.dead_letters[0]
+    assert tca.attribute(incident_tick=0, top_k=1)[0].loss == pytest.approx(2.0)
+
+
+def test_streaming_dead_letters_fifo_capped(tmp_path):
+    """With max_dead_letters=3, the oldest entries are evicted and counted."""
+    path = tmp_path / "audit.jsonl"
+    _tca, replay, _tail = _streaming_replay(path)
+    tail = StreamingAuditCreditReplay(
+        replay, str(path),
+        skip_bad_lines=True, max_dead_letters=3,
+    )
+    # 10 bad lines in a single poll.
+    path.write_text("{bad}\n" * 10, encoding="utf-8")
+
+    assert tail.poll() == 0                   # nothing replayed
+    assert tail.dead_letters_count == 3       # buffer saturated at cap
+    assert tail.dead_letters_dropped == 7     # overflow counter
+    # FIFO: surviving entries should be the last 3 bad lines (lineno 8..10).
+    assert [d["lineno"] for d in tail.dead_letters] == [8, 9, 10]
+
+
+def test_streaming_dead_letters_zero_cap_disables_retention(tmp_path):
+    """max_dead_letters=0 keeps the stream alive but retains nothing."""
+    path = tmp_path / "audit.jsonl"
+    _tca, replay, _tail = _streaming_replay(path)
+    tail = StreamingAuditCreditReplay(
+        replay, str(path),
+        skip_bad_lines=True, max_dead_letters=0,
+    )
+    path.write_text("{bad}\n{bad}\n" + _audit_jsonl_line(0, 1.0) + "\n",
+                    encoding="utf-8")
+
+    assert tail.poll() == 1                   # the one good line replays
+    assert tail.dead_letters_count == 0       # nothing retained
+    assert tail.dead_letters_dropped == 2     # both bad lines counted
+
+
+def test_streaming_dead_letters_negative_cap_rejected(tmp_path):
+    path = tmp_path / "audit.jsonl"
+    _tca, replay, _tail = _streaming_replay(path)
+    with pytest.raises(ValueError, match="max_dead_letters"):
+        StreamingAuditCreditReplay(
+            replay, str(path),
+            skip_bad_lines=True, max_dead_letters=-1,
+        )
 
 
 def test_streaming_audit_replay_accepts_restored_cursor(tmp_path):

@@ -3,6 +3,10 @@
 > 从深度学习本质出发看残差网络的演进 —— Kimi《Attention Residuals》工程落地
 > Engineering reimplementation of *Kimi Team. Attention Residuals. arXiv: 2603.15031 [cs.CL]*
 
+> ⚠️ **Active review cycle**: See [`docs/claude-review/`](./docs/claude-review/)
+> for the post-Round 9 review report and P1/P2/P3 action items.
+> Start with [`docs/claude-review/README.md`](./docs/claude-review/README.md).
+
 本工程把《Attention Residuals》一文里的数学结构系统性地落地为 PyTorch 代码：
 把论文里所有公式都写成可运行的 PyTorch 模块，把其他叙述性内容逐项拆成 PR 级功能需求（见
 [`PR-REQUIREMENTS.md`](./PR-REQUIREMENTS.md)），并串成一个从单层到整网的端到端 Demo。

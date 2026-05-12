@@ -71,6 +71,7 @@ from .sre_metrics import (
     PrometheusQuery, PrometheusHTTPClient, PrometheusContextReader,
     OpenTelemetryJSONMetricReader,
     reduce_points,
+    quantile_from_histogram,
 )
 from . import sre_self_envelope
 from .sre_self_envelope import (
@@ -123,6 +124,7 @@ __all__ = [
     "PrometheusQuery", "PrometheusHTTPClient", "PrometheusContextReader",
     "OpenTelemetryJSONMetricReader",
     "reduce_points",
+    "quantile_from_histogram",
     # Self-learning envelope (audit → envelope closed loop)
     "sre_self_envelope",
     "OutcomeLabel", "OutcomeEvidence", "OutcomeLike", "ActionOutcome",

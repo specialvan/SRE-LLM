@@ -21,8 +21,9 @@ from __future__ import annotations
 
 import json
 import os
+from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Deque, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -551,11 +552,22 @@ class TemporalCreditAssigner:
         top_blamed = tca.attribute(incident_tick=T, window=50, top_k=10)
     """
 
-    def __init__(self, decay: float = 0.9) -> None:
+    def __init__(self, decay: float = 0.9, max_history_ticks: Optional[int] = 10_000) -> None:
         if not (0.0 < decay <= 1.0):
             raise ValueError("decay must be in (0, 1]")
+        if max_history_ticks is not None and max_history_ticks < 1:
+            raise ValueError("max_history_ticks must be >= 1 or None")
         self.decay = float(decay)
-        self._history: List[dict] = []
+        self.max_history_ticks = None if max_history_ticks is None else int(max_history_ticks)
+        self._history: Deque[dict] = deque(maxlen=self.max_history_ticks)
+        self._evicted_count = 0
+
+    def __len__(self) -> int:
+        return len(self._history)
+
+    @property
+    def evicted_count(self) -> int:
+        return self._evicted_count
 
     # -------------------------------------------------- record
     def record(
@@ -573,6 +585,8 @@ class TemporalCreditAssigner:
         ]
         if len(names) != weights.shape[0]:
             raise ValueError("signal_names length mismatch")
+        if self.max_history_ticks is not None and len(self._history) >= self.max_history_ticks:
+            self._evicted_count += 1
         self._history.append({
             "tick": int(tick),
             "weights": weights.copy(),
@@ -611,6 +625,63 @@ class TemporalCreditAssigner:
                 ))
         entries.sort(key=lambda e: -e.score)
         return entries if top_k is None else entries[:top_k]
+
+    # -------------------------------------------------- record_skill (PR-019)
+    #
+    # ADR-002 "Credit assignment is a first-class module" requires that
+    # the signal-level TCA also supports skill-level attribution without
+    # changing its public contract. We add a new method that uses a
+    # composite "skill:<id>|signal:<name>" key in the existing names
+    # field — every read path that doesn't understand the prefix keeps
+    # working, while HindsightUtilityTracker can dispatch on it.
+    def record_skill(
+        self,
+        tick: int,
+        skill_id: str,
+        signals: Sequence[Tuple[str, float]],
+        loss: float,
+        context: Optional[Dict[str, float]] = None,
+    ) -> None:
+        """Additive attribution: a skill used ``signals`` and cost ``loss``.
+
+        ``signals`` is a sequence of ``(signal_name, weight_fraction)``;
+        fractions may sum to <1 when the skill only partially explains a
+        decision (e.g. mixed routing).
+        """
+        if not skill_id:
+            raise ValueError("skill_id must be non-empty")
+        names: List[str] = []
+        weights: List[float] = []
+        losses: List[float] = []
+        for name, frac in signals:
+            names.append(f"skill:{skill_id}|signal:{name}")
+            weights.append(float(frac))
+            losses.append(float(loss))
+        if not names:
+            return
+        self.record(
+            tick=tick,
+            weights=np.asarray(weights, dtype=float),
+            losses=np.asarray(losses, dtype=float),
+            signal_names=names,
+            context=context,
+        )
+
+    # -------------------------------------------------- attribute_skill (PR-019)
+    def attribute_skill(
+        self,
+        incident_tick: int,
+        window: int = 50,
+        top_k: Optional[int] = None,
+    ) -> List["CreditEntry"]:
+        """Like :meth:`attribute` but restricted to skill-prefixed entries."""
+        all_entries = self.attribute(incident_tick, window=window, top_k=None)
+        skill_entries = [
+            e for e in all_entries if e.signal_name.startswith("skill:")
+        ]
+        return (
+            skill_entries if top_k is None else skill_entries[:top_k]
+        )
 
 
 LossMapper = Callable[[Mapping[str, Any], Sequence[str]], np.ndarray]
@@ -776,14 +847,43 @@ class StreamingAuditCreditReplay:
         *,
         encoding: str = "utf-8",
         missing_ok: bool = False,
+        skip_bad_lines: bool = False,
+        max_dead_letters: int = 1000,
         cursor: Optional[AuditReplayCursor] = None,
     ) -> None:
+        if max_dead_letters < 0:
+            raise ValueError("max_dead_letters must be >= 0")
         self.replay = replay
         if cursor is not None and cursor.path != path:
             raise ValueError("cursor path must match path")
         self.cursor = cursor if cursor is not None else AuditReplayCursor(path=path)
         self.encoding = encoding
         self.missing_ok = bool(missing_ok)
+        self.skip_bad_lines = bool(skip_bad_lines)
+        self.max_dead_letters = int(max_dead_letters)
+        self.dead_letters: List[Dict[str, Any]] = []
+        self.dead_letters_dropped = 0
+
+    @property
+    def dead_letters_count(self) -> int:
+        return len(self.dead_letters)
+
+    def _record_dead_letter(self, entry: Dict[str, Any]) -> None:
+        """Append a dead-letter entry with a FIFO cap.
+
+        If the buffer already holds ``max_dead_letters`` entries, the oldest
+        is dropped and :attr:`dead_letters_dropped` is incremented. The
+        invariant ``len(dead_letters) <= max_dead_letters`` always holds
+        after this method returns.
+        """
+        if self.max_dead_letters == 0:
+            # Cap is zero: count overflows but never retain anything.
+            self.dead_letters_dropped += 1
+            return
+        if len(self.dead_letters) >= self.max_dead_letters:
+            self.dead_letters.pop(0)
+            self.dead_letters_dropped += 1
+        self.dead_letters.append(entry)
 
     def poll(self) -> int:
         """Read newly appended complete JSONL records and return replay count."""
@@ -816,7 +916,11 @@ class StreamingAuditCreditReplay:
             next_pending = raw_lines.pop()
 
         records: List[Mapping[str, Any]] = []
+        buffer_start_offset = self.cursor.offset - len(self.cursor.pending)
+        bytes_consumed = 0
         for lineno, raw in enumerate(raw_lines, start=1):
+            line_offset = buffer_start_offset + bytes_consumed
+            bytes_consumed += len(raw) + 1
             stripped = raw.strip()
             if not stripped:
                 continue
@@ -824,6 +928,14 @@ class StreamingAuditCreditReplay:
                 decoded = stripped.decode(self.encoding)
                 record = json.loads(decoded)
             except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                if self.skip_bad_lines:
+                    self._record_dead_letter({
+                        "line": raw.decode(self.encoding, errors="replace"),
+                        "lineno": lineno,
+                        "byte_offset": int(line_offset),
+                        "error": str(exc),
+                    })
+                    continue
                 raise ValueError(f"invalid JSONL record in {path!r} during poll line {lineno}") from exc
             records.append(record)
 

@@ -1,0 +1,521 @@
+{
+  "_comment": "Machine-readable snapshot of Attention-Residuals state. Regenerate on every handoff.",
+  "snapshot_date": "2026-05-12",
+  "snapshot_author": "Claude (Round 10 close-out + Round 11 inline: OTLP histogram expansion)",
+  "repository": {
+    "path": "D:\\workspace\\SRE-LLM\\Attention-Residuals",
+    "branch": "attention-residuals-session",
+    "head_commit_short": "3dbfd50",
+    "head_commit_subject": "鏂囨。: 鏇存柊 Attention-Residuals Codex handoff",
+    "remote": "https://github.com/specialvan/SRE-LLM.git"
+  },
+  "health": {
+    "tests_total": 174,
+    "tests_passing": 174,
+    "diagnostics_warnings": 0,
+    "demos_total": 11,
+    "demos_passing": 11,
+    "review_verdict": "approved_all_followups_closed",
+    "review_blockers": 0
+  },
+  "layers": [
+    {
+      "id": "L0",
+      "name": "Paper primitives",
+      "modules": [
+        "classic_residual",
+        "norm",
+        "hyper_connections",
+        "attn_residual",
+        "blocks",
+        "multi_head_vertical",
+        "layer_skip",
+        "transformer_layer",
+        "stack",
+        "metrics",
+        "types"
+      ],
+      "stack": "PyTorch",
+      "doc": "docs/knowledge-base.html#s1-s11"
+    },
+    {
+      "id": "L1",
+      "name": "Metric ingress",
+      "modules": [
+        "sre_metrics"
+      ],
+      "stack": "stdlib-only",
+      "doc": "docs/METRIC-SOURCES.md"
+    },
+    {
+      "id": "L2",
+      "name": "Control primitives",
+      "modules": [
+        "sre_control"
+      ],
+      "stack": "numpy",
+      "doc": "docs/SRE-CONTROL-PLAYBOOK.md"
+    },
+    {
+      "id": "L3",
+      "name": "Math primitives & observers",
+      "modules": [
+        "sre_math"
+      ],
+      "stack": "numpy",
+      "doc": "docs/EQUATIONS-AND-SRE.md"
+    },
+    {
+      "id": "L4",
+      "name": "Closed-loop adaptation",
+      "modules": [
+        "sre_adaptive"
+      ],
+      "stack": "numpy",
+      "doc": "docs/DEEP-DIVE.md"
+    },
+    {
+      "id": "L5",
+      "name": "Industrial safety",
+      "modules": [
+        "sre_safety"
+      ],
+      "stack": "numpy",
+      "doc": "docs/DEEP-DIVE.md"
+    },
+    {
+      "id": "L6",
+      "name": "Self-learning envelope",
+      "modules": [
+        "sre_self_envelope"
+      ],
+      "stack": "numpy",
+      "doc": "docs/SELF-LEARNING-ENVELOPE.md"
+    }
+  ],
+  "public_api_symbols": [
+    "AttnResConfig",
+    "BlockConfig",
+    "NormStyle",
+    "ResidualMode",
+    "ClassicResidual",
+    "NormWrapper",
+    "HyperConnection",
+    "AttentionResidual",
+    "AttentionResidualConnector",
+    "BlockAttnResStack",
+    "MultiHeadAttentionResidual",
+    "LayerSkipGate",
+    "DecoupledTransformerLayer",
+    "ResidualStack",
+    "metrics",
+    "sre_control",
+    "SignalSpec",
+    "WeightedConvexCombiner",
+    "AuditRecord",
+    "AuditTrail",
+    "DecoupledControlLoop",
+    "BlockSpec",
+    "HierarchicalBlockController",
+    "BudgetGate",
+    "MustAttendRegistry",
+    "sre_adaptive",
+    "HedgeRegretLearner",
+    "AdaptiveCombiner",
+    "AdaptiveRecord",
+    "sre_safety",
+    "SafetyEnvelope",
+    "ShadowRecord",
+    "ShadowRunner",
+    "CounterfactualResult",
+    "CounterfactualExplainer",
+    "WeightDriftDetector",
+    "sre_math",
+    "ScaleInvariantNormalizer",
+    "TemperatureScheduler",
+    "ViewSpec",
+    "MultiViewCombiner",
+    "FTRLLearner",
+    "JacobianContractionMonitor",
+    "CreditEntry",
+    "TemporalCreditAssigner",
+    "LossMapper",
+    "MetricLossSpec",
+    "MetricLossMapper",
+    "AuditCreditReplay",
+    "AuditReplayCursor",
+    "StreamingAuditCreditReplay",
+    "WassersteinDriftDetector",
+    "sre_metrics",
+    "MetricPoint",
+    "PrometheusQuery",
+    "PrometheusHTTPClient",
+    "PrometheusContextReader",
+    "OpenTelemetryJSONMetricReader",
+    "reduce_points",
+    "quantile_from_histogram",
+    "sre_self_envelope",
+    "OutcomeLabel",
+    "OutcomeEvidence",
+    "OutcomeLike",
+    "ActionOutcome",
+    "LearnedSafetyEnvelope",
+    "ContractionAwareEnvelope",
+    "Labeler",
+    "LearnerStats",
+    "EnvelopeLearner",
+    "CreditAwareLabeler"
+  ],
+  "closed_loops": [
+    "combiner_to_audit_to_replay_to_credit_to_envelope",
+    "prometheus_otel_to_context_to_combiner_to_audit",
+    "plant_gain_to_contraction_wrapper_to_effective_max_delta"
+  ],
+  "open_gaps": [
+    "no_http_runtime",
+    "no_sqlite_persistence",
+    "no_rl_policy_gradient",
+    "no_cross_service_federation",
+    "prometheus_no_matrix_or_remote_read",
+    "knowledge_base_hand_maintained"
+  ],
+  "_closed_gaps_doc": "Gaps previously listed that have been closed. Each entry: id, closed_date, how.",
+  "closed_gaps": [
+    {
+      "id": "otel_no_histogram_expansion",
+      "closed_date": "2026-05-12",
+      "how": "OpenTelemetryJSONMetricReader(histogram_quantiles=..., histogram_extras=...) expands OTLP histogram datapoints into synthetic <name>__pXX / __avg / __count / __sum keys; merges matching explicitBounds; refuses incompatible merges. Public helper: quantile_from_histogram(bucket_counts, explicit_bounds, q). 9 new tests in test_sre_metrics.py.",
+      "tests_added": [
+        "test_quantile_from_histogram_linear_interpolation",
+        "test_quantile_from_histogram_overflow_clamped_to_last_finite_bound",
+        "test_quantile_from_histogram_validates_inputs",
+        "test_otel_reader_ignores_histograms_by_default",
+        "test_otel_reader_expands_histogram_to_quantiles_and_extras",
+        "test_otel_reader_histogram_merges_matching_datapoints",
+        "test_otel_reader_histogram_rejects_mismatched_bounds",
+        "test_otel_reader_rejects_invalid_quantiles_and_extras",
+        "test_otel_reader_histogram_keeps_gauges_and_sums_flowing"
+      ]
+    }
+  ],
+  "open_actions": [],
+  "_closed_actions_doc": "Round 10 follow-ups, all closed 2026-05-12. Kept here as an audit trail; move into a 'round-10-archive.json' when Round 11 opens.",
+  "closed_actions": [
+    {
+      "id": "AI-1",
+      "priority": "P1",
+      "title": "Bound TemporalCreditAssigner._history",
+      "closed_date": "2026-05-12",
+      "closed_by": "codex (in-tree working copy)",
+      "spec": "docs/claude-review/02-action-items.md#ai-1",
+      "tests_added": [
+        "test_credit_assigner_bounds_history_by_default_window",
+        "test_credit_assigner_can_keep_unbounded_history"
+      ]
+    },
+    {
+      "id": "AI-2",
+      "priority": "P1",
+      "title": "Disambiguate min_safe_samples under soft labels",
+      "closed_date": "2026-05-12",
+      "closed_by": "codex",
+      "spec": "docs/claude-review/02-action-items.md#ai-2",
+      "tests_added": [
+        "test_construction_rejects_bad_min_safe_evidence",
+        "test_fit_distinguishes_safe_records_from_safe_evidence",
+        "test_fit_can_gate_only_on_safe_records_when_evidence_floor_is_zero"
+      ]
+    },
+    {
+      "id": "AI-3",
+      "priority": "P2",
+      "title": "Thread-safe ContractionAwareEnvelope",
+      "closed_date": "2026-05-12",
+      "closed_by": "codex (chose RLock, see ADR-0001)",
+      "spec": "docs/claude-review/02-action-items.md#ai-3",
+      "adr": "docs/adr/0001-contraction-wrapper-uses-rlock.md",
+      "tests_added": [
+        "test_contraction_wrapper_serializes_apply_by_default"
+      ]
+    },
+    {
+      "id": "AI-4",
+      "priority": "P2",
+      "title": "StreamingAuditCreditReplay optional skip_bad_lines + max_dead_letters cap",
+      "closed_date": "2026-05-12",
+      "closed_by": "codex (skip_bad_lines) + Claude (max_dead_letters patch)",
+      "spec": "docs/claude-review/02-action-items.md#ai-4",
+      "tests_added": [
+        "test_streaming_audit_replay_skip_bad_lines_recovers",
+        "test_streaming_dead_letters_fifo_capped",
+        "test_streaming_dead_letters_zero_cap_disables_retention",
+        "test_streaming_dead_letters_negative_cap_rejected"
+      ]
+    },
+    {
+      "id": "AI-5",
+      "priority": "P3",
+      "title": "Document dual-evidence in LearnedSafetyEnvelope.observe",
+      "closed_date": "2026-05-12",
+      "closed_by": "codex",
+      "spec": "docs/claude-review/02-action-items.md#ai-5",
+      "tests_added": []
+    },
+    {
+      "id": "AI-6",
+      "priority": "P3",
+      "title": "Explicit empty-input check in _weighted_quantile",
+      "closed_date": "2026-05-12",
+      "closed_by": "codex",
+      "spec": "docs/claude-review/02-action-items.md#ai-6",
+      "tests_added": [
+        "test_weighted_quantile_rejects_empty_values"
+      ]
+    },
+    {
+      "id": "AI-7",
+      "priority": "P3",
+      "title": "Document DDP caveat for share_key=False",
+      "closed_date": "2026-05-12",
+      "closed_by": "codex (ARCHITECTURE.md) + Claude (AttentionResidual docstring pointer)",
+      "spec": "docs/claude-review/02-action-items.md#ai-7",
+      "tests_added": []
+    }
+  ],
+  "_hard_invariants_doc": "Source of truth for invariant identifiers. V2_Knowledge/index.html Z5 and CODEX-HANDOFF.md derive from this. Each entry has: id, short label, where enforced (code location), primary regression test, guardrail tier (1=must never break, 2=best-effort).",
+  "hard_invariants": [
+    {
+      "id": "I-01",
+      "label": "sum_of_combiner_weights_equals_one",
+      "enforced_at": "sre_control.py::_project_to_simplex_with_bounds",
+      "primary_test": "test_sre_control.py::test_combiner_weights_sum_to_one",
+      "tier": 1
+    },
+    {
+      "id": "I-02",
+      "label": "floor_leq_weight_leq_ceiling",
+      "enforced_at": "sre_control.py::WeightedConvexCombiner.combine",
+      "primary_test": "test_sre_control.py::test_combiner_respects_floor",
+      "tier": 1
+    },
+    {
+      "id": "I-03",
+      "label": "sum_of_attn_weights_equals_one_per_layer",
+      "enforced_at": "attn_residual.py::AttentionResidual._compute_weights",
+      "primary_test": "test_attn_residual.py::test_weights_sum_to_one",
+      "tier": 1
+    },
+    {
+      "id": "I-04",
+      "label": "share_key_false_per_slot_key_is_alive",
+      "enforced_at": "attn_residual.py::AttentionResidual.forward",
+      "primary_test": "test_attn_residual.py::test_attn_residual_independent_key_bank_contributes",
+      "tier": 1
+    },
+    {
+      "id": "I-05",
+      "label": "fit_only_tightens_never_widens",
+      "enforced_at": "sre_self_envelope.py::LearnedSafetyEnvelope.fit (ratchet clause)",
+      "primary_test": "test_sre_self_envelope.py::test_multiple_fits_never_widen_bounds",
+      "tier": 1
+    },
+    {
+      "id": "I-06",
+      "label": "relax_is_the_only_widening_path",
+      "enforced_at": "sre_self_envelope.py::LearnedSafetyEnvelope (source-grep of current_* assignments)",
+      "primary_test": "test_sre_self_envelope.py::test_relax_widens_but_stays_inside_hard_bounds",
+      "tier": 1
+    },
+    {
+      "id": "I-07",
+      "label": "learned_bounds_always_within_hard_bounds",
+      "enforced_at": "sre_self_envelope.py::LearnedSafetyEnvelope.fit (clip-to-hard clause)",
+      "primary_test": "test_sre_self_envelope.py::test_learned_bounds_never_exceed_hard_bounds_after_fit",
+      "tier": 1
+    },
+    {
+      "id": "I-08",
+      "label": "contraction_wrapper_does_not_mutate_inner_state",
+      "enforced_at": "sre_self_envelope.py::ContractionAwareEnvelope.apply (try/finally restore)",
+      "primary_test": "test_sre_self_envelope.py::test_contraction_wrapper_does_not_mutate_inner_state",
+      "tier": 1
+    },
+    {
+      "id": "I-09",
+      "label": "audit_trail_is_append_only",
+      "enforced_at": "sre_control.py::AuditTrail (no mutate API surface)",
+      "primary_test": "test_sre_control.py::test_audit_trail_records_and_serializes",
+      "tier": 1
+    },
+    {
+      "id": "I-10",
+      "label": "streaming_replay_processes_only_newline_complete_lines",
+      "enforced_at": "sre_math.py::StreamingAuditCreditReplay.poll (pending-bytes buffer)",
+      "primary_test": "test_sre_math.py::test_streaming_audit_replay_bad_json_does_not_advance_cursor",
+      "tier": 1
+    },
+    {
+      "id": "I-11",
+      "label": "soft_labels_cannot_bypass_hard_bounds",
+      "enforced_at": "sre_self_envelope.py::OutcomeEvidence (no path to mutate hard_low/high)",
+      "primary_test": "test_sre_adaptive.py::test_adaptive_combiner_respects_floor_even_after_learning",
+      "tier": 1
+    },
+    {
+      "id": "I-12",
+      "label": "metric_sources_are_read_only",
+      "enforced_at": "sre_metrics.py (no control-action emission in any reader)",
+      "primary_test": "test_sre_metrics.py::test_prometheus_context_reader_populates_context",
+      "tier": 2
+    },
+    {
+      "id": "I-13",
+      "label": "adaptive_combiner_preserves_static_bias",
+      "enforced_at": "sre_adaptive.py::AdaptiveCombiner.step (bias = static + learner_logit)",
+      "primary_test": "test_sre_adaptive.py::test_adaptive_combiner_preserves_static_bias_under_learning",
+      "tier": 1
+    }
+  ],
+  "_pr_review_guardrails_doc": "Subset of hard_invariants used as quick PR checklist. Equivalent to claude-review/README.md §4.",
+  "pr_review_guardrails": [
+    "I-07",
+    "I-06",
+    "I-01",
+    "I-09",
+    "inject_external_transport_as_callable",
+    "public_api_additive_only",
+    "one_feature_one_doc_one_demo_one_test"
+  ],
+  "demos": [
+    {
+      "name": "compare_residual_variants",
+      "purpose": "Classic/HC/AttnRes side-by-side training"
+    },
+    {
+      "name": "demo_attn_residual",
+      "purpose": "Full AttnRes forward/backward sanity"
+    },
+    {
+      "name": "demo_audit_credit_replay",
+      "purpose": "Offline JSONL -> blame reconstruction"
+    },
+    {
+      "name": "demo_block_attn_residual",
+      "purpose": "Block vs Full complexity comparison"
+    },
+    {
+      "name": "demo_credit_aware_envelope",
+      "purpose": "Credit routing prevents over-tightening"
+    },
+    {
+      "name": "demo_metric_source_replay",
+      "purpose": "Prometheus/OTel JSON -> audit context"
+    },
+    {
+      "name": "demo_self_learning_envelope",
+      "purpose": "6 envelope invariants validated"
+    },
+    {
+      "name": "demo_sre_adaptive_safety",
+      "purpose": "Adaptive combiner + safety envelope"
+    },
+    {
+      "name": "demo_sre_autoscaler",
+      "purpose": "30-tick hierarchical autoscaler"
+    },
+    {
+      "name": "demo_sre_math_primitives",
+      "purpose": "7 math primitives in concert"
+    },
+    {
+      "name": "demo_streaming_audit_replay",
+      "purpose": "Tail-mode byte cursor replay"
+    }
+  ],
+  "docs": [
+    {
+      "path": "docs/adr/",
+      "purpose": "(new — please add purpose)"
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "purpose": "High-level architecture + requirements"
+    },
+    {
+      "path": "docs/assets/",
+      "purpose": "(new — please add purpose)"
+    },
+    {
+      "path": "docs/AUDIT-CREDIT-REPLAY.md",
+      "purpose": "Offline JSONL replay"
+    },
+    {
+      "path": "docs/claude-review/",
+      "purpose": "Round-10 review package (this cycle's output) + Round-11 opening template (05-round-11-opening.md)"
+    },
+    {
+      "path": "docs/CODEX-HANDOFF.md",
+      "purpose": "Handoff doc, updated each cycle"
+    },
+    {
+      "path": "docs/DEEP-DIVE.md",
+      "purpose": "Math foundations + closed-loop + 4-lock safety"
+    },
+    {
+      "path": "docs/DESIGN.md",
+      "purpose": "Original design notes (Round 1-2)"
+    },
+    {
+      "path": "docs/EQUATIONS-AND-SRE.md",
+      "purpose": "7 equations, each distilled to one primitive"
+    },
+    {
+      "path": "docs/FORMULA_MAP.md",
+      "purpose": "Formula-to-code crosswalk"
+    },
+    {
+      "path": "docs/knowledge-base.html",
+      "purpose": "V1 knowledge base (27 sections, 30 SVGs, deep)"
+    },
+    {
+      "path": "docs/METRIC-SOURCES.md",
+      "purpose": "Prometheus + OpenTelemetry adapters"
+    },
+    {
+      "path": "docs/SELF-LEARNING-ENVELOPE.md",
+      "purpose": "Ratchet envelope design + 5 safety constraints"
+    },
+    {
+      "path": "docs/SOFT-LABEL-CREDIT.md",
+      "purpose": "Soft labels + CreditAwareLabeler"
+    },
+    {
+      "path": "docs/SRE-CONTROL-PLAYBOOK.md",
+      "purpose": "7 control primitives mapped to SRE scenarios"
+    },
+    {
+      "path": "docs/STREAMING-AUDIT-REPLAY.md",
+      "purpose": "Incremental tail replay with byte cursor"
+    },
+    {
+      "path": "docs/V2_Knowledge/",
+      "purpose": "V2 agent-first navigation (7 zones, compact)"
+    },
+    {
+      "path": "docs/V3_Knowledge/",
+      "purpose": "V3 agent+developer navigation (9 zones, dependency graph, changelog)"
+    }
+  ],
+  "next_review_trigger": "after_codex_pushes_round10_followups",
+  "regeneration_script_path": "docs/V2_Knowledge/_regenerate_state.py",
+  "notes_for_next_agent": [
+    "All 7 Round-10 follow-ups are closed (see closed_actions).",
+    "Round 11 in-flight: OTLP histogram expansion landed (see closed_gaps.otel_no_histogram_expansion). 9 new tests, total 174 passing. Codex still needs to push Round 10 commits; histogram work is purely additive on top of that.",
+    "Codex needs to commit and push the in-tree changes; Claude has already patched AI-4's max_dead_letters, the two mid-flight nits (RLock comment, AttentionResidual docstring), and the histogram expansion.",
+    "Tests: 174 passing (up from 154 baseline); diagnostics: 0.",
+    "Before Round 11 opens formally: follow docs/claude-review/05-round-11-opening.md pre-flight (archive + regenerate + baseline pytest). Histogram expansion is already closed so don't re-open it in open_actions.",
+    "V3_Knowledge/index.html is the latest navigation (9 zones incl. dependency graph + changelog). V2 remains valid but V3 supersedes it.",
+    "V1 knowledge-base.html sections 23/24/26 API sig blocks were refreshed on 2026-05-12 to reflect Round 10 additions (min_safe_evidence, thread_safe, skip_bad_lines, max_dead_letters).",
+    "V2_Knowledge/index.html Z5 still says '13 conditions'; it's accurate — we didn't add new invariants, only closed follow-ups and one open_gap."
+  ]
+}

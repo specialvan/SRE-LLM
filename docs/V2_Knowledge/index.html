@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Attention-Residuals · V2 Navigation (2026-05-12)</title>
+<style>
+  :root{
+    --bg: #fbfaf7;
+    --panel: #ffffff;
+    --ink: #1b2430;
+    --mute: #4b5b6b;
+    --rule: #e5e0d5;
+    --accent: #b4411b;
+    --key: #1f5fa3;
+    --key-soft: #e0ecf8;
+    --green: #2f7d3a;
+    --green-soft: #e3f1e4;
+    --warn: #a8711a;
+    --warn-soft: #fbf1d8;
+    --mono: 'SFMono-Regular','Consolas','Menlo',monospace;
+    --serif: 'Noto Serif SC','Songti SC','PingFang SC','Georgia',serif;
+    --sans: 'PingFang SC','Segoe UI','Helvetica Neue',Arial,sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--ink); }
+  body{ font-family: var(--sans); font-size: 15px; line-height: 1.6; }
+  a{ color: var(--key); text-decoration: none; border-bottom: 1px dashed rgba(31,95,163,.35); }
+  a:hover{ color: var(--accent); border-bottom-color: var(--accent); }
+  code{ font-family: var(--mono); font-size: 0.92em; background:#f2eee4; padding:1px 6px; border-radius:4px; color:#31425a; }
+  kbd{ font-family: var(--mono); font-size: 11px; background:#1d2330; color:#eef0f3; padding:2px 6px; border-radius:3px; }
+
+  header.hero{
+    background: linear-gradient(140deg, #2b465f 0%, #3d5f7a 60%, #b4411b 140%);
+    color:#f2f1ec; padding: 42px 48px 28px;
+  }
+  header.hero .kicker{ font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color:#cbb79b; }
+  header.hero h1{ margin: 8px 0 4px; font-family: var(--serif); font-size: 32px; letter-spacing:.02em; }
+  header.hero .sub{ color:#cdd6df; max-width: 980px; font-size: 14.5px; }
+  header.hero .badges{ margin-top: 18px; display:flex; flex-wrap:wrap; gap:8px; }
+  header.hero .badge{ font-family: var(--mono); font-size: 11.5px; padding: 4px 10px; border-radius: 20px; background: rgba(255,255,255,0.1); color:#fff; }
+  header.hero .badge.green{ background:#2f7d3a; }
+  header.hero .badge.warn{ background:#a8711a; }
+  header.hero .badge.key{ background:#1f5fa3; }
+
+  main{ max-width: 1200px; margin: 0 auto; padding: 24px 24px 56px; display:grid; grid-template-columns: 250px 1fr; gap: 32px; }
+  aside.toc{
+    position: sticky; top: 16px; align-self: start;
+    max-height: calc(100vh - 32px); overflow:auto;
+    padding: 18px 16px; background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; font-size: 13.5px;
+  }
+  aside.toc h2{ font-size: 11px; margin: 0 0 10px; color:#7a8797; letter-spacing:.14em; text-transform: uppercase;}
+  aside.toc ol{ list-style: none; padding: 0; margin: 0; }
+  aside.toc li{ margin: 6px 0; }
+  aside.toc li a{ border-bottom: none; color: var(--ink); display:block; padding: 4px 6px; border-radius: 4px; }
+  aside.toc li a:hover{ background: var(--key-soft); color: var(--key); }
+  aside.toc li .n{ color: #aab6c4; margin-right: 6px; font-family: var(--mono); font-size: 11.5px; }
+
+  article section{ background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 24px 28px; margin-top: 20px; }
+  article section:first-child{ margin-top: 0; }
+  article section h2{ font-family: var(--serif); margin: 0 0 8px; font-size: 22px; display:flex; align-items:center; gap:10px; }
+  article section h2 .zone{ font-size: 11px; letter-spacing:.1em; font-weight:600; font-family:var(--sans); color:#fff; background: var(--accent); padding: 3px 10px; border-radius: 12px; }
+  article section .lead{ color: var(--mute); margin: 0 0 14px; font-size: 13.5px; }
+  article h3{ margin-top: 18px; font-size: 16px; font-family: var(--serif); }
+  article p{ margin: 8px 0; }
+  article ul{ padding-left: 22px; }
+  article li{ margin: 3px 0; }
+
+  .pill{ display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; background: var(--key-soft); color: var(--key); margin-right: 4px; font-weight: 600; letter-spacing:.02em;}
+  .pill.accent{ background: #f6e4db; color: var(--accent); }
+  .pill.green{ background: var(--green-soft); color: var(--green); }
+  .pill.warn{ background: var(--warn-soft); color: var(--warn); }
+  .pill.mono{ font-family: var(--mono); }
+
+  table{ width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13.5px;}
+  th,td{ padding: 7px 9px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+  th{ background:#f5efe2; color:#4a3b22; font-weight: 600;}
+  tbody tr:nth-child(even){ background:#fbf8f1; }
+  td code{ font-size: 0.88em; }
+
+  .callout{ border-left: 4px solid var(--key); background: #f3f7fc; padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 12px 0; font-size: 13.5px;}
+  .callout.accent{ border-color: var(--accent); background: #fbf1ed; }
+  .callout.green{ border-color: var(--green); background: var(--green-soft); }
+  .callout.warn{ border-color: var(--warn); background: var(--warn-soft); }
+
+  .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  @media (max-width: 900px){
+    main{ grid-template-columns: 1fr; }
+    aside.toc{ position: static; max-height: none; }
+    .grid2, .grid3{ grid-template-columns: 1fr; }
+  }
+
+  figure{ margin: 14px 0; padding: 14px; border: 1px solid var(--rule); background: #fbfaf5; border-radius: 8px; }
+  figure svg{ display:block; margin: 0 auto; max-width: 100%; height: auto; }
+  figcaption{ margin-top: 8px; font-size: 12.5px; color: var(--mute); text-align: center; font-family: var(--serif); }
+
+  .status-row{ display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin: 8px 0 14px; }
+  .stat{ background:#fbfaf5; border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; }
+  .stat .num{ font-family: var(--mono); font-size: 26px; color: var(--ink); line-height: 1.1; }
+  .stat .num.green{ color: var(--green); }
+  .stat .num.warn{ color: var(--warn); }
+  .stat .num.accent{ color: var(--accent); }
+  .stat .lbl{ font-size: 11.5px; color: var(--mute); text-transform: uppercase; letter-spacing:.08em; margin-top: 4px; }
+
+  .cmd{ background: #1d2330; color:#eef0f3; font-family: var(--mono); font-size: 12.5px; line-height: 1.5; padding: 10px 14px; border-radius: 6px; overflow-x: auto; white-space: pre; margin: 8px 0;}
+
+  svg text{ font-family: 'PingFang SC','Segoe UI','Helvetica Neue',Arial,sans-serif; fill: #1b2430; }
+  svg .muted{ fill:#6a7889; }
+
+  footer{ text-align: center; color: var(--mute); font-size: 12.5px; padding: 28px; }
+
+  /* Print styles: compact, ink-friendly, drop sticky TOC. */
+  @media print{
+    body{ background:#fff; font-size: 11pt; line-height: 1.4; }
+    header.hero{ background: #fff !important; color: #1b2430; padding: 12pt 0 6pt; border-bottom: 1.5pt solid #888; }
+    header.hero .kicker, header.hero .sub{ color: #333; }
+    header.hero h1{ font-size: 20pt; color: #1b2430; }
+    header.hero h1 .en{ color: #b4411b; }
+    header.hero .badges .badge{ background: #eee !important; color: #222 !important; }
+    main{ display: block; max-width: 100%; padding: 0; gap: 0; }
+    aside.toc{ display: none; }
+    article section{ background: #fff; border: 0.5pt solid #999; border-radius: 0; padding: 10pt 12pt; margin-top: 10pt; break-inside: avoid; }
+    article section h2{ font-size: 14pt; }
+    article section h2 .zone{ background: #444 !important; color: #fff !important; }
+    figure{ break-inside: avoid; border: 0.3pt solid #888; background: #fff; padding: 8pt; }
+    .callout{ background: #f5f5f5 !important; color: #222; border-left-color: #666; }
+    .pill, .pill.accent, .pill.green, .pill.warn{ background: #eee !important; color: #222 !important; }
+    .stat{ break-inside: avoid; }
+    .cmd{ background: #f8f8f8; color: #222; border: 0.3pt solid #bbb; }
+    a{ color: #1b2430; border-bottom: none; }
+    a::after{ content: ""; }       /* don't print URLs inline */
+    footer{ color: #666; }
+  }
+</style>
+</head>
+
+<body>
+<header class="hero">
+  <div class="kicker">V2 Navigation · Knowledge Base · Round 10 Snapshot</div>
+  <h1>Attention-Residuals · Agent Handback Index</h1>
+  <p class="sub">
+    为中途接手的 agent / reviewer 设计的单页导航索引。
+    不重复 V1 的深度拆解（那份在 <code><a href="../knowledge-base.html">docs/knowledge-base.html</a></code>），
+    只回答三个问题：<b>现在项目在哪里</b>、<b>下一步读/改什么</b>、<b>有哪些不能动的不变量</b>。
+  </p>
+  <div class="badges">
+    <span class="badge green">tests 174/174</span>
+    <span class="badge green">demos 11/11</span>
+    <span class="badge green">diagnostics 0</span>
+    <span class="badge green">review verdict · approved · all follow-ups closed</span>
+    <span class="badge">branch · attention-residuals-session</span>
+    <span class="badge">HEAD · 3dbfd50 (in-tree patches pending push)</span>
+    <span class="badge">snapshot · 2026-05-12 (R10 closed + R11 histogram)</span>
+  </div>
+</header>
+
+<main>
+
+<aside class="toc" aria-label="Zones">
+  <h2>Zones</h2>
+  <ol>
+    <li><a href="#z1"><span class="n">Z1</span>Architecture at a glance</a></li>
+    <li><a href="#z2"><span class="n">Z2</span>Paper → Code traceability</a></li>
+    <li><a href="#z3"><span class="n">Z3</span>Module map (filesystem)</a></li>
+    <li><a href="#z4"><span class="n">Z4</span>Demos &amp; how to run</a></li>
+    <li><a href="#z5"><span class="n">Z5</span>Hard invariants &amp; guardrails</a></li>
+    <li><a href="#z6"><span class="n">Z6</span>Closed actions &amp; next backlog</a></li>
+    <li><a href="#z7"><span class="n">Z7</span>Current status &amp; handback</a></li>
+    <li><a href="#glossary"><span class="n">GL</span>Glossary &amp; external references</a></li>
+  </ol>
+  <hr class="soft" style="border:none; border-top:1px dashed var(--rule); margin:12px 0;"/>
+  <h2>Quick links</h2>
+  <ul style="list-style:none; padding:0; font-size:12.5px;">
+    <li><a href="../claude-review/README.md">claude-review/</a></li>
+    <li><a href="../knowledge-base.html">V1 knowledge base</a></li>
+    <li><a href="../ARCHITECTURE.md">ARCHITECTURE.md</a></li>
+    <li><a href="../CODEX-HANDOFF.md">CODEX-HANDOFF.md</a></li>
+    <li><a href="./state.json">state.json</a></li>
+  </ul>
+</aside>
+
+<article>
+
+<!-- ============================================================= Z1 -->
+<section id="z1">
+  <h2><span class="zone">Z1</span>Architecture at a glance</h2>
+  <p class="lead">一张图看懂整个系统的 7 层。每一层只 <b>收紧</b> 下层决策，不反向污染。</p>
+
+  <figure>
+    <svg viewBox="0 0 960 480" role="img" aria-label="7-layer architecture">
+      <defs>
+        <marker id="arr1" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#1b2430"/>
+        </marker>
+        <marker id="arrUp" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#4b5b6b"/>
+        </marker>
+      </defs>
+      <!-- Layer blocks, top-down L7 → L0 -->
+      <g font-size="13">
+        <rect x="40" y="20" width="880" height="46" rx="8" fill="#fdf3ea" stroke="#b4411b"/>
+        <text x="60" y="47" font-weight="700" fill="#b4411b">L7 · Operator</text>
+        <text x="220" y="47" fill="#6c2b14">env.relax() · registry.register() · alert ack</text>
+
+        <rect x="40" y="76" width="880" height="56" rx="8" fill="#eaf1fa" stroke="#1f5fa3"/>
+        <text x="60" y="104" font-weight="700" fill="#1f5fa3">L6 · Self-Learning Envelope</text>
+        <text x="60" y="122" font-size="11.5" class="muted">sre_self_envelope · LearnedSafetyEnvelope · ContractionAwareEnvelope · EnvelopeLearner · CreditAwareLabeler</text>
+
+        <rect x="40" y="142" width="880" height="56" rx="8" fill="#eff6ee" stroke="#2f7d3a"/>
+        <text x="60" y="170" font-weight="700" fill="#2f7d3a">L5 · Industrial Safety</text>
+        <text x="60" y="188" font-size="11.5" class="muted">sre_safety · SafetyEnvelope · ShadowRunner · CounterfactualExplainer · WeightDriftDetector</text>
+
+        <rect x="40" y="208" width="880" height="56" rx="8" fill="#fff6df" stroke="#caa96a"/>
+        <text x="60" y="236" font-weight="700" fill="#8a6a21">L4 · Closed-Loop Adaptation</text>
+        <text x="60" y="254" font-size="11.5" class="muted">sre_adaptive · HedgeRegretLearner · AdaptiveCombiner (bias = static + learner_logit)</text>
+
+        <rect x="40" y="274" width="880" height="60" rx="8" fill="#fdf3ea" stroke="#b4411b"/>
+        <text x="60" y="301" font-weight="700" fill="#b4411b">L3 · Math Primitives &amp; Observers</text>
+        <text x="60" y="319" font-size="11.5" class="muted">sre_math · z-score · temperature · MultiView · FTRL · JacobianContractionMonitor · TemporalCreditAssigner</text>
+
+        <rect x="40" y="344" width="880" height="56" rx="8" fill="#eaf1fa" stroke="#1f5fa3"/>
+        <text x="60" y="371" font-weight="700" fill="#1f5fa3">L2 · Control Primitives</text>
+        <text x="60" y="389" font-size="11.5" class="muted">sre_control · WeightedConvexCombiner · AuditTrail · MustAttendRegistry · BudgetGate · HierarchicalBlockController</text>
+
+        <rect x="40" y="410" width="440" height="50" rx="8" fill="#eff6ee" stroke="#2f7d3a"/>
+        <text x="60" y="435" font-weight="700" fill="#2f7d3a">L1 · Metric Ingress</text>
+        <text x="60" y="452" font-size="11.5" class="muted">sre_metrics · Prometheus + OpenTelemetry (stdlib only)</text>
+
+        <rect x="490" y="410" width="430" height="50" rx="8" fill="#f5efe2" stroke="#caa96a"/>
+        <text x="510" y="435" font-weight="700" fill="#8a6a21">L0 · Paper Primitives (PyTorch)</text>
+        <text x="510" y="452" font-size="11.5" class="muted">attn_residual · blocks · transformer_layer · stack · ...</text>
+      </g>
+
+      <!-- Constraint arrows: each upper layer only tightens the lower -->
+      <g stroke="#1b2430" fill="none">
+        <path d="M 900 66 L 900 76" marker-end="url(#arr1)"/>
+        <path d="M 900 132 L 900 142" marker-end="url(#arr1)"/>
+        <path d="M 900 198 L 900 208" marker-end="url(#arr1)"/>
+        <path d="M 900 264 L 900 274" marker-end="url(#arr1)"/>
+        <path d="M 900 334 L 900 344" marker-end="url(#arr1)"/>
+        <path d="M 900 400 L 900 410" marker-end="url(#arr1)"/>
+      </g>
+      <text x="910" y="246" transform="rotate(90 910 246)" font-size="11" class="muted">constraints flow downward (tighten)</text>
+
+      <!-- Observations flow upward -->
+      <g stroke="#4b5b6b" fill="none" stroke-dasharray="3 3">
+        <path d="M 55 400 L 55 340" marker-end="url(#arrUp)"/>
+        <path d="M 55 334 L 55 270" marker-end="url(#arrUp)"/>
+        <path d="M 55 264 L 55 204" marker-end="url(#arrUp)"/>
+        <path d="M 55 198 L 55 138" marker-end="url(#arrUp)"/>
+        <path d="M 55 132 L 55 72" marker-end="url(#arrUp)"/>
+      </g>
+      <text x="28" y="246" transform="rotate(-90 28 246)" font-size="11" class="muted">observations flow upward (audit)</text>
+    </svg>
+    <figcaption>图 1 · 7 层架构。实线：约束向下传递（只能收紧）。虚线：观测向上汇报（只能读取）。</figcaption>
+  </figure>
+
+  <h3>一条典型 tick 的完整数据流</h3>
+  <div class="cmd">metrics → L1 read_context → L3 z-score → L4 AdaptiveCombiner → L6 ContractionAware → L6 LearnedEnvelope → actuator
+              ↑                                                                                                  │
+              └──── audit trail (L2) ← ingest(action, context, delta) ← feedback from plant ────────────────────┘</div>
+
+  <p>
+    <b>关键约束</b>：L6 的 envelope 只能更紧，不能自动更松（<code>relax()</code> 是唯一放松路径，L7 人为操作）。
+    L4 的 learner 只能调 <code>bias</code>，不能突破 L2 的 floor/ceiling 硬约束。
+    L3 的观测者不修改任何决策。详见 <a href="#z5">Z5 不变量</a>。
+  </p>
+
+  <div class="callout">
+    <b>Jump to deeper content</b>:
+    <a href="../claude-review/01-detailed-architecture.md">detailed-architecture.md</a> 里有逐层的 API 契约、
+    invariant enforcement sequence 和 per-tick 伪代码。
+  </div>
+</section>
+
+<!-- ============================================================= Z2 -->
+<section id="z2">
+  <h2><span class="zone">Z2</span>Paper → Code traceability</h2>
+  <p class="lead">论文每一条方程对应到工程里哪一段代码、哪一个测试、哪一个 demo。</p>
+
+  <table>
+    <thead><tr><th>论文机制</th><th>方程</th><th>代码</th><th>核心测试</th><th>Demo</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>§2 经典残差</td>
+        <td><code>x + F(x)</code></td>
+        <td><code>classic_residual.py</code></td>
+        <td><code>test_classic_residual_identity_when_F_is_zero</code></td>
+        <td><code>compare_residual_variants</code></td>
+      </tr>
+      <tr>
+        <td>§3 Pre/Post-Norm</td>
+        <td><code>LN(x+F(x))</code> / <code>x+F(LN(x))</code></td>
+        <td><code>norm.py</code></td>
+        <td><code>test_norm_wrapper_shapes</code></td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>§4 HC / mHC</td>
+        <td><code>Σ_n A_{mn} X^(n)</code></td>
+        <td><code>hyper_connections.py</code></td>
+        <td><code>test_mhc_block_diagonal_mask</code></td>
+        <td><code>compare_residual_variants</code></td>
+      </tr>
+      <tr>
+        <td>§5.1 Attention Residual（核心）</td>
+        <td><code>a_{l,k} = softmax(q·K_k/√d), Σa=1</code></td>
+        <td><code>attn_residual.py</code></td>
+        <td><code>test_weights_sum_to_one</code> · <code>test_attn_residual_independent_key_bank_contributes</code></td>
+        <td><code>demo_attn_residual</code></td>
+      </tr>
+      <tr>
+        <td>§5.2 Block 分段</td>
+        <td><code>O(L²) → O((L/B)²+L)</code></td>
+        <td><code>blocks.py</code></td>
+        <td><code>test_layers_per_block_one_is_full_attention_residuals</code></td>
+        <td><code>demo_block_attn_residual</code></td>
+      </tr>
+      <tr>
+        <td>§6.1 多头纵向</td>
+        <td><code>concat_h · W_O</code></td>
+        <td><code>multi_head_vertical.py</code></td>
+        <td><code>test_multi_head_weights_sum_to_one_per_head</code></td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>§6.2 动态跳层</td>
+        <td><code>g_l = σ(w_l)</code></td>
+        <td><code>layer_skip.py</code></td>
+        <td>—</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>§7 纵横解耦 Transformer 层</td>
+        <td>两套独立 W_Q</td>
+        <td><code>transformer_layer.py</code></td>
+        <td><code>test_decoupled_layer_gradients_reach_both_paths</code></td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>§8 统一 stack</td>
+        <td>六种模式可切换</td>
+        <td><code>stack.py</code></td>
+        <td><code>test_stack_*</code> × 6</td>
+        <td>—</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>SRE 控制原语（7 条 + 闭环扩展）</h3>
+
+  <table>
+    <thead><tr><th>原语名</th><th>论文类比</th><th>代码</th><th>落地章节（V1）</th></tr></thead>
+    <tbody>
+      <tr><td>WeightedConvexCombiner</td><td>§5.1 softmax 归一化</td><td><code>sre_control.py</code></td><td><a href="../knowledge-base.html#s12">§12</a>–<a href="../knowledge-base.html#s14">§14</a></td></tr>
+      <tr><td>MustAttendRegistry</td><td>§5.2 必然关注</td><td><code>sre_control.py</code></td><td><a href="../knowledge-base.html#s13">§13</a></td></tr>
+      <tr><td>BudgetGate</td><td>§6.2 动态跳层</td><td><code>sre_control.py</code></td><td><a href="../knowledge-base.html#s13">§13</a></td></tr>
+      <tr><td>HierarchicalBlockController</td><td>§5.2 Block 分段</td><td><code>sre_control.py</code></td><td><a href="../knowledge-base.html#s13">§13</a></td></tr>
+      <tr><td>DecoupledControlLoop</td><td>§7 纵横解耦</td><td><code>sre_control.py</code></td><td><a href="../knowledge-base.html#s13">§13</a></td></tr>
+      <tr><td>AuditTrail</td><td>确定性可审计</td><td><code>sre_control.py</code></td><td><a href="../knowledge-base.html#s14">§14</a></td></tr>
+      <tr><td>HedgeRegretLearner / FTRL</td><td>§5.1 softmax 的镜像下降对偶</td><td><code>sre_adaptive.py</code> / <code>sre_math.py</code></td><td><a href="../knowledge-base.html#s17">§17</a> / <a href="../knowledge-base.html#s20">§20</a></td></tr>
+      <tr><td>LearnedSafetyEnvelope</td><td>(新) 外壳从 audit 自学习</td><td><code>sre_self_envelope.py</code></td><td><a href="../knowledge-base.html#s21">§21</a></td></tr>
+      <tr><td>CreditAwareLabeler</td><td>(新) 事故归因反馈</td><td><code>sre_self_envelope.py</code></td><td><a href="../knowledge-base.html#s23">§23</a></td></tr>
+      <tr><td>StreamingAuditCreditReplay</td><td>(新) 流式事故回放</td><td><code>sre_math.py</code></td><td><a href="../knowledge-base.html#s26">§26</a></td></tr>
+      <tr><td>Prometheus/OTel Reader</td><td>(新) 指标源适配</td><td><code>sre_metrics.py</code></td><td><a href="../knowledge-base.html#s25">§25</a></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================= Z3 -->
+<section id="z3">
+  <h2><span class="zone">Z3</span>Module map (filesystem)</h2>
+  <p class="lead">打开文件系统之后应该看到什么；每个文件的一句话用途。</p>
+
+  <div class="grid2">
+    <div>
+      <h3><span class="pill accent">L0</span> Paper layer (PyTorch)</h3>
+      <table>
+        <tbody>
+          <tr><td><code>classic_residual.py</code></td><td>x + F(x)</td></tr>
+          <tr><td><code>norm.py</code></td><td>Pre/Post-Norm wrapper</td></tr>
+          <tr><td><code>hyper_connections.py</code></td><td>HC / mHC 多通道</td></tr>
+          <tr><td><code>attn_residual.py</code></td><td>核心 AttnRes（含 share_key=False）</td></tr>
+          <tr><td><code>blocks.py</code></td><td>Block Attention Residuals</td></tr>
+          <tr><td><code>multi_head_vertical.py</code></td><td>多头纵向</td></tr>
+          <tr><td><code>layer_skip.py</code></td><td>σ 门控跳层</td></tr>
+          <tr><td><code>transformer_layer.py</code></td><td>横+纵解耦层</td></tr>
+          <tr><td><code>stack.py</code></td><td>6 种策略统一入口</td></tr>
+          <tr><td><code>metrics.py</code></td><td>论文层的观测指标</td></tr>
+          <tr><td><code>types.py</code></td><td>AttnResConfig / BlockConfig / 枚举</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3><span class="pill">L1–L6</span> SRE control plane (numpy)</h3>
+      <table>
+        <tbody>
+          <tr><td><code>sre_metrics.py</code></td><td><span class="pill mono">L1</span> Prometheus + OTel reader</td></tr>
+          <tr><td><code>sre_control.py</code></td><td><span class="pill mono">L2</span> 7 控制原语 + audit</td></tr>
+          <tr><td><code>sre_math.py</code></td><td><span class="pill mono">L3</span> z-score · FTRL · credit · replay</td></tr>
+          <tr><td><code>sre_adaptive.py</code></td><td><span class="pill mono">L4</span> Hedge + AdaptiveCombiner</td></tr>
+          <tr><td><code>sre_safety.py</code></td><td><span class="pill mono">L5</span> envelope · shadow · counterfactual · drift</td></tr>
+          <tr><td><code>sre_self_envelope.py</code></td><td><span class="pill mono">L6</span> 自学习外壳 + credit routing</td></tr>
+          <tr><td><code>__init__.py</code></td><td>71 个 public 符号 export</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>Tests / Examples / Docs</h3>
+  <div class="grid3">
+    <div>
+      <b>tests/</b> · 174 cases
+      <table>
+        <tbody>
+          <tr><td><code>test_attn_residual.py</code></td><td>8</td></tr>
+          <tr><td><code>test_blocks.py</code></td><td>3</td></tr>
+          <tr><td><code>test_hyper_connections.py</code></td><td>3</td></tr>
+          <tr><td><code>test_norm.py</code></td><td>3</td></tr>
+          <tr><td><code>test_sre_adaptive.py</code></td><td>12</td></tr>
+          <tr><td><code>test_sre_control.py</code></td><td>14</td></tr>
+          <tr><td><code>test_sre_math.py</code></td><td>50</td></tr>
+          <tr><td><code>test_sre_metrics.py</code></td><td>16</td></tr>
+          <tr><td><code>test_sre_safety.py</code></td><td>14</td></tr>
+          <tr><td><code>test_sre_self_envelope.py</code></td><td>44</td></tr>
+          <tr><td><code>test_stack.py</code></td><td>7</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <b>examples/</b> · 11 scripts
+      <table>
+        <tbody>
+          <tr><td><code>compare_residual_variants</code></td><td>L0</td></tr>
+          <tr><td><code>demo_attn_residual</code></td><td>L0</td></tr>
+          <tr><td><code>demo_block_attn_residual</code></td><td>L0</td></tr>
+          <tr><td><code>demo_sre_autoscaler</code></td><td>L2</td></tr>
+          <tr><td><code>demo_sre_math_primitives</code></td><td>L3</td></tr>
+          <tr><td><code>demo_sre_adaptive_safety</code></td><td>L4/5</td></tr>
+          <tr><td><code>demo_self_learning_envelope</code></td><td>L6</td></tr>
+          <tr><td><code>demo_credit_aware_envelope</code></td><td>L6</td></tr>
+          <tr><td><code>demo_audit_credit_replay</code></td><td>L3</td></tr>
+          <tr><td><code>demo_streaming_audit_replay</code></td><td>L3</td></tr>
+          <tr><td><code>demo_metric_source_replay</code></td><td>L1</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <b>docs/</b> · 13 markdown + 1 html
+      <table>
+        <tbody>
+          <tr><td><a href="../ARCHITECTURE.md"><code>ARCHITECTURE.md</code></a></td><td>高层视图</td></tr>
+          <tr><td><a href="../DEEP-DIVE.md"><code>DEEP-DIVE.md</code></a></td><td>数学+闭环+安全</td></tr>
+          <tr><td><a href="../EQUATIONS-AND-SRE.md"><code>EQUATIONS-AND-SRE.md</code></a></td><td>7 方程原语</td></tr>
+          <tr><td><a href="../SRE-CONTROL-PLAYBOOK.md"><code>SRE-CONTROL-PLAYBOOK.md</code></a></td><td>场景 playbook</td></tr>
+          <tr><td><a href="../SELF-LEARNING-ENVELOPE.md"><code>SELF-LEARNING-ENVELOPE.md</code></a></td><td>外壳设计</td></tr>
+          <tr><td><a href="../SOFT-LABEL-CREDIT.md"><code>SOFT-LABEL-CREDIT.md</code></a></td><td>软标签+credit</td></tr>
+          <tr><td><a href="../AUDIT-CREDIT-REPLAY.md"><code>AUDIT-CREDIT-REPLAY.md</code></a></td><td>离线回放</td></tr>
+          <tr><td><a href="../STREAMING-AUDIT-REPLAY.md"><code>STREAMING-AUDIT-REPLAY.md</code></a></td><td>流式回放</td></tr>
+          <tr><td><a href="../METRIC-SOURCES.md"><code>METRIC-SOURCES.md</code></a></td><td>Prom/OTel 适配</td></tr>
+          <tr><td><a href="../DESIGN.md"><code>DESIGN.md</code></a></td><td>原始设计笔记</td></tr>
+          <tr><td><a href="../FORMULA_MAP.md"><code>FORMULA_MAP.md</code></a></td><td>公式 ↔ 代码</td></tr>
+          <tr><td><a href="../CODEX-HANDOFF.md"><code>CODEX-HANDOFF.md</code></a></td><td>每次 handoff 更新</td></tr>
+          <tr><td><a href="../knowledge-base.html"><code>knowledge-base.html</code></a></td><td>V1 深度版（27 节）</td></tr>
+          <tr><td><a href="../claude-review/"><code>claude-review/</code></a></td><td>Round-10 评审包</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= Z4 -->
+<section id="z4">
+  <h2><span class="zone">Z4</span>Demos &amp; how to run</h2>
+  <p class="lead">按"验证机制 → 验证组合 → 验证生产风味"从上到下排。</p>
+
+  <h3>一键跑全套（5 分钟内跑完，pytest 失败就停）</h3>
+  <div class="cmd">cd D:\workspace\SRE-LLM\Attention-Residuals
+
+# Step 1: baseline — if this fails, STOP. Don't run demos on a broken state.
+pytest -q                                      # expect: 174 passed
+
+# Step 2: run demos in dependency order (each is independent but the order matches Z4).
+python -m examples.compare_residual_variants  &amp;&amp; ^
+python -m examples.demo_attn_residual         &amp;&amp; ^
+python -m examples.demo_block_attn_residual   &amp;&amp; ^
+python -m examples.demo_sre_autoscaler        &amp;&amp; ^
+python -m examples.demo_sre_math_primitives   &amp;&amp; ^
+python -m examples.demo_sre_adaptive_safety   &amp;&amp; ^
+python -m examples.demo_self_learning_envelope &amp;&amp; ^
+python -m examples.demo_credit_aware_envelope &amp;&amp; ^
+python -m examples.demo_audit_credit_replay   &amp;&amp; ^
+python -m examples.demo_streaming_audit_replay &amp;&amp; ^
+python -m examples.demo_metric_source_replay
+
+# If any demo errors out, read the error; the &amp;&amp; chain will stop at first failure.</div>
+
+  <h3>推荐的阅读顺序（不跑代码也能理解 90% 价值）</h3>
+  <table>
+    <thead><tr><th>顺序</th><th>Demo</th><th>看什么</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><code>demo_attn_residual</code></td><td>最核心的 softmax 权重 + Σa=1 invariant 验证</td></tr>
+      <tr><td>2</td><td><code>demo_block_attn_residual</code></td><td>复杂度从 O(L²) 降到 O((L/B)²+L) 的实测 benchmark</td></tr>
+      <tr><td>3</td><td><code>demo_sre_autoscaler</code></td><td>7 条控制原语组合成 30-tick 扩缩容</td></tr>
+      <tr><td>4</td><td><code>demo_sre_math_primitives</code></td><td>7 条方程级原语（z-score / temperature / FTRL / credit / drift）协奏</td></tr>
+      <tr><td>5</td><td><code>demo_sre_adaptive_safety</code></td><td>闭环学习 + 四锁安全层</td></tr>
+      <tr><td>6</td><td><code>demo_self_learning_envelope</code></td><td>6 个 envelope 不变量全部实证验证</td></tr>
+      <tr><td>7</td><td><code>demo_credit_aware_envelope</code></td><td><b>最有价值的一个</b>：envelope 不会因外因 SLO 违规误收紧</td></tr>
+      <tr><td>8</td><td><code>demo_audit_credit_replay</code></td><td>离线用 JSONL 重建事故归因</td></tr>
+      <tr><td>9</td><td><code>demo_streaming_audit_replay</code></td><td>流式 tail 模式的 byte cursor 增量回放</td></tr>
+      <tr><td>10</td><td><code>demo_metric_source_replay</code></td><td>Prometheus/OTel → context → 控制器</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout accent">
+    <b>如果只跑一个 demo</b>：<code>demo_credit_aware_envelope</code>。它同时展示了 3 件事 —— 自学习外壳会因 UNSAFE 棘轮收紧，
+    归因系统能识别"外因导致"的事故，以及 envelope 在外因场景下 <b>不会</b> 误收紧。这是整个系统的最终收敛点。
+  </div>
+</section>
+
+
+<!-- ============================================================= Z5 -->
+<section id="z5">
+  <h2><span class="zone">Z5</span>Hard invariants &amp; guardrails</h2>
+  <p class="lead">13 条"代码里靠测试钉死、改代码时不能破坏"的硬约束。改代码前请查表。</p>
+
+  <div class="callout">
+    <b>SSOT</b>：这张表的权威来源是 <a href="./state.json"><code>state.json</code></a> 的
+    <code>hard_invariants</code> 字段。<code>CODEX-HANDOFF.md</code> 里的"必须守住的不变量"和
+    <code>claude-review/README.md</code> §4 的 7 条 guardrails 都从这里派生。
+    <br/><b>guardrails ⊆ invariants</b>：guardrails 是 7 条"PR 评审时最先检查"的子集（<code>state.json.pr_review_guardrails</code>）；
+    invariants 是完整 13 条"任何时候都不能破坏"的集合。
+  </div>
+
+  <table>
+    <thead><tr><th>#</th><th>Tier</th><th>Invariant</th><th>Enforced at</th><th>Primary regression test</th></tr></thead>
+    <tbody>
+      <tr><td>I-01</td><td><span class="pill accent">1</span></td><td><code>Σ weights = 1</code></td><td><code>sre_control._project_to_simplex_with_bounds</code></td><td><code>test_combiner_weights_sum_to_one</code></td></tr>
+      <tr><td>I-02</td><td><span class="pill accent">1</span></td><td><code>floor ≤ weight ≤ ceiling</code></td><td><code>WeightedConvexCombiner.combine</code></td><td><code>test_combiner_respects_floor</code></td></tr>
+      <tr><td>I-03</td><td><span class="pill accent">1</span></td><td><code>Σ_k a_{l,k} = 1</code>（纵向）</td><td><code>AttentionResidual._compute_weights</code></td><td><code>test_weights_sum_to_one</code></td></tr>
+      <tr><td>I-04</td><td><span class="pill accent">1</span></td><td><code>share_key=False</code> per-slot key 真实生效</td><td><code>AttentionResidual.forward</code></td><td><code>test_attn_residual_independent_key_bank_contributes</code></td></tr>
+      <tr><td>I-05</td><td><span class="pill accent">1</span></td><td><code>fit()</code> 只收不放</td><td><code>LearnedSafetyEnvelope.fit</code> (ratchet)</td><td><code>test_multiple_fits_never_widen_bounds</code></td></tr>
+      <tr><td>I-06</td><td><span class="pill accent">1</span></td><td><code>relax()</code> 是唯一放宽路径</td><td>源码 grep: <code>current_* = </code></td><td><code>test_relax_widens_but_stays_inside_hard_bounds</code></td></tr>
+      <tr><td>I-07</td><td><span class="pill accent">1</span></td><td>learned bounds ⊆ hard bounds</td><td><code>LearnedSafetyEnvelope.fit</code> (clip)</td><td><code>test_learned_bounds_never_exceed_hard_bounds_after_fit</code></td></tr>
+      <tr><td>I-08</td><td><span class="pill accent">1</span></td><td><code>ContractionAwareEnvelope</code> 不污染 inner state</td><td><code>try/finally</code> restore</td><td><code>test_contraction_wrapper_does_not_mutate_inner_state</code></td></tr>
+      <tr><td>I-09</td><td><span class="pill accent">1</span></td><td><code>AuditTrail</code> append-only</td><td><code>AuditTrail.record</code>（无 mutate API）</td><td><code>test_audit_trail_records_and_serializes</code></td></tr>
+      <tr><td>I-10</td><td><span class="pill accent">1</span></td><td>streaming replay 只消费 newline-complete 行</td><td><code>StreamingAuditCreditReplay.poll</code></td><td><code>test_streaming_audit_replay_bad_json_does_not_advance_cursor</code></td></tr>
+      <tr><td>I-11</td><td><span class="pill accent">1</span></td><td>soft label 不能绕过 hard bounds</td><td><code>OutcomeEvidence</code>（无路径改 hard_*）</td><td><code>test_adaptive_combiner_respects_floor_even_after_learning</code></td></tr>
+      <tr><td>I-12</td><td><span class="pill green">2</span></td><td>metric source 只读，不承载控制策略</td><td><code>sre_metrics</code> 整个文件</td><td><code>test_prometheus_context_reader_populates_context</code></td></tr>
+      <tr><td>I-13</td><td><span class="pill accent">1</span></td><td><code>AdaptiveCombiner</code> 保留运维 static bias</td><td><code>AdaptiveCombiner.step</code> 合成</td><td><code>test_adaptive_combiner_preserves_static_bias_under_learning</code></td></tr>
+    </tbody>
+  </table>
+
+  <p><b>Tier 1</b>（红色）：违反即数据正确性崩溃，pytest 必然失败。
+     <b>Tier 2</b>（绿色）：违反不一定立刻失败但会腐蚀架构边界（例如 metric source 开始做决策），
+     codex 需在 PR 描述里主动声明"我知道自己动了 Tier 2"。</p>
+
+  <h3>PR 评审 guardrails（常用子集）</h3>
+  <p>Claude review 的 README 列出的 7 条 "PR 合入前一眼检查"，对应以下 <code>state.json.pr_review_guardrails</code>：</p>
+  <table>
+    <thead><tr><th>#</th><th>Guardrail</th><th>对应 invariant</th></tr></thead>
+    <tbody>
+      <tr><td>G1</td><td>Hard bounds 不可被自动代码突破</td><td>I-07</td></tr>
+      <tr><td>G2</td><td><code>relax()</code> 是唯一放宽路径</td><td>I-06</td></tr>
+      <tr><td>G3</td><td><code>Σ a = 1</code> 是硬约束，非损失项</td><td>I-01 / I-03</td></tr>
+      <tr><td>G4</td><td><code>AuditTrail</code> append-only</td><td>I-09</td></tr>
+      <tr><td>G5</td><td>外部依赖一律 callable 注入（HTTP / file / RNG / time）</td><td>约定，非数学不变量</td></tr>
+      <tr><td>G6</td><td>Public API 只增不破（兼容性）</td><td>约定，非数学不变量</td></tr>
+      <tr><td>G7</td><td>每个新特性 = 模块 + 测试 + demo + 文档 四件套</td><td>约定，非数学不变量</td></tr>
+    </tbody>
+  </table>
+
+  <h3>如何"意外"破坏 invariants（以及防范）</h3>
+  <div class="grid2">
+    <div>
+      <div class="callout warn">
+        <b>常见错法 1：把 Σa=1 降级成损失项</b><br/>
+        &nbsp;&nbsp;<code>loss += λ·(Σa-1)²</code><br/>
+        <b>后果</b>：非平稳输入下会出现 Σa≠1 的周期性超发/欠发。<br/>
+        <b>防范</b>：I-01 / I-03 的 regression test 会失败。
+      </div>
+      <div class="callout warn">
+        <b>常见错法 2：在 <code>fit()</code> 里直接赋值放宽</b><br/>
+        &nbsp;&nbsp;<code>self.current_high = proposed_hi  # 没有 np.minimum</code><br/>
+        <b>后果</b>：envelope 可能因偶然的 SAFE 样本放宽，破坏 ratchet 语义。<br/>
+        <b>防范</b>：I-05 的 regression test 会失败。
+      </div>
+    </div>
+    <div>
+      <div class="callout warn">
+        <b>常见错法 3：learner 覆盖运维 bias</b><br/>
+        &nbsp;&nbsp;<code>spec.bias = float(lg)  # 未加 static_bias</code><br/>
+        <b>后果</b>：运维在 <code>SignalSpec(bias=...)</code> 里配的先验被悄悄抹掉。<br/>
+        <b>防范</b>：<code>test_adaptive_combiner_preserves_static_bias_under_learning</code> 会失败。
+      </div>
+      <div class="callout warn">
+        <b>常见错法 4：streaming cursor 在报错时也前进</b><br/>
+        &nbsp;&nbsp;<code>except: self.cursor.offset = next_offset  # 跳过了坏 JSON</code><br/>
+        <b>后果</b>：事故日志被默默吞掉，审计链断裂。<br/>
+        <b>防范</b>：I-10 的 regression test 会失败。处理方案见 AI-4（加 opt-in 的 <code>skip_bad_lines</code>）。
+      </div>
+    </div>
+  </div>
+
+  <div class="callout green">
+    <b>黄金法则</b>：如果你要修改任何一个 <code>current_*</code> 字段或任何以 <code>_project_</code> 开头的函数，先跑
+    <code>pytest -q</code> 基线 → 改代码 → 再跑一次。如果测试数从 174 降下来，停下来看看你是不是撞了不变量。
+  </div>
+</section>
+
+<!-- ============================================================= Z6 -->
+<section id="z6">
+  <h2><span class="zone">Z6</span>Closed actions &amp; next-round backlog</h2>
+  <p class="lead">Round 10 留下的 7 条 follow-up 已在 2026-05-12 同日全部关闭。</p>
+
+  <div class="status-row">
+    <div class="stat"><div class="num green">7</div><div class="lbl">closed</div></div>
+    <div class="stat"><div class="num green">0</div><div class="lbl">open</div></div>
+    <div class="stat"><div class="num">+11</div><div class="lbl">new tests (174 total)</div></div>
+    <div class="stat"><div class="num accent">1</div><div class="lbl">ADR written</div></div>
+  </div>
+
+  <table>
+    <thead><tr><th>ID</th><th>Priority</th><th>Title</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>AI-1</code></td><td><span class="pill warn">P1</span></td>
+        <td>Bound <code>TemporalCreditAssigner._history</code></td>
+        <td><span class="pill green">closed</span></td>
+        <td>codex; <code>deque(maxlen=10_000)</code></td>
+      </tr>
+      <tr>
+        <td><code>AI-2</code></td><td><span class="pill warn">P1</span></td>
+        <td>Disambiguate <code>min_safe_samples</code> vs <code>min_safe_evidence</code></td>
+        <td><span class="pill green">closed</span></td>
+        <td>codex; 3 new tests incl. evidence-only gate</td>
+      </tr>
+      <tr>
+        <td><code>AI-3</code></td><td><span class="pill green">P2</span></td>
+        <td>Thread-safe <code>ContractionAwareEnvelope</code></td>
+        <td><span class="pill green">closed</span></td>
+        <td>codex; <code>RLock</code> (see <a href="../adr/0001-contraction-wrapper-uses-rlock.md">ADR-0001</a>)</td>
+      </tr>
+      <tr>
+        <td><code>AI-4</code></td><td><span class="pill green">P2</span></td>
+        <td>Streaming replay: <code>skip_bad_lines</code> + <code>max_dead_letters</code></td>
+        <td><span class="pill green">closed</span></td>
+        <td>codex + Claude (cap patch); 4 new tests</td>
+      </tr>
+      <tr>
+        <td><code>AI-5</code></td><td><span class="pill">P3</span></td>
+        <td>Document dual-evidence in <code>observe()</code></td>
+        <td><span class="pill green">closed</span></td>
+        <td>codex; docstring block added</td>
+      </tr>
+      <tr>
+        <td><code>AI-6</code></td><td><span class="pill">P3</span></td>
+        <td>Empty-input check in <code>_weighted_quantile</code></td>
+        <td><span class="pill green">closed</span></td>
+        <td>codex; 1 new test with regex match</td>
+      </tr>
+      <tr>
+        <td><code>AI-7</code></td><td><span class="pill">P3</span></td>
+        <td>DDP caveat for <code>share_key=False</code></td>
+        <td><span class="pill green">closed</span></td>
+        <td>codex (ARCH doc) + Claude (docstring pointer)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout green">
+    <b>下一步</b>：codex 需要把未提交的实现 push 上去，Claude 或其他 reviewer 可以直接合入。
+    所有 7 条都有对应的测试 + 文档更新 + ADR（对 AI-3 的 RLock 选择）。
+  </div>
+
+  <h3>Round 11 backlog（尚未排期）</h3>
+  <ul>
+    <li>✅ <s>OpenTelemetry histogram → p95/p99/burn-rate 展开</s> — landed 2026-05-12（+9 tests）</li>
+    <li>✨ Shadow envelope with policy gradient（Round 6 backlog #7.6）</li>
+    <li>✨ 跨服务 envelope 联邦（Round 6 backlog #7.7）</li>
+    <li>✨ Prometheus matrix queries / remote-read（`prometheus_no_matrix_or_remote_read`）</li>
+    <li>✨ 半自动的 knowledge-base 目录/索引生成</li>
+    <li>✨ per-dimension unsafe quorum（不同动作维度不同阈值）</li>
+    <li>✨ CreditAwareLabeler recent-window cache</li>
+  </ul>
+
+  <div class="callout">
+    <b>Reviewer 接手 Round 11</b>：模板已落在
+    <a href="../claude-review/05-round-11-opening.md"><code>docs/claude-review/05-round-11-opening.md</code></a>。
+    包含 pre-flight（归档 closed_actions → <code>round-10-archive.json</code>、重跑 <code>_regenerate_state.py --write</code>、pytest 基线）、
+    review loop 模板、以及 Round 11 交付物的文件清单。照模板走即可，不必重新设计结构。
+  </div>
+</section>
+
+<!-- ============================================================= Z7 -->
+<section id="z7">
+  <h2><span class="zone">Z7</span>Current status &amp; handback timeline</h2>
+  <p class="lead">本 snapshot 对应 2026-05-12 的 HEAD，<code>3dbfd50</code>。</p>
+
+  <div class="status-row">
+    <div class="stat"><div class="num green">174</div><div class="lbl">tests passing</div></div>
+    <div class="stat"><div class="num green">11</div><div class="lbl">demos runnable</div></div>
+    <div class="stat"><div class="num green">0</div><div class="lbl">diagnostics</div></div>
+    <div class="stat"><div class="num accent">71</div><div class="lbl">public symbols</div></div>
+  </div>
+
+  <h3>10 轮迭代时间线</h3>
+  <figure>
+    <svg viewBox="0 0 960 280" role="img" aria-label="10-round timeline">
+      <defs>
+        <marker id="arr7" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#1b2430"/>
+        </marker>
+      </defs>
+      <!-- axis -->
+      <line x1="40" y1="220" x2="920" y2="220" stroke="#c7bfa9" stroke-width="2"/>
+      <g font-size="11" class="muted">
+        <text x="40" y="245">2026-05</text>
+        <text x="820" y="245">Round 10 →</text>
+      </g>
+
+      <!-- Round markers -->
+      <g font-size="11.5">
+        <!-- R1 Paper layer -->
+        <circle cx="80" cy="220" r="7" fill="#1f5fa3"/>
+        <text x="80" y="200" text-anchor="middle" font-weight="700">R1</text>
+        <text x="80" y="185" text-anchor="middle" class="muted">Paper layer</text>
+        <text x="80" y="170" text-anchor="middle" class="muted" font-size="10">PyTorch × 9</text>
+
+        <!-- R3 Control primitives -->
+        <circle cx="170" cy="220" r="7" fill="#1f5fa3"/>
+        <text x="170" y="200" text-anchor="middle" font-weight="700">R3</text>
+        <text x="170" y="185" text-anchor="middle" class="muted">sre_control</text>
+        <text x="170" y="170" text-anchor="middle" class="muted" font-size="10">7 原语</text>
+
+        <!-- R4 Adaptive + Safety -->
+        <circle cx="260" cy="220" r="7" fill="#1f5fa3"/>
+        <text x="260" y="200" text-anchor="middle" font-weight="700">R4</text>
+        <text x="260" y="185" text-anchor="middle" class="muted">adaptive+safety</text>
+        <text x="260" y="170" text-anchor="middle" class="muted" font-size="10">闭环+四锁</text>
+
+        <!-- R5 Math primitives -->
+        <circle cx="350" cy="220" r="7" fill="#1f5fa3"/>
+        <text x="350" y="200" text-anchor="middle" font-weight="700">R5</text>
+        <text x="350" y="185" text-anchor="middle" class="muted">sre_math</text>
+        <text x="350" y="170" text-anchor="middle" class="muted" font-size="10">7 方程原语</text>
+
+        <!-- R6 Self envelope -->
+        <circle cx="440" cy="220" r="8" fill="#2f7d3a"/>
+        <text x="440" y="200" text-anchor="middle" font-weight="700" fill="#2f7d3a">R6 ⭐</text>
+        <text x="440" y="185" text-anchor="middle" class="muted">sre_self_envelope</text>
+        <text x="440" y="170" text-anchor="middle" class="muted" font-size="10">棘轮外壳</text>
+
+        <!-- R7 Soft labels -->
+        <circle cx="540" cy="220" r="7" fill="#b4411b"/>
+        <text x="540" y="200" text-anchor="middle" font-weight="700" fill="#b4411b">R7</text>
+        <text x="540" y="185" text-anchor="middle" class="muted">soft labels</text>
+        <text x="540" y="170" text-anchor="middle" class="muted" font-size="10">CreditAware</text>
+
+        <!-- R8 Audit replay + Metric sources -->
+        <circle cx="630" cy="220" r="7" fill="#b4411b"/>
+        <text x="630" y="200" text-anchor="middle" font-weight="700" fill="#b4411b">R8</text>
+        <text x="630" y="185" text-anchor="middle" class="muted">replay + metrics</text>
+        <text x="630" y="170" text-anchor="middle" class="muted" font-size="10">Prom/OTel</text>
+
+        <!-- R9 Streaming -->
+        <circle cx="720" cy="220" r="7" fill="#b4411b"/>
+        <text x="720" y="200" text-anchor="middle" font-weight="700" fill="#b4411b">R9</text>
+        <text x="720" y="185" text-anchor="middle" class="muted">streaming tail</text>
+        <text x="720" y="170" text-anchor="middle" class="muted" font-size="10">byte cursor</text>
+
+        <!-- R10 Review -->
+        <circle cx="830" cy="220" r="9" fill="#caa96a"/>
+        <text x="830" y="200" text-anchor="middle" font-weight="700" fill="#8a6a21">R10 ⚑</text>
+        <text x="830" y="185" text-anchor="middle" class="muted">Claude 评审</text>
+        <text x="830" y="170" text-anchor="middle" class="muted" font-size="10">handback</text>
+      </g>
+
+      <!-- legend -->
+      <g transform="translate(40,60)" font-size="11">
+        <circle cx="8" cy="0" r="5" fill="#1f5fa3"/><text x="20" y="4">Claude 负责（R1-R6）</text>
+        <circle cx="160" cy="0" r="5" fill="#b4411b"/><text x="172" y="4">Codex 负责（R7-R9）</text>
+        <circle cx="320" cy="0" r="5" fill="#caa96a"/><text x="332" y="4">Review / Handback</text>
+      </g>
+
+      <!-- annotations -->
+      <g font-size="11.5">
+        <text x="90" y="40" class="muted">R1：11 个论文机制 + PyTorch + 23 tests</text>
+        <text x="90" y="56" class="muted">R5 → R6：净增 32+33=65 测试，闭环彻底跑通</text>
+        <text x="90" y="90" class="muted" fill="#b4411b">R7 关键贡献：软标签 + 归因修正（I-11 所依赖）</text>
+        <text x="90" y="106" class="muted" fill="#b4411b">R8/R9 关键贡献：生产级 ingress + streaming 回放</text>
+        <text x="90" y="125" class="muted" fill="#8a6a21">R10：找到 2 个历史 bug，给出 7 条 P1/P2/P3 跟进</text>
+      </g>
+    </svg>
+    <figcaption>图 2 · 10 轮时间线。蓝 = Claude 奠基，红 = Codex 扩展，金 = 评审与 handback 节点。</figcaption>
+  </figure>
+
+  <h3>每轮净增内容</h3>
+  <table>
+    <thead><tr><th>Round</th><th>By</th><th>Headline</th><th>Δ tests</th><th>Δ modules</th></tr></thead>
+    <tbody>
+      <tr><td>R1</td><td>Claude</td><td>Paper layer × 11 modules</td><td>+23</td><td>+11</td></tr>
+      <tr><td>R3</td><td>Claude</td><td>sre_control · 7 control primitives</td><td>+14</td><td>+1</td></tr>
+      <tr><td>R4</td><td>Claude</td><td>sre_adaptive + sre_safety</td><td>+25</td><td>+2</td></tr>
+      <tr><td>R5</td><td>Claude</td><td>sre_math · 7 equation-level primitives</td><td>+33</td><td>+1</td></tr>
+      <tr><td>R6</td><td>Claude</td><td>sre_self_envelope · 6 invariants proven</td><td>+32</td><td>+1</td></tr>
+      <tr><td>R7</td><td>Codex</td><td>Soft labels + CreditAwareLabeler</td><td>+7</td><td>0</td></tr>
+      <tr><td>R8</td><td>Codex</td><td>Audit replay + MetricLossMapper + sre_metrics</td><td>+14</td><td>+1</td></tr>
+      <tr><td>R9</td><td>Codex</td><td>Streaming audit replay（byte cursor）</td><td>+4</td><td>0</td></tr>
+      <tr><td>R10</td><td>Claude</td><td>Review + claude-review/ + V2_Knowledge/</td><td>0</td><td>0</td></tr>
+      <tr><td>R10.5</td><td>Codex + Claude</td><td>7 follow-ups closed (AI-1..AI-7) + ADR-0001</td><td>+11</td><td>0</td></tr>
+      <tr><td>R11a</td><td>Claude</td><td>OTLP histogram expansion (closes <code>otel_no_histogram_expansion</code>)</td><td>+9</td><td>0</td></tr>
+      <tr><th>Total</th><th>—</th><th>—</th><th>174</th><th>16</th></tr>
+    </tbody>
+  </table>
+
+  <h3>本 handback 的"交货"</h3>
+  <ul>
+    <li><b>评审包</b>：<code>docs/claude-review/</code>（5 份 markdown，~80 KB，1700+ 行）
+      <ul>
+        <li><code>README.md</code> · 入口 + 7 条 guardrail</li>
+        <li><code>00-review-report.md</code> · 逐 commit 评审 + 7 条设计关切</li>
+        <li><code>01-detailed-architecture.md</code> · 7 层 API 契约 + invariant 序列</li>
+        <li><code>02-action-items.md</code> · 7 条 AI 带验收标准和测试规格</li>
+        <li><code>03-handoff-summary.md</code> · 一页总结</li>
+      </ul>
+    </li>
+    <li><b>V2 导航</b>：<code>docs/V2_Knowledge/</code>（你正在看的）
+      <ul>
+        <li><code>index.html</code> · 本页</li>
+        <li><code>state.json</code> · 机器可读快照</li>
+        <li><code>README.md</code> · V2 定位 + 再生成协议</li>
+      </ul>
+    </li>
+    <li><b>CODEX-HANDOFF.md</b>：已更新到 2026-05-12 状态；顶部有指向本评审的醒目提示。</li>
+    <li><b>README.md</b>：首页顶部新增一行指向评审包。</li>
+  </ul>
+
+  <div class="callout green">
+    <b>codex 接手步骤</b>：
+    <ol style="margin: 6px 0;">
+      <li>读 <a href="../claude-review/03-handoff-summary.md">claude-review/03-handoff-summary.md</a>（2 分钟）。</li>
+      <li>读 <a href="../claude-review/00-review-report.md">claude-review/00-review-report.md</a>（10 分钟）。</li>
+      <li>读 <a href="../claude-review/02-action-items.md">claude-review/02-action-items.md</a> AI-1，动手。</li>
+      <li>完成 AI-1 → 跑 <code>pytest -q</code>（期望 174+N passing）→ 提交。</li>
+      <li>按 AI-1 → AI-7 顺序继续。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============================================================= Glossary -->
+<section id="glossary">
+  <h2><span class="zone">GL</span>Glossary &amp; external references</h2>
+  <p class="lead">接手 agent 常见术语一句话定义 + 外部参考。</p>
+
+  <h3>术语表</h3>
+  <div class="grid2">
+    <table>
+      <tbody>
+        <tr><th>AttnRes</th><td>Attention Residual；纵向层间 softmax 加权残差</td></tr>
+        <tr><th>Σa=1</th><td>softmax 归一化后权重之和恒为 1（信息守恒）</td></tr>
+        <tr><th>floor / ceiling</th><td>每个 signal 的权重上下界（硬约束）</td></tr>
+        <tr><th>ratchet</th><td>棘轮；envelope 只能自动收紧，不能自动放松</td></tr>
+        <tr><th>relax()</th><td>运维手动放宽 envelope 的唯一 API</td></tr>
+        <tr><th>quorum</th><td>触发 envelope 收紧所需的最少 UNSAFE 证据质量</td></tr>
+        <tr><th>hysteresis</th><td>收紧时保留的余量，避免边界抖动</td></tr>
+        <tr><th>OutcomeEvidence</th><td>(safety_score, confidence) 形式的软标签</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <tbody>
+        <tr><th>FTRL</th><td>Follow-The-Regularized-Leader；Hedge 是其负熵正则特例</td></tr>
+        <tr><th>Hedge</th><td>multiplicative weights update，<code>O(√(T ln n))</code> 后悔界</td></tr>
+        <tr><th>credit</th><td>时间信用分配；事故后给每个 signal 归因</td></tr>
+        <tr><th>shadow</th><td>影子运行；新控制器与 baseline 并行、不下发动作</td></tr>
+        <tr><th>counterfactual</th><td>反事实解释；屏蔽某 signal 后重算决策</td></tr>
+        <tr><th>drift (KL/W1)</th><td>权重漂移检测；KL 捕塌缩，W1 捕平移</td></tr>
+        <tr><th>contraction</th><td>残差雅可比收缩性判据；gain &gt; 1 → 正反馈告警</td></tr>
+        <tr><th>ADR</th><td>Architecture Decision Record；破坏 invariant 前必写</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>外部参考（论文 / 论述源头）</h3>
+  <ul>
+    <li>Kimi Team. <em>Attention Residuals</em>. arXiv:2603.15031 [cs.CL]（本工程复现对象）</li>
+    <li>Vaswani et al. (2017). <em>Attention Is All You Need</em>（<code>√d</code> 缩放的来源）</li>
+    <li>Freund &amp; Schapire (1997). <em>A decision-theoretic generalization of on-line learning</em>（Hedge / MWU）</li>
+    <li>Shalev-Shwartz (2011). <em>Online Learning and Online Convex Optimization</em>（FTRL 统一框架）</li>
+    <li>Jaynes (1957). <em>Information Theory and Statistical Mechanics</em>（最大熵 ↔ softmax）</li>
+    <li>Wang &amp; Carreira-Perpinán (2013). <em>Projection onto the probability simplex</em>（O(n log n) 算法）</li>
+    <li>Villani (2009). <em>Optimal Transport: Old and New</em>（Wasserstein 距离）</li>
+    <li>Khalil (2002). <em>Nonlinear Systems</em>（收缩映射判据）</li>
+    <li>Ames et al. (2019). <em>Control Barrier Functions</em>（SafetyEnvelope 思路对齐）</li>
+    <li>Werbos (1990). <em>Backpropagation Through Time</em>（TemporalCreditAssigner 理论）</li>
+  </ul>
+
+  <h3>工程相关</h3>
+  <ul>
+    <li>Prometheus HTTP API <code>/api/v1/query</code> 文档</li>
+    <li>OpenTelemetry OTLP JSON schema（gauge / sum datapoints）</li>
+    <li>Python stdlib <code>urllib.request</code>（<code>sre_metrics</code> 唯一的网络依赖）</li>
+    <li>Python stdlib <code>collections.deque</code>（AI-1 实现参考）</li>
+    <li>Python stdlib <code>threading.Lock</code>（AI-3 实现参考）</li>
+  </ul>
+</section>
+
+</article>
+</main>
+
+<footer>
+  V2 Knowledge · Attention-Residuals · snapshot 2026-05-12 · HEAD 3dbfd50
+  <br/>
+  Regenerated on each handoff — do not edit in place; regenerate from <code>state.json</code> + this template.
+</footer>
+
+</body>
+</html>

@@ -58,14 +58,31 @@ def main() -> None:
         partial = tail.poll()
         append(path, "\n" + audit_line(2, [0.85, 0.15], 3.0, 0.1) + "\n")
         final = tail.poll()
+        skip_tail = StreamingAuditCreditReplay(
+            replay,
+            str(path),
+            missing_ok=True,
+            skip_bad_lines=True,
+            cursor=tail.cursor,
+        )
+        append(path, "{bad-json}\n" + audit_line(3, [0.95, 0.05], 5.0, 0.1) + "\n")
+        recovered = skip_tail.poll()
 
-        blamed = tca.attribute(incident_tick=2, window=5, top_k=6)
+        blamed = tca.attribute(incident_tick=3, window=5, top_k=6)
 
         print("=" * 78)
         print("Streaming Audit JSONL -> TemporalCreditAssigner")
         print("=" * 78)
-        print(f"Poll counts: missing={first}, first={second}, partial={partial}, final={final}")
-        print(f"Cursor offset={tail.cursor.offset}, pending={len(tail.cursor.pending)} bytes")
+        print(
+            "Poll counts: "
+            f"missing={first}, first={second}, partial={partial}, "
+            f"final={final}, recovered_after_bad_line={recovered}"
+        )
+        print(
+            f"Cursor offset={skip_tail.cursor.offset}, "
+            f"pending={len(skip_tail.cursor.pending)} bytes, "
+            f"dead_letters={skip_tail.dead_letters_count}"
+        )
         print()
         print(f"{'rank':>4} {'tick':>4} {'signal':>12} {'weight':>8} {'loss':>8} {'score':>8}")
         for i, entry in enumerate(blamed, start=1):
@@ -76,6 +93,7 @@ def main() -> None:
 
         print()
         print("Reading: partial JSONL stays buffered until the newline arrives.")
+        print("With skip_bad_lines=True, malformed JSON is captured as a dead letter.")
 
 
 if __name__ == "__main__":

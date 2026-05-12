@@ -44,14 +44,29 @@ def fake_prometheus_transport(url: str, timeout: float) -> str:
     })
 
 
-def otel_payload(queue_depth: float) -> str:
-    return json.dumps({
-        "resourceMetrics": [
-            {"scopeMetrics": [{"metrics": [
-                {"name": "queue_depth", "gauge": {"dataPoints": [{"asDouble": queue_depth}]}}
-            ]}]}
-        ]
-    })
+def otel_payload(queue_depth: float, *, include_histogram: bool = False) -> str:
+    metrics = [
+        {"name": "queue_depth", "gauge": {"dataPoints": [{"asDouble": queue_depth}]}},
+    ]
+    if include_histogram:
+        # Two datapoints from two worker pods; bounds are identical so they
+        # merge element-wise before quantile extraction.
+        metrics.append({
+            "name": "req.duration",
+            "histogram": {"dataPoints": [
+                {
+                    "bucketCounts": [3, 4, 2, 1, 0],
+                    "explicitBounds": [0.05, 0.1, 0.25, 0.5],
+                    "count": 10, "sum": 1.3,
+                },
+                {
+                    "bucketCounts": [2, 3, 3, 1, 1],
+                    "explicitBounds": [0.05, 0.1, 0.25, 0.5],
+                    "count": 10, "sum": 2.1,
+                },
+            ]},
+        })
+    return json.dumps({"resourceMetrics": [{"scopeMetrics": [{"metrics": metrics}]}]})
 
 
 def main() -> None:
@@ -62,7 +77,10 @@ def main() -> None:
             PrometheusQuery("error_rate", "error_rate", reducer="first"),
         ],
     )
-    otel = OpenTelemetryJSONMetricReader()
+    otel = OpenTelemetryJSONMetricReader(
+        histogram_quantiles=(0.5, 0.95),
+        histogram_extras=("count", "sum"),
+    )
 
     combiner = WeightedConvexCombiner(
         [SignalSpec("latency"), SignalSpec("errors"), SignalSpec("queue")],
@@ -74,7 +92,9 @@ def main() -> None:
 
     for tick in range(30):
         prom_context = prometheus.read_context(ts=20.0 if tick >= 20 else 10.0)
-        otel_context = otel.read_context(otel_payload(70.0 if tick >= 20 else 12.0))
+        otel_context = otel.read_context(
+            otel_payload(70.0 if tick >= 20 else 12.0, include_histogram=tick >= 20)
+        )
         context = {**prom_context, **otel_context, "tick": float(tick)}
         query = np.array([
             max(0.0, context["latency_ms"] - 250.0) / 250.0,
@@ -103,6 +123,15 @@ def main() -> None:
     print("Metric sources -> audit context -> temporal credit")
     print("=" * 86)
     print(f"Audit records: {len(trail)}")
+    # Print the last-tick context so histogram expansion is visible in the
+    # demo output (the reader populated req.duration__p50/p95/... keys).
+    last_record = next(iter(reversed(list(trail))))
+    last_context = last_record.context
+    hist_keys = sorted(k for k in last_context if k.startswith("req.duration__"))
+    if hist_keys:
+        print("Histogram-expanded keys at tick 29:")
+        for k in hist_keys:
+            print(f"  {k:>24} = {last_context[k]:.4f}")
     print(f"{'rank':>4} {'tick':>4} {'signal':>8} {'weight':>8} {'loss':>8} {'score':>8}")
     for i, entry in enumerate(blamed, start=1):
         print(

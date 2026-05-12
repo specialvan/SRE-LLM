@@ -2691,17 +2691,22 @@ new_lo = clip(new_lo, hard_lo, hard_hi)</div>
     <span class="mono">
     LearnedSafetyEnvelope(action_dim, hard_low, hard_high, hard_max_delta,<br/>
     &nbsp;&nbsp;min_max_delta=None, safe_quantile=0.95, hysteresis=0.1,<br/>
-    &nbsp;&nbsp;unsafe_quorum=5, min_safe_samples=20, buffer_size=500)<br/>
+    &nbsp;&nbsp;unsafe_quorum=5, min_safe_samples=20, min_safe_evidence=None,<br/>
+    &nbsp;&nbsp;buffer_size=500)<br/>
     &nbsp;&nbsp;.apply(action) .observe(action, label, delta=None) .fit() .relax(factor=1.5) .current_bounds()<br/>
     <br/>
-    ContractionAwareEnvelope(inner, gain_provider, target_gain=1.0, min_scale=0.1)<br/>
+    ContractionAwareEnvelope(inner, gain_provider, target_gain=1.0,<br/>
+    &nbsp;&nbsp;min_scale=0.1, thread_safe=True)<br/>
     <br/>
     EnvelopeLearner(envelope, labeler, fit_every=50)<br/>
     &nbsp;&nbsp;.ingest(action, context, delta=None, step=None) → OutcomeLabel<br/>
     </span>
   </div>
   <p class="note">
-    <b>测试覆盖</b>：<code>tests/test_sre_self_envelope.py</code> 32 个用例，全部验证上述六大不变量 + 边界条件。
+    <b>Round 10 语义</b>：<code>min_safe_evidence</code> 默认回退到 <code>min_safe_samples</code>，显式分离"样本计数门槛 vs 证据权重门槛"，
+    避免 soft labels 下二义性（AI-2）。<code>thread_safe=True</code> 默认启用 RLock，决策背景见
+    <a href="adr/0001-contraction-wrapper-uses-rlock.md">ADR-0001</a>（AI-3）。
+    <br/><b>测试覆盖</b>：<code>tests/test_sre_self_envelope.py</code> 44 个用例（Round 10 close-out 后），六大不变量 + 边界条件 + 双证据门槛 + 线程安全。
     <br/><b>Demo</b>：<code>examples/demo_self_learning_envelope.py</code> 一条命令、六大不变量全部打印实证。
   </p>
 </section>
@@ -2821,6 +2826,11 @@ adjusted_unsafe = raw_unsafe · controllable_ratio</div>
     LearnedSafetyEnvelope.observe(action, OutcomeEvidence(...))
     </span>
   </div>
+  <p class="note">
+    <b>双账语义（AI-5 已 docstring 化）</b>：<code>observe()</code> 把 <code>OutcomeEvidence</code> 同时计入两本账——
+    "records"（整数样本计数，用于 <code>min_safe_samples</code>）与 "evidence"（浮点置信权重和，用于 <code>min_safe_evidence</code>）。
+    前者防"样本太少就学习"，后者防"一堆低置信 outlier 抢先触发收紧"。
+  </p>
   <ul>
     <li><code>tests/test_sre_self_envelope.py</code> 新增软标签与归因修正测试：低置信 outlier 不主导分位数、UNSAFE 证据按权重累计、外因事故被降权、控制动作事故被保留。</li>
     <li><code>examples/demo_credit_aware_envelope.py</code> 演示同样是硬 <code>UNSAFE</code>，traffic 阶段只留下弱证据，controller 阶段触发收紧。</li>
@@ -3017,8 +3027,11 @@ raw:      value / scale</div>
   <div class="sig">
     <span class="file">attention_residuals/sre_math.py</span><br/>
     <span class="mono">
-    StreamingAuditCreditReplay(replay, path, encoding='utf-8', missing_ok=False, cursor=None)<br/>
+    StreamingAuditCreditReplay(replay, path, encoding='utf-8',<br/>
+    &nbsp;&nbsp;missing_ok=False, skip_bad_lines=False,<br/>
+    &nbsp;&nbsp;max_dead_letters=1000, cursor=None)<br/>
     StreamingAuditCreditReplay.poll() -&gt; int<br/>
+    &nbsp;&nbsp;.dead_letters / .dead_letters_dropped<br/>
     AuditReplayCursor(path, offset=0, pending=b'', resets=0)
     </span>
   </div>
@@ -3033,6 +3046,9 @@ raw:      value / scale</div>
     <li>byte offset 避免文本解码导致的 seek 偏移问题。</li>
     <li>没有换行的尾部记录会留在 `pending`，直到下一次 poll 看到 newline。</li>
     <li>`AuditReplayCursor` 可以由外部持久化，再以 `cursor=` 传回 tailer 恢复 offset。</li>
+    <li><b>Round 10 补充</b>：`skip_bad_lines=True` 让一条坏 JSON 行不再永久卡 cursor；被跳过的行会记入
+      `dead_letters`（缓存），以 `max_dead_letters=1000` 做 FIFO 上限。被挤出的老条目计入 `dead_letters_dropped`，
+      业务侧可据此告警或外部持久化（AI-4）。</li>
     <li>文件被截断时清空 `pending` 并把 `offset` 归零，`resets` 用于审计。</li>
     <li>Demo：<code>python -m examples.demo_streaming_audit_replay</code>。</li>
   </ul>

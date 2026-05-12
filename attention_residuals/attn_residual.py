@@ -32,7 +32,14 @@ from .types import AttnResConfig
 
 
 class AttentionResidual(nn.Module):
-    """Compute AttnRes_l = sum_k a_{l,k} * x_k with softmax-normalized weights."""
+    """Compute AttnRes_l = sum_k a_{l,k} * x_k with softmax-normalized weights.
+
+    When ``cfg.share_key=False``, W_K projections are created lazily per
+    history slot. This is memory-efficient for single-device training but
+    incompatible with DDP/FSDP's snapshot-at-wrap semantics; see
+    ``docs/ARCHITECTURE.md §5.1`` for the distributed-training caveat and
+    workarounds.
+    """
 
     def __init__(self, cfg: AttnResConfig = AttnResConfig()) -> None:
         super().__init__()

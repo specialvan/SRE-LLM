@@ -60,6 +60,8 @@ Supported OTLP JSON metric shapes:
 
 - `resourceMetrics[].scopeMetrics[].metrics[].gauge.dataPoints[]`
 - `resourceMetrics[].scopeMetrics[].metrics[].sum.dataPoints[]`
+- `resourceMetrics[].scopeMetrics[].metrics[].histogram.dataPoints[]`
+  *(opt-in via `histogram_quantiles=` / `histogram_extras=`; see below)*
 
 Supported value fields:
 
@@ -68,6 +70,43 @@ Supported value fields:
 - `asInt`
 - `intValue`
 - `value`
+
+### Histogram expansion (Round 11)
+
+Histograms are ignored by default so existing callers are unchanged. Opt in
+by passing `histogram_quantiles=(...)` to extract quantiles from bucket
+counts, and/or `histogram_extras=(...)` with any subset of
+`("avg", "count", "sum")`:
+
+```python
+reader = OpenTelemetryJSONMetricReader(
+    histogram_quantiles=(0.5, 0.95, 0.99),
+    histogram_extras=("count", "sum"),
+)
+context = reader.read_context(otlp_json_payload)
+# => context["http.req.duration__p50"], ..__p95, ..__p99, ..__count, ..__sum
+```
+
+The derived keys follow the convention `<metric>__pXX` / `<metric>__{avg,count,sum}`.
+The double underscore keeps the key grep-able and avoids colliding with OTel
+attribute-encoded colons.
+
+Quantile extraction semantics:
+
+- Bucket counts are merged **element-wise** across datapoints that share the
+  same `explicitBounds`. Mismatched bounds raise `ValueError` — we refuse to
+  silently merge incompatible histograms.
+- Linear interpolation within the target bucket, clamped to the previous
+  bound from below (`0.0` if the target is the first finite bucket).
+- If the target falls in the `+Inf` overflow bucket, the returned value is
+  the last finite bound. We refuse to extrapolate beyond what was observed.
+- For zero-count histograms the function raises `ValueError`. Quantiles of
+  empty distributions are undefined; callers should skip the metric.
+
+The underlying helper `quantile_from_histogram(bucket_counts, explicit_bounds, q)`
+is exported from the same module for callers that want to compute quantiles
+directly from pre-extracted bucket arrays (e.g. for Prometheus `histogram`
+sample exposition).
 
 ## Demo
 

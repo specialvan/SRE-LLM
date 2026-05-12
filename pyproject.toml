@@ -24,3 +24,6 @@ exclude = ["tests*", "examples*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "perf: performance-sensitive tests (run with --run-perf to include slower budgets)",
+]
