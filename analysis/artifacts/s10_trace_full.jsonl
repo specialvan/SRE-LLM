@@ -8,3 +8,7 @@
 {"tick": 26, "t_seconds": 130.0, "stage": "PredictiveAutoscaler", "kind": "replica_bound_active", "detail": "next replica count is at a hard bound", "safe_action": "return bounded integer replicas"}
 {"tick": 44, "t_seconds": 220.0, "stage": "SLOGuardrail", "kind": "unsafe_proposal_projected", "detail": "proposal violated cone or magnitude constraints", "safe_action": "execute only the projected action"}
 {"tick": 44, "t_seconds": 220.0, "stage": "WeightedLoadBalancer", "kind": "bounded_ls_residual", "detail": "box constraints or residuals were active", "safe_action": "report residual instead of pretending exact matching"}
+{"tick": 45, "t_seconds": 225.0, "stage": "SLOGuardrail", "kind": "unsafe_proposal_projected", "detail": "proposal violated cone or magnitude constraints", "safe_action": "execute only the projected action"}
+{"tick": 45, "t_seconds": 225.0, "stage": "WeightedLoadBalancer", "kind": "bounded_ls_residual", "detail": "box constraints or residuals were active", "safe_action": "report residual instead of pretending exact matching"}
+{"tick": 46, "t_seconds": 230.0, "stage": "SLOGuardrail", "kind": "unsafe_proposal_projected", "detail": "proposal violated cone or magnitude constraints", "safe_action": "execute only the projected action"}
+{"tick": 46, "t_seconds": 230.0, "stage": "WeightedLoadBalancer", "kind": "bounded_ls_residual", "detail": "box constraints or residuals were active", "safe_action": "report residual instead of pretending exact matching"}
