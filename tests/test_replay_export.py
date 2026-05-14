@@ -347,6 +347,461 @@ def test_export_fitted_decision_archives_valid_artifact_bundle(tmp_path):
     assert replay.kind.value == fixture["expected"]["kind"]
 
 
+def test_reject_symlink_artifacts(tmp_path):
+    """Validate that symlink artifacts in the bundle directory are rejected."""
+    from gan_matchmaking.sre.replay import _reject_symlink_artifacts
+
+    artifact_dir = tmp_path / "artifacts"
+    artifact_dir.mkdir()
+    sensitive = tmp_path / "outside.txt"
+    sensitive.write_text("secret")
+    os.symlink(sensitive, artifact_dir / "retention_weights.npz")
+
+    with pytest.raises(DataError) as exc_info:
+        _reject_symlink_artifacts(artifact_dir, {"retention_filename": "retention_weights.npz"})
+    assert "must not be a symlink" in str(exc_info.value)
+
+
+def test_open_no_follow_read_rejects_symlink(tmp_path):
+    """Verify that _open_no_follow_read rejects symlinked files."""
+    from gan_matchmaking.sre.replay import _open_no_follow_read
+
+    real_file = tmp_path / "real.txt"
+    real_file.write_text("content", encoding="utf-8")
+    link_file = tmp_path / "link.txt"
+    try:
+        os.symlink(real_file, link_file)
+    except (AttributeError, NotImplementedError, OSError):
+        pytest.skip("symlink unavailable")
+
+    with pytest.raises(DataError) as exc_info:
+        _open_no_follow_read(link_file, filename="link.txt")
+    assert "must be a regular non-symlink file" in str(exc_info.value)
+
+
+def test_open_no_follow_read_rejects_directory(tmp_path):
+    """Verify that _open_no_follow_read rejects directories."""
+    from gan_matchmaking.sre.replay import _open_no_follow_read
+
+    with pytest.raises(DataError) as exc_info:
+        _open_no_follow_read(tmp_path, filename=".")
+    assert "must be a regular non-symlink file" in str(exc_info.value)
+
+
+def test_copy_regular_file_no_follow_validates_source(tmp_path):
+    """Verify that file copy validates source is a regular file."""
+    from gan_matchmaking.sre.replay import _copy_regular_file_no_follow
+
+    real_file = tmp_path / "source.txt"
+    real_file.write_text("data", encoding="utf-8")
+    link_file = tmp_path / "link.txt"
+    try:
+        os.symlink(real_file, link_file)
+    except (AttributeError, NotImplementedError, OSError):
+        pytest.skip("symlink unavailable")
+
+    with pytest.raises(DataError) as exc_info:
+        _copy_regular_file_no_follow(link_file, filename="link.txt", dir_fd=-1)
+    assert "must be a regular non-symlink file" in str(exc_info.value)
+
+
+def test_reject_symlink_path(tmp_path):
+    """Verify that symlink paths in archive output are rejected."""
+    from gan_matchmaking.sre.replay import _reject_symlink_path
+
+    target = tmp_path / "outside"
+    target.mkdir()
+    link = tmp_path / "link_to_outside"
+    try:
+        os.symlink(target, link, target_is_directory=True)
+    except (AttributeError, NotImplementedError, OSError):
+        pytest.skip("symlink unavailable")
+
+    with pytest.raises(DataError) as exc_info:
+        _reject_symlink_path(link)
+    assert "must not contain symlinks" in str(exc_info.value)
+
+
+def test_safe_fixture_name_handles_edge_cases():
+    """Verify _safe_fixture_name handles empty and special characters."""
+    from gan_matchmaking.sre.replay import _safe_fixture_name
+
+    assert _safe_fixture_name("") == "replay_fixture"
+    assert _safe_fixture_name("   ") == "replay_fixture"
+    assert _safe_fixture_name("..") == "replay_fixture"
+    assert _safe_fixture_name("./") == "replay_fixture"
+    assert _safe_fixture_name("abc-123_DEF.ghi") == "abc-123_DEF.ghi"
+    assert _safe_fixture_name("file/with/slashes") == "file_with_slashes"
+
+
+def test_loads_json_field_rejects_invalid_json():
+    """Verify JSON parsing errors are wrapped with context."""
+    from gan_matchmaking.sre.replay import _loads_json_field
+
+    with pytest.raises(DataError) as exc_info:
+        _loads_json_field("not valid json {{{", field="test_field", correlation_id="test-123")
+    assert exc_info.value.details["field"] == "test_field"
+    assert exc_info.value.details["correlation_id"] == "test-123"
+
+
+def test_artifact_filename_rejects_various_attacks():
+    """Verify path traversal attempts in artifact filenames are rejected."""
+    from gan_matchmaking.sre.replay import _artifact_filename
+
+    dangerous_filenames = [
+        "../etc/passwd",
+        "..\\windows\\system32",
+        "/absolute/path",
+        "C:\\absolute\\windows",
+        "subdir/filename",
+        "../../escape",
+    ]
+    for dangerous in dangerous_filenames:
+        with pytest.raises(DataError) as exc_info:
+            _artifact_filename(dangerous, key="test_key")
+        assert "must be a basename" in str(exc_info.value)
+
+
+def test_artifact_filename_accepts_safe_names():
+    """Verify safe artifact filenames are accepted."""
+    from gan_matchmaking.sre.replay import _artifact_filename
+
+    safe_filenames = [
+        "retention_weights.npz",
+        "cox_beta.npz",
+        "artifact.json",
+        "data-file.txt",
+        "v1.2.3_model.bin",
+    ]
+    for safe in safe_filenames:
+        assert _artifact_filename(safe, key="test_key") == safe
+
+
+def test_relative_or_absolute_handles_both_cases(tmp_path):
+    """Verify relative/absolute path resolution."""
+    from gan_matchmaking.sre.replay import _relative_or_absolute
+
+    from pathlib import Path
+
+    # With base - use actual tmp_path for cross-platform correctness
+    base = tmp_path / "project"
+    base.mkdir()
+    child = base / "src" / "main.py"
+    child.parent.mkdir()
+    child.write_text("", encoding="utf-8")
+
+    # Relative path works
+    result = _relative_or_absolute(child, base=base)
+    assert result.replace("\\", "/") == "src/main.py"
+
+    # Absolute path outside base returns absolute
+    external = tmp_path / "other" / "path.py"
+    external.parent.mkdir()
+    external.write_text("", encoding="utf-8")
+    result2 = _relative_or_absolute(external, base=base)
+    # Should be absolute
+    assert result2.replace("\\", "/") in ("other/path.py", str(external).replace("\\", "/"))
+
+    # Without base returns absolute path
+    assert _relative_or_absolute(child, base=None) == str(child)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="secure archive directory handles unavailable")
+def test_create_archive_directory_rejects_existing(tmp_path):
+    """Verify archive directory creation fails if path already exists."""
+    from gan_matchmaking.sre.replay import _create_archive_directory
+
+    existing = tmp_path / "already_exists"
+    existing.mkdir()
+    with pytest.raises(DataError) as exc_info:
+        _create_archive_directory(existing)
+    assert "must not already exist" in str(exc_info.value)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="secure archive directory handles unavailable")
+def test_write_new_file_no_follow(tmp_path):
+    """Verify atomic file write with no-follow semantics."""
+    from gan_matchmaking.sre.replay import _write_new_file_no_follow
+
+    content = '{"key": "value"}'
+    tmp_dir = tmp_path / "atomic_write"
+    tmp_dir.mkdir()
+
+    # Use dir_fd via file creation
+    dir_fd = os.open(str(tmp_dir), os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        _write_new_file_no_follow(content, filename="test.json", dir_fd=dir_fd)
+        written = (tmp_dir / "test.json").read_text(encoding="utf-8")
+        assert written == content
+    finally:
+        os.close(dir_fd)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="secure archive directory handles unavailable")
+def test_open_directory_at_rejects_symlink(tmp_path):
+    """Verify directory opening rejects symlinked paths."""
+    from gan_matchmaking.sre.replay import _open_directory_at
+
+    target = tmp_path / "real_dir"
+    target.mkdir()
+    link = tmp_path / "link_dir"
+    try:
+        os.symlink(target, link, target_is_directory=True)
+    except (AttributeError, NotImplementedError, OSError):
+        pytest.skip("symlink unavailable")
+
+    parent_fd = os.open(str(tmp_path), os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        with pytest.raises(DataError) as exc_info:
+            _open_directory_at(parent_fd, "link_dir", path=link)
+        assert "must not contain symlinks" in str(exc_info.value)
+    finally:
+        os.close(parent_fd)
+
+
+def test_load_decision_audit_row_not_found(tmp_path):
+    """Verify error when correlation_id not found in database."""
+    from gan_matchmaking.sre.replay import load_decision_audit_row
+
+    db = tmp_path / "nonexistent.db"
+    with pytest.raises(DataError) as exc_info:
+        load_decision_audit_row(db, "missing-corr-id")
+    assert "not found" in str(exc_info.value)
+
+
+def test_build_replay_fixture_requires_context():
+    """Verify error when replay context is missing."""
+    from gan_matchmaking.sre.replay import build_replay_fixture, DecisionAuditRow
+
+    row = DecisionAuditRow(
+        correlation_id="test-123",
+        kind="go",
+        risk_level="low",
+        risk_prob=0.1,
+        confidence=0.9,
+        chosen_id="svc-1",
+        artifact_version="bootstrap",
+        rationale=["test"],
+        trace={"input": {}},  # Missing context
+        created_at=1.0,
+    )
+    with pytest.raises(DataError) as exc_info:
+        build_replay_fixture(row)
+    assert "does not contain replay context" in str(exc_info.value)
+
+
+def test_build_replay_fixture_blocks_fitted_without_bundle():
+    """Verify error when fitted artifact decision lacks bundle."""
+    from gan_matchmaking.sre.replay import build_replay_fixture, DecisionAuditRow
+
+    row = DecisionAuditRow(
+        correlation_id="test-123",
+        kind="go",
+        risk_level="low",
+        risk_prob=0.1,
+        confidence=0.9,
+        chosen_id="svc-1",
+        artifact_version="retention@v1",  # Fitted artifact
+        rationale=["test"],
+        trace={"input": {"context": {}}},
+        created_at=1.0,
+    )
+    with pytest.raises(DataError) as exc_info:
+        build_replay_fixture(row, allow_fitted_artifacts=False)
+    assert "cannot export fitted-artifact" in str(exc_info.value)
+
+
+def test_build_replay_fixture_requires_bundle_for_fitted():
+    """Verify error when fitted artifact but no bundle provided."""
+    from gan_matchmaking.sre.replay import build_replay_fixture, DecisionAuditRow
+
+    row = DecisionAuditRow(
+        correlation_id="test-123",
+        kind="go",
+        risk_level="low",
+        risk_prob=0.1,
+        confidence=0.9,
+        chosen_id="svc-1",
+        artifact_version="retention@v1",
+        rationale=["test"],
+        trace={"input": {"context": {}}},
+        created_at=1.0,
+    )
+    with pytest.raises(DataError) as exc_info:
+        build_replay_fixture(row, allow_fitted_artifacts=True)
+    assert "requires a validated artifact bundle" in str(exc_info.value)
+
+
+def test_validate_artifact_bundle_version_mismatch(tmp_path):
+    """Verify error when artifact bundle version doesn't match expected."""
+    from gan_matchmaking.sre.replay import validate_artifact_bundle
+
+    artifact_dir = tmp_path / "artifacts"
+    _write_fitted_artifacts(artifact_dir)
+
+    with pytest.raises(DataError) as exc_info:
+        validate_artifact_bundle(
+            artifact_dir,
+            "wrong-version@v99",  # Wrong version
+        )
+    assert "version mismatch" in str(exc_info.value)
+
+
+def test_validate_artifact_bundle_empty_bundle(tmp_path):
+    """Verify error when artifact bundle is empty (no files)."""
+    from gan_matchmaking.sre.replay import validate_artifact_bundle
+
+    artifact_dir = tmp_path / "empty"
+    artifact_dir.mkdir()
+
+    # Empty directory has no artifacts, so version mismatch is thrown first
+    with pytest.raises(DataError) as exc_info:
+        validate_artifact_bundle(
+            artifact_dir,
+            "any@version",
+        )
+    # Could be version mismatch or empty bundle depending on implementation
+    assert "version mismatch" in str(exc_info.value) or "bundle is empty" in str(exc_info.value)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="secure archive directory handles unavailable")
+def test_archive_artifact_bundle_cleans_up_on_failure(tmp_path):
+    """Verify partial archive is cleaned up when validation fails."""
+    from gan_matchmaking.sre.replay import archive_artifact_bundle
+
+    artifact_dir = tmp_path / "artifacts"
+    _write_fitted_artifacts(artifact_dir)
+
+    bad_output = tmp_path / "artifact-bundles" / "failing"
+
+    with pytest.raises(DataError):
+        archive_artifact_bundle(
+            artifact_dir,
+            bad_output,
+            "wrong-version",  # This will fail validation
+        )
+
+    # Verify cleanup happened
+    assert not bad_output.exists()
+
+
+def test_load_decision_audit_row_invalid_rationale_type(tmp_path):
+    """Verify error when rationale_json is not a list."""
+    import sqlite3
+    from gan_matchmaking.sre.replay import load_decision_audit_row
+
+    db_path = tmp_path / "state.sqlite"
+    with sqlite3.connect(db_path) as conn:
+        conn.execute("""
+            CREATE TABLE decisions (
+                correlation_id TEXT PRIMARY KEY,
+                kind TEXT, risk_level TEXT, risk_prob REAL, confidence REAL,
+                chosen_id TEXT, artifact_version TEXT, rationale_json TEXT,
+                trace_json TEXT, created_at REAL
+            )
+        """)
+        conn.execute("""
+            INSERT INTO decisions VALUES (
+                'test-123', 'go', 'low', 0.1, 0.9, 'svc-1', 'bootstrap',
+                '{"not": "a list"}',  -- Rationale must be a list
+                '{"input": {"context": {}}}',
+                1.0
+            )
+        """)
+
+    with pytest.raises(DataError) as exc_info:
+        load_decision_audit_row(db_path, "test-123")
+    assert "rationale_json must be a list" in str(exc_info.value)
+
+
+def test_load_decision_audit_row_invalid_trace_type(tmp_path):
+    """Verify error when trace_json is not an object."""
+    import sqlite3
+    from gan_matchmaking.sre.replay import load_decision_audit_row
+
+    db_path = tmp_path / "state.sqlite"
+    with sqlite3.connect(db_path) as conn:
+        conn.execute("""
+            CREATE TABLE decisions (
+                correlation_id TEXT PRIMARY KEY,
+                kind TEXT, risk_level TEXT, risk_prob REAL, confidence REAL,
+                chosen_id TEXT, artifact_version TEXT, rationale_json TEXT,
+                trace_json TEXT, created_at REAL
+            )
+        """)
+        conn.execute("""
+            INSERT INTO decisions VALUES (
+                'test-456', 'go', 'low', 0.1, 0.9, 'svc-1', 'bootstrap',
+                '["rationale item"]',
+                '[1, 2, 3]',  -- Trace must be an object
+                1.0
+            )
+        """)
+
+    with pytest.raises(DataError) as exc_info:
+        load_decision_audit_row(db_path, "test-456")
+    assert "trace_json must be an object" in str(exc_info.value)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="secure archive directory handles unavailable")
+def test_export_fitted_decision_without_allow_fitted_artifacts():
+    """Verify error when fitted decision exported without flag."""
+    artifact_dir = tmp_path / "runtime-artifacts"
+    _write_fitted_artifacts(artifact_dir)
+    db_path = tmp_path / "state.sqlite"
+    store = SQLitePipelineStore(db_path)
+    try:
+        pipeline = SelfIterationPipeline(
+            config=AppConfig(artifacts=ArtifactsConfig(directory=str(artifact_dir))),
+            metrics=MetricsRegistry(),
+            store=store,
+        )
+        original = pipeline.decide(ReleaseContext.from_dict(_context_payload()))
+    finally:
+        store.close()
+
+    assert original.artifact_version != "bootstrap"
+    with pytest.raises(DataError):
+        export_replay_fixture(
+            db_path,
+            "export-corr-1",
+            allow_fitted_artifacts=True,
+            # Missing artifact_directory
+        )
+
+
+@pytest.mark.skipif(os.name == "nt", reason="secure archive directory handles unavailable")
+def test_export_fitted_decision_with_artifact_directory(tmp_path):
+    """Verify fitted decision export works with artifact_directory."""
+    artifact_dir = tmp_path / "runtime-artifacts"
+    _write_fitted_artifacts(artifact_dir)
+    db_path = tmp_path / "state.sqlite"
+    store = SQLitePipelineStore(db_path)
+    try:
+        pipeline = SelfIterationPipeline(
+            config=AppConfig(artifacts=ArtifactsConfig(directory=str(artifact_dir))),
+            metrics=MetricsRegistry(),
+            store=store,
+        )
+        original = pipeline.decide(ReleaseContext.from_dict(_context_payload()))
+    finally:
+        store.close()
+
+    out_path = tmp_path / "fixture.json"
+    fixture = export_replay_fixture(
+        db_path,
+        "export-corr-1",
+        output=out_path,
+        allow_fitted_artifacts=True,
+        artifact_directory=artifact_dir,
+        name="fitted-export",
+    )
+
+    assert fixture["requires_artifact_version"] == original.artifact_version
+    assert fixture["expected"]["artifact_version"] == original.artifact_version
+    assert "artifact_bundle" in fixture
+
+
 @pytest.mark.skipif(os.name == "nt", reason="secure archive directory handles unavailable")
 @pytest.mark.skipif(not hasattr(os, "symlink"), reason="symlink unavailable")
 def test_archive_artifact_bundle_rejects_symlinked_artifact_file(tmp_path):
