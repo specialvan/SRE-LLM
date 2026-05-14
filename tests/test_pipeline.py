@@ -205,3 +205,128 @@ def test_pipeline_history_features_used():
 
     assert "adj_win_prob" in trace
     assert trace["n_candidates"] == 1
+
+
+def test_pipeline_synergy_with_empty_graph():
+    """Test pipeline when synergy graph has no nodes."""
+    pipeline = GanPipeline()
+    focal = Player(id="focal", rating=Rating(mu=25.0, sigma=5.0))
+    cand = MatchConfig(team_a=[focal], team_b=_team(25.0, "b1"))
+
+    # Don't register any players - synergy graph stays empty
+    trace = pipeline.next_match(focal, [cand])
+
+    assert trace["n_candidates"] == 1
+    assert len(trace["synergy_scores"]) == 1
+    assert trace["synergy_scores"][0] == 0.0
+
+
+def test_pipeline_all_players_returns_stubs():
+    """Test _all_players returns stub players for unregistered IDs."""
+    pipeline = GanPipeline()
+    # Just register the pipeline without any players
+    ids = ["unregistered-1", "unregistered-2", "unregistered-3"]
+    result = pipeline._all_players(ids)  # type: ignore
+
+    assert len(result) == 3
+    assert all(isinstance(p, Player) for p in result)
+    assert [p.id for p in result] == ids
+
+
+def test_pipeline_fallback_when_no_acceptable():
+    """Test entropy filter fallback when no candidates are acceptable."""
+    from gan_matchmaking.entropy_match import EntropyMatcher
+
+    # Very low entropy threshold so no candidates are acceptable
+    pipeline = GanPipeline(entropy=EntropyMatcher(min_entropy=10.0))
+    focal = Player(id="focal", rating=Rating(mu=25.0, sigma=5.0))
+    cand = MatchConfig(team_a=[focal], team_b=_team(25.0, "b1"))
+
+    pipeline.register([focal] + cand.team_b)
+
+    # Should still work, falling back to best match
+    trace = pipeline.next_match(focal, [cand])
+
+    assert trace["n_candidates"] == 1
+    assert len(trace["acceptable_idx"]) >= 1
+
+
+def test_pipeline_register_preserves_player():
+    """Test that register preserves the player object."""
+    pipeline = GanPipeline()
+    player = Player(id="test-player", rating=Rating(mu=25.0, sigma=5.0))
+
+    pipeline.register([player])
+
+    # Check the player is cached
+    assert "test-player" in pipeline._player_cache
+    assert pipeline._player_cache["test-player"] is player
+
+
+def test_pipeline_synergy_with_registered_players():
+    """Test pipeline synergy scoring with properly registered players."""
+    from gan_matchmaking.gnn_synergy import SynergyGraph
+
+    graph = SynergyGraph()
+    # add_match takes a team and win flag
+    graph.add_match(["p1", "p2"], win=True)
+    graph.add_match(["p2", "p3"], win=True)
+    graph.add_match(["p1", "p3"], win=False)
+
+    pipeline = GanPipeline(synergy_graph=graph)
+    players = [
+        Player(id="p1", rating=Rating(mu=25.0, sigma=5.0)),
+        Player(id="p2", rating=Rating(mu=25.0, sigma=5.0)),
+        Player(id="p3", rating=Rating(mu=25.0, sigma=5.0)),
+        Player(id="p4", rating=Rating(mu=25.0, sigma=5.0)),
+        Player(id="p5", rating=Rating(mu=25.0, sigma=5.0)),
+    ]
+    team_a = players[:3]
+    team_b = players[3:]
+
+    pipeline.register(players)
+
+    team_a_score = pipeline._synergy_score(team_a)
+    team_b_score = pipeline._synergy_score(team_b)
+
+    # Scores should be calculated
+    assert isinstance(team_a_score, float)
+    assert isinstance(team_b_score, float)
+
+
+def test_pipeline_synergy_score_division_by_n():
+    """Test synergy score handles edge cases for n calculation."""
+    pipeline = GanPipeline()
+
+    # Single player - n=0 case, should handle gracefully
+    player = Player(id="solo", rating=Rating(mu=25.0, sigma=5.0))
+    score = pipeline._synergy_score([player])
+
+    assert isinstance(score, float)
+
+
+def test_pipeline_synergy_with_multiple_edges():
+    """Test synergy score calculation with multiple edges."""
+    from gan_matchmaking.gnn_synergy import SynergyGraph
+
+    graph = SynergyGraph()
+    # Add matches that will create edges
+    graph.add_match(["a", "b"], win=True)
+    graph.add_match(["b", "c"], win=True)
+    graph.add_match(["c", "a"], win=False)
+    graph.add_match(["a", "b"], win=False)
+    graph.add_match(["b", "c"], win=False)
+
+    pipeline = GanPipeline(synergy_graph=graph)
+    players = [
+        Player(id="a", rating=Rating(mu=30.0, sigma=5.0)),
+        Player(id="b", rating=Rating(mu=25.0, sigma=5.0)),
+        Player(id="c", rating=Rating(mu=20.0, sigma=5.0)),
+    ]
+
+    pipeline.register(players)
+
+    score = pipeline._synergy_score(players)
+
+    assert isinstance(score, float)
+    assert score >= 0.0
