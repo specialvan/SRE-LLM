@@ -3,6 +3,7 @@
 Used in tests and for dry-runs. Thread-safe via a single coarse lock; fine
 because these are fallback stores, not hot paths.
 """
+
 from __future__ import annotations
 
 import threading
@@ -36,9 +37,10 @@ class InMemoryServiceRepository(ServiceRepository):
         with self._lock:
             self._store[service.id] = Service(**service.as_dict())
 
-    def list_ids(self) -> List[str]:
+    def list_ids(self, limit: Optional[int] = None) -> List[str]:
         with self._lock:
-            return list(self._store.keys())
+            ids = list(self._store.keys())
+        return ids if limit is None else ids[:limit]
 
     def delete(self, service_id: str) -> bool:
         with self._lock:
@@ -69,9 +71,11 @@ class InMemorySynergyRepository(SynergyRepository):
             key = self._key(a, b)
             return self._games.get(key, 0), self._wins.get(key, 0)
 
-    def edges(self) -> Iterable[Tuple[str, str, int, int]]:
+    def edges(self, limit: Optional[int] = None) -> Iterable[Tuple[str, str, int, int]]:
         with self._lock:
             items = list(self._games.items())
+        if limit is not None:
+            items = items[:limit]
         for (a, b), games in items:
             yield a, b, games, self._wins.get((a, b), 0)
 
@@ -88,6 +92,7 @@ class InMemoryObservationRepository(ObservationRepository):
     def record(self, observation: Observation) -> None:
         if observation.service_id == "":
             from ..core.errors import DataError
+
             raise DataError("observation.service_id must be non-empty")
         with self._lock:
             self._per_service[observation.service_id].append(observation)
@@ -96,8 +101,9 @@ class InMemoryObservationRepository(ObservationRepository):
         with self._lock:
             self._decisions.append(decision)
 
-    def recent_observations(self, service_id: str, limit: int = 200
-                            ) -> List[Observation]:
+    def recent_observations(
+        self, service_id: str, limit: int = 200
+    ) -> List[Observation]:
         with self._lock:
             dq = self._per_service.get(service_id)
             if not dq:

@@ -1,5 +1,12 @@
 # Test Coverage Gaps
 
+> **Superseded historical tracker (2026-05/2026-06).**
+> “现有 105 个测试”是历史基线；F-001 ~ F-010 已在
+> [`2026-06-spec-completion.md`](2026-06-spec-completion.md) 与
+> [`2026-06-codex-package-review.md`](2026-06-codex-package-review.md) 中闭环。
+> 本文件保留为审计记录，不再是当前 blocker / work queue。当前可执行测试补强见
+> [`spec-v3/README.md`](spec-v3/README.md)。
+
 这份清单列出 `gan-session` 分支**现有 105 个测试**未覆盖的风险场景。分三档：
 
 - **🔴 必须补**: 对应 P1/P2 finding，不补上会在生产暴露

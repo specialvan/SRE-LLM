@@ -10,16 +10,17 @@
 | 数学机制 | SRE 映射 | 代码位置 |
 |---|---|---|
 | TrueSkill | 服务可靠性评分，维护 `mu / sigma` | `gan_matchmaking/trueskill.py`，`sre/self_iteration.py` |
-| EOMM | 发布策略选择，偏向保留/稳定 | `gan_matchmaking/eomm.py`，`training/retention.py`，`sre/artifacts.py` |
+| EOMM | 发布策略选择，偏向保留/稳定 | `gan_matchmaking/eomm.py`，`training/retention.py`，`sre/artifacts/` |
 | Dynamic K | 连续成功后的调参衰减 | `gan_matchmaking/dynamic_k.py` |
 | PCA | 观测压缩，提取异常模式 | `gan_matchmaking/pca_hidden.py`，`sre/self_iteration.py` |
 | GNN | 依赖关系与 blast radius 分析 | `gan_matchmaking/gnn_synergy.py`，`sre/self_iteration.py` |
 | Handicap | 风险折损后的胜率估计 | `gan_matchmaking/handicap.py` |
 | Entropy | 过滤“过于确定”的候选 | `gan_matchmaking/entropy_match.py`，`sre/self_iteration.py` |
-| Cox Survival | 故障/流失风险预警 | `gan_matchmaking/survival.py`，`training/cox.py`，`sre/artifacts.py` |
+| Cox Survival | 故障/流失风险预警 | `gan_matchmaking/survival.py`，`training/cox.py`，`sre/artifacts/` |
 | Minimax / BP | SLO 与稳定性之间的策略张力 | `gan_matchmaking/minimax_bp.py`，当前仍偏研究态 |
 
 ## Replay Corpus
+- Wiki 快速入口：[`wiki/replay-corpus.md`](../wiki/replay-corpus.md)
 - 入口 + 命名约定 + catalog：[`tests/fixtures/replay/README.md`](../tests/fixtures/replay/README.md)
 - 测试：`tests/test_replay_corpus.py`（含 `test_fixture_naming_matches_convention`）
 - 导出：`python -m gan_matchmaking.cli export-replay --state-db state.sqlite --correlation-id <id> --output tests/fixtures/replay/<scenario>_<kind>.json`
@@ -116,10 +117,11 @@
    （本轮 PR 落地后，请把 pending PR 状态翻成 resolved (commit `<sha>`)，
    然后冻结该目录）；系统全景仍读
    [`docs/V2_Knowledge/knowledge-base.html`](V2_Knowledge/knowledge-base.html)。
-4. 下一轮评审可开 `docs/claude-review/2026-07-session-review.md` 与
-   `docs/V4_Knowledge/`。本轮没有新增 blocking finding；建议覆盖
-   [`docs/implementation-roadmap.md#5-next-delivery-target`](implementation-roadmap.md#5-next-delivery-target)
-   列出的 4 项（incident replay 扩展 / 分布式 lease 原型 / artifact bundle 存储策略 / 真实观测校准）。
+4. 下一轮评审从 [`docs/claude-review/spec-v3/README.md`](claude-review/spec-v3/README.md)
+   开始；它把 Codex package review 的后续项收敛成 D+A2 任务：历史 tracker
+   状态、latency gate、replay naming hardening、artifacts public API 快照、HTTP
+   lease readiness 集成测试。更长期的能力增长仍见
+   [`docs/implementation-roadmap.md#5-next-delivery-target`](implementation-roadmap.md#5-next-delivery-target)。
 
 ## Claude 评审结论（2026-05 session）
 - 评审报告：[`docs/claude-review/2026-05-session-review.md`](claude-review/2026-05-session-review.md)
@@ -145,11 +147,10 @@ codex 已按 `spec/tasks.md` 顺序执行，各 PR 合入的 commit sha 在
 （V2 快照冻结，不再变更）。
 
 ## 交接建议
-- **先读 V2 知识库（一页全览）**：[`docs/V2_Knowledge/knowledge-base.html`](V2_Knowledge/knowledge-base.html) ← 新建，包含系统全景 / 决策流 / trace schema / findings / spec / 补丁入口
-- **先读评审**：`docs/claude-review/README.md` → `2026-05-session-review.md` → `findings.md`（10 分钟）
-- **再看 Spec**：`docs/claude-review/spec/README.md` → `requirements.md` → `tasks.md`（15 分钟）
-- **准备改代码**：`docs/claude-review/patches/F-001-lease-refresh.md`（直接给出 before/after）
-- **背景补强（可选）**：`docs/architecture/README.md` → `02-decision-flow.md` → `03-trace-schema.md`
-- **最后做事**：按 F-005~F-010 的优先级开下一轮 PR；本轮 B+A2 三条 blocker 已在 `gan-session` 分支 resolved
+- **先读知识库入口**：`wiki/README.md` → `wiki/system-overview.md` → `wiki/module-map.md`。
+- **再读评审入口**：`docs/claude-review/README.md` → `2026-06-codex-package-review.md` → `spec-v3/README.md`。
+- **再看当前任务**：`docs/claude-review/spec-v3/requirements.md` → `tasks.md` → `verification.md`。
+- **历史脉络**：2026-05/2026-06 的 `spec/`、`spec-v2/`、`action-items.md`、`test-coverage-gaps.md` 均为归档材料，不再是当前 work queue。
+- **背景补强（可选）**：`docs/architecture/README.md` → `02-decision-flow.md` → `03-trace-schema.md`。
 
 这会比从数学模块倒着看更快进入真实控制面。

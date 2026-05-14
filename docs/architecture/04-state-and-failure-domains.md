@@ -33,8 +33,8 @@
 ### 1.3 不持久化的关键决策（设计选择）
 
 - **不持久化**: Lease refresh 失败的累计次数
-  - 理由：breaker 已经做了，lease 只用短期状态判定
-  - **风险**: 见 F-001，失败被静默化
+  - 理由：lease 只用短期 readiness 状态判定；失败次数通过 metric/log 暴露
+  - **行为**: 续租失败会翻转 `/readyz` 为 not-ready，traffic drain 交给 orchestrator
 - **不持久化**: PCA basis（每次 decide 重新 fit 短窗口 telemetry）
   - 理由：telemetry 只用于短期信号，长期特征走 Cox
 - **不持久化**: Candidate scores 历史（仅写在 trace 里）
@@ -124,7 +124,7 @@ flowchart TD
 - SQLite WAL 文件损坏 → pipeline 启动失败，pod crashloop → 人工介入修复
 - Artifact 目录权限错误 → 降级 bootstrap，`trace.artifacts.validation_errors`
 - Circuit breaker 长期 open → `/readyz` 返 503，k8s 切流量
-- Lease 过期未续租（F-001） → **当前不会自动恢复**，这是 P1 修复项
+- Lease refresh 失败 → `/readyz` 返 503，`/healthz` 保持进程健康语义
 
 **SLO**:
 - 进程启动 hydrate < 5 秒
@@ -160,7 +160,7 @@ flowchart TD
 | 节点迁移 | < 2min | 0 | PVC unbind + rebind |
 | SQLite 损坏 | 手动 | 到上次备份 | 需要外部备份策略 |
 | Artifact 损坏 | < 30s | 0 (降级 bootstrap) | 自动降级 + 重训 |
-| Lease 过期 | < TTL (60s) | 潜在的 split-brain 写入 | **需要 F-001 修复** |
+| Lease refresh 失败 | < readiness drain window | 进程停止接收新流量；已有请求按 HTTP 边界完成 | readiness + orchestrator drain |
 
 ## 5. 数据一致性边界
 

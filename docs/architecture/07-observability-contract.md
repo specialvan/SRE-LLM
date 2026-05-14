@@ -28,7 +28,7 @@ Observability 是 SRE 系统的"显像剂"。本系统的契约是：
 | `gan_decisions_total` | counter | `kind`, `risk_level` | 总决策数 |
 | `gan_stage_failures_total` | counter | `stage` | stage 级异常降级次数 |
 | `gan_shadow_diff_total` | counter | `suppressed_kind` | shadow 模式下原 kind 被改写成 HOLD 的次数 |
-| `gan_lease_refresh_failures_total` | counter | `reason` | 🔴 **待补**（F-001） |
+| `gan_lease_refresh_failures_total` | counter | `reason` | lease refresh 失败次数；失败会使 `/readyz` 进入 not-ready |
 
 ### 2.2 Gauge
 
@@ -59,15 +59,14 @@ gan_breaker_state == 2
 # Stage 失败率高
 rate(gan_stage_failures_total[5m]) > 0.01
 
-# Lease 续租失败（需 F-001 修复后启用）
+# Lease 续租失败
 increase(gan_lease_refresh_failures_total[1m]) > 0
 ```
 
-### 2.5 ⚠️ 当前指标语义问题
+### 2.5 当前指标语义
 
-**F-002**: `gan_decisions_total` 在 shadow 模式下递增的是**改写前**的 kind，
-但 `/v1/decide` 返回给 caller 的是**改写后**的 kind (HOLD)。
-这会导致"rollback 次数"告警失真。详见 [findings](../claude-review/findings.md#f-002)。
+`gan_decisions_total` 记录最终 enforced kind。shadow 模式下原 kind 被改写为
+`HOLD` 时，`gan_shadow_diff_total{suppressed_kind=...}` 记录被压制的原始 kind。
 
 ## 3. Logs Catalog
 
@@ -100,8 +99,8 @@ increase(gan_lease_refresh_failures_total[1m]) > 0
 | `artifacts.recent_observations.degraded` | WARN | service_id, error_type | 读 observations 失败 |
 | `stage.<name>.degraded` | WARN | error_type | 具体 stage 异常 |
 | `http.listening` | INFO | host, port | HTTP server 启动 |
-| `lease.refresh.failed` | ERROR | 🔴 **待实现** (F-001) | |
-| `decide.shadow_rewritten` | INFO | 🔴 **待实现** (F-002) | |
+| `lease.refresh.failed` | ERROR | lease_path, owner, error_type | lease refresh failure callback |
+| `decide.shadow_rewritten` | INFO | original_kind, final_kind, correlation_id | shadow 模式改写决策 |
 
 ### 3.3 日志级别契约
 
@@ -164,20 +163,17 @@ GET /v1/decisions/<correlation_id>        # 🟡 **尚未实现**，建议开
 | Correlation ID 贯穿 | 100% HTTP/CLI/内部调用 | ✅ 已达标 |
 | 所有决策可回放 | Bootstrap + fitted 均可回放 | ✅ 已达标 |
 | Stage 失败可归因 | 每个 stage 有独立 counter + 降级日志 | ✅ 已达标 |
-| Metric 与决策语义一致 | 指标反映实际下发 | ⚠️ F-002 |
-| 敏感字段脱敏 | 默认不把 secret 写进 trace | ⚠️ F-003 |
-| Lease / breaker 可观测 | 所有状态暴露为 metric + log | ⚠️ F-001 |
+| Metric 与决策语义一致 | 指标反映实际下发 | ✅ 已达标 |
+| 敏感字段脱敏 | 默认不把 secret 写进 trace | ✅ 已达标 |
+| Lease / breaker 可观测 | 所有状态暴露为 metric + log | ✅ 已达标 |
 
 ## 7. 建议补强
 
 按优先级排：
 
-1. **F-001 修复后**：`gan_lease_refresh_failures_total` 上线 + 告警规则
-2. **F-002 修复后**：`gan_decisions_total` 加 `enforced_kind` label 或补
-   `decide.shadow_rewritten` 事件
-3. **F-003 修复后**：Trace allowlist + contract snapshot 测试
-4. **主动新增**：`GET /v1/decisions/<id>` 端点，便于 on-call 手动查
-5. **主动新增**：`trace_id` 与 OpenTelemetry 对齐（当前只有 correlation_id）
+1. **主动新增**：`GET /v1/decisions/<id>` 端点，便于 on-call 手动查
+2. **主动新增**：`trace_id` 与 OpenTelemetry 对齐（当前只有 correlation_id）
+3. **主动新增**：将 lease readiness / breaker / shadow 改写 dashboard 化
 
 ## 8. 参考
 

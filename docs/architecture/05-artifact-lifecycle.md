@@ -278,9 +278,12 @@ kubectl rollout restart deployment/gan-matchmaking
 
 ## 10. 参考
 
-- 代码：`gan_matchmaking/sre/artifacts.py`, `gan_matchmaking/training/`
+- 代码：`gan_matchmaking/sre/artifacts/`, `gan_matchmaking/sre/replay.py`, `gan_matchmaking/training/`
+- Wiki：[`wiki/artifact-replay-contracts.md`](../../wiki/artifact-replay-contracts.md)
 - ADR：`adr/0005-fallback-strategy-for-untrained-models.md`,
-  `adr/0006-runtime-artifact-versioning.md`
+  `adr/0006-runtime-artifact-versioning.md`,
+  `adr/0008-artifact-rating-scaling-compat.md`
 - 测试：`tests/test_sre_self_iteration.py::test_pipeline_hydrates_runtime_artifacts`,
   `tests/test_sre_self_iteration.py::test_invalid_artifact_manifest_falls_back`,
-  `tests/test_replay_export.py`, `tests/test_training.py`
+  `tests/test_rating_scaling.py`, `tests/test_replay_export.py`,
+  `tests/test_artifacts_public_api.py`, `tests/test_training.py`

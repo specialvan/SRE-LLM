@@ -3,14 +3,16 @@
 Run as::
 
     python -m bench.latency --iterations 2000
-    python -m bench.latency --quick            # fast smoke for CI
+    python -m bench.latency --quick            # fast smoke
+    python -m bench.latency --quick --p99-ms 50
 
 Outputs a JSON report to stdout so CI can store / diff it.
 
 SLO target
 ----------
-p50 < 5 ms, p99 < 25 ms on a single commodity core. The script asserts
-against a relaxed threshold by default; override with ``--p99-ms``.
+p50 < 5 ms, p99 < 25 ms on a single commodity core. The full benchmark
+asserts against a relaxed threshold by default; quick mode only asserts
+when ``--p99-ms`` is explicitly provided.
 """
 from __future__ import annotations
 
@@ -85,8 +87,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--iterations", type=int, default=2000)
     parser.add_argument("--quick", action="store_true",
-                         help="use 200 iterations, skip SLO assert.")
-    parser.add_argument("--p99-ms", type=float, default=50.0)
+                         help="use 200 iterations.")
+    parser.add_argument("--p99-ms", type=float)
     args = parser.parse_args(argv)
 
     iters = 200 if args.quick else args.iterations
@@ -95,8 +97,10 @@ def main(argv: list[str] | None = None) -> int:
     json.dump(report, sys.stdout, indent=2)
     sys.stdout.write("\n")
 
-    if not args.quick and report["p99_ms"] > args.p99_ms:
-        print(f"PERF REGRESSION: p99={report['p99_ms']:.2f} ms > {args.p99_ms} ms",
+    budget_ms = args.p99_ms if args.p99_ms is not None else 50.0
+    should_enforce = args.p99_ms is not None or not args.quick
+    if should_enforce and report["p99_ms"] > budget_ms:
+        print(f"PERF REGRESSION: p99={report['p99_ms']:.2f} ms > {budget_ms} ms",
               file=sys.stderr)
         return 1
     return 0

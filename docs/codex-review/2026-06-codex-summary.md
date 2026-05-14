@@ -121,7 +121,10 @@ Observed results:
 Claude should explicitly try to break these:
 
 1. **Lease readiness contract**: after refresh failure, `/readyz` must
-   return not-ready while `/healthz` remains process-health only.
+   return not-ready while `/healthz` remains process-health only. Traffic
+   drain is delegated to the orchestrator; `FileLease` is local-filesystem
+   coordination only, not a distributed multi-writer lock. See
+   `docs/architecture/06-concurrency-and-leases.md`.
 2. **Shadow observability contract**: `gan_decisions_total` and
    `decide.finished.kind` must reflect the final enforced kind, not the
    pre-shadow kind.
@@ -151,9 +154,10 @@ These are not current blockers, but they are the next useful review axis:
 - Rating scaling mismatch downgrades retention only. Cox artifact
   compatibility is covered by feature shape/name/baseline validation but
   does not yet have an analogous semantic-scaling hash.
-- Replay corpus is useful but still small. It should add artifact
-  validation failure, breaker short-circuit, and shadow/advisory transition
-  narratives.
+- Replay corpus now covers fitted artifacts, rating-scaling mismatch fallback,
+  breaker short-circuit, and shadow-strategy hold narratives. It should still
+  grow toward broader artifact metadata-shape failures and advisory-mode
+  transition fixtures.
 - Real Cox/Retention calibration still depends on production observation
   data; synthetic fixtures validate contracts, not model quality.
 - `cli._ctx_from_dict` intentionally remains for backwards compatibility.

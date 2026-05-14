@@ -1,5 +1,11 @@
 # Action Items · 建议开的 follow-up PR
 
+> **Superseded historical tracker (2026-05/2026-06).**
+> F-001 ~ F-010 已在 [`2026-06-spec-completion.md`](2026-06-spec-completion.md)
+> 与 [`2026-06-codex-package-review.md`](2026-06-codex-package-review.md) 中闭环。
+> 本文件保留为审计记录，不再是当前 blocker / work queue。当前可执行入口见
+> [`spec-v3/README.md`](spec-v3/README.md)。
+
 下列 PR 按推荐顺序列出。每一条都配有目标、范围、验收标准、必需测试、
 以及关联的 findings。codex 可以直接把这个清单当作 PR description 的模板。
 

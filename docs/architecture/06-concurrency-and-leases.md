@@ -103,12 +103,14 @@ class LeaseRefreshLoop:
         ...
 ```
 
-**已知问题**（F-001）：续租失败仅写到 `self.error`，无 caller 读它。
-`run_wsgi` 是 blocking 循环，lease 过期后另一个 pod 接管 → split-brain。
+**当前合约（F-001 已修）**：续租失败会通过 caller 注入的 `on_failure`
+回调标记进程不可就绪：
 
-**推荐修复（PR-fix-01）**：
-- 续租失败 → `readiness_flag.clear()` → `/readyz` 返 503
-- 或 → `httpd.shutdown()` 让主循环退出
+- `/healthz` 只表示进程健康，不包含 lease 状态；lease 丢失后仍可返回 200
+- `/readyz` 包含 lease 健康；续租失败后返回 503 / `lease_unhealthy`
+- traffic drain 由 orchestrator 根据 readiness 完成
+- `FileLease` 只提供本地文件系统协调，不是跨节点 multi-writer 分布式锁
+- `/v1/decide` 与 `/v1/observe` 不直接因 lease 丢失阻塞；边界在 readiness/drain
 
 ## 4. 节点级: 当前**不支持** multi-writer
 
@@ -195,7 +197,7 @@ with svc_lock.acquire("svc-a"):
 | 同 service_id 并发串行 | 🔴 **建议补** (CG-009) | 线程级 |
 | Lease exclusion | `tests/test_leases.py::test_file_lease_excludes_second_owner` | 进程级 |
 | Lease takeover after TTL | `tests/test_leases.py::test_file_lease_takes_over_expired_owner` | 进程级 |
-| Refresh 失败可见性 | 🔴 **缺失** (F-001 / CG-001) | 进程级 |
+| Refresh 失败可见性 | `tests/test_leases.py::test_refresh_failure_*`, `tests/test_http_service.py::test_readyz_http_reflects_lease_failure` | 进程级 |
 | Multi-writer safety | N/A | 节点级（不支持） |
 
 ## 8. 故障注入 checklist

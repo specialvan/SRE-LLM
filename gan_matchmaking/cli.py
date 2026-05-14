@@ -72,6 +72,7 @@ def _cmd_export_replay(args: argparse.Namespace) -> int:
         allow_fitted_artifacts=args.allow_fitted_artifacts,
         artifact_directory=args.artifact_dir,
         artifact_output_directory=args.artifact_output_dir,
+        allow_legacy_unknown=args.allow_legacy_unknown,
     )
     if args.output:
         json.dump(
@@ -128,6 +129,11 @@ def build_parser() -> argparse.ArgumentParser:
                           help="runtime artifact directory used by the audited decision")
     p_export.add_argument("--artifact-output-dir", default=None,
                           help="optional directory to archive the validated artifact bundle")
+    p_export.add_argument(
+        "--allow-legacy-unknown",
+        action="store_true",
+        help="allow fitted replay export for legacy retention artifacts without rating-scaling metadata",
+    )
     p_export.set_defaults(func=_cmd_export_replay)
     return parser
 

@@ -134,10 +134,18 @@ Current round (2026-06 C+A2): F-005 / F-006 / F-007 / F-008 / F-009 /
 F-010 are landed (see
 [`docs/claude-review/2026-06-spec-completion.md`](claude-review/2026-06-spec-completion.md)).
 
-Next increments, in priority order:
+Next executable increment:
 
-1. expand incident-style replay coverage for artifact validation failures
-   and breaker/shadow-mode transitions
+- [`docs/claude-review/spec-v3/README.md`](claude-review/spec-v3/README.md)
+  converts the 2026-06 Codex package review follow-ups into D+A2 tasks:
+  historical tracker cleanup, latency gate enforcement, replay naming
+  hardening, artifacts public API snapshot, and HTTP lease readiness
+  integration.
+
+Longer capability growth remains, in priority order:
+
+1. expand incident-style replay coverage for artifact metadata-shape failures
+   and advisory-mode rollout transitions
 2. prototype a distributed lease backend if the deployment target needs
    multiple writable replicas (see [ADR-0007](adr/0007-single-writer-lease-boundary.md))
 3. define artifact bundle storage policy for local corpus, object storage,

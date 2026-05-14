@@ -177,12 +177,12 @@ Date: YYYY-MM-DD
 
 ## 7. 演进路线（当前规划）
 
-按 `claude-review/action-items.md`：
+F-001 ~ F-010 已 resolved；历史 tracker 只保留审计背景。当前可执行路线以
+`claude-review/spec-v3/` 和 `implementation-roadmap.md` 为准：
 
-- **必修（合入前）**: PR-fix-01（F-001）
-- **短期（2 周内）**: PR-fix-02/03 (F-003, F-002)
-- **中期（6 周内）**: PR-refactor-01/02, PR-fix-04/05
-- **长期**: PR-calibrate-01, PR-replay-02, PR-scale-01
+- **短期**: 继续补 replay artifact metadata-shape / advisory-mode 场景
+- **中期**: 评估分布式 lease backend（仅当部署目标需要多 writable replica）
+- **长期**: calibration、artifact storage policy、OpenTelemetry trace 对齐
 
 每一条都在路线图里，不是凭空想出来的待办。
 

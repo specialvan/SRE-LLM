@@ -3,21 +3,31 @@
 本目录存放 Claude 对 codex 分支的评审输出，按时间线和关注点归档。codex
 在拿回仓库后，应该按以下顺序阅读并消化：
 
-## 当前轮（2026-06 C+A2，已完成 ✅）
+## 当前轮（2026-07 D+A2，准备中）
+
+1. [`spec-v3/README.md`](spec-v3/README.md) — 当前可执行 spec：历史
+   tracker 收敛、latency gate、replay naming hardening、artifacts public API
+   快照、HTTP lease readiness 集成测试
+2. [`spec-v3/requirements.md`](spec-v3/requirements.md) — R-801 ~ R-842
+   acceptance criteria
+3. [`spec-v3/tasks.md`](spec-v3/tasks.md) — T-801 ~ T-843 PR 任务清单；
+   [`spec-v3/verification.md`](spec-v3/verification.md) — 验证命令 + 契约快照
+
+## 上一轮（2026-06 C+A2，已完成 ✅）
 
 1. [`2026-06-codex-package-review.md`](2026-06-codex-package-review.md) — 对
    `docs/codex-review/` 的二次深度评审；结论 merge-ready，无 P1/P2 blocker
 2. [`2026-06-session-review.md`](2026-06-session-review.md) — 2026-06 轮入口
 3. [`2026-06-spec-completion.md`](2026-06-spec-completion.md) — 收尾报告
    （F-005 / F-006 / F-007 / F-008 / F-009 / F-010 全部 resolved，138 passed，p99=1.39ms）
-4. [`spec-v2/README.md`](spec-v2/README.md) — 本轮 spec（25 条 T-XXX，6 PR）
+4. [`spec-v2/README.md`](spec-v2/README.md) — 已完成 spec（25 条 T-XXX，6 PR）
 5. [`spec-v2/tasks.md`](spec-v2/tasks.md) — 按 PR 排序的 T-XXX 编码任务；
    [`spec-v2/verification.md`](spec-v2/verification.md) — 验证命令 + 契约快照
 6. [`patches/F-005-rating-scaling-contract.md`](patches/F-005-rating-scaling-contract.md)、
    [`patches/F-007-release-context-from-dict.md`](patches/F-007-release-context-from-dict.md)、
    [`patches/F-008-sqlite-migration.md`](patches/F-008-sqlite-migration.md) — 核心补丁草案
 
-## 上一轮（2026-05 B+A2，已完成 ✅）
+## 2026-05 B+A2（已完成 ✅）
 
 1. [`2026-05-session-review.md`](2026-05-session-review.md) — 首次
    `gan-session` 分支的整体评审
@@ -32,8 +42,11 @@
 
 - [`findings.md`](findings.md) — 带严重度、影响面、修复建议的问题清单。
   按 P1 / P2 / P3 / P4 分级，可直接当作 PR tracker。
-- [`action-items.md`](action-items.md) — 建议开的 follow-up PR 列表
-- [`test-coverage-gaps.md`](test-coverage-gaps.md) — 现有测试未覆盖的风险场景
+- [`action-items.md`](action-items.md) — 历史 follow-up PR tracker；已被
+  [`2026-06-spec-completion.md`](2026-06-spec-completion.md) 与
+  [`spec-v3/README.md`](spec-v3/README.md) supersede
+- [`test-coverage-gaps.md`](test-coverage-gaps.md) — 历史测试缺口 tracker；当前
+  可执行测试补强见 [`spec-v3/README.md`](spec-v3/README.md)
 
 ## 使用约定
 

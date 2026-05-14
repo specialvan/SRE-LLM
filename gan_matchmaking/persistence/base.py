@@ -4,6 +4,7 @@ Every implementation must be safe to use from a single process with multiple
 threads. Cross-process coordination is an operator concern — use the SQLite
 backend with ``locking_mode=EXCLUSIVE`` or front with a Redis lease.
 """
+
 from __future__ import annotations
 
 import abc
@@ -21,10 +22,11 @@ class Observation:
     Fields are intentionally flat and JSON-friendly so the store can be
     inspected by any SQL client or log tool without the Python runtime.
     """
+
     service_id: str
     success: bool
-    timestamp: float                    # unix seconds.
-    duration_seconds: float             # time since previous release.
+    timestamp: float  # unix seconds.
+    duration_seconds: float  # time since previous release.
     features: Optional[Mapping[str, float]] = None
     correlation_id: Optional[str] = None
 
@@ -42,7 +44,7 @@ class ServiceRepository(abc.ABC):
     def save(self, service: Service) -> None: ...
 
     @abc.abstractmethod
-    def list_ids(self) -> List[str]: ...
+    def list_ids(self, limit: Optional[int] = None) -> List[str]: ...
 
     @abc.abstractmethod
     def delete(self, service_id: str) -> bool: ...
@@ -60,8 +62,8 @@ class SynergyRepository(abc.ABC):
         """Return ``(games_together, wins_together)``."""
 
     @abc.abstractmethod
-    def edges(self) -> Iterable[Tuple[str, str, int, int]]:
-        """Yield ``(a, b, games, wins)`` tuples for every known edge."""
+    def edges(self, limit: Optional[int] = None) -> Iterable[Tuple[str, str, int, int]]:
+        """Yield ``(a, b, games, wins)`` tuples for known edges."""
 
 
 class ObservationRepository(abc.ABC):
@@ -74,8 +76,9 @@ class ObservationRepository(abc.ABC):
     def record_decision(self, decision: Decision) -> None: ...
 
     @abc.abstractmethod
-    def recent_observations(self, service_id: str, limit: int = 200
-                            ) -> List[Observation]: ...
+    def recent_observations(
+        self, service_id: str, limit: int = 200
+    ) -> List[Observation]: ...
 
     @abc.abstractmethod
     def observations(self) -> Iterable[Observation]: ...

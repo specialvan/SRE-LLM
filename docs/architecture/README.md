@@ -23,6 +23,8 @@ SRE 自迭代决策系统的核心矛盾是：
 | [07-observability-contract.md](07-observability-contract.md) | 日志事件目录、指标目录、trace 字段和告警的映射关系 |
 | [08-rollout-and-governance.md](08-rollout-and-governance.md) | Shadow → Advisory → Enforce 的推进规则、ADR 归档规则 |
 
+补充入口：[`../../wiki/README.md`](../../wiki/README.md) 沉淀当前分支的运行契约、replay/artifact 知识、lease readiness 边界和合并检查清单。
+
 ## 阅读顺序建议
 
 - **第一次接手**：01 → 02 → 04 → 07
@@ -30,15 +32,16 @@ SRE 自迭代决策系统的核心矛盾是：
 - **做容量 / 多副本改造**：04 + 06
 - **要改决策策略（加新规则）**：02 + 08
 
-## 与 ADR / runbook / claude-review 的关系
+## 与 ADR / runbook / wiki / claude-review 的关系
 
 ```
-架构文档（本目录）  ——  描述 "系统当前是什么形状"
-ADR（../adr/）      ——  描述 "为什么当时这么选"
-Runbook（../runbooks/） —— 描述 "遇到 X 时怎么操作"
-Claude Review       ——  描述 "某次交付的评审结论和改进项"
+架构文档（本目录）       —— 描述 "系统当前是什么形状"
+ADR（../adr/）           —— 描述 "为什么当时这么选"
+Runbook（../runbooks/）  —— 描述 "遇到 X 时怎么操作"
+Wiki（../../wiki/）      —— 描述 "新人/评审/运维从哪里快速进入"
+Claude Review           —— 描述 "某次交付的评审结论和改进项"
 ```
 
-四份文档相互引用但职责互不覆盖。架构文档变更不一定立 ADR（小修可以），
-但 ADR 的结论必须反映回架构文档；runbook 只能引用架构文档里定义的术语，
+这些文档相互引用但职责互不覆盖。架构文档变更不一定立 ADR（小修可以），
+但 ADR 的结论必须反映回架构文档；runbook/wiki 只能引用架构文档里定义的术语，
 禁止发明新概念。

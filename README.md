@@ -121,8 +121,9 @@ python -m examples.sre_demo
 # Ask for a decision from the CLI
 python -m gan_matchmaking.cli decide --input examples/sample_context.json
 
-# Launch the HTTP service (stdlib only, binds :8080)
+# Launch the HTTP service (stdlib only, binds 127.0.0.1:8080 by default)
 python -m gan_matchmaking.service --state-db state.sqlite --lease-file state.lock
+# Open http://localhost:8080/dashboard for the animated runtime dashboard.
 curl -s http://localhost:8080/healthz
 curl -s -X POST http://localhost:8080/v1/decide \
   -H 'Content-Type: application/json' \
@@ -135,10 +136,11 @@ python -m bench.latency --quick
 python -m gan_matchmaking.training --state-db state.sqlite
 
 # Export one audited decision as a replay fixture
+# Fixture names should end with the expected decision kind, e.g. <incident>_canary.json
 python -m gan_matchmaking.cli export-replay \
   --state-db state.sqlite \
   --correlation-id <decision-correlation-id> \
-  --output tests/fixtures/replay/<incident-name>.json
+  --output tests/fixtures/replay/<incident-name>_<kind>.json
 ```
 
 A `Decision` is printed as indented JSON and can be diffed / replayed.
@@ -161,6 +163,7 @@ A short list for codex-style reviews. Each item has a concrete file:
 - [x] CLI + smoke tests — `gan_matchmaking/cli.py` + `tests/test_cli.py`
 - [x] ADRs documented — `docs/adr/`
 - [x] Runbooks for operators — `docs/runbooks/`
+- [x] Project wiki for reviewers/operators — `wiki/README.md`
 - [x] Math knowledge base — `docs/knowledge_base.html`
 - [x] Persistence layer (in-memory + SQLite) — `persistence/` + `tests/test_persistence.py`
 - [x] Concurrency guards — `sre/locking.py` + `sre/circuit.py`
@@ -177,6 +180,7 @@ A short list for codex-style reviews. Each item has a concrete file:
 ## 6. Further reading
 
 - [`docs/architecture.md`](docs/architecture.md) — architecture, requirements, task breakdown, and refinement targets.
+- [`wiki/README.md`](wiki/README.md) — current operational contracts, replay/artifact knowledge, readiness boundaries, and merge checklist.
 - [`docs/V2_Knowledge/knowledge-base.html`](docs/V2_Knowledge/knowledge-base.html) — 单页知识库（2026-05 快照），集成系统全景 / 决策流 / findings / spec 入口。
 - [`docs/codex-handoff.md`](docs/codex-handoff.md) — handoff summary for the next Codex pass.
 - [`docs/sre-control-primitives.md`](docs/sre-control-primitives.md) — reusable SRE control primitives extracted from the nine mechanisms.

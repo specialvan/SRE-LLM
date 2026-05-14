@@ -181,8 +181,9 @@ def _finalize_decision(self, decision):
 | `advisory` | 原样返回 + rationale 追加 "shadow_mode=advisory" | `trace.shadow_mode="advisory"` |
 | `shadow` | `kind` 改写成 HOLD，原 kind 计入 `gan_shadow_diff_total` | `trace.shadow_mode="shadow"`, `trace.shadow_suppressed_kind` |
 
-**⚠️ 当前已知不一致**（F-002）: `_emit` 里的 `gan_decisions_total` counter 用的是
-**改写前的 kind**，但返回给 caller 的是改写后的 kind。见 [claude-review/findings.md](../claude-review/findings.md#f-002)。
+`gan_decisions_total` 与 `decide.finished` 均在 shadow/advisory 边界之后发布，
+因此 metric/log 反映最终 enforced kind；被 shadow 压制的原始 kind 记录在
+`gan_shadow_diff_total` 和 `trace.shadow_suppressed_kind`。
 
 ## 4. 短路路径
 

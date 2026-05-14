@@ -22,6 +22,7 @@ A single ``schema_migrations`` table tracks what's been applied. New
 migrations are appended to :data:`_MIGRATIONS`; the store runs them in
 order on connect.
 """
+
 from __future__ import annotations
 
 import json
@@ -191,8 +192,10 @@ class _SqliteConnection:
                 "CREATE TABLE IF NOT EXISTS schema_migrations ("
                 "version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at REAL NOT NULL)"
             )
-            applied = {row["version"] for row in self._conn.execute(
-                "SELECT version FROM schema_migrations")}
+            applied = {
+                row["version"]
+                for row in self._conn.execute("SELECT version FROM schema_migrations")
+            }
             for version, name, ddl in _MIGRATIONS:
                 if version in applied:
                     continue
@@ -282,15 +285,24 @@ class SQLiteServiceRepository(ServiceRepository):
                 " total_releases=excluded.total_releases, tier=excluded.tier, "
                 " updated_at=excluded.updated_at",
                 (
-                    service.id, float(service.mu), float(service.sigma),
-                    int(service.win_streak), int(service.loss_streak),
-                    int(service.total_releases), service.tier,
+                    service.id,
+                    float(service.mu),
+                    float(service.sigma),
+                    int(service.win_streak),
+                    int(service.loss_streak),
+                    int(service.total_releases),
+                    service.tier,
                     time.time(),
                 ),
             )
 
-    def list_ids(self) -> List[str]:
-        cur = self._c.execute("SELECT id FROM services ORDER BY id")
+    def list_ids(self, limit: Optional[int] = None) -> List[str]:
+        if limit is None:
+            cur = self._c.execute("SELECT id FROM services ORDER BY id")
+        else:
+            cur = self._c.execute(
+                "SELECT id FROM services ORDER BY id LIMIT ?", (limit,)
+            )
         return [row["id"] for row in cur.fetchall()]
 
     def delete(self, service_id: str) -> bool:
@@ -330,8 +342,17 @@ class SQLiteSynergyRepository(SynergyRepository):
             return 0, 0
         return row["games"], row["wins"]
 
-    def edges(self) -> Iterable[Tuple[str, str, int, int]]:
-        cur = self._c.execute("SELECT a_id, b_id, games, wins FROM synergy_edges")
+    def edges(self, limit: Optional[int] = None) -> Iterable[Tuple[str, str, int, int]]:
+        if limit is None:
+            cur = self._c.execute(
+                "SELECT a_id, b_id, games, wins FROM synergy_edges ORDER BY a_id, b_id"
+            )
+        else:
+            cur = self._c.execute(
+                "SELECT a_id, b_id, games, wins FROM synergy_edges "
+                "ORDER BY a_id, b_id LIMIT ?",
+                (limit,),
+            )
         for row in cur.fetchall():
             yield row["a_id"], row["b_id"], row["games"], row["wins"]
 
@@ -387,7 +408,9 @@ class SQLiteObservationRepository(ObservationRepository):
                 ),
             )
 
-    def recent_observations(self, service_id: str, limit: int = 200) -> List[Observation]:
+    def recent_observations(
+        self, service_id: str, limit: int = 200
+    ) -> List[Observation]:
         cur = self._c.execute(
             "SELECT service_id, success, timestamp, duration_seconds, "
             "features_json, correlation_id FROM observations "

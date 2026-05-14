@@ -31,8 +31,10 @@ Error handling policy
 - An empty or freeze-locked context always yields ``HOLD`` or ``ESCALATE``
   *before* any math runs — guarded at :meth:`decide`.
 """
+
 from __future__ import annotations
 
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -65,10 +67,10 @@ from ..survival import ChurnRiskMonitor, CoxModel
 from ..trueskill import TrueSkillRater
 from .artifacts import (
     RuntimeArtifactBundle,
-    _rating_scaling_version,
     build_history_vector,
     build_match_config,
     load_runtime_artifacts,
+    retention_scaling_compatibility,
 )
 from .circuit import BreakerState, CircuitBreaker
 from .domain import (
@@ -179,8 +181,9 @@ class SelfIterationPipeline:
     pca: HiddenScoreExtractor = field(init=False)
     artifacts: RuntimeArtifactBundle = field(init=False)
     _services: Dict[str, Service] = field(default_factory=dict, init=False)
-    _service_locks: PerServiceLock = field(default_factory=PerServiceLock,
-                                           init=False)
+    _services_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
+    _synergy_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
+    _service_locks: PerServiceLock = field(default_factory=PerServiceLock, init=False)
 
     def __post_init__(self) -> None:
         if self.logger is None:
@@ -203,8 +206,10 @@ class SelfIterationPipeline:
 
         dk = self.config.dynamic_k
         self.dynamic_k = DynamicK(
-            k_max=dk.k_max, k_min=dk.k_min,
-            lam=dk.lam, theta=dk.theta,
+            k_max=dk.k_max,
+            k_min=dk.k_min,
+            lam=dk.lam,
+            theta=dk.theta,
             penalize_wins=dk.penalize_wins,
         )
         hp = self.config.handicap
@@ -305,26 +310,22 @@ class SelfIterationPipeline:
     def _hydrate_runtime_artifacts(self) -> None:
         """Load fitted runtime weights into the online models when available."""
         retention = self.artifacts.retention
-        if retention is not None:
-            # F-005: refuse to hydrate retention weights when the artifact's
-            # rating_scaling_version does not match the runtime constants —
-            # loading them anyway would silently drift EOMM features away
-            # from what the weights were trained against.
-            expected_version = _rating_scaling_version()
-            actual_version = retention.metadata.extra.get("rating_scaling_version")
-            if actual_version is None:
-                self.artifacts = self.artifacts.with_scaling_status("unknown")
-            elif actual_version != expected_version:
-                self.logger.warning(
-                    "artifacts.retention.scaling_mismatch",
-                    expected=expected_version,
-                    actual=actual_version,
-                    artifact_version=retention.metadata.version,
-                )
-                self.artifacts = self.artifacts.with_scaling_status("mismatch")
-                retention = None
-            else:
-                self.artifacts = self.artifacts.with_scaling_status("match")
+        compatibility = retention_scaling_compatibility(retention)
+        if compatibility.status == "unknown":
+            self.artifacts = self.artifacts.with_scaling_status("unknown")
+        elif compatibility.status == "mismatch":
+            self.logger.warning(
+                "artifacts.retention.scaling_mismatch",
+                expected=compatibility.expected_version,
+                actual=compatibility.actual_version,
+                artifact_version=compatibility.artifact_version,
+            )
+            self.artifacts = self.artifacts.with_scaling_status("mismatch")
+            retention = None
+        elif compatibility.status == "match":
+            self.artifacts = self.artifacts.with_scaling_status("match")
+        elif compatibility.status == "absent":
+            self.artifacts = self.artifacts.with_scaling_status("absent")
         if retention is not None:
             try:
                 weights = np.asarray(retention.weights, dtype=float)
@@ -349,8 +350,12 @@ class SelfIterationPipeline:
                 beta = np.asarray(cox.beta, dtype=float)
                 if beta.ndim == 1 and beta.size > 0:
                     self.risk.model.beta = beta
-                    self.risk.model._baseline_t = np.asarray(cox.baseline_t, dtype=float)
-                    self.risk.model._baseline_H = np.asarray(cox.baseline_H, dtype=float)
+                    self.risk.model._baseline_t = np.asarray(
+                        cox.baseline_t, dtype=float
+                    )
+                    self.risk.model._baseline_H = np.asarray(
+                        cox.baseline_H, dtype=float
+                    )
                 else:
                     self.logger.warning(
                         "artifacts.cox.shape_mismatch",
@@ -363,8 +368,9 @@ class SelfIterationPipeline:
                     error_type=type(exc).__name__,
                 )
 
-    def _recent_observations_for_service(self, service_id: str,
-                                         limit: int = 32) -> List[Observation]:
+    def _recent_observations_for_service(
+        self, service_id: str, limit: int = 32
+    ) -> List[Observation]:
         if self.store is None:
             return []
         try:
@@ -382,13 +388,32 @@ class SelfIterationPipeline:
     # ------------------------------------------------------------------
     def register_service(self, service: Service) -> None:
         """Register a service so that ratings / synergy carry over across decisions."""
-        self._services[service.id] = service
+        with self._services_lock:
+            self._services[service.id] = service
 
-    def observe_release(self, service_id: str, success: bool,
-                        duration_seconds: float = 0.0,
-                        features: Optional[Dict[str, float]] = None,
-                        correlation_id: Optional[str] = None,
-                        dependencies: Optional[Sequence[str]] = None) -> None:
+    def service_snapshot(self, service_id: str) -> Optional[Dict[str, Any]]:
+        with self._services_lock:
+            service = self._services.get(service_id)
+            return service.as_dict() if service is not None else None
+
+    def services_snapshot(
+        self, limit: Optional[int] = None
+    ) -> Dict[str, Dict[str, Any]]:
+        with self._services_lock:
+            items = list(self._services.items())
+        if limit is not None:
+            items = items[:limit]
+        return {service_id: service.as_dict() for service_id, service in items}
+
+    def observe_release(
+        self,
+        service_id: str,
+        success: bool,
+        duration_seconds: float = 0.0,
+        features: Optional[Dict[str, float]] = None,
+        correlation_id: Optional[str] = None,
+        dependencies: Optional[Sequence[str]] = None,
+    ) -> None:
         """Update the reliability rating after a release outcome.
 
         This is how the pipeline *learns*: new releases shift the Gaussian
@@ -410,11 +435,13 @@ class SelfIterationPipeline:
         are persisted atomically.
         """
         with self._service_locks.acquire(service_id):
-            svc = self._services.get(service_id)
+            with self._services_lock:
+                svc = self._services.get(service_id)
             if svc is None and self.store is not None:
                 svc = self.store.services.get(service_id)
                 if svc is not None:
-                    self._services[service_id] = svc
+                    with self._services_lock:
+                        self._services[service_id] = svc
             if svc is None:
                 raise DataError("unknown service", details={"service_id": service_id})
 
@@ -422,21 +449,23 @@ class SelfIterationPipeline:
             tau = max(self.config.trueskill.tau or 0.001, 0.0)
 
             observation_val = 1.0 if success else 0.0
-            var = svc.sigma ** 2
-            kalman_gain = var / (var + beta ** 2)
-            svc.mu = svc.mu + kalman_gain * (observation_val - svc.mu)
-            # Clamp into (0, 1) so it stays on the reliability axis.
-            svc.mu = min(1.0 - 1e-6, max(1e-6, svc.mu))
-            new_var = var * (1.0 - kalman_gain) + tau ** 2
-            svc.sigma = max(new_var, 1e-8) ** 0.5
+            var = svc.sigma**2
+            kalman_gain = var / (var + beta**2)
+            new_mu = svc.mu + kalman_gain * (observation_val - svc.mu)
+            new_mu = min(1.0 - 1e-6, max(1e-6, new_mu))
+            new_var = var * (1.0 - kalman_gain) + tau**2
+            new_sigma = max(new_var, 1e-8) ** 0.5
 
-            svc.total_releases += 1
-            if success:
-                svc.win_streak += 1
-                svc.loss_streak = 0
-            else:
-                svc.loss_streak += 1
-                svc.win_streak = 0
+            with self._services_lock:
+                svc.mu = new_mu
+                svc.sigma = new_sigma
+                svc.total_releases += 1
+                if success:
+                    svc.win_streak += 1
+                    svc.loss_streak = 0
+                else:
+                    svc.loss_streak += 1
+                    svc.win_streak = 0
             self.m_confidence.set(
                 svc.mu - _CONF_ALPHA * svc.sigma,
                 labels={"service_id": service_id},
@@ -452,7 +481,8 @@ class SelfIterationPipeline:
                 seen_deps.add(dep_id)
                 deps.append(dep_id)
             if deps:
-                self.synergy_graph.add_match([service_id] + list(deps), win=success)
+                with self._synergy_lock:
+                    self.synergy_graph.add_match([service_id] + list(deps), win=success)
                 if self.store is not None:
                     for dep in deps:
                         if dep != service_id:
@@ -482,7 +512,8 @@ class SelfIterationPipeline:
         writes to ``trace`` so the reasoning is fully auditable.
         """
         ctx.validate()
-        self._services.setdefault(ctx.service.id, ctx.service)
+        with self._services_lock:
+            self._services.setdefault(ctx.service.id, ctx.service)
 
         # Circuit breaker — fail fast if we've been burning.
         breaker = self.circuit_breaker
@@ -499,7 +530,10 @@ class SelfIterationPipeline:
                     "circuit_breaker": breaker.snapshot(),
                 }
                 decision = self._emit(
-                    DecisionKind.ESCALATE, None, RiskLevel.ALARM, 1.0,
+                    DecisionKind.ESCALATE,
+                    None,
+                    RiskLevel.ALARM,
+                    1.0,
                     ctx.service,
                     ["circuit_breaker=open → ESCALATE"],
                     trace,
@@ -550,16 +584,26 @@ class SelfIterationPipeline:
             # --- Guard clauses ------------------------------------------------
             if ctx.freeze_window:
                 return self._emit(
-                    DecisionKind.HOLD, None, RiskLevel.WARN, 0.0,
-                    ctx.service, rationale + ["freeze_window=true"], trace, cid,
+                    DecisionKind.HOLD,
+                    None,
+                    RiskLevel.WARN,
+                    0.0,
+                    ctx.service,
+                    rationale + ["freeze_window=true"],
+                    trace,
+                    cid,
                 )
             if ctx.error_budget_remaining <= 0.0:
                 # Budget exhausted — force rollback-ready posture.
                 return self._emit(
-                    DecisionKind.ROLLBACK, None, RiskLevel.ALARM, 1.0,
+                    DecisionKind.ROLLBACK,
+                    None,
+                    RiskLevel.ALARM,
+                    1.0,
                     ctx.service,
                     rationale + ["error_budget_remaining<=0"],
-                    trace, cid,
+                    trace,
+                    cid,
                 )
 
             # --- Stage 1: telemetry compression (PCA) -------------------------
@@ -575,8 +619,16 @@ class SelfIterationPipeline:
             acceptable_idx = self._stage_entropy(ctx, adj_probs, trace)
             if not acceptable_idx:
                 rationale.append("no candidate satisfied min_entropy — HOLD")
-                return self._emit(DecisionKind.HOLD, None, RiskLevel.WARN, 0.0,
-                                  ctx.service, rationale, trace, cid)
+                return self._emit(
+                    DecisionKind.HOLD,
+                    None,
+                    RiskLevel.WARN,
+                    0.0,
+                    ctx.service,
+                    rationale,
+                    trace,
+                    cid,
+                )
 
             # --- Stage 5: EOMM / strategy argmax ------------------------------
             chosen, retention_trace = self._stage_eomm(ctx, acceptable_idx, trace)
@@ -588,15 +640,20 @@ class SelfIterationPipeline:
             confidence = ctx.service.mu - _CONF_ALPHA * ctx.service.sigma
             confidence = max(0.0, min(1.0, confidence))
             rationale.extend(retention_trace)
-            kind = self._resolve_decision(chosen, ctx, risk_level, confidence, rationale)
+            kind = self._resolve_decision(
+                chosen, ctx, risk_level, confidence, rationale
+            )
 
-            return self._emit(kind, chosen, risk_level, risk_p, ctx.service,
-                              rationale, trace, cid)
+            return self._emit(
+                kind, chosen, risk_level, risk_p, ctx.service, rationale, trace, cid
+            )
 
     # ------------------------------------------------------------------
     # Per-stage helpers
     # ------------------------------------------------------------------
-    def _stage_pca(self, ctx: ReleaseContext, trace: Dict[str, Any]) -> Dict[str, float]:
+    def _stage_pca(
+        self, ctx: ReleaseContext, trace: Dict[str, Any]
+    ) -> Dict[str, float]:
         with span(self.logger, "stage.pca") as s:
             out: Dict[str, float] = {"fused": float(ctx.service.mu)}
             if ctx.telemetry:
@@ -613,17 +670,23 @@ class SelfIterationPipeline:
                         out["keys"] = keys  # type: ignore[assignment]
                     except Exception as exc:
                         self.m_stage_failures.inc(labels={"stage": "pca"})
-                        self.logger.warning("stage.pca.degraded",
-                                            error_type=type(exc).__name__)
+                        self.logger.warning(
+                            "stage.pca.degraded", error_type=type(exc).__name__
+                        )
             trace["stages"]["pca"] = out
             self._record_latency("pca", s)
             return out
 
-    def _stage_synergy(self, ctx: ReleaseContext, trace: Dict[str, Any]) -> Dict[str, Any]:
+    def _stage_synergy(
+        self, ctx: ReleaseContext, trace: Dict[str, Any]
+    ) -> Dict[str, Any]:
         with span(self.logger, "stage.synergy") as s:
-            payload: Dict[str, Any] = {"n_dependencies": len(ctx.dependencies),
-                                       "score": 0.0}
-            nodes, A = self.synergy_graph.adjacency()
+            payload: Dict[str, Any] = {
+                "n_dependencies": len(ctx.dependencies),
+                "score": 0.0,
+            }
+            with self._synergy_lock:
+                nodes, A = self.synergy_graph.adjacency()
             if nodes and len(nodes) >= 2:
                 try:
                     feats = np.array([[1.0, 0.0] for _ in nodes], dtype=float)
@@ -635,19 +698,23 @@ class SelfIterationPipeline:
                     if sid in idx:
                         for dep in ctx.dependencies:
                             if dep in idx:
-                                score += self.synergy_gnn.synergy_score(H, idx[sid], idx[dep])
+                                score += self.synergy_gnn.synergy_score(
+                                    H, idx[sid], idx[dep]
+                                )
                                 n += 1
                     payload["score"] = float(score / max(n, 1))
                 except Exception as exc:
                     self.m_stage_failures.inc(labels={"stage": "synergy"})
-                    self.logger.warning("stage.synergy.degraded",
-                                        error_type=type(exc).__name__)
+                    self.logger.warning(
+                        "stage.synergy.degraded", error_type=type(exc).__name__
+                    )
             trace["stages"]["synergy"] = payload
             self._record_latency("synergy", s)
             return payload
 
-    def _stage_adjusted_probs(self, ctx: ReleaseContext,
-                              trace: Dict[str, Any]) -> List[float]:
+    def _stage_adjusted_probs(
+        self, ctx: ReleaseContext, trace: Dict[str, Any]
+    ) -> List[float]:
         with span(self.logger, "stage.adjusted_probs") as s:
             out = []
             penalty = self.handicap.penalty(
@@ -672,12 +739,16 @@ class SelfIterationPipeline:
             self._record_latency("adjusted_probs", s)
             return out
 
-    def _stage_entropy(self, ctx: ReleaseContext, probs: List[float],
-                       trace: Dict[str, Any]) -> List[int]:
+    def _stage_entropy(
+        self, ctx: ReleaseContext, probs: List[float], trace: Dict[str, Any]
+    ) -> List[int]:
         with span(self.logger, "stage.entropy") as s:
             entropies = [binary_entropy(p) for p in probs]
-            acceptable = [i for i, h in enumerate(entropies)
-                          if h >= self.config.entropy.min_entropy]
+            acceptable = [
+                i
+                for i, h in enumerate(entropies)
+                if h >= self.config.entropy.min_entropy
+            ]
             fallback_used = False
             if not acceptable and entropies:
                 # Soft fallback: never return empty — pick the most informative
@@ -695,8 +766,9 @@ class SelfIterationPipeline:
             self._record_latency("entropy", s)
             return acceptable
 
-    def _stage_eomm(self, ctx: ReleaseContext, acceptable_idx: List[int],
-                    trace: Dict[str, Any]) -> tuple[ReleaseCandidate, List[str]]:
+    def _stage_eomm(
+        self, ctx: ReleaseContext, acceptable_idx: List[int], trace: Dict[str, Any]
+    ) -> tuple[ReleaseCandidate, List[str]]:
         """Pick the candidate most likely to preserve the error budget.
 
         When fitted retention weights are available we use the runtime artifact
@@ -718,7 +790,11 @@ class SelfIterationPipeline:
             if used_artifact:
                 try:
                     candidate_pairs = [
-                        (i, ctx.candidates[i], build_match_config(ctx.service, ctx.candidates[i]))
+                        (
+                            i,
+                            ctx.candidates[i],
+                            build_match_config(ctx.service, ctx.candidates[i]),
+                        )
                         for i in acceptable_idx
                     ]
                     rng = self.seed_manager.python(f"eomm:{ctx.service.id}")
@@ -729,17 +805,20 @@ class SelfIterationPipeline:
                     )
                     for i, candidate, cfg in candidate_pairs:
                         score = float(self.eomm.model.prob(history, cfg))
-                        candidate_scores.append({
-                            "candidate_id": candidate.id,
-                            "score": score,
-                            "strategy": candidate.strategy,
-                        })
+                        candidate_scores.append(
+                            {
+                                "candidate_id": candidate.id,
+                                "score": score,
+                                "strategy": candidate.strategy,
+                            }
+                        )
                     best_idx = next(
                         i for i, _, cfg in candidate_pairs if cfg == chosen_cfg
                     )
                     chosen = ctx.candidates[best_idx]
                     best_score = next(
-                        item["score"] for item in candidate_scores
+                        item["score"]
+                        for item in candidate_scores
                         if item["candidate_id"] == chosen.id
                     )
                     notes.append(
@@ -770,15 +849,19 @@ class SelfIterationPipeline:
                 c = ctx.candidates[i]
                 score = (
                     1.0 * c.expected_success
-                    - 0.5 * c.canary_fraction            # prefer smaller blast radius
-                    + 0.2 * (ctx.service.mu - 0.99) * 10 # reliable services can be bolder
+                    - 0.5 * c.canary_fraction  # prefer smaller blast radius
+                    + 0.2
+                    * (ctx.service.mu - 0.99)
+                    * 10  # reliable services can be bolder
                     - 0.3 * (1 - ctx.error_budget_remaining)
                 )
-                candidate_scores.append({
-                    "candidate_id": c.id,
-                    "score": score,
-                    "strategy": c.strategy,
-                })
+                candidate_scores.append(
+                    {
+                        "candidate_id": c.id,
+                        "score": score,
+                        "strategy": c.strategy,
+                    }
+                )
                 if score > best_score:
                     best_score = score
                     best_idx = i
@@ -796,16 +879,18 @@ class SelfIterationPipeline:
             self._record_latency("eomm", s)
             return chosen, notes
 
-    def _stage_risk(self, ctx: ReleaseContext, chosen: ReleaseCandidate,
-                    trace: Dict[str, Any]) -> tuple[float, RiskLevel]:
+    def _stage_risk(
+        self, ctx: ReleaseContext, chosen: ReleaseCandidate, trace: Dict[str, Any]
+    ) -> tuple[float, RiskLevel]:
         with span(self.logger, "stage.risk") as s:
             feats = build_risk_feature_vector(ctx.service, chosen, ctx)
             try:
                 p = self.risk.predict(feats)
             except Exception as exc:
                 self.m_stage_failures.inc(labels={"stage": "risk"})
-                self.logger.warning("stage.risk.degraded",
-                                    error_type=type(exc).__name__)
+                self.logger.warning(
+                    "stage.risk.degraded", error_type=type(exc).__name__
+                )
                 # Degrade to WARN with prob 0.5 so we don't auto-GO on failure.
                 p = 0.5
             level = _sre_risk_level(p)
@@ -852,7 +937,9 @@ class SelfIterationPipeline:
             rationale.append("confidence<0.5 → CANARY")
             return DecisionKind.CANARY
         if tier_critical and chosen.strategy != "canary":
-            rationale.append("tier=critical with non-canary strategy → CANARY downgrade")
+            rationale.append(
+                "tier=critical with non-canary strategy → CANARY downgrade"
+            )
             return DecisionKind.CANARY
         if chosen.strategy == "full":
             rationale.append("strategy=full, risk=OK, confidence>=0.5 → GO")
@@ -942,6 +1029,7 @@ class SelfIterationPipeline:
         started = getattr(span_obj, "_started", None)
         if started is not None:
             import time
+
             elapsed = time.monotonic() - started
             self.m_stage_latency.observe(max(elapsed, 0.0), labels={"stage": stage})
 
