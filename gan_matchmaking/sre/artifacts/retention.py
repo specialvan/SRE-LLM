@@ -10,7 +10,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional, Sequence
+from typing import Any, Literal, Optional, Sequence
 
 import numpy as np
 
@@ -71,6 +71,17 @@ def _rating_scaling_version() -> str:
     return hashlib.sha256(raw).hexdigest()[:12]
 
 
+RetentionScalingStatus = Literal["match", "mismatch", "unknown", "absent"]
+
+
+@dataclass(frozen=True)
+class RetentionScalingCompatibility:
+    status: RetentionScalingStatus
+    expected_version: str
+    actual_version: object | None
+    artifact_version: str | None
+
+
 @dataclass(frozen=True)
 class RetentionArtifact:
     metadata: ArtifactMetadata
@@ -82,6 +93,34 @@ class RetentionArtifact:
             **self.metadata.as_dict(),
             "weights_shape": list(self.weights.shape),
         }
+
+
+def retention_scaling_compatibility(
+    retention: RetentionArtifact | None,
+) -> RetentionScalingCompatibility:
+    """Classify whether a retention artifact matches current rating scaling."""
+    expected_version = _rating_scaling_version()
+    if retention is None:
+        return RetentionScalingCompatibility(
+            status="absent",
+            expected_version=expected_version,
+            actual_version=None,
+            artifact_version=None,
+        )
+
+    actual_version = retention.metadata.extra.get("rating_scaling_version")
+    if actual_version is None:
+        status: RetentionScalingStatus = "unknown"
+    elif actual_version == expected_version:
+        status = "match"
+    else:
+        status = "mismatch"
+    return RetentionScalingCompatibility(
+        status=status,
+        expected_version=expected_version,
+        actual_version=actual_version,
+        artifact_version=retention.metadata.version,
+    )
 
 
 def _service_player(service: Service) -> Player:

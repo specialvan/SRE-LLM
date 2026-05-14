@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field, asdict
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Mapping, Optional
 
 from .errors import ConfigError
@@ -151,6 +151,23 @@ class ObservabilityConfig:
             raise ConfigError("invalid log_level", details={"log_level": self.log_level})
 
 
+def _validate_artifact_filename(filename: str, *, field: str) -> None:
+    posix_path = PurePosixPath(filename)
+    windows_path = PureWindowsPath(filename)
+    if (
+        not filename
+        or posix_path.is_absolute()
+        or windows_path.is_absolute()
+        or posix_path.name != filename
+        or windows_path.name != filename
+        or filename in {".", ".."}
+    ):
+        raise ConfigError(
+            "artifact filename must be a basename",
+            details={"field": field, "filename": filename},
+        )
+
+
 @dataclass(frozen=True)
 class ArtifactsConfig:
     directory: Optional[str] = None
@@ -163,6 +180,16 @@ class ArtifactsConfig:
         if self.directory is not None and not str(self.directory).strip():
             raise ConfigError("directory must be non-empty when provided",
                               details={"directory": self.directory})
+        for field_name in (
+            "retention_filename",
+            "retention_metadata_filename",
+            "cox_filename",
+            "cox_metadata_filename",
+        ):
+            _validate_artifact_filename(
+                str(getattr(self, field_name)),
+                field=f"artifacts.{field_name}",
+            )
 
 
 # ---------------------------------------------------------------------------
