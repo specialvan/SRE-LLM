@@ -14,6 +14,14 @@
 6. [Canary Scheduler (§2)](#6-canary-scheduler-trust-region)
 7. [Pool Capacity Planner (§1)](#7-pool-capacity-planner)
 8. [Fast Traffic Switcher (§7)](#8-fast-traffic-switcher)
+9. [SREControlStack 集成](#9-srecontrolstack-集成)
+10. [§10 Failure Trace](#12-s10-failure-trace-事件追踪分析)
+11. [关键数值结论](#11-关键数值结论)
+12. [数学公式汇总](#13-数学公式汇总)
+13. [边界条件和数值稳定性](#14-边界条件和数值稳定性)
+14. [数值验证示例](#15-每种方案的数值验证示例)
+15. [复杂度和性能分析](#16-复杂度和性能分析)
+16. [边界条件和异常处理](#17-边界条件和异常处理)
 
 ---
 
