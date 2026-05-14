@@ -68,6 +68,21 @@ def test_invalid_artifacts_directory():
         ArtifactsConfig(directory=" ")
 
 
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "../retention_weights.npz",
+        "..\\retention_weights.npz",
+        "/tmp/retention_weights.npz",
+        "C:\\tmp\\retention_weights.npz",
+        "\\\\server\\share\\retention_weights.npz",
+    ],
+)
+def test_invalid_artifact_filename_rejected(filename):
+    with pytest.raises(ConfigError):
+        ArtifactsConfig(retention_filename=filename)
+
+
 def test_unknown_key_rejected():
     with pytest.raises(ConfigError):
         load_config({"dynamic_k": {"bogus": 1}})

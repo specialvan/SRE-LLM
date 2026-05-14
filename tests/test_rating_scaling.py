@@ -156,3 +156,105 @@ def test_artifact_without_version_is_marked_unknown(tmp_path):
 
     assert pipeline.artifacts.as_trace()["rating_scaling_status"] == "unknown"
     assert pipeline.artifacts.retention is not None
+
+
+def test_absent_retention_scaling_is_explicit():
+    """PR-A: bootstrap/runtime traces do not report retention scaling as match."""
+    pipeline = SelfIterationPipeline(config=AppConfig(), metrics=MetricsRegistry())
+
+    assert pipeline.artifacts.as_trace()["rating_scaling_status"] == "absent"
+    assert pipeline.artifacts.retention is None
+
+
+def test_replay_validation_rejects_rating_scaling_mismatch(tmp_path):
+    """PR-A: replay validation rejects runtime-incompatible retention scaling."""
+    from gan_matchmaking.core.errors import DataError
+    from gan_matchmaking.sre.replay import validate_artifact_bundle
+
+    _build_retention_artifact(tmp_path, rating_scaling_version="deadbeef0000")
+
+    with pytest.raises(DataError) as exc_info:
+        validate_artifact_bundle(tmp_path, "retention@test-fixed")
+
+    assert exc_info.value.details["artifact_directory"] == str(tmp_path)
+    assert exc_info.value.details["artifact_version"] == "test-fixed"
+    assert exc_info.value.details["expected_rating_scaling_version"] == _rating_scaling_version()
+    assert exc_info.value.details["actual_rating_scaling_version"] == "deadbeef0000"
+    assert exc_info.value.details["rating_scaling_status"] == "mismatch"
+
+
+def test_replay_validation_accepts_rating_scaling_match(tmp_path):
+    """PR-A: replay validation accepts retention artifacts using current scaling."""
+    from gan_matchmaking.sre.replay import validate_artifact_bundle
+
+    _build_retention_artifact(
+        tmp_path,
+        rating_scaling_version=_rating_scaling_version(),
+    )
+
+    manifest = validate_artifact_bundle(tmp_path, "retention@test-fixed")
+
+    assert manifest["version"] == "retention@test-fixed"
+    assert manifest["retention_version"] == "test-fixed"
+    assert manifest["rating_scaling_status"] == "match"
+
+
+def test_replay_validation_requires_explicit_legacy_unknown(tmp_path):
+    """PR-A: legacy unknown scaling requires explicit replay-validation opt-in."""
+    from gan_matchmaking.core.errors import DataError
+    from gan_matchmaking.sre.replay import validate_artifact_bundle
+
+    _build_retention_artifact(tmp_path, rating_scaling_version=None)
+
+    with pytest.raises(DataError) as exc_info:
+        validate_artifact_bundle(tmp_path, "retention@test-fixed")
+
+    assert exc_info.value.details["artifact_directory"] == str(tmp_path)
+    assert exc_info.value.details["artifact_version"] == "test-fixed"
+    assert exc_info.value.details["expected_rating_scaling_version"] == _rating_scaling_version()
+    assert exc_info.value.details["actual_rating_scaling_version"] is None
+    assert exc_info.value.details["rating_scaling_status"] == "unknown"
+
+    manifest = validate_artifact_bundle(
+        tmp_path,
+        "retention@test-fixed",
+        allow_legacy_unknown=True,
+    )
+    assert manifest["rating_scaling_status"] == "unknown"
+
+
+@pytest.mark.parametrize(
+    ("rating_scaling_version", "expected_status", "replay_accepts"),
+    [
+        (_rating_scaling_version(), "match", True),
+        ("deadbeef0000", "mismatch", False),
+        (None, "unknown", False),
+    ],
+)
+def test_runtime_and_replay_classify_scaling_status_consistently(
+    tmp_path,
+    rating_scaling_version,
+    expected_status,
+    replay_accepts,
+):
+    """PR-A: runtime hydration and replay validation expose the same status."""
+    from gan_matchmaking.core.errors import DataError
+    from gan_matchmaking.sre.replay import validate_artifact_bundle
+
+    artifact_dir = tmp_path / expected_status
+    _build_retention_artifact(
+        artifact_dir,
+        rating_scaling_version=rating_scaling_version,
+    )
+
+    cfg = AppConfig(artifacts=ArtifactsConfig(directory=str(artifact_dir)))
+    pipeline = SelfIterationPipeline(config=cfg, metrics=MetricsRegistry())
+    assert pipeline.artifacts.as_trace()["rating_scaling_status"] == expected_status
+
+    if replay_accepts:
+        manifest = validate_artifact_bundle(artifact_dir, "retention@test-fixed")
+        assert manifest["rating_scaling_status"] == expected_status
+    else:
+        with pytest.raises(DataError) as exc_info:
+            validate_artifact_bundle(artifact_dir, "retention@test-fixed")
+        assert exc_info.value.details["rating_scaling_status"] == expected_status

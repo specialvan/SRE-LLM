@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GAN Runtime Dashboard</title>
+  <link rel="stylesheet" href="/dashboard/assets/dashboard.css">
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"></div>
+  <a class="skip-link" href="#main">跳到主内容</a>
+
+  <header class="hero">
+    <div class="hero__copy">
+      <p class="eyebrow">SRE self-iteration control plane</p>
+      <h1>GAN Runtime Dashboard</h1>
+      <p class="hero__lead">实时查看决策服务的健康、readiness、服务可靠性和依赖协同状态。</p>
+      <div class="hero__actions" aria-label="dashboard endpoints">
+        <a href="/healthz">healthz</a>
+        <a href="/readyz">readyz</a>
+        <a href="/metrics">metrics</a>
+        <a href="/v1/dashboard/state">state json</a>
+      </div>
+    </div>
+    <section class="hero__panel glass" aria-label="live controls">
+      <div class="pulse-dot" id="live-dot" aria-hidden="true"></div>
+      <p class="panel-label">Live telemetry</p>
+      <p class="panel-value" id="generated-at">等待刷新</p>
+      <div class="control-row">
+        <button id="refresh" type="button">刷新</button>
+        <label><input id="auto-refresh" type="checkbox" checked> 自动刷新</label>
+      </div>
+    </section>
+  </header>
+
+  <main id="main" class="dashboard-shell">
+    <section class="status-grid" aria-label="runtime status">
+      <article class="status-card glass reveal"><span>Health</span><strong id="health">--</strong></article>
+      <article class="status-card glass reveal"><span>Readiness</span><strong id="ready">--</strong></article>
+      <article class="status-card glass reveal"><span>Services</span><strong id="service-count">0</strong></article>
+      <article class="status-card glass reveal"><span>Synergy edges</span><strong id="edge-count">0</strong></article>
+    </section>
+
+    <section class="workspace">
+      <article class="glass panel panel--wide reveal">
+        <div class="section-heading">
+          <p class="eyebrow">Reliability map</p>
+          <h2>服务可靠性</h2>
+        </div>
+        <div id="services" class="service-grid empty-state">暂无服务数据，先调用 /v1/decide 生成一条决策。</div>
+      </article>
+
+      <article class="glass panel reveal">
+        <div class="section-heading">
+          <p class="eyebrow">Dependency glow</p>
+          <h2>依赖协同</h2>
+        </div>
+        <svg id="synergy-graph" class="synergy-graph" viewBox="0 0 420 260" role="img" aria-label="dependency synergy graph"></svg>
+        <div id="synergy-list" class="edge-list empty-state">暂无依赖边。</div>
+      </article>
+    </section>
+
+    <section class="glass panel reveal api-panel">
+      <div class="section-heading">
+        <p class="eyebrow">Operator console</p>
+        <h2>API 快捷入口</h2>
+      </div>
+      <pre><code>curl -s http://127.0.0.1:8080/v1/dashboard/state
+curl -s http://127.0.0.1:8080/readyz
+curl -s http://127.0.0.1:8080/metrics</code></pre>
+      <p id="error" class="error" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script src="/dashboard/assets/dashboard.js" defer></script>
+</body>
+</html>

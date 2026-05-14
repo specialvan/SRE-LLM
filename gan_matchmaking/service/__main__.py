@@ -17,7 +17,7 @@ from .app import build_app, run_wsgi
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="gan-matchmaking-http",
                                      description="Run the SRE decision HTTP server.")
-    parser.add_argument("--host", default=os.environ.get("GAN_HOST", "0.0.0.0"))
+    parser.add_argument("--host", default=os.environ.get("GAN_HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int,
                         default=int(os.environ.get("GAN_PORT", "8080")))
     parser.add_argument("--config", default=os.environ.get("GAN_CONFIG"))

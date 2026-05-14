@@ -24,6 +24,9 @@ gan-matchmaking = "gan_matchmaking.cli:main"
 include = ["gan_matchmaking*"]
 exclude = ["tests*", "examples*"]
 
+[tool.setuptools.package-data]
+"gan_matchmaking.service" = ["static/*.html", "static/*.css", "static/*.js"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

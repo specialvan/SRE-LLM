@@ -22,6 +22,15 @@ Endpoints
 ``GET /v1/services/{id}``
     Return the current rating for one service.
 
+``GET /v1/dashboard/state``
+    Return compact JSON used by the runtime dashboard.
+
+``GET /dashboard``
+    Serve the no-build runtime dashboard HTML.
+
+``GET /dashboard/assets/{asset}``
+    Serve allowlisted dashboard CSS/JS assets.
+
 ``GET /healthz``
     Liveness probe.
 
