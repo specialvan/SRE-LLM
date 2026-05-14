@@ -49,6 +49,7 @@ The convention is enforced by `test_replay_corpus.py::test_fixture_naming_matche
 | shadow_mode_rollback_hold.json | Top-level shadow mode rewrites a rollback-ready decision to HOLD while keeping the suppressed kind in trace | hold |
 | shadow_strategy_hold.json | `strategy="shadow"` → effectively HOLD | hold |
 | unknown_strategy_escalate.json | Unknown strategy label → escalate to human | escalate |
+| scaling_mismatch_hold.json | No retention artifact → bootstrap fallback with hold | hold |
 
 ## Adding a new fixture
 
