@@ -2,7 +2,7 @@
 
 ## 执行摘要
 
-2026-07 D+A2 轮 spec-v3 全部完成。192 个测试通过，p99 延迟 0.92ms（远低于 CI 50ms gate）。
+2026-07 D+A2 轮 spec-v3 全部完成。203 个测试通过（+11 pipeline 测试），p99 延迟 0.70ms（远低于 CI 50ms gate）。
 
 ## PR 完成状态
 
@@ -17,6 +17,7 @@
 | **PR-test-01** | Replay fixture naming hardening | ✅ 完成 |
 | **PR-test-02** | Artifacts public import snapshot | ✅ 完成 |
 | **PR-test-03** | HTTP lease readiness integration | ✅ 完成 |
+| **PR-test-04** | Pipeline unit test expansion | ✅ 完成 |
 
 ## 详细验收
 
@@ -76,10 +77,25 @@ tests/test_rating_scaling.py:
 ## 全局验收
 
 ```bash
-python -m pytest -q        # 192 passed, 4 skipped ✅
+python -m pytest -q        # 203 passed, 4 skipped ✅
 python -m bench.latency --quick --p99-ms 50  # 返回 0 ✅
-p99=0.92ms < 50ms gate ✅
+p99=0.70ms < 50ms gate ✅
 ```
+
+### Pipeline 测试扩展 (PR-test-04)
+
+新增 11 个测试用例覆盖 GanPipeline 核心路径:
+- synergy scores 计算
+- 空玩家注册安全
+- 单候选场景
+- 空候选 ValueError 异常
+- 自定义 handicap 配置
+- 自定义 entropy matcher 配置
+- player cache 查找
+- K-factor streak 适应
+- churn alarm softest 选择
+- generator 输入支持
+- 自定义 history_features 使用
 
 ## 契约快照
 
