@@ -39,11 +39,19 @@ class Signal:
     H   — Jacobian R^n → R^{m×n}  (None ⇒ numerical)
     R   — measurement noise covariance (m × m)
     name — human label for the audit trail
+    gate_threshold — optional Mahalanobis distance gate for *this*
+        sensor; overrides ``SignalFusion.gate_threshold`` when set.
+        The threshold is on ``sqrt(yᵀ S⁻¹ y)`` (a multivariate
+        distance), not on a univariate ``3σ`` residual.  Pick the value
+        from a χ² table for the sensor's measurement dimension when
+        false-reject rate matters (e.g. dim=2 ⇒ 3.44 ≈ 99% coverage).
+        ``None`` ⇒ fall back to the fusion-wide default.
     """
     name: str
     h: Callable[[np.ndarray], np.ndarray]
     H: Callable[[np.ndarray], np.ndarray]
     R: np.ndarray
+    gate_threshold: Optional[float] = None
 
 
 @dataclass
@@ -61,9 +69,11 @@ class SignalFusion:
     Q: np.ndarray
     x_ref: np.ndarray                           # pull target
     theta: float = 0.2                          # OU reversion rate
-    gate_threshold: Optional[float] = None      # Mahalanobis σ for outlier
-                                                # rejection; None = disabled
+    gate_threshold: Optional[float] = None      # Mahalanobis distance gate
+                                                # used when a Signal does not
+                                                # override it; None = disabled
     _ekf: EKF = field(init=False, repr=False)
+    _rejections: dict = field(default_factory=dict, init=False, repr=False)
 
     def __post_init__(self) -> None:
         def _f(x: np.ndarray, u: np.ndarray, dt: float) -> np.ndarray:
@@ -79,6 +89,15 @@ class SignalFusion:
             process_noise=np.array(self.Q, dtype=float),
             f=_f, F_jac=_F,
         )
+
+    # ------------------------------------------------------------------
+    def _resolve_threshold(self, signal: Signal) -> Optional[float]:
+        """Per-sensor override wins over the fusion-wide default."""
+        if signal.gate_threshold is not None:
+            return float(signal.gate_threshold)
+        if self.gate_threshold is not None:
+            return float(self.gate_threshold)
+        return None
 
     # ------------------------------------------------------------------
     def step(self, dt: float,
@@ -106,19 +125,27 @@ class SignalFusion:
                 ))
                 continue
             z = np.asarray(z, dtype=float)
+            threshold_used = self._resolve_threshold(signal)
             update_info = self._ekf.update(
                 z, signal.h, signal.H, signal.R,
-                gate_threshold=self.gate_threshold,
+                gate_threshold=threshold_used,
             )
             mahal = update_info["innovation_mahalanobis"]
             if update_info["gated"]:
+                self._rejections[signal.name] = (
+                    self._rejections.get(signal.name, 0) + 1
+                )
                 if "outlier_rejected" not in local_states:
                     local_states.append("outlier_rejected")
                 events.append(make_event(
                     stage="SignalFusion",
                     kind="outlier_rejected",
-                    detail=(f"{signal.name} innovation σ={mahal:.2f} exceeded "
-                            f"gate {self.gate_threshold}"),
+                    detail=(
+                        f"{signal.name} Mahalanobis d={mahal:.2f} exceeded "
+                        f"per-sensor gate {threshold_used}; "
+                        f"consecutive rejections="
+                        f"{self._rejections[signal.name]}"
+                    ),
                     safe_action=(
                         "skip update to protect posterior; raise gate only "
                         "if measurement model h(x)/R are validated"),
@@ -127,14 +154,22 @@ class SignalFusion:
                     "signal": signal.name, "used": False,
                     "gated": True,
                     "innovation_mahalanobis": mahal,
+                    "threshold_used": threshold_used,
+                    "consecutive_rejections":
+                        self._rejections[signal.name],
                 })
                 continue
+            # Successful update — reset the consecutive-rejection counter so
+            # transient outliers do not look like chronic mis-modelling.
+            self._rejections[signal.name] = 0
             if "update" not in local_states:
                 local_states.append("update")
             fused_trace.append({
                 "signal": signal.name, "used": True,
                 "residual": float(np.linalg.norm(z - signal.h(self._ekf.x))),
                 "innovation_mahalanobis": mahal,
+                "threshold_used": threshold_used,
+                "consecutive_rejections": 0,
             })
 
         return {

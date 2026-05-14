@@ -8,8 +8,10 @@ scalar Lyapunov candidate ``V(x)`` non-increasing along trajectories::
 In practice we evaluate ``V(x_k)`` at each tick and approximate the
 derivative by a finite difference over a sliding window.  When the
 moving estimate ``dV/dt`` is positive for more than ``k_violations``
-consecutive ticks we declare a stability violation — which the SRE
-side can map to the ``stability_violation`` runtime event.
+consecutive ticks we declare a stability violation. For this pass the
+monitor uses **manual-reset latch semantics**: once ``triggered`` flips
+to ``True`` it stays true until :meth:`reset` is called. The SRE side
+maps that latched red line to ``stability_violation``.
 
 This module is intentionally **generic**:
 
@@ -64,6 +66,8 @@ class StabilityMonitor:
         ``triggered`` from False to True.  The default ``3`` is enough
         to reject single-tick transients while still catching a
         genuine positive-feedback loop within a few seconds at 20 Hz.
+        Once ``triggered`` becomes True it remains latched until
+        :meth:`reset` is called.
     window
         Number of recent ``V`` samples to retain; used for smoothed
         backward-difference computation.  A window of 2 degenerates to
@@ -91,7 +95,13 @@ class StabilityMonitor:
 
     # ------------------------------------------------------------------
     def step(self, x: np.ndarray, t: float) -> StabilityVerdict:
-        """Feed one state sample ``x`` at time ``t`` (seconds)."""
+        """Feed one state sample ``x`` at time ``t`` (seconds).
+
+        ``triggered`` is latched: a later non-violating sample clears
+        ``consecutive_violations`` but does not clear the trigger bit.
+        Operators or higher-level tests must call :meth:`reset` when
+        they want to acknowledge recovery.
+        """
         V = float(self.V_fn(x))
 
         if self._history:

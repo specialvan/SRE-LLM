@@ -213,6 +213,153 @@ def test_signal_fusion_without_gate_accepts_outlier_like_before():
     assert trace["signals"][0].get("gated", False) is False
 
 
+def test_signal_fusion_per_sensor_gate_rejects_one_accepts_other():
+    """PR-D: one sensor rejected, the other accepted in the *same tick*."""
+    fusion = SignalFusion(
+        x0=np.array([1000.0, 25.0, 0.3]),
+        P0=np.diag([10**2, 2**2, 0.05**2]),
+        Q=np.diag([0.1, 0.01, 0.001]),
+        x_ref=np.array([1000.0, 25.0, 0.3]),
+        theta=0.0,
+        # No fusion-wide default; per-sensor gates fully decide here.
+        gate_threshold=None,
+    )
+    # Tight gate on the metrics channel so a 10σ reading trips it.
+    strict = Signal(
+        name="metrics",
+        h=lambda x: x[0:2],
+        H=lambda x: np.array([[1, 0, 0], [0, 1, 0]]),
+        R=np.diag([50**2, 4**2]),
+        gate_threshold=3.0,
+    )
+    # Loose gate (or none) on the second sensor so a benign reading
+    # passes; here we leave it None so it inherits None from the
+    # fusion-wide default, i.e. no gating at all.
+    relaxed = Signal(
+        name="rum",
+        h=lambda x: np.array([x[2]]),
+        H=lambda x: np.array([[0, 0, 1]]),
+        R=np.diag([0.05**2]),
+        gate_threshold=None,
+    )
+    x_before = fusion.state.copy()
+    trace = fusion.step(
+        dt=1.0,
+        readings=[
+            (strict, np.array([5000.0, 200.0])),  # 10σ outlier → reject
+            (relaxed, np.array([0.31])),          # nominal      → accept
+        ],
+    )
+
+    metrics_entry = next(s for s in trace["signals"] if s["signal"] == "metrics")
+    rum_entry = next(s for s in trace["signals"] if s["signal"] == "rum")
+
+    # metrics: rejected, posterior protected
+    assert metrics_entry["used"] is False
+    assert metrics_entry["gated"] is True
+    assert metrics_entry["threshold_used"] == 3.0
+    assert metrics_entry["innovation_mahalanobis"] > 3.0
+    assert metrics_entry["consecutive_rejections"] == 1
+
+    # rum: accepted, threshold_used is None (no gate configured for this sensor)
+    assert rum_entry["used"] is True
+    assert rum_entry["threshold_used"] is None
+    assert rum_entry["consecutive_rejections"] == 0
+
+    # First two state components untouched by the rejected metrics sample.
+    assert np.isclose(fusion.state[0], x_before[0], atol=0.5)
+    assert np.isclose(fusion.state[1], x_before[1], atol=0.5)
+    # CPU component was updated by the accepted rum reading.
+    assert fusion.state[2] != x_before[2]
+
+
+def test_signal_fusion_signal_gate_overrides_fusion_default():
+    """A Signal-level gate beats the fusion-wide default even when set."""
+    fusion = SignalFusion(
+        x0=np.array([1000.0, 25.0, 0.3]),
+        P0=np.diag([10**2, 2**2, 0.05**2]),
+        Q=np.diag([0.1, 0.01, 0.001]),
+        x_ref=np.array([1000.0, 25.0, 0.3]),
+        theta=0.0,
+        gate_threshold=3.0,         # fusion default would reject
+    )
+    # Per-sensor override = very permissive ⇒ the same outlier is accepted.
+    permissive = Signal(
+        name="metrics",
+        h=lambda x: x[0:2],
+        H=lambda x: np.array([[1, 0, 0], [0, 1, 0]]),
+        R=np.diag([50**2, 4**2]),
+        gate_threshold=100.0,
+    )
+    trace = fusion.step(
+        dt=1.0,
+        readings=[(permissive, np.array([5000.0, 200.0]))],
+    )
+    entry = trace["signals"][0]
+    assert entry["used"] is True
+    assert entry["threshold_used"] == 100.0
+    assert entry.get("gated", False) is False
+
+
+def test_signal_fusion_inherits_fusion_default_when_signal_has_no_override():
+    """A Signal without an override inherits the fusion-wide gate."""
+    fusion = SignalFusion(
+        x0=np.array([1000.0, 25.0, 0.3]),
+        P0=np.diag([10**2, 2**2, 0.05**2]),
+        Q=np.diag([0.1, 0.01, 0.001]),
+        x_ref=np.array([1000.0, 25.0, 0.3]),
+        theta=0.0,
+        gate_threshold=3.0,
+    )
+    inherited = Signal(
+        name="metrics",
+        h=lambda x: x[0:2],
+        H=lambda x: np.array([[1, 0, 0], [0, 1, 0]]),
+        R=np.diag([50**2, 4**2]),
+        gate_threshold=None,
+    )
+    x_before = fusion.state.copy()
+    trace = fusion.step(
+        dt=1.0,
+        readings=[(inherited, np.array([5000.0, 200.0]))],
+    )
+    entry = trace["signals"][0]
+    assert entry["used"] is False
+    assert entry["gated"] is True
+    assert entry["threshold_used"] == 3.0
+    assert entry["innovation_mahalanobis"] > 3.0
+    assert np.allclose(fusion.state, x_before, atol=0.5)
+
+
+def test_signal_fusion_consecutive_rejections_reset_on_acceptance():
+    """Counter increments on rejects, resets on a successful update."""
+    fusion = SignalFusion(
+        x0=np.array([1000.0, 25.0, 0.3]),
+        P0=np.diag([10**2, 2**2, 0.05**2]),
+        Q=np.diag([1e-3, 1e-3, 1e-4]),
+        x_ref=np.array([1000.0, 25.0, 0.3]),
+        theta=0.0,
+    )
+    sig = Signal(
+        name="metrics",
+        h=lambda x: x[0:2],
+        H=lambda x: np.array([[1, 0, 0], [0, 1, 0]]),
+        R=np.diag([50**2, 4**2]),
+        gate_threshold=3.0,
+    )
+
+    # Two rejects in a row.
+    for _ in range(2):
+        fusion.step(dt=1.0, readings=[(sig, np.array([5000.0, 200.0]))])
+    trace = fusion.step(dt=1.0, readings=[(sig, np.array([5000.0, 200.0]))])
+    assert trace["signals"][0]["consecutive_rejections"] == 3
+
+    # One nominal reading clears the counter.
+    cleared = fusion.step(dt=1.0, readings=[(sig, np.array([1000.0, 25.0]))])
+    assert cleared["signals"][0]["used"] is True
+    assert cleared["signals"][0]["consecutive_rejections"] == 0
+
+
 # ---------------------------------------------------------------------------
 # §6 PredictiveAutoscaler
 # ---------------------------------------------------------------------------

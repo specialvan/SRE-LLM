@@ -66,6 +66,7 @@ OBSERVE -> STABILITY -> PLAN -> GUARD -> ALLOCATE -> EXECUTE
 | 7 | Bang-bang flip | `FastTrafficSwitcher` | `deadline_exceeded` | `tests/test_sre_control.py` |
 | 8 | Bounded LS allocation | `WeightedLoadBalancer` | `bounded_ls_residual` | `tests/test_allocation.py`, `tests/test_contracts.py` |
 | + | Lyapunov stability | `StabilityGuard` | `stability_violation` | `tests/test_stability_monitor.py`, `tests/test_contracts.py` |
+| + | Fault taxonomy / fallback | `SREControlStack` + `sre_control/exceptions.py` | `adapter_exception` | `tests/test_contracts.py`, `tests/test_event_schema.py` |
 
 ## 5. 细粒度实现溯源
 
@@ -80,16 +81,16 @@ OBSERVE -> STABILITY -> PLAN -> GUARD -> ALLOCATE -> EXECUTE
 | §5 EKF / SignalFusion | `starship/ekf.py`, `sre_control/signal_fusion.py` | `missing_sensor`, `outlier_rejected` | `tests/test_ekf.py`, `tests/test_sre_control.py`, `tests/test_event_schema.py` | `analysis/s05_ekf.py` | 当前 evidence 更像 radar EKF/filtering；per-sensor gate、Joseph covariance、真实多源场景仍弱 |
 | §6 MPC / autoscaling | `starship/mpc.py`, `sre_control/predictive_autoscaler.py` | `replica_bound_active` | `tests/test_mpc.py`, `tests/test_sre_control.py`, `tests/test_failure_trace.py` | `analysis/s06_mpc.py`, `analysis/s09_sre_stack.py` | 证明 bounded replica planning，不证明容量规划最优 |
 | §7 Bang-bang flip / traffic switch | `starship/flip_maneuver.py`, `sre_control/fast_switcher.py` | `deadline_exceeded` | `tests/test_sre_control.py`, `tests/test_event_schema.py` | `analysis/s07_flip_maneuver.py` | switcher event 主要是 local/schema 证据，尚未作为 hot path 接入 stack tick |
-| §8 Bounded LS allocation | `starship/catch_controller.py`, `sre_control/weighted_balancer.py` | `bounded_ls_residual` | `tests/test_allocation.py`, `tests/test_contracts.py` | `analysis/s08_catch_allocation.py`, `analysis/s10_failure_trace.py` | residual 可观测但不会自动消失；在 §10 中还会形成背景噪声 |
-| Lyapunov stability | `starship/stability_monitor.py`, `sre_control/stability_guard.py` | `stability_violation` | `tests/test_stability_monitor.py`, `tests/test_contracts.py` | 无独立 analysis study，主要靠单测和 stack trace | 默认是 generic scalar monitor；latch/manual reset 语义必须显式化 |
-| SREControlStack lifecycle | `sre_control/stack.py`, `sre_control/events.py` | 聚合所有 adapter events；fallback 也用 `stability_violation` | `tests/test_contracts.py`, `tests/test_event_schema.py`, `tests/test_import_graph.py` | `analysis/s09_sre_stack.py`, `analysis/s10_failure_trace.py` | 研究型编排器可信；生产容错语义需 typed exception / stage policy 后才可信 |
+| §8 Bounded LS allocation | `starship/catch_controller.py`, `sre_control/weighted_balancer.py` | `bounded_ls_residual` | `tests/test_allocation.py`, `tests/test_contracts.py` | `analysis/s08_catch_allocation.py`, `analysis/s10_failure_trace.py` | residual 可观测但不会自动消失；在 §10 中只在 injected windows 内与其他事件共现 |
+| Lyapunov stability | `starship/stability_monitor.py`, `sre_control/stability_guard.py` | `stability_violation` | `tests/test_stability_monitor.py`, `tests/test_contracts.py` | 无独立 analysis study，主要靠单测和 stack trace | manual-reset latch 语义已合同化；默认例子仍是 generic scalar monitor |
+| SREControlStack lifecycle | `sre_control/stack.py`, `sre_control/events.py` | 聚合 adapter events；recoverable fallback 使用 `adapter_exception` | `tests/test_contracts.py`, `tests/test_event_schema.py`, `tests/test_import_graph.py` | `analysis/s09_sre_stack.py`, `analysis/s10_failure_trace.py` | 研究型编排器可信；allocator fallback 等生产语义仍需继续收敛 |
 
 ## 6. 当前证据
 
 本轮复跑结果：
 
 ```bash
-python -m pytest tests -q      # 51 passed
+python -m pytest tests -q      # 64 passed
 python -m analysis.run_all     # All 10 studies finished
 ```
 
@@ -102,7 +103,7 @@ python -m analysis.run_all     # All 10 studies finished
 | §5 EKF | `vel_rmse 481.1 -> 51.07` | 证明当前场景内 filtering 改善速度估计，但 `pos_p95` 变差，需要谨慎解释 |
 | §8 Allocation | `saturation_violation_pct 33.75 -> 0` | 证明有界求解消除容量越界，不证明 residual 消失 |
 | §9 SRE Stack | `slo_violation_pct 25 -> 10` | 证明控制栈用更高副本成本换更低 SLO 违例 |
-| §10 Failure trace | `0 events / 0 kinds -> 83 events / 4 kinds` | 证明事件通道可观测，但 `degraded_tick_fraction=100` 的指标语义需要修 |
+| §10 Failure trace | `0 events / 0 kinds -> 14 events / 4 kinds` | 证明连续单 stack 场景里的事件通道可观测，且 `background_event_fraction=0.0` |
 
 ## 7. 守护不变量
 
@@ -116,26 +117,26 @@ python -m analysis.run_all     # All 10 studies finished
 
 ## 8. Reviewer 应优先看的问题
 
-第一优先级不是“能不能跑”，而是“证据是否被过度解释”。当前质量门绿色，但仍有四类需要深审：
+第一优先级不是“能不能跑”，而是“证据是否被过度解释”。当前质量门绿色，但 reviewer 仍应优先深审：
 
-- `analysis/s10_failure_trace.py` 是否真的模拟同一条连续控制环。
-- `degraded_tick_fraction` 是否应该拆成 `event_visible_fraction` 与 `runtime_degraded_fraction`。
-- `SREControlStack.step()` 的异常兜底是否把 programmer error 也当成可恢复控制异常。
-- `StabilityMonitor` 的触发是否应该永久 latch，还是需要恢复条件和清除事件。
+- `analysis/s10_failure_trace.py` 的 `replica_bound_active` 只覆盖了 60% 的注入窗口，这个覆盖度是否足够。
+- `SignalFusion` 的全局 gate threshold 是否需要 per-sensor policy。
+- `WeightedLoadBalancer` 的 recoverable fallback 仍是全零 shares，这个 safe action 是否过强。
+- 主知识库与 V2 知识库仍并存，review 入口是否会继续漂移。
 
 详见 [`CLAUDE_DEEP_REVIEW.md`](./CLAUDE_DEEP_REVIEW.md)。
 
 ## 9. Codex 打回评审汇总
 
-本次打回不是 P0 否决，而是要求把“能跑通”的结论降级为“可继续审查”，并把证据口径、异常策略和恢复语义补成下一批工程 PR。工程包按下面口径收束：
+这轮收敛后，PR-A / PR-B 的核心行为已经在当前工作区落地，PR-C 的 manual-reset 语义也被显式化。工程包现在按下面口径收束：
 
 | Priority | 打回项 | 当前证据 | 工程处理 | 下一步 |
 |---|---|---|---|---|
-| P1 | §10 failure trace 不是严格连续控制环 | `analysis/s10_failure_trace.py` 为触发 bound event 切换两个 stack，且 `degraded_tick_fraction` 按 event 数计算 | 只认可“event channel 可观测”，不再写成“runtime 全程降级证据” | 单 stack 注入、拆 `event_visible_fraction` / `runtime_degraded_fraction`、导出全量 JSONL |
-| P1 | `SREControlStack` fallback 过宽 | 每个 stage 都 `except Exception`，异常统一转 `stability_violation` | 当前作为研究 trace 可接受；不能当生产容错策略 | 分离 recoverable control exception 与 programmer error；补 stage-specific fallback |
-| P1 | `StabilityMonitor` 触发后恢复语义不清 | `triggered` 当前永久 latch，stack 持续追加 `DEGRADED_PLAN` | 需要明确是人工确认红线还是自动恢复信号 | 增加 latch/manual reset 或 recovery window 合同与测试 |
-| P2 | EKF / SignalFusion 证据和数值稳定性不足 | §5 文档说 multi-sensor，但当前主要喂 radar；covariance update 不是 Joseph form | 不再把 §5 写成强多源融合证明，只保留场景内 filtering 证据 | 接入真实 fiducial update 或改名；补 Joseph form、PSD 回归、per-sensor gate |
-| P2 | fallback 安全动作需要 SRE 语义复审 | allocator 异常 fallback 为全零 shares | “route nothing” 不应默认等同安全 | hold last known good shares，或显式 `traffic_halt=True` 让上游 fail closed |
+| P1 | §10 failure trace 不是严格连续控制环 | 单 stack history、`event_visible_fraction=0.846`、`background_event_fraction=0.0`、full/sample JSONL 均已导出 | PR-A 已收敛；`degraded_tick_fraction` 降级为 legacy 指标 | 审 `replica_bound_active` 覆盖率 `0.6` 是否足够，必要时加强 bound window |
+| P1 | `SREControlStack` fallback 过宽 | `RecoverableControlError` / `adapter_exception` 已将 programmer error 与控制域异常分开；allocator recoverable failure 现在优先复用 last-good shares | PR-B 与 allocator fallback 语义已收敛；event payload 也有 machine-readable 字段 | 后续只剩更细 cause taxonomy 与 EKF hardening |
+| P1 | `StabilityMonitor` 触发后恢复语义不清 | code/doc/tests 现在明确 manual-reset latch；持续 tick 只给 `sustained` 不重复发事件 | PR-C 已收敛；当前不再追 auto-recovery | 若未来要自动恢复，另开单独 PR，不能复用本 pass 的语义 |
+| P1 | per-sensor gate policy 已落地 | `SignalFusion` 已支持 per-sensor `gate_threshold`，trace 记录 `threshold_used`，`tests/test_sre_control.py` 覆盖 mixed accept/reject 与 override/default 继承 | PR-D 最小切片已收敛；cooldown/re-admission 明确延后 | 后续只保留 EKF hardening 与更细 gate 恢复策略 |
+| P2 | EKF / SignalFusion 证据和数值稳定性不足 | §5 文档说 multi-sensor，但当前主要喂 radar；Joseph form 与对称化已补上，但多源实证仍偏弱 | 不再把 §5 写成强多源融合证明，只保留场景内 filtering 证据 | 接入真实 fiducial update 或改名；补更贴近场景的多源回归 |
 | P2 | 文档入口仍可能漂移 | 主知识库与 V2 知识库并存 | 本目录作为当前评审入口；知识库入口另开收敛 PR | 选 canonical 入口，并在构建脚本做 drift check |
 
 打回后的 reviewer 读法：先看上表决定是否接受当前证据边界，再看 [`CLAUDE_DEEP_REVIEW.md`](./CLAUDE_DEEP_REVIEW.md) 的逐条 finding，最后把 [`OPEN_RISKS.md`](./OPEN_RISKS.md) 作为后续 PR backlog。
@@ -146,8 +147,7 @@ python -m analysis.run_all     # All 10 studies finished
 
 | PR | 范围 | 验收 |
 |---|---|---|
-| PR-A | 修 `s10`：单 stack 注入、指标拆名、全量 JSONL | `tests/test_failure_trace.py` 增加连续性和指标语义断言 |
-| PR-B | 异常兜底策略：typed control exception、programmer error fail-fast、stage-specific fallback | `tests/test_contracts.py` 覆盖可恢复与不可恢复异常 |
-| PR-C | Stability recovery：明确 latch/manual reset 或自动 clear 策略 | `tests/test_stability_monitor.py` 覆盖恢复窗口 |
-| PR-D | EKF covariance：Joseph form + 对称化 + PSD 断言 | `tests/test_ekf.py` 增加数值稳定性回归 |
-
+| PR-D | per-sensor innovation gate | `tests/test_sre_control.py` 覆盖 mixed accept/reject、override precedence、fusion-default 继承与 threshold tracing |
+| PR-E | allocator fallback semantics | `tests/test_contracts.py` 覆盖 hold-last-good 或显式 `traffic_halt` 合同 |
+| PR-F | EKF covariance：Joseph form + 对称化 + PSD 断言 | `tests/test_ekf.py` 增加数值稳定性回归 |
+| PR-G | 知识库 canonical 入口与 drift check | 构建脚本或测试能发现主知识库 / V2 漂移 |

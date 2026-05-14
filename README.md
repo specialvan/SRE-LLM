@@ -183,6 +183,21 @@ docs/EQUATION_DEEP_DIVE.md  # 方程逐项拆解（每符号·每项·为什么�
 docs/assets/                # 8 张机制 PNG + 8 张 before/after GIF
 ```
 
+新增一个系统前端控制中心，直接把 Python 控制栈输出打到前端态势屏：
+
+```
+docs/control-center.html          # 现代化控制中心前端
+scripts/control_center_server.py  # 本地 HTTP 服务 + JSON API
+analysis/control_center_data.py   # 控制栈 → 前端 payload
+```
+
+启动方式：
+
+```bash
+python -m scripts.control_center_server
+# open http://127.0.0.1:8765/control-center
+```
+
 一条命令重生全部资产：
 
 ```bash

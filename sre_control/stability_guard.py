@@ -11,7 +11,9 @@ This wrapper reuses the physics-layer :class:`StabilityMonitor` but
 speaks SRE vocabulary: instead of raising on trigger it emits a
 `stability_violation` runtime event so the upstream
 :class:`SREControlStack` can propagate it into ``runtime.events`` via
-the normal four-field schema.
+the normal event schema. The underlying monitor is a **manual-reset
+latch** in this pass: once triggered, it stays triggered until
+``reset()`` is called.
 """
 
 from __future__ import annotations
@@ -69,7 +71,9 @@ class StabilityGuard:
         When the monitor has just flipped from healthy to triggered
         (this tick specifically), emit a ``stability_violation`` event
         with a detail string that differentiates it from adapter
-        exceptions (PR-M-04's use of the same kind).
+        exceptions. On later ticks the guard reports ``triggered=True``
+        and a local ``sustained`` state, but it does not emit duplicate
+        events until an explicit :meth:`reset`.
         """
         was_triggered_before = self._monitor.triggered
         verdict: StabilityVerdict = self._monitor.step(x, t)
@@ -86,8 +90,8 @@ class StabilityGuard:
                         f"with dV/dt > {self.tolerance:.1e}"),
                 safe_action=(
                     "surface as DEGRADED signal; downstream controllers "
-                    "should prefer conservative / fallback commands until "
-                    "V returns to non-increasing behaviour"),
+                    "should stay in conservative mode until an operator "
+                    "or test explicitly resets the latched monitor"),
             ))
         elif verdict.triggered:
             local_states.append("sustained")

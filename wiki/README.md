@@ -18,6 +18,7 @@
 |---|---|
 | [`docs/codex-review/CLAUDE_REFINED_SPEC.md`](../docs/codex-review/CLAUDE_REFINED_SPEC.md) | 下一轮实现的执行规格，优先级最高 |
 | [`docs/codex-review/ENGINEERING_PACKET.md`](../docs/codex-review/ENGINEERING_PACKET.md) | 可离线阅读的工程包 |
+| [`docs/control-center.html`](../docs/control-center.html) | 系统前端控制中心，真实消费 Python 控制栈 JSON payload |
 | [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) | 分层、依赖方向、运行链路 |
 | [`docs/API_CONTRACTS.md`](../docs/API_CONTRACTS.md) | adapter 输入/输出/状态契约 |
 | [`docs/EVENT_SCHEMA.md`](../docs/EVENT_SCHEMA.md) | runtime event schema 和 counter-example |
@@ -27,8 +28,9 @@
 
 - 分支：`spacex-session`
 - 工程定位：公开材料学习/工程复现，不代表 SpaceX 官方实现。
-- 质量门口径：最近 review packet 记录为 `python -m pytest tests -q` 通过 51 个测试，`python -m analysis.run_all` 完成 10 个 studies。
-- 当前主要风险：质量门绿色，但 PR-A 至 PR-D 的语义风险仍是 P1。
+- 质量门口径：最近 review packet 记录为 `python -m pytest tests -q` 通过 64 个测试，`python -m analysis.run_all` 完成 10 个 studies。
+- 当前新增前端入口：`python -m scripts.control_center_server` 提供 `http://127.0.0.1:8765/control-center` 与 `/api/control-center`，把控制栈真实 trace 打到前端页面。
+- 当前主要风险：质量门绿色；PR-A/PR-B/PR-C 已收敛，P1 主要剩在 allocator fallback 语义与后续 EKF hardening。
 
 ## 维护规则
 

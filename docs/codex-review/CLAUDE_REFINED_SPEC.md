@@ -2,13 +2,15 @@
 
 > Scope: refine the `spacex-session` Codex review packet into executable engineering work. This spec is based on Claude's follow-up review of `docs/codex-review/*`, current code, and current tests.
 
+> Status update (2026-05-14): PR-A, PR-B, PR-C, and the minimal PR-D slice are implemented in the current workspace and reflected in tests/docs. The live execution focus for the next pass is allocator fallback semantics, EKF hardening, and docs drift control. Historical sections below remain as rationale and acceptance history.
+
 ## Current verdict and source of truth
 
-Quality gates pass, but P1 semantic risks remain.
+Quality gates pass, and the remaining P1 semantic risks are now narrower than this document's first draft.
 
 This file is the canonical execution spec for the next Codex pass. Earlier review packets remain evidence and rationale; where priority wording differs, this refined spec controls implementation order.
 
-Do not describe the current branch as "event lifecycle fully proven" or "production-ready control stack" until PR-A through PR-D below are complete.
+Do not describe the current branch as "production-ready control stack". PR-A through PR-D are materially complete in the current workspace. The follow-on hardening items below remain open.
 
 ## Non-goals
 
@@ -186,7 +188,7 @@ python -m pytest tests/test_stability_monitor.py tests/test_contracts.py -q
 
 Priority: P1
 
-This carries forward the P1 risk in `OPEN_RISKS.md` R4. It may be implemented minimally in this pass: per-sensor thresholds and traceability are required; cooldown/re-admission can be deferred if clearly documented.
+This originated from the earlier SignalFusion open risk. The minimal P1 slice is now implemented in the current workspace: per-sensor thresholds and threshold tracing are in code and tests. Cooldown/re-admission and broader EKF hardening remain explicitly deferred.
 
 ### Problem
 
@@ -235,7 +237,7 @@ Priority: P3
 
 ### Problem
 
-Docs and runtime event registry can drift. `RUNTIME_STATES.md` still has a table that reads like only 8 local event emitters exist, while the review packet and schema describe 10 event kinds.
+Docs and runtime event registry can drift. `RUNTIME_STATES.md` previously read like only 8 local event emitters existed, while the review packet and schema now describe 11 event kinds.
 
 Key anchors:
 
@@ -245,7 +247,7 @@ Key anchors:
 
 ### Required changes
 
-1. Update docs to list 10 event kinds, or explicitly separate:
+1. Update docs to list 11 event kinds, or explicitly separate:
    - 8 core adapter events
    - 2 cross-cutting events
 2. Add a docs/schema sync check.

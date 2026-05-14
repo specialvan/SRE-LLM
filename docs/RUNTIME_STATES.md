@@ -77,11 +77,13 @@ Failure signal:
 
 - rising covariance trace
 - inconsistent residuals across sensors
+- `outlier_rejected`：per-sensor Mahalanobis gate 拒绝当前观测，trace 同步记录 `threshold_used` 和 `innovation_mahalanobis`
 
 Recovery:
 
 - keep the last credible posterior
-- downweight noisy or missing streams
+- reject the noisy stream without contaminating the posterior, while still allowing other sensors in the same tick to update
+- downweight or skip missing streams
 
 ### 2.3 `CanaryScheduler`
 

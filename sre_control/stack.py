@@ -78,6 +78,33 @@ class SREControlStack:
 
     trace: List[dict] = field(default_factory=list)
     _tick_index: int = field(default=0, init=False, repr=False)
+    _last_good_alloc_shares: Optional[np.ndarray] = field(
+        default=None, init=False, repr=False
+    )
+    _last_good_alloc_signature: Optional[tuple] = field(
+        default=None, init=False, repr=False
+    )
+
+    # ------------------------------------------------------------------
+    def _allocator_signature(self) -> tuple:
+        return tuple(
+            (inst.name, float(inst.rps_min), float(inst.rps_max))
+            for inst in self.balancer.instances
+        )
+
+    # ------------------------------------------------------------------
+    def _can_reuse_last_good_alloc(self) -> bool:
+        if self._last_good_alloc_shares is None:
+            return False
+        current_signature = self._allocator_signature()
+        if self._last_good_alloc_signature != current_signature:
+            return False
+        if self._last_good_alloc_shares.size != len(self.balancer.instances):
+            return False
+        for share, inst in zip(self._last_good_alloc_shares, self.balancer.instances):
+            if share < inst.rps_min - 1e-6 or share > inst.rps_max + 1e-6:
+                return False
+        return True
 
     # ------------------------------------------------------------------
     @staticmethod
@@ -239,6 +266,8 @@ class SREControlStack:
         try:
             rps_demand = float(np.linalg.norm(safe_action))
             shares, alloc_info = self.balancer.allocate(rps_demand, zone_target)
+            self._last_good_alloc_shares = shares.copy()
+            self._last_good_alloc_signature = self._allocator_signature()
             residual_active = alloc_info["rps_residual"] > 1e-6 or any(
                 z > 1e-6 for z in alloc_info["zone_residual"]
             )
@@ -247,14 +276,18 @@ class SREControlStack:
                 runtime_events.extend(alloc_info.get("events", []))
         except RecoverableControlError as exc:
             n = len(self.balancer.instances)
-            # Safe fallback: zero shares → upstream LB will route nothing.
-            shares = np.zeros(n)
+            if self._can_reuse_last_good_alloc():
+                shares = self._last_good_alloc_shares.copy()
+                fallback_state = "reuse_last_good_shares"
+            else:
+                shares = np.zeros(n)
+                fallback_state = "bootstrap_zero_fallback"
             alloc_info = {
                 "rps_residual": float("nan"),
                 "zone_residual": [],
                 "saturation": [False] * n,
                 "cost": float("nan"),
-                "local_states": ["error"],
+                "local_states": ["error", fallback_state],
                 "events": [self._adapter_exception_event("WeightedLoadBalancer", exc)],
             }
             runtime_states.append("DEGRADED_ALLOCATE")

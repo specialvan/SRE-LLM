@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Starship SRE Control Center</title>
+<style>
+  :root{
+    --bg:#050d18;
+    --bg-soft:#0a1628;
+    --panel:rgba(10,22,39,.78);
+    --panel-strong:rgba(11,26,46,.92);
+    --line:rgba(141,193,255,.16);
+    --line-strong:rgba(242,196,123,.24);
+    --text:#edf4ff;
+    --muted:#8ca3c1;
+    --brass:#f2c47b;
+    --cyan:#8ddcff;
+    --mint:#7ff4d2;
+    --rose:#ffad9c;
+    --danger:#ff717d;
+    --shadow:0 30px 100px rgba(0,0,0,.38);
+    --display:'Bodoni MT','Palatino Linotype','Sitka Display','Georgia',serif;
+    --body:'Aptos','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+    --mono:'Cascadia Code','Consolas','SFMono-Regular',monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    color:var(--text);
+    font-family:var(--body);
+    background:
+      radial-gradient(circle at 10% 18%, rgba(106,170,255,.18), transparent 24rem),
+      radial-gradient(circle at 82% 12%, rgba(242,196,123,.18), transparent 20rem),
+      radial-gradient(circle at 45% 120%, rgba(127,244,210,.12), transparent 24rem),
+      linear-gradient(180deg, #040b15 0%, #07111f 45%, #040913 100%);
+    min-height:100vh;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size:36px 36px;
+    mask-image:linear-gradient(180deg, rgba(0,0,0,.84), transparent 85%);
+  }
+  body::after{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    opacity:.13;
+    mix-blend-mode:soft-light;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,.8), transparent 1px),
+      radial-gradient(circle at 80% 60%, rgba(255,255,255,.7), transparent 1px),
+      radial-gradient(circle at 35% 75%, rgba(255,255,255,.7), transparent 1px);
+    background-size:180px 180px, 240px 240px, 210px 210px;
+  }
+  .shell{
+    width:min(1480px, calc(100vw - 28px));
+    margin:14px auto 28px;
+    display:grid;
+    grid-template-columns:290px minmax(0,1fr);
+    gap:18px;
+  }
+  .sidebar,.panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    box-shadow:var(--shadow);
+    backdrop-filter:blur(22px) saturate(1.16);
+  }
+  .sidebar{
+    border-radius:30px;
+    padding:22px 18px;
+    position:sticky;
+    top:14px;
+    height:calc(100vh - 28px);
+    overflow:auto;
+  }
+  .brand-eyebrow{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--brass)}
+  .brand-title{margin:10px 0 10px;font-family:var(--display);font-size:30px;line-height:.96;letter-spacing:.01em}
+  .brand-copy{margin:0 0 18px;color:var(--muted);font-size:13px;line-height:1.74}
+  .nav-group{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+  .nav-label{margin-bottom:10px;color:var(--muted);font-size:11px;letter-spacing:.15em;text-transform:uppercase}
+  .nav-link{display:flex;justify-content:space-between;align-items:center;padding:11px 12px;margin-bottom:8px;border-radius:18px;color:var(--text);text-decoration:none;background:rgba(255,255,255,.02);border:1px solid transparent;transition:.22s ease}
+  .nav-link:hover{border-color:rgba(141,220,255,.22);transform:translateX(2px);background:rgba(141,220,255,.08)}
+  .nav-link small{color:var(--muted);font-family:var(--mono)}
+  .workspace-status{margin-top:16px;padding:14px;border-radius:20px;background:linear-gradient(180deg, rgba(242,196,123,.1), rgba(255,255,255,.03));border:1px solid rgba(242,196,123,.14)}
+  .workspace-status strong{display:block;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#ffe0b2;margin-bottom:8px}
+  .workspace-status p{margin:0;color:var(--muted);font-size:12px;line-height:1.65}
+  .content{display:grid;gap:18px}
+  .hero{position:relative;overflow:hidden;padding:28px 30px 24px;border-radius:32px;background:linear-gradient(135deg, rgba(10,24,42,.96), rgba(8,20,36,.86))}
+  .hero::before{content:"";position:absolute;inset:auto -120px -120px auto;width:420px;height:420px;border-radius:50%;background:conic-gradient(from 180deg, rgba(141,220,255,.04), rgba(141,220,255,.28), rgba(127,244,210,.03));filter:blur(10px);animation:spin 24s linear infinite}
+  .hero::after{content:"";position:absolute;left:-40px;top:46px;width:220px;height:2px;background:linear-gradient(90deg, rgba(242,196,123,.85), transparent)}
+  .hero>*{position:relative;z-index:1}
+  .hero-topline{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
+  .hero-kicker{font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--brass)}
+  .hero h1{margin:10px 0 12px;font-family:var(--display);font-size:56px;line-height:.92;letter-spacing:.01em;max-width:780px}
+  .hero p{max-width:760px;margin:0;color:#c4d4ea;font-size:15px;line-height:1.84}
+  .hero-badge{min-width:240px;padding:14px 16px;border-radius:22px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+  .hero-badge strong{display:block;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
+  .hero-badge div{font-family:var(--mono);font-size:13px;color:#d6e3f5;line-height:1.6}
+  .metrics-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:20px}
+  .metric-card{padding:16px 18px;border-radius:22px;background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.08)}
+  .metric-card span{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#95a9c5}
+  .metric-card strong{display:block;margin-top:8px;font-family:var(--mono);font-size:26px;color:var(--text)}
+  .metric-card em{display:block;margin-top:8px;font-style:normal;color:var(--muted);font-size:12px;line-height:1.55}
+  .grid-main{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(380px,.9fr);gap:18px}
+  .panel{border-radius:28px;padding:22px}
+  .panel-header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:16px}
+  .panel-header h2{margin:0;font-family:var(--display);font-size:29px;line-height:1}
+  .panel-header p{margin:8px 0 0;color:var(--muted);font-size:13px}
+  .mono{font-family:var(--mono);font-size:12px;color:var(--cyan)}
+  .timeline{display:grid;gap:10px;max-height:720px;overflow:auto;padding-right:4px}
+  .timeline-row{display:grid;grid-template-columns:74px minmax(0,1fr);gap:12px;padding:14px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);transition:.22s ease;cursor:pointer}
+  .timeline-row:hover{transform:translateY(-2px);border-color:rgba(141,220,255,.2);background:rgba(141,220,255,.05)}
+  .timeline-row.active{border-color:rgba(242,196,123,.34);background:linear-gradient(180deg, rgba(242,196,123,.08), rgba(141,220,255,.03));box-shadow:inset 0 0 0 1px rgba(242,196,123,.12)}
+  .tick-index{font-family:var(--mono);color:var(--brass);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+  .tick-time{display:block;margin-top:6px;font-size:24px;font-family:var(--mono);color:var(--text)}
+  .tick-copy strong{display:block;font-size:15px}
+  .tick-copy p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.65}
+  .chip-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.06);color:#dbe8f8;border:1px solid rgba(255,255,255,.07)}
+  .chip.degraded{background:rgba(255,113,125,.12);border-color:rgba(255,113,125,.18);color:#ffc3ca}
+  .chip.healthy{background:rgba(127,244,210,.1);border-color:rgba(127,244,210,.2);color:#b8fceb}
+  .detail-stack{display:grid;gap:18px}
+  .inspector-card,.chart-card,.adapter-card,.event-kind-list,.event-log{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:22px}
+  .inspector-card{padding:18px}
+  .inspector-hero{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start}
+  .inspector-hero strong{font-family:var(--display);font-size:28px;line-height:.95}
+  .inspector-hero p{margin:8px 0 0;color:var(--muted);font-size:13px;line-height:1.65;max-width:460px}
+  .inspector-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+  .stat{padding:12px 14px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05)}
+  .stat span{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8fa5c3}
+  .stat strong{display:block;margin-top:8px;font-family:var(--mono);font-size:18px}
+  .state-row,.load-row,.event-item{padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+  .state-row:last-child,.load-row:last-child,.event-item:last-child,.event-kind:last-child{border-bottom:none}
+  .state-row strong,.load-row strong,.event-kind strong,.event-item strong{font-family:var(--mono);font-size:12px;color:var(--cyan)}
+  .state-row p,.load-row p,.event-kind span,.event-item p{margin:6px 0 0;color:var(--muted);font-size:12px;line-height:1.6}
+  .bar{height:10px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;border:1px solid rgba(255,255,255,.05)}
+  .bar>span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg, rgba(141,220,255,.55), rgba(242,196,123,.92))}
+  .chart-card{padding:16px}
+  .chart-card h3{margin:0 0 10px;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:#dce8f7}
+  .strip{display:flex;gap:5px;align-items:flex-end;height:120px}
+  .strip-bar{flex:1;min-width:0;border-radius:12px 12px 4px 4px;background:linear-gradient(180deg, rgba(141,220,255,.9), rgba(141,220,255,.16));position:relative;overflow:hidden}
+  .strip-bar.degraded{background:linear-gradient(180deg, rgba(255,113,125,.9), rgba(255,113,125,.18))}
+  .strip-bar.pool{background:linear-gradient(180deg, rgba(127,244,210,.85), rgba(127,244,210,.14))}
+  .strip-labels{display:flex;justify-content:space-between;margin-top:8px;color:var(--muted);font-size:11px;font-family:var(--mono)}
+  .adapter-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .adapter-card{padding:16px;background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03))}
+  .adapter-card header{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+  .adapter-card h3{margin:0;font-size:14px;line-height:1.35}
+  .status-pill{padding:5px 9px;border-radius:999px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-family:var(--mono)}
+  .status-pill.healthy{background:rgba(127,244,210,.12);color:#8ff0d8}
+  .status-pill.attention{background:rgba(242,196,123,.14);color:#ffd89d}
+  .status-pill.standby{background:rgba(255,255,255,.08);color:#ccd7e5}
+  .adapter-metric{margin:12px 0 6px;font-family:var(--mono);font-size:25px;color:var(--text)}
+  .adapter-detail{margin:0;color:var(--muted);font-size:12.5px;line-height:1.65}
+  .event-summary{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .event-kind-list,.event-log{padding:16px}
+  .event-kind{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+  .footer-note{padding:16px 20px;border-radius:22px;background:linear-gradient(180deg, rgba(242,196,123,.08), rgba(255,255,255,.03));border:1px solid rgba(242,196,123,.14);color:#d8e3f3;font-size:13px;line-height:1.75}
+  .footer-note code,.workspace-status code{font-family:var(--mono);background:rgba(255,255,255,.06);padding:2px 6px;border-radius:8px}
+  .skeleton{position:relative;overflow:hidden}
+  .skeleton::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);animation:shimmer 1.4s infinite}
+  .error-banner{display:none;margin-top:16px;padding:12px 14px;border-radius:16px;background:rgba(255,113,125,.12);color:#ffc3ca;border:1px solid rgba(255,113,125,.22);font-size:13px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes shimmer{100%{transform:translateX(100%)}}
+  @media (max-width: 1280px){.shell{grid-template-columns:1fr}.sidebar{position:relative;height:auto;top:0}.grid-main{grid-template-columns:1fr}}
+  @media (max-width: 940px){.metrics-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.adapter-grid,.event-summary,.inspector-grid{grid-template-columns:1fr}}
+  @media (max-width: 720px){.hero h1{font-size:40px}.metrics-grid{grid-template-columns:1fr 1fr}.timeline-row{grid-template-columns:1fr}}
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand-eyebrow">frontend-design engaged</div>
+      <div class="brand-title">Starship SRE<br/>Control Center</div>
+      <p class="brand-copy">这是一块真正消费 Python API 的 mission-control 前端，而不是把文档内容硬贴成 dashboard。重点是高密度态势、运行态切换与单 tick 追责能力。</p>
+
+      <div class="nav-group">
+        <div class="nav-label">Control Layers</div>
+        <a class="nav-link" href="#hero"><span>Mission Overview</span><small>00</small></a>
+        <a class="nav-link" href="#timeline-panel"><span>Runtime Timeline</span><small>01</small></a>
+        <a class="nav-link" href="#inspector-panel"><span>Tick Inspector</span><small>02</small></a>
+        <a class="nav-link" href="#adapters-panel"><span>Control Surfaces</span><small>03</small></a>
+        <a class="nav-link" href="#events-panel"><span>Event Telemetry</span><small>04</small></a>
+      </div>
+
+      <div class="workspace-status">
+        <strong>视觉方向</strong>
+        <p>采用 <code>maximalist mission-control editorial</code>：黄铜高光、深海军蓝底、玻璃态硬面板、条带图与作战式密集信息分发，避免通用 SaaS 仪表盘气质。</p>
+      </div>
+
+      <div class="workspace-status">
+        <strong>前后端联通</strong>
+        <p>前端通过 <code>/api/control-center</code> 直接读取 <code>analysis/control_center_data.py</code> 生成的控制栈 payload；服务入口为 <code>python -m scripts.control_center_server</code>。</p>
+      </div>
+    </aside>
+
+    <main class="content">
+      <section class="panel hero" id="hero">
+        <div class="hero-topline">
+          <div>
+            <div class="hero-kicker" id="hero-theme">Loading mission profile</div>
+            <h1 id="hero-title">Starship SRE Control Center</h1>
+            <p id="hero-subtitle">正在连接控制栈数据面。</p>
+          </div>
+          <div class="hero-badge">
+            <strong>Data uplink</strong>
+            <div id="generated-at">awaiting payload…</div>
+          </div>
+        </div>
+
+        <div class="metrics-grid">
+          <article class="metric-card skeleton" id="metric-ticks"><span>Timeline ticks</span><strong>--</strong><em>simulation steps captured</em></article>
+          <article class="metric-card skeleton" id="metric-degraded"><span>Degraded ticks</span><strong>--</strong><em>runtime entered degraded states</em></article>
+          <article class="metric-card skeleton" id="metric-events"><span>Visible events</span><strong>--</strong><em>fraction of ticks with runtime events</em></article>
+          <article class="metric-card skeleton" id="metric-canary"><span>Canary share</span><strong>--</strong><em>live rollout exposure</em></article>
+          <article class="metric-card skeleton" id="metric-avg-rps"><span>Avg observed rps</span><strong>--</strong><em>mean runtime demand</em></article>
+          <article class="metric-card skeleton" id="metric-peak-rps"><span>Peak forecast rps</span><strong>--</strong><em>upper planning pressure</em></article>
+        </div>
+        <div class="error-banner" id="error-banner"></div>
+      </section>
+
+      <section class="grid-main">
+        <section class="panel" id="timeline-panel">
+          <div class="panel-header">
+            <div>
+              <h2>Runtime Timeline</h2>
+              <p>逐 tick 展示 observe → plan → guard → allocate 的状态切换；点击任意 tick 可在右侧展开单次执行细节。</p>
+            </div>
+            <div class="mono" id="timeline-meta">12 ticks · live payload</div>
+          </div>
+          <div class="timeline" id="timeline-list"></div>
+        </section>
+
+        <div class="detail-stack">
+          <section class="panel" id="inspector-panel">
+            <div class="panel-header">
+              <div>
+                <h2>Tick Inspector</h2>
+                <p>把单次控制拍的 replicas、posterior、guardrail 和 alloc shares 压到一个追责界面里。</p>
+              </div>
+              <div class="mono" id="inspector-meta">selected tick</div>
+            </div>
+            <div class="inspector-card">
+              <div class="inspector-hero">
+                <div>
+                  <strong id="inspector-title">Tick 0</strong>
+                  <p id="inspector-copy">Select a timeline row to inspect a concrete control decision.</p>
+                </div>
+                <div class="chip-row" id="inspector-state-chips"></div>
+              </div>
+              <div class="inspector-grid">
+                <div class="stat"><span>Observed RPS</span><strong id="stat-observed">--</strong></div>
+                <div class="stat"><span>Forecast RPS</span><strong id="stat-forecast">--</strong></div>
+                <div class="stat"><span>Replicas Next</span><strong id="stat-replicas">--</strong></div>
+                <div class="stat"><span>Pool Connections</span><strong id="stat-pool">--</strong></div>
+                <div class="stat"><span>Posterior QPS</span><strong id="stat-posterior-qps">--</strong></div>
+                <div class="stat"><span>Posterior Latency</span><strong id="stat-posterior-latency">--</strong></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Signal Bands</h2>
+                <p>以条带图显示 demand、replicas 和 pool connections 的变化，不把时间序列藏在图片里。</p>
+              </div>
+              <div class="mono">live series</div>
+            </div>
+            <div class="chart-card">
+              <h3>Observed vs Forecast RPS</h3>
+              <div class="strip" id="rps-strip"></div>
+              <div class="strip-labels"><span>0s</span><span>55s</span></div>
+            </div>
+            <div class="chart-card" style="margin-top:12px">
+              <h3>Replica Steps</h3>
+              <div class="strip" id="replica-strip"></div>
+              <div class="strip-labels"><span>capacity floor</span><span>planning ceiling</span></div>
+            </div>
+            <div class="chart-card" style="margin-top:12px">
+              <h3>Pool Connections</h3>
+              <div class="strip" id="pool-strip"></div>
+              <div class="strip-labels"><span>keep-alive floor</span><span>pool cap window</span></div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="grid-main">
+        <section class="panel" id="adapters-panel">
+          <div class="panel-header">
+            <div>
+              <h2>Control Surfaces</h2>
+              <p>8 个 adapter 以作战卡片聚合，强调健康状态、剩余量和最后一次动作语义。</p>
+            </div>
+            <div class="mono">8 adapters</div>
+          </div>
+          <div class="adapter-grid" id="adapters-grid"></div>
+        </section>
+
+        <div class="detail-stack">
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Load Split</h2>
+                <p>最新 tick 的 alloc shares 以实例条带形式展开，直接展示 east / west 分布。</p>
+              </div>
+              <div class="mono">latest allocation</div>
+            </div>
+            <div class="inspector-card" id="load-split-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>State Rollup</h2>
+                <p>统计 runtime states 在全 timeline 中出现次数，帮助 reviewer 先扫全局，再钻到单 tick。</p>
+              </div>
+              <div class="mono">state counts</div>
+            </div>
+            <div class="inspector-card" id="state-rollup-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="panel" id="events-panel">
+        <div class="panel-header">
+          <div>
+            <h2>Event Telemetry</h2>
+            <p>把 runtime events 做成频次和最近轨迹双栏；左侧看结构，右侧看最近一次实际发生了什么。</p>
+          </div>
+          <div class="mono" id="events-meta">0 kinds</div>
+        </div>
+        <div class="event-summary">
+          <div class="event-kind-list" id="event-kinds"></div>
+          <div class="event-log" id="event-log"></div>
+        </div>
+      </section>
+
+      <section class="footer-note">
+        运行方式：<code>python -m scripts.control_center_server</code>，访问 <code>http://127.0.0.1:8765/control-center</code>。
+        这条链路保留静态前端 + Python API 的简单部署方式，但交互层已经具备真正的系统前端特征：单 tick 检视、series 可视化、stage rollup 和 alloc split 联动。
+      </section>
+    </main>
+  </div>
+
+<script>
+const API_URL = '/api/control-center';
+let dashboardPayload = null;
+let selectedTickIndex = 0;
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function statusPill(status) {
+  const label = status === 'attention' ? 'Attention' : status === 'standby' ? 'Standby' : 'Healthy';
+  return `<span class="status-pill ${escapeHtml(status)}">${escapeHtml(label)}</span>`;
+}
+
+function chipMarkup(label, tone = '') {
+  return `<span class="chip ${tone}">${escapeHtml(label)}</span>`;
+}
+
+function renderHero(payload) {
+  document.getElementById('hero-theme').textContent = payload.hero.theme.toUpperCase();
+  document.getElementById('hero-title').textContent = payload.hero.title;
+  document.getElementById('hero-subtitle').textContent = payload.hero.subtitle;
+  document.getElementById('generated-at').textContent = payload.generated_at;
+
+  const metrics = [
+    ['metric-ticks', payload.summary.ticks, 'simulation steps captured'],
+    ['metric-degraded', payload.summary.degraded_ticks, 'runtime entered degraded states'],
+    ['metric-events', `${(payload.summary.event_visible_fraction * 100).toFixed(1)}%`, 'fraction of ticks with runtime events'],
+    ['metric-canary', `${payload.summary.canary_share_pct.toFixed(1)}%`, 'live rollout exposure'],
+    ['metric-avg-rps', payload.summary.avg_observed_rps.toFixed(0), 'mean runtime demand'],
+    ['metric-peak-rps', payload.summary.peak_forecast_rps.toFixed(0), 'upper planning pressure'],
+  ];
+  for (const [id, value, note] of metrics) {
+    const node = document.getElementById(id);
+    const label = node.querySelector('span').textContent;
+    node.classList.remove('skeleton');
+    node.innerHTML = `<span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><em>${escapeHtml(note)}</em>`;
+  }
+}
+
+function renderTimeline(payload) {
+  document.getElementById('timeline-meta').textContent = `${payload.summary.ticks} ticks · ${payload.summary.degraded_ticks} degraded`;
+  const html = payload.timeline.map((row, index) => {
+    const chips = [
+      chipMarkup(row.degraded ? 'degraded' : 'healthy', row.degraded ? 'degraded' : 'healthy'),
+      ...row.states.map((state) => chipMarkup(state)),
+      ...row.events.map((event) => chipMarkup(event)),
+    ].join('');
+    return `
+      <article class="timeline-row ${index === selectedTickIndex ? 'active' : ''}" data-tick-index="${index}">
+        <div>
+          <div class="tick-index">tick ${escapeHtml(row.tick)}</div>
+          <span class="tick-time">${escapeHtml(row.time_s.toFixed(0))}s</span>
+        </div>
+        <div>
+          <div class="tick-copy">
+            <strong>${escapeHtml(row.replicas_next)} replicas · ${escapeHtml(row.observed_rps.toFixed(0))} observed rps</strong>
+            <p>forecast ${escapeHtml(row.forecast_rps.toFixed(0))} rps · ${escapeHtml(row.degraded ? 'control path degraded this tick' : 'control path stayed nominal')}</p>
+          </div>
+          <div class="chip-row">${chips}</div>
+        </div>
+      </article>
+    `;
+  }).join('');
+  const timelineList = document.getElementById('timeline-list');
+  timelineList.innerHTML = html;
+  timelineList.querySelectorAll('.timeline-row').forEach((node) => {
+    node.addEventListener('click', () => {
+      selectedTickIndex = Number(node.dataset.tickIndex);
+      renderInteractivePanels(dashboardPayload);
+    });
+  });
+}
+
+function renderInteractivePanels(payload) {
+  renderTimeline(payload);
+  renderInspector(payload.timeline[selectedTickIndex]);
+  renderLoadSplit(payload.load_split);
+  renderStageRollup(payload.stage_rollup);
+  renderSignalBands(payload.series);
+}
+
+function renderInspector(row) {
+  document.getElementById('inspector-meta').textContent = `tick ${row.tick} · ${row.time_s.toFixed(0)}s`;
+  document.getElementById('inspector-title').textContent = `Tick ${row.tick} · ${row.time_s.toFixed(0)}s`;
+  document.getElementById('inspector-copy').textContent = row.degraded
+    ? 'This tick entered a degraded runtime path. Inspect states, event details, and alloc shares before trusting the action.'
+    : 'This tick stayed nominal. Use it as a reference baseline for posterior, pool, and allocation behavior.';
+
+  document.getElementById('stat-observed').textContent = row.observed_rps.toFixed(1);
+  document.getElementById('stat-forecast').textContent = row.forecast_rps.toFixed(1);
+  document.getElementById('stat-replicas').textContent = String(row.replicas_next);
+  document.getElementById('stat-pool').textContent = String(row.pool_connections);
+  document.getElementById('stat-posterior-qps').textContent = row.posterior_qps.toFixed(1);
+  document.getElementById('stat-posterior-latency').textContent = row.posterior_latency.toFixed(1);
+
+  const chips = [
+    chipMarkup(row.degraded ? 'degraded' : 'healthy', row.degraded ? 'degraded' : 'healthy'),
+    ...row.states.map((state) => chipMarkup(state)),
+  ].join('');
+  document.getElementById('inspector-state-chips').innerHTML = chips;
+}
+
+function renderSignalBands(series) {
+  const rpsMax = Math.max(...series.forecast_rps, ...series.observed_rps, 1);
+  const replicaMax = Math.max(...series.replicas, 1);
+  const poolMax = Math.max(...series.pool_connections, 1);
+
+  const rpsHtml = series.observed_rps.map((value, index) => {
+    const height = Math.max(12, (value / rpsMax) * 100);
+    const degraded = series.degraded_mask[index] ? 'degraded' : '';
+    return `<div class="strip-bar ${degraded}" style="height:${height}%" title="tick ${index} · observed ${escapeHtml(value)} · forecast ${escapeHtml(series.forecast_rps[index])}"></div>`;
+  }).join('');
+  const replicaHtml = series.replicas.map((value, index) => {
+    const height = Math.max(12, (value / replicaMax) * 100);
+    const degraded = series.degraded_mask[index] ? 'degraded' : '';
+    return `<div class="strip-bar ${degraded}" style="height:${height}%" title="tick ${index} · replicas ${escapeHtml(value)}"></div>`;
+  }).join('');
+  const poolHtml = series.pool_connections.map((value, index) => {
+    const height = Math.max(12, (value / poolMax) * 100);
+    return `<div class="strip-bar pool" style="height:${height}%" title="tick ${index} · pool ${escapeHtml(value)}"></div>`;
+  }).join('');
+
+  document.getElementById('rps-strip').innerHTML = rpsHtml;
+  document.getElementById('replica-strip').innerHTML = replicaHtml;
+  document.getElementById('pool-strip').innerHTML = poolHtml;
+}
+
+function renderAdapters(payload) {
+  const html = payload.adapters.map((card) => `
+    <article class="adapter-card">
+      <header>
+        <h3>${escapeHtml(card.label)}</h3>
+        ${statusPill(card.status)}
+      </header>
+      <div class="adapter-metric">${escapeHtml(card.metric)}</div>
+      <p class="adapter-detail">${escapeHtml(card.detail)}</p>
+    </article>
+  `).join('');
+  document.getElementById('adapters-grid').innerHTML = html;
+}
+
+function renderLoadSplit(loadSplit) {
+  const html = loadSplit.map((item) => `
+    <div class="load-row">
+      <strong>${escapeHtml(item.instance)} · ${escapeHtml(item.zone)}</strong>
+      <p>${escapeHtml(item.share.toFixed(2))} rps · ${escapeHtml(item.pct.toFixed(1))}%</p>
+      <div class="bar"><span style="width:${Math.max(4, item.pct)}%"></span></div>
+    </div>
+  `).join('');
+  document.getElementById('load-split-list').innerHTML = html;
+}
+
+function renderStageRollup(stageRollup) {
+  const html = stageRollup.map((item) => `
+    <div class="state-row">
+      <strong>${escapeHtml(item.state)}</strong>
+      <p>appeared in ${escapeHtml(item.count)} timeline rows</p>
+      <div class="bar"><span style="width:${Math.min(100, item.count * 8)}%"></span></div>
+    </div>
+  `).join('');
+  document.getElementById('state-rollup-list').innerHTML = html;
+}
+
+function renderEvents(payload) {
+  document.getElementById('events-meta').textContent = `${payload.events.distinct_kinds} kinds · ${payload.events.total} total`;
+  const kindsHtml = payload.events.kinds.map((item) => `
+    <div class="event-kind">
+      <strong>${escapeHtml(item.kind)}</strong>
+      <span>${escapeHtml(item.count)}</span>
+    </div>
+  `).join('') || '<div class="event-kind"><strong>no_events</strong><span>0</span></div>';
+  const logHtml = payload.events.recent.map((item) => `
+    <div class="event-item">
+      <strong>${escapeHtml(item.kind)}</strong>
+      <p>${escapeHtml(item.stage)} · t=${escapeHtml(item.time_s.toFixed(0))}s · ${escapeHtml(item.detail)}</p>
+      <p>${escapeHtml(item.safe_action)}</p>
+    </div>
+  `).join('') || '<div class="event-item"><strong>idle</strong><p>No recent runtime events.</p></div>';
+
+  document.getElementById('event-kinds').innerHTML = kindsHtml;
+  document.getElementById('event-log').innerHTML = logHtml;
+}
+
+async function loadDashboard() {
+  const errorBanner = document.getElementById('error-banner');
+  try {
+    const response = await fetch(API_URL, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    dashboardPayload = await response.json();
+    selectedTickIndex = dashboardPayload.timeline.findIndex((row) => row.degraded);
+    if (selectedTickIndex < 0) selectedTickIndex = dashboardPayload.timeline.length - 1;
+    renderHero(dashboardPayload);
+    renderInteractivePanels(dashboardPayload);
+    renderAdapters(dashboardPayload);
+    renderEvents(dashboardPayload);
+    errorBanner.style.display = 'none';
+  } catch (error) {
+    errorBanner.style.display = 'block';
+    errorBanner.textContent = `Control Center 数据加载失败：${error.message}`;
+  }
+}
+
+loadDashboard();
+</script>
+</body>
+</html>

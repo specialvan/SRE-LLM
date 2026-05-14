@@ -8,7 +8,7 @@ Implements the classic EKF update from ``image-1``/``image-10``/``image-19``::
     S_k       = H P H^T + R
     K_k       = P H^T S_k^{-1}
     x̂_{k|k}  = x̂_{k|k−1} + K_k · y_k
-    P_{k|k}   = (I − K_k H) P_{k|k−1}
+    P_{k|k}   = (I − K_k H) P (I − K_k H)^T + K_k R K_k^T
 
 This file ships three measurement models:
   * :class:`RadarMeasurement`     — tower-side radar (range / az / el)
@@ -19,7 +19,7 @@ This file ships three measurement models:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Sequence, Tuple
+from typing import Callable, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -88,10 +88,13 @@ class EKF:
         if gate_threshold is not None and d_mahal > gate_threshold:
             return {"gated": True, "innovation_mahalanobis": d_mahal}
 
-        K = np.linalg.solve(S.T, (self.P @ H_mat.T).T).T
+        P_prior = self.P.copy()
+        K = np.linalg.solve(S.T, (P_prior @ H_mat.T).T).T
         self.x = self.x + K @ y
-        I = np.eye(self.P.shape[0])
-        self.P = (I - K @ H_mat) @ self.P
+        identity_matrix = np.eye(P_prior.shape[0])
+        joseph_left = identity_matrix - K @ H_mat
+        posterior = joseph_left @ P_prior @ joseph_left.T + K @ R @ K.T
+        self.P = 0.5 * (posterior + posterior.T)
         return {"gated": False, "innovation_mahalanobis": d_mahal}
 
     # ------------------------------------------------------------------
@@ -172,7 +175,8 @@ class IMUMeasurement:
         eps = 1e-5
         hx = self.h(x)
         for i in range(n):
-            xp = x.copy(); xp[i] += eps
+            xp = x.copy()
+            xp[i] += eps
             H[:, i] = (self.h(xp) - hx) / eps
         return H
 
@@ -210,7 +214,8 @@ class FiducialMeasurement:
         eps = 1e-5
         hx = self.h(x)
         for i in range(n):
-            xp = x.copy(); xp[i] += eps
+            xp = x.copy()
+            xp[i] += eps
             H[:, i] = (self.h(xp) - hx) / eps
         return H
 

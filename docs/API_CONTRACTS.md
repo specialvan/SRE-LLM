@@ -149,10 +149,11 @@ Public surface:
 
 Contract:
 
-- 每个 sensor 都提供 `h / H / R`。
-- `step` 要能跳过缺失传感器。
+- 每个 sensor 都提供 `h / H / R`，并可选提供 per-sensor `gate_threshold` 覆盖 fusion 默认值。
+- `step` 要能跳过缺失传感器，并允许同一 tick 内一部分 sensor 被 gate 拒绝、另一部分继续更新。
 - 输出的 covariance 应该还能被用来做告警。
-- `step()["events"]` 必须报告缺失传感器等本地观测降级。
+- `step()["signals"]` 要记录实际使用的 `threshold_used` 与 `innovation_mahalanobis`，便于追溯 gate 决策。
+- `step()["events"]` 必须报告缺失传感器或 outlier rejection 等本地观测降级。
 
 State:
 

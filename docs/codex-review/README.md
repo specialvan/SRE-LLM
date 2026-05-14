@@ -37,10 +37,10 @@
 |---|---|
 | 分支 | `spacex-session` |
 | 实现基线 | 近期日志包含 `整理 Codex 汇总评审包` 与 `同步本地推进后的评审与质量门口径` |
-| 单元测试 | `51 passed` |
+| 单元测试 | `64 passed` |
 | 分析研究 | `10 studies` |
-| runtime event kinds | `10` |
-| 关键新增 | `analysis/s10_failure_trace.py`、`outlier_rejected`、`stability_violation`、`StabilityMonitor` |
+| runtime event kinds | `11` |
+| 关键新增 | `analysis/s10_failure_trace.py`、`s10_trace_full.jsonl`、`adapter_exception`、`StabilityMonitor` |
 
 ## 给 Claude 的一句话
 

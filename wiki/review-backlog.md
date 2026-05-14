@@ -2,13 +2,13 @@
 
 > 当前实现顺序以 `docs/codex-review/CLAUDE_REFINED_SPEC.md` 为准。本页是跨会话知识库摘要。
 
-## P1 execution gate
+## Completed in current workspace
 
 ### PR-A: Refine §10 failure-trace evidence
 
-目标：把 §10 从“事件通道可见”提升为可审查的连续场景证据。
+状态：已实现并验证。
 
-验收要点：
+当前结果：
 
 - 单一连续 `SREControlStack` 实例。
 - `background_event_fraction < 0.20`，除非有更严格阈值。
@@ -31,13 +31,15 @@
 
 ### PR-C: Lock StabilityGuard semantics
 
-目标：把 StabilityGuard 固化为 manual-reset latch。
+状态：已实现并验证。
 
-验收要点：
+当前结果：
 
 - `triggered` 一旦触发保持 true，直到显式 `reset()`。
 - 文档不暗示自动恢复。
 - Lyapunov 红线事件与 adapter exception 可区分，至少通过 cause 字段区分。
+
+## Remaining P1
 
 ### PR-D: Add per-sensor innovation gate policy
 
@@ -51,19 +53,24 @@
 
 ## P3 hardening
 
-### PR-E: Prevent docs/schema drift
+### PR-E: allocator fallback semantics
+
+状态：已实现并验证。
+
+当前结果：
+
+- `WeightedLoadBalancer` recoverable failure 优先复用上一次成功的 `alloc_shares`。
+- 仅在 bootstrap / 无历史分配时回落到全零 shares。
+- `adapter_exception` 事件仍保留，`DEGRADED_ALLOCATE` 状态仍会上抬。
+- `tests/test_contracts.py` 已覆盖 reuse-last-good 与 bootstrap-zero 两条合同。
+
+## P3 hardening
+
+### PR-F: Prevent docs/schema drift
 
 - `docs/RUNTIME_STATES.md` 明确 8 core adapter events 与 2 cross-cutting events。
 - 添加 docs/schema sync check。
 - counterexample 对每个 event kind 仍强制。
-
-### PR-F: Strengthen import graph boundaries
-
-- `starship/` import 白名单。
-- 底层禁止 import `analysis`、`examples`、`docs`。
-- `sre_control` 可依赖 `starship`，反向禁止。
-
-## Final merge gate
 
 ```bash
 python -m pytest tests -q

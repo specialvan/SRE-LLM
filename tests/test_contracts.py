@@ -388,14 +388,122 @@ def test_sre_stack_survives_recoverable_autoscaler_exception():
     json.dumps(entry)
 
 
-def test_stability_guard_triggers_stability_violation_event():
+def test_sre_stack_reuses_last_successful_alloc_shares_on_recoverable_balancer_error():
+    from sre_control import RecoverableControlError, WeightedLoadBalancer
+
+    class _RecoverableBalancer(WeightedLoadBalancer):
+        def allocate(self, rps_demand, zone_target):
+            raise RecoverableControlError("allocator unavailable")
+
+    stack, metrics = _make_stack()
+    first = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([760.0, 28.0]))],
+        forecast_rps=800.0,
+        current_replicas=6,
+        zone_target=np.array([480.0, 320.0]),
+        nn_proposal=np.array([500.0, 50.0, 10.0]),
+    )
+    assert sum(first["alloc_shares"]) > 0
+
+    failing = _RecoverableBalancer(instances=stack.balancer.instances)
+    stack.balancer = failing
+    second = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([770.0, 28.5]))],
+        forecast_rps=820.0,
+        current_replicas=first["replicas_next"],
+        zone_target=np.array([492.0, 328.0]),
+        nn_proposal=np.array([520.0, 55.0, 8.0]),
+    )
+
+    assert second["alloc_shares"] == first["alloc_shares"]
+    assert "DEGRADED_ALLOCATE" in second["runtime"]["states"]
+    event = next(
+        e
+        for e in second["runtime"]["events"]
+        if e["kind"] == "adapter_exception" and e["stage"] == "WeightedLoadBalancer"
+    )
+    assert event["exception_type"] == "RecoverableControlError"
+    assert event["cause_type"] == "control_domain"
+    assert event["recoverable"] is True
+    json.dumps(second)
+
+
+def test_sre_stack_balancer_recoverable_error_bootstrap_falls_back_to_zero_shares():
+    from sre_control import RecoverableControlError, WeightedLoadBalancer
+
+    class _RecoverableBalancer(WeightedLoadBalancer):
+        def allocate(self, rps_demand, zone_target):
+            raise RecoverableControlError("allocator unavailable")
+
+    stack, metrics = _make_stack()
+    stack.balancer = _RecoverableBalancer(instances=stack.balancer.instances)
+
+    entry = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([750.0, 28.0]))],
+        forecast_rps=800.0,
+        current_replicas=6,
+        zone_target=np.array([480.0, 320.0]),
+        nn_proposal=np.array([500.0, 50.0, 10.0]),
+    )
+
+    assert entry["alloc_shares"] == [0.0] * len(stack.balancer.instances)
+    assert "DEGRADED_ALLOCATE" in entry["runtime"]["states"]
+    event = next(
+        e
+        for e in entry["runtime"]["events"]
+        if e["kind"] == "adapter_exception" and e["stage"] == "WeightedLoadBalancer"
+    )
+    assert event["exception_type"] == "RecoverableControlError"
+    assert event["recoverable"] is True
+    json.dumps(entry)
+
+
+
+
+
+def test_sre_stack_refuses_stale_alloc_history_when_balancer_topology_changes():
+    from sre_control import RecoverableControlError, WeightedLoadBalancer
+
+    class _RecoverableBalancer(WeightedLoadBalancer):
+        def allocate(self, rps_demand, zone_target):
+            raise RecoverableControlError("allocator unavailable")
+
+    stack, metrics = _make_stack()
+    first = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([760.0, 28.0]))],
+        forecast_rps=800.0,
+        current_replicas=6,
+        zone_target=np.array([480.0, 320.0]),
+        nn_proposal=np.array([500.0, 50.0, 10.0]),
+    )
+    assert sum(first["alloc_shares"]) > 0
+
+    stack.balancer = _RecoverableBalancer(
+        instances=list(reversed(stack.balancer.instances))
+    )
+    second = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([770.0, 28.5]))],
+        forecast_rps=820.0,
+        current_replicas=first["replicas_next"],
+        zone_target=np.array([492.0, 328.0]),
+        nn_proposal=np.array([520.0, 55.0, 8.0]),
+    )
+
+    assert second["alloc_shares"] == [0.0] * len(stack.balancer.instances)
+    assert "bootstrap_zero_fallback" in second["alloc_info"]["local_states"]
+
     """Feed the stack a monotonically increasing Lyapunov candidate.
     After k_violations consecutive violating ticks the stack must
     surface a stability_violation event and DEGRADED_PLAN.
 
     Trick: the default SignalFusion pulls the posterior toward
     ``x_ref``, so just raising the reading doesn't monotonically raise
-    the fused state.  Instead we build a custom stack whose fusion has
+    the fused state. Instead we build a custom stack whose fusion has
     no OU pull, so the fused QPS tracks the reading ~1:1.
     """
     from sre_control import (
@@ -414,7 +522,7 @@ def test_stability_guard_triggers_stability_violation_event():
         P0=np.diag([100.0**2, 8.0**2, 0.1**2]),
         Q=np.diag([1e-3, 1e-3, 1e-4]),
         x_ref=np.array([700.0, 25.0, 0.3]),
-        theta=0.0,  # ← disable OU reversion
+        theta=0.0,
     )
     autoscaler = PredictiveAutoscaler(
         per_replica_rps=100.0,
@@ -476,3 +584,111 @@ def test_stability_guard_triggers_stability_violation_event():
         for ev in all_events
     )
     json.dumps(last_entry)
+
+
+def test_stability_guard_reports_sustained_trigger_without_new_event():
+    from sre_control import (
+        Instance,
+        PredictiveAutoscaler,
+        Signal,
+        SignalFusion,
+        SLOGuardrail,
+        SREControlStack,
+        StabilityGuard,
+        WeightedLoadBalancer,
+    )
+
+    fusion = SignalFusion(
+        x0=np.array([700.0, 25.0, 0.3]),
+        P0=np.diag([100.0**2, 8.0**2, 0.1**2]),
+        Q=np.diag([1e-3, 1e-3, 1e-4]),
+        x_ref=np.array([700.0, 25.0, 0.3]),
+        theta=0.0,
+    )
+    autoscaler = PredictiveAutoscaler(
+        per_replica_rps=100.0,
+        replicas_min=4,
+        replicas_max=30,
+        max_step=4,
+        dt=5.0,
+        horizon=6,
+        q_slo=120.0,
+        r_cost=0.6,
+    )
+    guardrail = SLOGuardrail(
+        nominal_direction=np.array([1.0, 0.0, 0.0]),
+        theta_max_deg=20.0,
+        magnitude_cap=10_000.0,
+    )
+    balancer = WeightedLoadBalancer(
+        instances=[
+            Instance("east", np.array([1.0, 0.0]), rps_min=1.0, rps_max=500.0),
+            Instance("west", np.array([0.0, 1.0]), rps_min=1.0, rps_max=500.0),
+        ]
+    )
+    stack = SREControlStack(
+        fusion=fusion,
+        autoscaler=autoscaler,
+        guardrail=guardrail,
+        balancer=balancer,
+        stability=StabilityGuard(
+            V_fn=lambda x: float(x[0]),
+            tolerance=1e-3,
+            k_violations=2,
+            label="qps",
+        ),
+    )
+    metrics = Signal(
+        name="metrics",
+        h=lambda x: x[0:2],
+        H=lambda x: np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]),
+        R=np.diag([25.0**2, 3.0**2]),
+    )
+
+    entries = []
+    for qps in [750.0, 800.0, 850.0, 900.0]:
+        entries.append(
+            stack.step(
+                dt=5.0,
+                sensor_readings=[(metrics, np.array([qps, 28.0]))],
+                forecast_rps=1000.0,
+                current_replicas=6,
+                zone_target=np.array([480.0, 320.0]),
+                nn_proposal=np.array([500.0, 50.0, 10.0]),
+            )
+        )
+
+    sustained_entry = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([850.0, 28.0]))],
+        forecast_rps=1000.0,
+        current_replicas=6,
+        zone_target=np.array([480.0, 320.0]),
+        nn_proposal=np.array([500.0, 50.0, 10.0]),
+    )
+
+    trigger_entry = next(
+        (
+            entry
+            for entry in entries
+            if any(ev["kind"] == "stability_violation" for ev in entry["runtime"]["events"])
+        ),
+        None,
+    )
+
+    assert trigger_entry is not None
+
+    trigger_events = [
+        ev
+        for ev in trigger_entry["runtime"]["events"]
+        if ev["kind"] == "stability_violation"
+    ]
+    sustained_events = [
+        ev for ev in sustained_entry["runtime"]["events"]
+        if ev["kind"] == "stability_violation"
+    ]
+    assert trigger_events
+    assert not sustained_events
+    assert sustained_entry["stability"]["triggered"] is True
+    assert "sustained" in sustained_entry["stability"]["local_states"]
+    assert "DEGRADED_PLAN" in sustained_entry["runtime"]["states"]

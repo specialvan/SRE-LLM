@@ -60,6 +60,20 @@ def test_reset_clears_state():
     assert mon.consecutive_violations == 0
 
 
+def test_trigger_latches_until_explicit_reset():
+    mon = StabilityMonitor(V_fn=lambda x: float(x[0]), k_violations=2)
+    for i in range(4):
+        mon.step(np.array([float(i)]), t=float(i))
+    assert mon.triggered is True
+
+    # Later healthy samples clear the consecutive counter, but the
+    # trigger itself stays latched until reset() is called.
+    for i, value in enumerate([3.0, 2.0, 1.0], start=4):
+        verdict = mon.step(np.array([value]), t=float(i))
+        assert verdict.triggered is True
+    assert mon.consecutive_violations == 0
+
+
 # ---------------------------------------------------------------------------
 # Convenience V_fn helpers
 # ---------------------------------------------------------------------------

@@ -16,19 +16,30 @@ dashboards that only see the outcome (latency / replica count).
 
 After (stack observability on)
 ------------------------------
-Keep ``runtime.events`` and derive three evidence artefacts:
+Keep ``runtime.events`` and derive four evidence artefacts:
 
 1.  event density vs time          → docs/assets/s10_event_density.png
 2.  kind co-occurrence (Jaccard)   → docs/assets/s10_cooccurrence.png
-3.  JSONL sample (first 10 events) → analysis/artifacts/s10_trace_sample.jsonl
+3.  full JSONL trace               → analysis/artifacts/s10_trace_full.jsonl
+4.  reviewer sample (first events) → analysis/artifacts/s10_trace_sample.jsonl
 
 Metrics rolled into SUMMARY.txt
 -------------------------------
 - ``event_count_total``              — how many runtime events fired
 - ``distinct_kinds``                 — how many unique kinds observed
-- ``mttr_ticks``                     — mean time-to-recover (#ticks between first
-                                       and last event of each window)
-- ``degraded_tick_fraction``         — % of ticks with ``runtime.degraded=True``
+- ``event_visible_fraction``         — fraction of injected-window ticks with any
+                                       emitted event
+- ``true_degraded_fraction``         — fraction of ticks that belong to configured
+                                       injection windows
+- ``background_event_fraction``      — fraction of non-injection ticks with any
+                                       event (should stay low)
+- ``injected_window_coverage``       — per-window visibility and expected-kind
+                                       coverage
+- ``degraded_tick_fraction``         — legacy coarse metric: fraction of ticks
+                                       with any event, kept only for backwards
+                                       compatibility
+- ``mttr_seconds``                   — mean time-to-recover based on event-kind
+                                       span in seconds
 
 Counter-example
 ---------------

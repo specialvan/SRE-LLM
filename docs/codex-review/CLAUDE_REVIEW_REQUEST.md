@@ -18,9 +18,9 @@
 | 主题 | 请重点审什么 | 相关文件 |
 |---|---|---|
 | 依赖边界 | `starship/` 是否仍是纯数学/物理抽象层，不反向 import `sre_control/`；`StabilityMonitor` 是否没有把 SRE 语义塞回基础层 | `starship/stability_monitor.py`, `tests/test_import_graph.py`, `sre_control/stability_guard.py` |
-| 事件 schema 闭环 | 10 个 `event kind` 是否都有真实 adapter 触发路径、counter-example、测试覆盖；是否存在文档列举但运行时无法生成的 kind | `sre_control/events.py`, `tests/test_event_schema.py`, `tests/test_sre_control.py`, `docs/EVENT_SCHEMA.md` |
-| 异常兜底 | `SREControlStack.step()` 的 try/except 是否过度吞错；异常转 `stability_violation` 后是否保留足够 root cause；是否应该区分 stage-specific fallback | `sre_control/stack.py`, `tests/test_contracts.py`, `docs/RUNTIME_STATES.md` |
-| failure trace 证据 | `analysis/s10_failure_trace.py` 是否真的证明 event lifecycle，而不是只证明“会写日志”；`degraded_tick_fraction = 100%` 是否命名误导 | `analysis/s10_failure_trace.py`, `tests/test_failure_trace.py`, `analysis/artifacts/SUMMARY.txt` |
+| 事件 schema 闭环 | 11 个 `event kind` 是否都有真实触发路径、counter-example、测试覆盖；`adapter_exception` 的 cause 字段是否足够可审 | `sre_control/events.py`, `tests/test_event_schema.py`, `tests/test_sre_control.py`, `docs/EVENT_SCHEMA.md` |
+| 异常兜底 | `SREControlStack.step()` 只抓 `RecoverableControlError` 后，allocator fallback 语义是否仍合理；`adapter_exception` 是否保留足够 root cause | `sre_control/stack.py`, `tests/test_contracts.py`, `docs/RUNTIME_STATES.md` |
+| failure trace 证据 | `analysis/s10_failure_trace.py` 的单 stack history、`event_visible_fraction`、`background_event_fraction` 与 `replica_bound_active` 覆盖率是否足以证明 lifecycle observability | `analysis/s10_failure_trace.py`, `tests/test_failure_trace.py`, `analysis/artifacts/SUMMARY.txt` |
 
 ## P1 审查项
 
@@ -29,7 +29,7 @@
 | Innovation gating | `SignalFusion` 的 Mahalanobis gate 是否数值稳定；全局阈值是否会误杀正常传感器；被拒观测是否污染 posterior | `sre_control/signal_fusion.py`, `starship/ekf.py`, `tests/test_sre_control.py` |
 | Lyapunov guard | `dV/dt` 有限差分、`k_violations`、tolerance 默认值是否合理；是否需要物理能量函数样例，而不是只有 generic scalar | `starship/stability_monitor.py`, `sre_control/stability_guard.py`, `tests/test_stability_monitor.py` |
 | before/after 证据 | 各研究是否只在合成场景内成立；是否有指标被过度解释成通用结论 | `analysis/`, `analysis/artifacts/SUMMARY.txt`, `docs/codex-review/QUALITY_GATES.md` |
-| 文档口径漂移 | `51 passed`、`10 studies`、`10 event kinds` 是否在主文档、V2 知识库、review 包里保持一致 | `docs/`, `PR-REQUIREMENTS.md` |
+| 文档口径漂移 | `64 passed`、`10 studies`、`11 event kinds` 是否在主文档、V2 知识库、review 包里保持一致 | `docs/`, `PR-REQUIREMENTS.md` |
 | SRE 能力复利 | 8 个数学支柱是否已经抽象成可复用 SRE 控制原语，而不是一次性 demo 适配 | `sre_control/`, `docs/ARCHITECTURE.md`, `docs/codex-review/CODEX_SUMMARY.md` |
 
 ## P2 审查项
@@ -60,8 +60,8 @@ python -m examples.demo_catch_phase
 
 ## 特别想请 Claude 挑刺的点
 
-1. `SREControlStack.step()` 的异常兜底是否应该只兜控制域异常，而让编程错误 fail-fast。
-2. §10 的 `degraded_tick_fraction` 是否应该拆成 `event_visible_fraction` 与 `true_degraded_fraction`。
-3. `StabilityGuard` 是否把 Lyapunov 抽象迁移到 SRE 过早泛化了，是否需要更具体的服务能量函数。
-4. `SignalFusion` 的 outlier gate 是否缺少 sensor-class-specific 策略。
+1. `SignalFusion` 的 outlier gate 是否缺少 sensor-class-specific 策略。
+2. allocator recoverable fallback 是否应该保持 last known good，而不是回到全零 shares。
+3. §10 的 `replica_bound_active` 只覆盖 60% 窗口，这个证据强度是否足够。
+4. `StabilityGuard` 的 manual-reset latch 是否已经足够清晰，还是仍需要更具体的服务能量函数样例。
 5. 文档是否仍存在“已经证明生产可用”的误读风险。
