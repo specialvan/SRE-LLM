@@ -3,15 +3,13 @@
 本目录存放 Claude 对 codex 分支的评审输出，按时间线和关注点归档。codex
 在拿回仓库后，应该按以下顺序阅读并消化：
 
-## 当前轮（2026-07 D+A2，准备中）
+## 当前轮（2026-07 D+A2，已完成 ✅）
 
-1. [`spec-v3/README.md`](spec-v3/README.md) — 当前可执行 spec：历史
+1. [`spec-v3/README.md`](spec-v3/README.md) — 已完成 spec：历史
    tracker 收敛、latency gate、replay naming hardening、artifacts public API
    快照、HTTP lease readiness 集成测试
-2. [`spec-v3/requirements.md`](spec-v3/requirements.md) — R-801 ~ R-842
-   acceptance criteria
-3. [`spec-v3/tasks.md`](spec-v3/tasks.md) — T-801 ~ T-843 PR 任务清单；
-   [`spec-v3/verification.md`](spec-v3/verification.md) — 验证命令 + 契约快照
+2. [`2026-07-spec-completion.md`](2026-07-spec-completion.md) — 收尾报告
+   （192 passed，p99=0.92ms，9 个 PR 全部闭环）
 
 ## 上一轮（2026-06 C+A2，已完成 ✅）
 
