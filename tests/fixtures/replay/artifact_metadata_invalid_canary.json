@@ -1,0 +1,48 @@
+{
+  "name": "artifact_metadata_invalid_canary",
+  "description": "Artifact metadata 的 feature names 与预期不匹配，pipeline fallback 到 bootstrap 模式",
+  "version": "1.0.0",
+  "scenario_type": "artifact_issue",
+  "config": {
+    "seed": 42
+  },
+  "shadow_mode": null,
+  "expected": {
+    "kind": "canary",
+    "chosen_id": "c-v1.3.1",
+    "risk_level": "warn",
+    "artifact_version": "bootstrap",
+    "eomm_source": "fallback",
+    "rationale_contains": ["eomm"],
+    "trace_values": {
+      "artifacts.fitted": false,
+      "artifacts.rating_scaling_status": "absent"
+    }
+  },
+  "context": {
+    "service": {
+      "id": "svc-beta",
+      "mu": 0.70,
+      "sigma": 0.05,
+      "win_streak": 1,
+      "loss_streak": 0,
+      "total_releases": 5,
+      "tier": "standard"
+    },
+    "candidates": [
+      {
+        "id": "c-v1.3.1",
+        "strategy": "full",
+        "canary_fraction": 0.0,
+        "rollback_budget_seconds": 300,
+        "expected_success": 0.90
+      }
+    ],
+    "error_budget_remaining": 0.8,
+    "correlation_id": "corr-artifact-invalid-001",
+    "telemetry": {
+      "reliability": 0.88,
+      "recent_change_rate": 0.25
+    }
+  }
+}

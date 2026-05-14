@@ -1,0 +1,48 @@
+{
+  "name": "artifact_bundle_corrupt_canary",
+  "description": "Artifact bundle 目录存在但为空，pipeline fallback 到 bootstrap 模式",
+  "version": "1.0.0",
+  "scenario_type": "artifact_issue",
+  "config": {
+    "seed": 42
+  },
+  "shadow_mode": null,
+  "expected": {
+    "kind": "canary",
+    "chosen_id": "c-v2.0.1",
+    "risk_level": "ok",
+    "artifact_version": "bootstrap",
+    "eomm_source": "fallback",
+    "rationale_contains": ["eomm"],
+    "trace_values": {
+      "artifacts.fitted": false,
+      "artifacts.rating_scaling_status": "absent"
+    }
+  },
+  "context": {
+    "service": {
+      "id": "svc-gamma",
+      "mu": 0.72,
+      "sigma": 0.03,
+      "win_streak": 8,
+      "loss_streak": 0,
+      "total_releases": 20,
+      "tier": "critical"
+    },
+    "candidates": [
+      {
+        "id": "c-v2.0.1",
+        "strategy": "full",
+        "canary_fraction": 0.0,
+        "rollback_budget_seconds": 300,
+        "expected_success": 0.98
+      }
+    ],
+    "error_budget_remaining": 0.95,
+    "correlation_id": "corr-bundle-corrupt-001",
+    "telemetry": {
+      "reliability": 0.99,
+      "recent_change_rate": 0.05
+    }
+  }
+}
