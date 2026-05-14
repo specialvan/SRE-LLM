@@ -35,12 +35,10 @@ The convention is enforced by `test_replay_corpus.py::test_fixture_naming_matche
 | File | Scenario | Expected kind |
 |---|---|---|
 | advisory_mode_rollback.json | Advisory mode keeps the rollback decision visible but annotates it as do-not-enforce | rollback |
-| artifact_bundle_corrupt_canary.json | Empty artifact bundle directory triggers bootstrap fallback with CANARY decision | canary |
 | artifact_canary.json | Fitted retention artifact steers to canary | canary |
-| artifact_metadata_invalid_canary.json | Invalid artifact metadata shape triggers bootstrap fallback with CANARY decision | canary |
+| artifact_metadata_missing_go.json | A fixture-local retention bundle missing metadata is treated as unversioned and falls back to bootstrap GO after manifest validation fails | go |
 | artifact_scaling_mismatch_go.json | Stale retention scaling is rejected and falls back to bootstrap scoring | go |
 | artifact_scaling_mismatch_warn_canary.json | Stale retention scaling is rejected during a WARN-risk rollout, and bootstrap fallback still enforces CANARY | canary |
-| artifact_metadata_missing_go.json | A fixture-local retention bundle missing metadata is treated as unversioned and falls back to bootstrap GO after manifest validation fails | go |
 | artifact_validation_failure_go.json | A fixture-local invalid retention manifest is rejected at runtime and replay falls back to bootstrap GO | go |
 | breaker_open_escalate.json | Open circuit breaker short-circuits to human escalation | escalate |
 | budget_rollback.json | Error budget exhausted → rollback posture | rollback |
