@@ -2,7 +2,30 @@
 
 ## 执行摘要
 
-2026-07 D+A2 轮 spec-v3 全部完成。227 个测试通过（+35 新增测试），p99 延迟 2.16ms（远低于 CI 50ms gate）。
+2026-07 D+A2 轮 spec-v3 全部完成。
+
+| 指标 | 值 |
+|------|------|
+| 测试通过 | 271 passed, 10 skipped |
+| 代码覆盖率 | 87% |
+| p99 延迟 | 2.02ms (远低于 50ms CI gate) |
+| Replay fixtures | 18 个 |
+
+## PR 完成状态
+
+| PR | 描述 | 状态 | 测试 |
+|---|---|---|---|
+| **PR-A** | Shared artifact compatibility helper | ✅ 完成 | 13 passed |
+| **PR-B** | Modern fitted replay metadata | ✅ 完成 | 3 passed |
+| **PR-C** | Replay artifact failure narratives | ✅ 完成 | 18 fixtures |
+| **PR-D** | Lease readiness boundary docs | ✅ 完成 | - |
+| **PR-doc-03** | Supersede historical trackers | ✅ 完成 | - |
+| **PR-ci-01** | Enforce latency budget in CI | ✅ 完成 | - |
+| **PR-test-01** | Replay fixture naming hardening | ✅ 完成 | 32 passed |
+| **PR-test-02** | Artifacts public import snapshot | ✅ 完成 | 2 passed |
+| **PR-test-03** | HTTP lease readiness integration | ✅ 完成 | 3 passed |
+| **PR-test-04** | Pipeline unit test expansion | ✅ 完成 | 11 passed |
+| **PR-test-05** | Replay boundary conditions | ✅ 完成 | 7 passed |
 
 ## PR 完成状态
 
