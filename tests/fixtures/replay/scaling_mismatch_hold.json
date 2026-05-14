@@ -1,0 +1,43 @@
+{
+  "name": "scaling_mismatch_hold",
+  "description": "No retention artifact causes bootstrap fallback with hold decision",
+  "version": "1.0.0",
+  "scenario_type": "bootstrap_fallback",
+  "config": {
+    "seed": 42
+  },
+  "shadow_mode": null,
+  "expected": {
+    "kind": "hold",
+    "chosen_id": "c-v1.5.0",
+    "risk_level": "alarm",
+    "artifact_version": "bootstrap",
+    "eomm_source": "fallback",
+    "rationale_contains": ["eomm", "risk"],
+    "trace_values": {
+      "artifacts.fitted": false,
+      "artifacts.rating_scaling_status": "absent"
+    }
+  },
+  "context": {
+    "service": {
+      "id": "svc-scaling-mismatch",
+      "mu": 0.50,
+      "sigma": 0.10,
+      "win_streak": 2,
+      "total_releases": 8,
+      "tier": "standard"
+    },
+    "candidates": [
+      {
+        "id": "c-v1.5.0",
+        "strategy": "full",
+        "canary_fraction": 0.0,
+        "rollback_budget_seconds": 600,
+        "expected_success": 0.90
+      }
+    ],
+    "error_budget_remaining": 0.7,
+    "correlation_id": "corr-scaling-mismatch-001"
+  }
+}
