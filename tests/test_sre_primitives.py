@@ -57,3 +57,35 @@ def test_lookup_primitive_by_mechanism():
 
     with pytest.raises(KeyError):
         primitive_by_mechanism("not-a-mechanism")
+
+
+def test_shadow_mode_coerce_valid_values():
+    """Test coerce function for valid shadow mode values."""
+    from gan_matchmaking.sre.shadow import ShadowMode, coerce
+
+    assert coerce("off") == ShadowMode.OFF
+    assert coerce("shadow") == ShadowMode.SHADOW
+    assert coerce("advisory") == ShadowMode.ADVISORY
+
+
+def test_shadow_mode_coerce_none():
+    """Test coerce function returns OFF for None."""
+    from gan_matchmaking.sre.shadow import ShadowMode, coerce
+
+    assert coerce(None) == ShadowMode.OFF
+
+
+def test_shadow_mode_coerce_enum_passthrough():
+    """Test coerce function passes through ShadowMode enum."""
+    from gan_matchmaking.sre.shadow import ShadowMode, coerce
+
+    assert coerce(ShadowMode.SHADOW) == ShadowMode.SHADOW
+    assert coerce(ShadowMode.ADVISORY) == ShadowMode.ADVISORY
+
+
+def test_shadow_mode_coerce_invalid():
+    """Test coerce function raises for invalid values."""
+    from gan_matchmaking.sre.shadow import coerce
+
+    with pytest.raises(ValueError, match="invalid shadow mode"):
+        coerce("invalid")
