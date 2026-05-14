@@ -1,0 +1,25 @@
+{
+  "name": "retention",
+  "version": "c86720be85300af9",
+  "trained_at": 1.0,
+  "source_window": {
+    "fixture": "artifact_validation_failure_go"
+  },
+  "config_hash": "b408370e7ded8919",
+  "build_id": "replay-invalid-bundle",
+  "fitted": true,
+  "fallback": false,
+  "extra": {
+    "feature_dim": 8,
+    "feature_names": [
+      "wrong",
+      "wrong",
+      "wrong",
+      "wrong",
+      "wrong",
+      "wrong",
+      "wrong",
+      "wrong"
+    ]
+  }
+}

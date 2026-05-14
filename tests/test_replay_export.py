@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 import numpy as np
 import pytest
@@ -13,12 +14,14 @@ from gan_matchmaking.persistence import SQLitePipelineStore
 from gan_matchmaking.sre import ReleaseContext, SelfIterationPipeline
 from gan_matchmaking.sre.artifacts import (
     EOMM_FEATURE_NAMES,
+    _rating_scaling_version,
     build_metadata,
     save_cox_artifact,
     save_retention_artifact,
 )
 from gan_matchmaking.sre.features import RISK_FEATURE_NAMES
-from gan_matchmaking.sre.replay import export_replay_fixture
+from gan_matchmaking.sre.replay import archive_artifact_bundle, export_replay_fixture
+from gan_matchmaking.sre.shadow import ShadowMode
 from gan_matchmaking.survival import CoxModel
 
 
@@ -66,6 +69,7 @@ def _write_fitted_artifacts(path):
         extra={
             "feature_dim": len(EOMM_FEATURE_NAMES),
             "feature_names": list(EOMM_FEATURE_NAMES),
+            "rating_scaling_version": _rating_scaling_version(),
         },
         trained_at=1.0,
         build_id="test-export",
@@ -133,7 +137,98 @@ def test_export_replay_fixture_from_sqlite_decision(tmp_path):
     assert replay.risk_level.value == fixture["expected"]["risk_level"]
 
 
-def test_export_fitted_decision_requires_artifact_bundle(tmp_path):
+def test_export_replay_fixture_round_trips_shadow_mode(tmp_path):
+    db_path = tmp_path / "state.sqlite"
+    store = SQLitePipelineStore(db_path)
+    try:
+        pipeline = SelfIterationPipeline(
+            config=AppConfig(),
+            metrics=MetricsRegistry(),
+            store=store,
+            shadow_mode=ShadowMode.ADVISORY,
+        )
+        original = pipeline.decide(
+            ReleaseContext.from_dict(
+                {
+                    **_context_payload(),
+                    "error_budget_remaining": 0.0,
+                    "correlation_id": "export-shadow-corr-1",
+                }
+            )
+        )
+    finally:
+        store.close()
+
+    out_path = tmp_path / "shadow-fixture.json"
+    fixture = export_replay_fixture(
+        db_path,
+        "export-shadow-corr-1",
+        output=out_path,
+        name="exported-shadow-decision",
+    )
+
+    assert fixture["shadow_mode"] == ShadowMode.ADVISORY.value
+    assert fixture["expected"]["kind"] == original.kind.value
+    assert fixture["expected"]["trace_values"]["shadow_mode"] == ShadowMode.ADVISORY.value
+    assert json.loads(out_path.read_text(encoding="utf-8"))["shadow_mode"] == ShadowMode.ADVISORY.value
+
+    replay = SelfIterationPipeline(
+        config=load_config(fixture["config"]),
+        metrics=MetricsRegistry(),
+        shadow_mode=fixture["shadow_mode"],
+    ).decide(ReleaseContext.from_dict(fixture["context"]))
+    assert replay.kind.value == fixture["expected"]["kind"]
+    assert replay.trace["shadow_mode"] == ShadowMode.ADVISORY.value
+    assert any("shadow_mode=advisory" in item for item in replay.rationale)
+
+
+def test_export_replay_fixture_round_trips_shadow_mode_rewrite(tmp_path):
+    db_path = tmp_path / "state.sqlite"
+    store = SQLitePipelineStore(db_path)
+    try:
+        pipeline = SelfIterationPipeline(
+            config=AppConfig(),
+            metrics=MetricsRegistry(),
+            store=store,
+            shadow_mode=ShadowMode.SHADOW,
+        )
+        original = pipeline.decide(
+            ReleaseContext.from_dict(
+                {
+                    **_context_payload(),
+                    "error_budget_remaining": 0.0,
+                    "correlation_id": "export-shadow-hold-corr-1",
+                }
+            )
+        )
+    finally:
+        store.close()
+
+    out_path = tmp_path / "shadow-hold-fixture.json"
+    fixture = export_replay_fixture(
+        db_path,
+        "export-shadow-hold-corr-1",
+        output=out_path,
+        name="exported-shadow-hold-decision",
+    )
+
+    assert fixture["shadow_mode"] == ShadowMode.SHADOW.value
+    assert fixture["expected"]["kind"] == original.kind.value
+    assert fixture["expected"]["trace_values"]["shadow_mode"] == ShadowMode.SHADOW.value
+    assert fixture["expected"]["trace_values"]["shadow_suppressed_kind"] == "rollback"
+    assert json.loads(out_path.read_text(encoding="utf-8"))["shadow_mode"] == ShadowMode.SHADOW.value
+
+    replay = SelfIterationPipeline(
+        config=load_config(fixture["config"]),
+        metrics=MetricsRegistry(),
+        shadow_mode=fixture["shadow_mode"],
+    ).decide(ReleaseContext.from_dict(fixture["context"]))
+    assert replay.kind.value == fixture["expected"]["kind"]
+    assert replay.trace["shadow_mode"] == ShadowMode.SHADOW.value
+    assert replay.trace["shadow_suppressed_kind"] == "rollback"
+    assert any("shadow_mode=shadow" in item for item in replay.rationale)
+
+
     artifact_dir = tmp_path / "runtime-artifacts"
     _write_fitted_artifacts(artifact_dir)
     db_path = tmp_path / "state.sqlite"
@@ -157,6 +252,53 @@ def test_export_fitted_decision_requires_artifact_bundle(tmp_path):
         )
 
 
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "../retention_weights.npz",
+        "..\\retention_weights.npz",
+        "/tmp/retention_weights.npz",
+        "C:\\tmp\\retention_weights.npz",
+        "\\\\server\\share\\retention_weights.npz",
+    ],
+)
+def test_validate_artifact_bundle_rejects_path_traversal_filename(tmp_path, filename):
+    from gan_matchmaking.sre.replay import validate_artifact_bundle
+
+    _write_fitted_artifacts(tmp_path)
+
+    with pytest.raises(DataError) as exc_info:
+        validate_artifact_bundle(
+            tmp_path,
+            "retention@0e0b32d594442c35+cox@a27fddc11a9484da",
+            config={"artifacts": {"retention_filename": filename}},
+        )
+
+    assert exc_info.value.details["field"] == "artifacts.retention_filename"
+
+
+def test_archive_artifact_bundle_fails_closed_without_secure_directory_handle(tmp_path):
+    artifact_dir = tmp_path / "runtime-artifacts"
+    _write_fitted_artifacts(artifact_dir)
+
+    if os.name == "nt":
+        with pytest.raises(DataError) as exc_info:
+            archive_artifact_bundle(
+                artifact_dir,
+                tmp_path / "artifact-bundles" / "export-corr-1",
+                "retention@0e0b32d594442c35+cox@a27fddc11a9484da",
+            )
+        assert "opened securely" in str(exc_info.value)
+    else:
+        manifest = archive_artifact_bundle(
+            artifact_dir,
+            tmp_path / "artifact-bundles" / "export-corr-1",
+            "retention@0e0b32d594442c35+cox@a27fddc11a9484da",
+        )
+        assert manifest["version"] == "retention@0e0b32d594442c35+cox@a27fddc11a9484da"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="secure archive directory handles unavailable")
 def test_export_fitted_decision_archives_valid_artifact_bundle(tmp_path):
     artifact_dir = tmp_path / "runtime-artifacts"
     _write_fitted_artifacts(artifact_dir)
@@ -192,6 +334,7 @@ def test_export_fitted_decision_archives_valid_artifact_bundle(tmp_path):
     assert fixture["expected"]["artifact_version"] == original.artifact_version
 
     config_raw = dict(fixture["config"])
+    assert "directory" not in dict(config_raw.get("artifacts", {}))
     config_raw["artifacts"] = {
         **dict(config_raw.get("artifacts", {})),
         "directory": str(bundle_path),
@@ -202,3 +345,69 @@ def test_export_fitted_decision_archives_valid_artifact_bundle(tmp_path):
     ).decide(ReleaseContext.from_dict(fixture["context"]))
     assert replay.artifact_version == original.artifact_version
     assert replay.kind.value == fixture["expected"]["kind"]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="secure archive directory handles unavailable")
+@pytest.mark.skipif(not hasattr(os, "symlink"), reason="symlink unavailable")
+def test_archive_artifact_bundle_rejects_symlinked_artifact_file(tmp_path):
+    artifact_dir = tmp_path / "runtime-artifacts"
+    _write_fitted_artifacts(artifact_dir)
+    sensitive_file = tmp_path / "outside-secret.txt"
+    sensitive_file.write_text("do-not-copy", encoding="utf-8")
+    (artifact_dir / "cox_artifact.json").unlink()
+    os.symlink(sensitive_file, artifact_dir / "cox_artifact.json")
+
+    with pytest.raises(DataError) as exc_info:
+        archive_artifact_bundle(
+            artifact_dir,
+            tmp_path / "artifact-bundles" / "export-corr-1",
+            "retention@0e0b32d594442c35+cox@a27fddc11a9484da",
+        )
+
+    assert exc_info.value.details["filename"] == "cox_artifact.json"
+    assert not (tmp_path / "artifact-bundles" / "export-corr-1" / "cox_artifact.json").exists()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="secure archive directory handles unavailable")
+@pytest.mark.skipif(not hasattr(os, "symlink"), reason="symlink unavailable")
+def test_archive_artifact_bundle_rejects_symlinked_destination_file(tmp_path):
+    artifact_dir = tmp_path / "runtime-artifacts"
+    _write_fitted_artifacts(artifact_dir)
+    bundle_out = tmp_path / "artifact-bundles" / "export-corr-1"
+    bundle_out.mkdir(parents=True)
+    sensitive_file = tmp_path / "outside-secret.txt"
+    sensitive_file.write_text("do-not-overwrite", encoding="utf-8")
+    os.symlink(sensitive_file, bundle_out / "cox_artifact.json")
+
+    with pytest.raises(DataError) as exc_info:
+        archive_artifact_bundle(
+            artifact_dir,
+            bundle_out,
+            "retention@0e0b32d594442c35+cox@a27fddc11a9484da",
+        )
+
+    assert exc_info.value.details["path"] == str(bundle_out)
+    assert sensitive_file.read_text(encoding="utf-8") == "do-not-overwrite"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="secure archive directory handles unavailable")
+@pytest.mark.skipif(not hasattr(os, "symlink"), reason="symlink unavailable")
+def test_archive_artifact_bundle_rejects_symlinked_output_directory(tmp_path):
+    artifact_dir = tmp_path / "runtime-artifacts"
+    _write_fitted_artifacts(artifact_dir)
+    outside_dir = tmp_path / "outside-archive"
+    outside_dir.mkdir()
+    artifact_bundles = tmp_path / "artifact-bundles"
+    artifact_bundles.mkdir()
+    bundle_out = artifact_bundles / "export-corr-1"
+    os.symlink(outside_dir, bundle_out, target_is_directory=True)
+
+    with pytest.raises(DataError) as exc_info:
+        archive_artifact_bundle(
+            artifact_dir,
+            bundle_out,
+            "retention@0e0b32d594442c35+cox@a27fddc11a9484da",
+        )
+
+    assert exc_info.value.details["path"] == str(bundle_out)
+    assert not (outside_dir / "replay_artifact_manifest.json").exists()

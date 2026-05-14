@@ -1,0 +1,44 @@
+{
+  "name": "breaker_open_escalate",
+  "scenario": {
+    "type": "guardrail_short_circuit",
+    "summary": "An open decision circuit breaker bypasses scoring and escalates to a human."
+  },
+  "config": {
+    "seed": 0
+  },
+  "circuit_breaker": "open",
+  "context": {
+    "service": {
+      "id": "svc-breaker-open",
+      "mu": 0.995,
+      "sigma": 0.005,
+      "win_streak": 3,
+      "total_releases": 30,
+      "tier": "standard"
+    },
+    "candidates": [
+      {
+        "id": "c-full",
+        "strategy": "full",
+        "canary_fraction": 0.0,
+        "rollback_budget_seconds": 600,
+        "expected_success": 0.98
+      }
+    ],
+    "error_budget_remaining": 0.8,
+    "correlation_id": "replay-breaker-open-escalate"
+  },
+  "expected": {
+    "kind": "escalate",
+    "chosen_id": null,
+    "risk_level": "alarm",
+    "artifact_version": "bootstrap",
+    "rationale_contains": [
+      "circuit_breaker=open"
+    ],
+    "trace_values": {
+      "circuit_breaker.state": "open"
+    }
+  }
+}

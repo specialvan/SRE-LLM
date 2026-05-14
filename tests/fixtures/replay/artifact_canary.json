@@ -6,7 +6,8 @@
   "artifacts": {
     "retention": {
       "weights": [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-      "bias": -9.5
+      "bias": -9.5,
+      "rating_scaling_version": "fafbe1acb75c"
     },
     "cox": {
       "beta": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -47,6 +48,9 @@
     "chosen_id": "c-canary",
     "risk_level": "ok",
     "artifact_version": "fitted",
-    "eomm_source": "artifact"
+    "eomm_source": "artifact",
+    "trace_values": {
+      "artifacts.rating_scaling_status": "match"
+    }
   }
 }

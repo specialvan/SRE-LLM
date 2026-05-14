@@ -57,6 +57,7 @@ class ArtifactMetadata:
     fitted: bool = True
     fallback: bool = False
     extra: Mapping[str, Any] = field(default_factory=dict)
+    error_kind: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -126,6 +127,7 @@ def load_metadata(path: Path, *, default_name: str) -> ArtifactMetadata:
             fitted=True,
             fallback=False,
             extra={},
+            error_kind="metadata_missing",
         )
     raw = json.loads(path.read_text(encoding="utf-8"))
     return ArtifactMetadata(

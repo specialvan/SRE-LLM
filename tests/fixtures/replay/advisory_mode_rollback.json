@@ -1,0 +1,46 @@
+{
+  "name": "advisory_mode_rollback",
+  "scenario": {
+    "type": "traffic_mode",
+    "summary": "Advisory mode preserves a rollback decision for review, but annotates it as do-not-enforce during rollout ramp-up."
+  },
+  "config": {
+    "seed": 0
+  },
+  "shadow_mode": "advisory",
+  "context": {
+    "service": {
+      "id": "svc-advisory",
+      "mu": 0.99,
+      "sigma": 0.02,
+      "win_streak": 1,
+      "total_releases": 12,
+      "tier": "standard"
+    },
+    "candidates": [
+      {
+        "id": "c-full",
+        "strategy": "full",
+        "canary_fraction": 0.0,
+        "rollback_budget_seconds": 600,
+        "expected_success": 0.97
+      }
+    ],
+    "error_budget_remaining": 0.0,
+    "correlation_id": "replay-advisory-mode-rollback"
+  },
+  "expected": {
+    "kind": "rollback",
+    "chosen_id": null,
+    "risk_level": "alarm",
+    "artifact_version": "bootstrap",
+    "rationale_contains": [
+      "error_budget_remaining<=0",
+      "shadow_mode=advisory"
+    ],
+    "trace_values": {
+      "input.context.error_budget_remaining": 0.0,
+      "shadow_mode": "advisory"
+    }
+  }
+}

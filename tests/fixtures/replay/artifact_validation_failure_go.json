@@ -1,0 +1,54 @@
+{
+  "name": "artifact_validation_failure_go",
+  "scenario": {
+    "type": "artifact_compatibility",
+    "summary": "A fixture-local artifact bundle with an invalid retention manifest is rejected at runtime, so replay falls back to bootstrap scoring."
+  },
+  "config": {
+    "seed": 0
+  },
+  "artifact_bundle": {
+    "path": "artifact-bundles/invalid-retention-bundle"
+  },
+  "context": {
+    "service": {
+      "id": "svc-artifact-invalid",
+      "mu": 0.995,
+      "sigma": 0.005,
+      "win_streak": 3,
+      "total_releases": 30,
+      "tier": "standard"
+    },
+    "candidates": [
+      {
+        "id": "c-canary",
+        "strategy": "canary",
+        "canary_fraction": 0.1,
+        "rollback_budget_seconds": 300,
+        "expected_success": 0.98
+      },
+      {
+        "id": "c-full",
+        "strategy": "full",
+        "canary_fraction": 0.0,
+        "rollback_budget_seconds": 600,
+        "expected_success": 0.97
+      }
+    ],
+    "error_budget_remaining": 0.8,
+    "correlation_id": "replay-artifact-validation-failure-go"
+  },
+  "expected": {
+    "kind": "go",
+    "chosen_id": "c-full",
+    "risk_level": "ok",
+    "artifact_version": "bootstrap",
+    "eomm_source": "fallback",
+    "trace_values": {
+      "artifacts.fitted": false,
+      "artifacts.retention": null,
+      "artifacts.rating_scaling_status": "absent",
+      "stages.eomm.source": "fallback"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "name": "shadow_mode_rollback_hold",
+  "scenario": {
+    "type": "traffic_mode",
+    "summary": "Shadow mode rewrites a rollback-ready decision to HOLD while preserving the suppressed rollback kind in trace for comparison."
+  },
+  "config": {
+    "seed": 0
+  },
+  "shadow_mode": "shadow",
+  "context": {
+    "service": {
+      "id": "svc-shadow-mode",
+      "mu": 0.99,
+      "sigma": 0.02,
+      "win_streak": 1,
+      "total_releases": 12,
+      "tier": "standard"
+    },
+    "candidates": [
+      {
+        "id": "c-full",
+        "strategy": "full",
+        "canary_fraction": 0.0,
+        "rollback_budget_seconds": 600,
+        "expected_success": 0.97
+      }
+    ],
+    "error_budget_remaining": 0.0,
+    "correlation_id": "replay-shadow-mode-rollback-hold"
+  },
+  "expected": {
+    "kind": "hold",
+    "chosen_id": null,
+    "risk_level": "alarm",
+    "artifact_version": "bootstrap",
+    "rationale_contains": [
+      "error_budget_remaining<=0",
+      "shadow_mode=shadow"
+    ],
+    "trace_values": {
+      "input.context.error_budget_remaining": 0.0,
+      "shadow_mode": "shadow",
+      "shadow_suppressed_kind": "rollback"
+    }
+  }
+}

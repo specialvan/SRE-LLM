@@ -18,7 +18,8 @@ class RuntimeArtifactBundle:
     retention: Optional[RetentionArtifact] = None
     cox: Optional[CoxArtifact] = None
     validation_errors: Mapping[str, Sequence[str]] = field(default_factory=dict)
-    rating_scaling_status: str = "match"  # "match" | "mismatch" | "unknown"
+    rating_scaling_status: str = "absent"  # match | mismatch | unknown | absent
+    error_kinds: Mapping[str, str] = field(default_factory=dict)
 
     @property
     def version(self) -> str:
@@ -42,7 +43,7 @@ class RuntimeArtifactBundle:
         ``"mismatch"`` drops the retention artifact so the pipeline
         downgrades to the bootstrap path.
         """
-        if status not in {"match", "mismatch", "unknown"}:
+        if status not in {"match", "mismatch", "unknown", "absent"}:
             raise ValueError(f"unknown rating_scaling_status {status!r}")
         if status == "mismatch":
             return replace(self, retention=None, rating_scaling_status=status)
@@ -59,6 +60,7 @@ class RuntimeArtifactBundle:
                 for key, errors in self.validation_errors.items()
             },
             "rating_scaling_status": self.rating_scaling_status,
+            "error_kinds": dict(self.error_kinds),
         }
 
 
@@ -84,18 +86,24 @@ def load_runtime_artifacts(
         metadata_filename=cox_metadata_filename,
     )
     validation_errors: dict[str, list[str]] = {}
+    error_kinds: dict[str, str] = {}
     if retention is not None:
         errors = validate_retention_artifact(retention)
         if errors:
             validation_errors["retention"] = errors
+            if retention.metadata.error_kind is not None:
+                error_kinds["retention"] = retention.metadata.error_kind
             retention = None
     if cox is not None:
         errors = validate_cox_artifact(cox)
         if errors:
             validation_errors["cox"] = errors
+            if cox.metadata.error_kind is not None:
+                error_kinds["cox"] = cox.metadata.error_kind
             cox = None
     return RuntimeArtifactBundle(
         retention=retention,
         cox=cox,
         validation_errors=validation_errors,
+        error_kinds=error_kinds,
     )

@@ -1,0 +1,58 @@
+{
+  "name": "artifact_metadata_missing_go",
+  "scenario": {
+    "type": "artifact_compatibility",
+    "summary": "A fixture-local retention bundle missing metadata is treated as unversioned and falls back to bootstrap scoring after manifest validation fails."
+  },
+  "config": {
+    "seed": 0
+  },
+  "artifact_bundle": {
+    "path": "artifact-bundles/missing-retention-metadata-bundle"
+  },
+  "context": {
+    "service": {
+      "id": "svc-artifact-missing-meta",
+      "mu": 0.995,
+      "sigma": 0.005,
+      "win_streak": 3,
+      "total_releases": 30,
+      "tier": "standard"
+    },
+    "candidates": [
+      {
+        "id": "c-canary",
+        "strategy": "canary",
+        "canary_fraction": 0.1,
+        "rollback_budget_seconds": 300,
+        "expected_success": 0.98
+      },
+      {
+        "id": "c-full",
+        "strategy": "full",
+        "canary_fraction": 0.0,
+        "rollback_budget_seconds": 600,
+        "expected_success": 0.97
+      }
+    ],
+    "error_budget_remaining": 0.8,
+    "correlation_id": "replay-artifact-metadata-missing-go"
+  },
+  "expected": {
+    "kind": "go",
+    "chosen_id": "c-full",
+    "risk_level": "ok",
+    "artifact_version": "bootstrap",
+    "eomm_source": "fallback",
+    "trace_values": {
+      "artifacts.fitted": false,
+      "artifacts.retention": null,
+      "artifacts.rating_scaling_status": "absent",
+      "artifacts.error_kinds.retention": "metadata_missing",
+      "stages.eomm.source": "fallback"
+    },
+    "trace_list_nonempty": [
+      "artifacts.validation_errors.retention"
+    ]
+  }
+}
