@@ -35,7 +35,9 @@ The convention is enforced by `test_replay_corpus.py::test_fixture_naming_matche
 | File | Scenario | Expected kind |
 |---|---|---|
 | advisory_mode_rollback.json | Advisory mode keeps the rollback decision visible but annotates it as do-not-enforce | rollback |
+| artifact_bundle_corrupt_canary.json | Empty artifact bundle directory triggers bootstrap fallback with CANARY decision | canary |
 | artifact_canary.json | Fitted retention artifact steers to canary | canary |
+| artifact_metadata_invalid_canary.json | Invalid artifact metadata shape triggers bootstrap fallback with CANARY decision | canary |
 | artifact_metadata_missing_go.json | A fixture-local retention bundle missing metadata is treated as unversioned and falls back to bootstrap GO after manifest validation fails | go |
 | artifact_scaling_mismatch_go.json | Stale retention scaling is rejected and falls back to bootstrap scoring | go |
 | artifact_scaling_mismatch_warn_canary.json | Stale retention scaling is rejected during a WARN-risk rollout, and bootstrap fallback still enforces CANARY | canary |
@@ -46,10 +48,10 @@ The convention is enforced by `test_replay_corpus.py::test_fixture_naming_matche
 | fallback_go.json | No artifact + healthy service → bootstrap GO | go |
 | freeze_hold.json | `freeze_window=true` pins HOLD regardless of signal | hold |
 | risk_warn_canary.json | Cox survival WARN downgrades to canary | canary |
+| scaling_mismatch_hold.json | No retention artifact → bootstrap fallback with hold | hold |
 | shadow_mode_rollback_hold.json | Top-level shadow mode rewrites a rollback-ready decision to HOLD while keeping the suppressed kind in trace | hold |
 | shadow_strategy_hold.json | `strategy="shadow"` → effectively HOLD | hold |
 | unknown_strategy_escalate.json | Unknown strategy label → escalate to human | escalate |
-| scaling_mismatch_hold.json | No retention artifact → bootstrap fallback with hold | hold |
 
 ## Adding a new fixture
 
