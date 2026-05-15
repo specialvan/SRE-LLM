@@ -29,6 +29,7 @@ It does not claim any SpaceX internal implementation detail. All review claims a
 | `reports/2026-05-16-control-center-exposure.md` | Targeted pass resolving control-center localhost and route exposure policy |
 | `reports/2026-05-16-adapter-cause-taxonomy.md` | Targeted pass resolving adapter exception cause taxonomy granularity |
 | `reports/2026-05-16-synthetic-evidence-boundaries.md` | Targeted pass locking synthetic before/after counterexamples as tests |
+| `reports/2026-05-16-release-hygiene.md` | Targeted pass resolving spec/package version and tag hygiene |
 | `evidence/2026-05-15-snapshot.md` | Command evidence and repository snapshot for the first report |
 | `evidence/2026-05-15-continuation-snapshot.md` | Command evidence for the follow-up pass |
 | `evidence/2026-05-15-post-commit-snapshot.md` | Command evidence for the post-commit pass |
@@ -38,6 +39,7 @@ It does not claim any SpaceX internal implementation detail. All review claims a
 | `evidence/2026-05-16-control-center-exposure-snapshot.md` | Command evidence for control-center exposure policy |
 | `evidence/2026-05-16-adapter-cause-taxonomy-snapshot.md` | Command evidence for adapter exception cause taxonomy |
 | `evidence/2026-05-16-synthetic-evidence-boundaries-snapshot.md` | Command evidence for synthetic evidence boundary tests |
+| `evidence/2026-05-16-release-hygiene-snapshot.md` | Command evidence for release hygiene tests |
 | `git/timeline.md` | Local commit timeline interpreted for reviewers |
 | `backlog.md` | Living queue of active, resolved, and watch issues |
 
@@ -55,5 +57,5 @@ It does not claim any SpaceX internal implementation detail. All review claims a
 - Date: 2026-05-16
 - Branch: `spacex-session`
 - HEAD: `0ae5740` (`audit: split adapter exception causes`)
-- Verification: 104 tests passed after adding synthetic evidence boundary coverage; `analysis.run_all` completed 10 studies in the latest evidence packet.
-- Top active risks: none in the current audit backlog; release-tag hygiene remains on the watch list.
+- Verification: 106 tests passed after adding release-hygiene coverage; `analysis.run_all` completed 10 studies in the latest evidence packet.
+- Top active risks: none in the current audit backlog; no watch items remain after the release-hygiene pass.

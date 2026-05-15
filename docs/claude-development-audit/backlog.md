@@ -38,9 +38,10 @@ Status values:
 | RES-020 | Control-center exposure policy | `scripts/control_center_server.py` exposes only fixed HTML/API routes behind localhost Host checks; `tests/test_control_center.py` covers route allow/deny cases. |
 | RES-021 | Adapter cause taxonomy | `AdapterInputError` now emits `adapter_exception.cause_type=adapter_input`, while generic `RecoverableControlError` remains `control_domain`; covered by contract and event-schema tests. |
 | RES-022 | Synthetic evidence boundaries | `tests/test_synthetic_evidence_boundaries.py` now locks the §5 `pos_p95` regression and §8 residual non-improvement as executable review evidence. |
+| RES-023 | Git release hygiene | `tests/test_release_hygiene.py` now enforces package-version consistency and keeps spec-ledger versioning separate from package release/tag promises. |
 
 ## Watch
 
 | ID | Area | Watch condition |
 |---|---|---|
-| WATCH-004 | Git release hygiene | Add tags only if package/spec versions become release promises. |
+| — | — | No watch items remain after the release-hygiene pass. |
