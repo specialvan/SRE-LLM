@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import importlib.util
 import json
+import tomllib
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -464,6 +467,26 @@ def test_sre_stack_balancer_recoverable_error_bootstrap_falls_back_to_zero_share
 
 
 
+def test_package_surfaces_are_importable():
+    import starship
+    import sre_control
+
+    assert importlib.util.find_spec("starship") is not None
+    assert importlib.util.find_spec("sre_control") is not None
+    assert hasattr(starship, "RecoveryPipeline")
+    assert hasattr(starship, "CatchController")
+    assert hasattr(sre_control, "SREControlStack")
+    assert hasattr(sre_control, "EVENT_COUNTEREXAMPLES")
+
+
+def test_pyproject_includes_sre_control_in_package_discovery():
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    package_include = pyproject["tool"]["setuptools"]["packages"]["find"]["include"]
+
+    assert "starship*" in package_include
+    assert "sre_control*" in package_include
+
+
 def test_sre_stack_refuses_stale_alloc_history_when_balancer_topology_changes():
     from sre_control import RecoverableControlError, WeightedLoadBalancer
 
@@ -497,6 +520,46 @@ def test_sre_stack_refuses_stale_alloc_history_when_balancer_topology_changes():
     assert second["alloc_shares"] == [0.0] * len(stack.balancer.instances)
     assert "bootstrap_zero_fallback" in second["alloc_info"]["local_states"]
 
+
+def test_sre_stack_refuses_stale_alloc_history_when_only_zone_vector_changes():
+    from sre_control import RecoverableControlError, WeightedLoadBalancer
+
+    class _RecoverableBalancer(WeightedLoadBalancer):
+        def allocate(self, rps_demand, zone_target):
+            raise RecoverableControlError("allocator unavailable")
+
+    stack, metrics = _make_stack()
+    first = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([760.0, 28.0]))],
+        forecast_rps=800.0,
+        current_replicas=6,
+        zone_target=np.array([480.0, 320.0]),
+        nn_proposal=np.array([500.0, 50.0, 10.0]),
+    )
+    assert sum(first["alloc_shares"]) > 0
+
+    stack.balancer = _RecoverableBalancer(
+        instances=[
+            Instance("east", np.array([0.8, 0.2]), rps_min=1.0, rps_max=500.0),
+            Instance("west", np.array([0.2, 0.8]), rps_min=1.0, rps_max=500.0),
+        ]
+    )
+    second = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([770.0, 28.5]))],
+        forecast_rps=820.0,
+        current_replicas=first["replicas_next"],
+        zone_target=np.array([492.0, 328.0]),
+        nn_proposal=np.array([520.0, 55.0, 8.0]),
+    )
+
+    assert second["alloc_shares"] == [0.0] * len(stack.balancer.instances)
+    assert "bootstrap_zero_fallback" in second["alloc_info"]["local_states"]
+    assert "reuse_last_good_shares" not in second["alloc_info"]["local_states"]
+
+
+def test_stability_guard_triggers_degraded_plan_on_sustained_violation():
     """Feed the stack a monotonically increasing Lyapunov candidate.
     After k_violations consecutive violating ticks the stack must
     surface a stability_violation event and DEGRADED_PLAN.

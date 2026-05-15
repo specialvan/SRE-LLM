@@ -88,7 +88,12 @@ class SREControlStack:
     # ------------------------------------------------------------------
     def _allocator_signature(self) -> tuple:
         return tuple(
-            (inst.name, float(inst.rps_min), float(inst.rps_max))
+            (
+                inst.name,
+                tuple(float(value) for value in inst.zone_vector),
+                float(inst.rps_min),
+                float(inst.rps_max),
+            )
             for inst in self.balancer.instances
         )
 

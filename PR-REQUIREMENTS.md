@@ -15,14 +15,14 @@ invariants:
   - I-2 事件 schema 封闭：新 kind 必须同步 EVENT_COUNTEREXAMPLES + schema + 测试
   - I-3 降级路径对齐：runtime.degraded=True 必然伴随 DEGRADED_* 状态和至少 1 条 event
   - I-4 文档不钉死 HEAD：不得在文档里写"最新 commit = <具体 SHA>"，用"近期日志包含 <关键 commit>"表达
-  - I-5 adapter 异常不崩栈：任何 SREControlStack 阶段抛异常必须转为 stability_violation event + DEGRADED_<stage>
+  - I-5 adapter 异常不崩栈：任何 SREControlStack 阶段抛出 `RecoverableControlError` 必须转为 `adapter_exception` event + `DEGRADED_<stage>`；`stability_violation` 仅保留给 Lyapunov / 稳定性红线
 quality-gates:
-  - pytest tests -q                 # 51 passed
+  - pytest tests -q                 # 85 passed
   - python -m analysis.run_all      # 10 studies finish <4s
   - python -m scripts.build_kb      # 16 assets rebuild
   - python -m examples.demo_sre_loop
   - HTML well-formed (html.parser)
-event-kinds-total: 10
+event-kinds-total: 11
 ---
 
 # PR 级功能需求清单 — 星舰筷子塔回收 + SRE 复利栈
@@ -68,7 +68,7 @@ event-kinds-total: 10
 
 | Gate | 命令 | 预期 |
 |---|---|---|
-| 单元测试 | `python -m pytest tests -q` | **51 passed** |
+| 单元测试 | `python -m pytest tests -q` | **85 passed** |
 | 基准证据 | `python -m analysis.run_all` | All 10 studies finish in ~3 s |
 | 资产构建 | `python -m scripts.build_kb` | 16 assets rebuilt |
 | 端到端 Demo | `python -m examples.demo_sre_loop` | 12 行 trace 无异常 |
@@ -98,13 +98,15 @@ event-kinds-total: 10
   - 应改写为"近期日志应包含 `<关键 review commit>`"
   - 否则每次新增文档 commit 就会让清单过期、误导下一轮 agent
   - 例：`HANDOFF_CHECKLIST.md` 和 `V2_Knowledge/knowledge-base.html` 已被 `dd9cd7a` 按此规则修正
-- **I-5 adapter 异常不崩栈**（2026-05-12 新增，来自 PR-M-04）：
-  - `SREControlStack.step()` 的 5 个阶段每一步都必须包在 try/except 里
-  - 任何 stage 抛异常必须转为 `stability_violation` event + `DEGRADED_<stage>`
-  - 必须提供安全回退值（fusion→x̂=forecast，plan→replicas 不变，
-    guard→零动作，allocate→零 shares），让剩余阶段继续运行
-  - 验证：`tests/test_contracts.py::test_sre_stack_survives_adapter_exception`
-    + `tests/test_contracts.py::test_sre_stack_survives_autoscaler_exception`
+- **I-5 adapter 异常不崩栈**（2026-05-12 新增，后续按当前实现刷新）：
+  - `SREControlStack.step()` 的各阶段必须只捕获 `RecoverableControlError`
+  - recoverable control-domain failure 必须转为 `adapter_exception` event + `DEGRADED_<stage>`
+  - `stability_violation` 只用于 `StabilityGuard` / Lyapunov 红线，不再兼作 adapter 异常总类
+  - 必须提供安全回退值（fusion→forecast 观测，plan→replicas 不变，
+    guard→零动作，allocate→复用 last-good 或 bootstrap 零 shares），让剩余阶段继续运行
+  - programmer errors 如 `AttributeError` / `TypeError` 必须继续向上传播，不得吞掉
+  - 验证：`tests/test_contracts.py::test_sre_stack_recovers_from_recoverable_adapter_error`
+    + `tests/test_contracts.py::test_sre_stack_survives_recoverable_autoscaler_exception`
 
 ### NFR-3 · 依赖图护栏
 
@@ -996,7 +998,7 @@ disallowed: docs/*        ← no runtime code
   跑一次；触发即补 `DEGRADED_PLAN`。向后兼容（default `None`）。
 - **第三次演练 I-2 全套同步**：这次是"复用已有 kind 但扩展合法 producer 集合"的
   变种，schema 不变但需要更新 doc 索引表的 `producer` 列。
-- **quality gate**：`pytest` 43 → **51 passed**（+8 条）；event kind 数保持 10；
+- **quality gate（historical snapshot）**：`pytest` 43 → **51 passed**（+8 条）；当时 event kind 数保持 10；当前 registry 已推进到 11；
   `analysis.run_all` 仍 10 studies。
 - **Backlog 剩余从 2 降到 1**（只剩 PR-L-02 V1 HTML 重排）。
 

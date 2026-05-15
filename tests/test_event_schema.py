@@ -1,6 +1,12 @@
-from __future__ import annotations
+﻿from __future__ import annotations
+
+from pathlib import Path
+import re
 
 import numpy as np
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 from sre_control import (
     CanaryScheduler,
@@ -97,7 +103,7 @@ def _collect_local_events():
     )
     events.extend(alloc_info["events"])
 
-    # outlier_rejected: fusion with a tight gate and a 10σ reading
+    # outlier_rejected: fusion with a tight gate and a 10-sigma reading
     gated_fusion = SignalFusion(
         x0=np.array([1000.0, 25.0, 0.3]),
         P0=np.diag([10**2, 2**2, 0.05**2]),
@@ -109,7 +115,7 @@ def _collect_local_events():
     events.extend(
         gated_fusion.step(
             dt=1.0,
-            readings=[(sig, np.array([5000.0, 200.0]))],  # way outside 3σ
+            readings=[(sig, np.array([5000.0, 200.0]))],  # way outside 3-sigma
         )["events"]
     )
 
@@ -209,3 +215,56 @@ def test_every_event_kind_has_a_specific_counterexample():
         assert kind
         assert len(counterexample) >= 60
         assert counterexample.startswith(("Do not", "Avoid"))
+
+
+def _parse_markdown_table_rows(text: str, header: str) -> list[list[str]]:
+    start = text.index(header)
+    lines = text[start:].splitlines()
+    rows: list[list[str]] = []
+    in_table = False
+    for line in lines[1:]:
+        if not line.startswith("|"):
+            if in_table:
+                break
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if not in_table:
+            in_table = True
+            continue
+        if cells and all(re.fullmatch(r"-+", cell) for cell in cells):
+            continue
+        rows.append(cells)
+    return rows
+
+
+def test_event_schema_doc_kinds_match_registry():
+    doc = (REPO_ROOT / "docs" / "EVENT_SCHEMA.md").read_text(encoding="utf-8")
+    rows = _parse_markdown_table_rows(doc, "## 2. Current Event Kinds")
+    documented_kinds = {row[0].strip("`") for row in rows}
+
+    assert documented_kinds == set(EVENT_COUNTEREXAMPLES)
+
+
+def test_runtime_states_doc_emitters_match_registry():
+    doc = (REPO_ROOT / "docs" / "RUNTIME_STATES.md").read_text(encoding="utf-8")
+    rows = _parse_markdown_table_rows(doc, "Current local event emitters:")
+    documented_emitters = {
+        (row[0].strip("`") , row[1].strip("`")): {
+            kind.strip().strip("`") for kind in row[2].split(",") if kind.strip()
+        }
+        for row in rows
+    }
+
+    assert documented_emitters == {
+        ("PoolCapacityPlanner.plan()", 'info["events"]'): {"pool_capacity_clipped"},
+        ("SignalFusion.step()", 'trace["events"]'): {"missing_sensor", "outlier_rejected"},
+        ("CanaryScheduler.observe()", "CanaryStep.events"): {"rollout_rejected"},
+        ("TopologyState.step()", 'trace["events"]'): {"topology_state_repaired"},
+        ("SLOGuardrail.audit()", 'audit["events"]'): {"unsafe_proposal_projected"},
+        ("PredictiveAutoscaler.step()", "last_trace[\"events\"]"): {"replica_bound_active"},
+        ("FastTrafficSwitcher.plan()", 'info["events"]'): {"deadline_exceeded"},
+        ("WeightedLoadBalancer.allocate()", 'info["events"]'): {"bounded_ls_residual"},
+        ("StabilityGuard.step()", 'trace["events"]'): {"stability_violation"},
+        ("SREControlStack.step()", 'entry["runtime"]["events"]'): {"adapter_exception"},
+    }
+

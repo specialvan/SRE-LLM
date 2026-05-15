@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Starship Recovery · 知识库 V2 (agent handoff snapshot)</title>
+<title>Starship Recovery · 知识库 V2 (canonical current entry)</title>
 <style>
   :root{
     --bg: #fbfaf7;
@@ -178,7 +178,7 @@
 <body>
 
 <header class="hero">
-  <div class="kicker">Knowledge Base · V2 · multi-agent handoff snapshot</div>
+  <div class="kicker">Knowledge Base · V2 · canonical current entry</div>
   <h1><span class="en">Starship Recovery </span>· 跨 agent 协同知识库<span class="ver">v2 · 2026-05-12</span></h1>
   <p class="sub">
     V2 在 V1 的"机制图 + 动画收益 + SRE 映射"基础上，**把 Codex session 1 沉淀下来的可观测性和契约作为一等公民**
@@ -192,11 +192,11 @@
     移交：<code>spacex/docs/claude-review/</code>
   </div>
   <div class="banner-row">
-    <div class="chip"><b>tests</b> 51 passed</div>
+    <div class="chip"><b>tests</b> 85 passed</div>
     <div class="chip"><b>studies</b> 10 finished</div>
     <div class="chip"><b>HTML</b> well-formed</div>
-    <div class="chip"><b>events</b> 10 kinds</div>
-    <div class="chip"><b>commits</b> cf9c8dc → 59389ee</div>
+    <div class="chip"><b>events</b> 11 kinds</div>
+    <div class="chip"><b>history</b> recent review commits referenced</div>
   </div>
 </header>
 
@@ -613,8 +613,8 @@ min ‖A·t − [F;τ]‖²  s.t. T_min ≤ t_i ≤ T_max</div>
 
 <!-- ===================== Event Guide ===================== -->
 <section id="events">
-  <h2><span class="tag">🔔</span>Runtime Event 指南 · 8 种 kind 全景</h2>
-  <p class="lead">所有本地 event 通过 <code>sre_control/events.py</code> 的 <code>make_event()</code> 产生，四字段 schema 固定。新增 kind 必须同步 <code>EVENT_COUNTEREXAMPLES</code>。</p>
+  <h2><span class="tag">🔎</span>Runtime Event 指南 · 11 种 kind 全景</h2>
+  <p class="lead">所有本地 event 通过 <code>sre_control/events.py</code> 的 <code>make_event()</code> 产生，四字段 schema 固定。新增 kind 必须同步 <code>EVENT_COUNTEREXAMPLES</code>、文档和测试。</p>
 
   <h3>Schema</h3>
   <div class="formula">REQUIRED_EVENT_FIELDS = ("stage", "kind", "detail", "safe_action")
@@ -627,20 +627,21 @@ make_event(stage, kind, detail, safe_action):
   if kind not in EVENT_COUNTEREXAMPLES:
       raise ValueError   ← 强制配 counter-example 才能通过</div>
 
-  <h3>8 种 kind 索引</h3>
+  <h3>11 种 kind 索引</h3>
   <table>
     <thead><tr><th>Kind</th><th>Producer</th><th>Trigger</th><th>Safe action</th></tr></thead>
     <tbody>
+      <tr><td><code>pool_capacity_clipped</code></td><td><code>PoolCapacityPlanner.plan()</code></td><td>预测需求超过 max 容量</td><td>clip 到 max_capacity，暴露 shortfall</td></tr>
       <tr><td><code>missing_sensor</code></td><td><code>SignalFusion.step()</code></td><td>某路观测为 None</td><td>skip update 保留 posterior prediction</td></tr>
+      <tr><td><code>outlier_rejected</code></td><td><code>SignalFusion.step()</code> (gate 启用时)</td><td>观测 Mahalanobis σ &gt; gate 阈值</td><td>跳过 update 保护 posterior</td></tr>
       <tr><td><code>rollout_rejected</code></td><td><code>CanaryScheduler.observe()</code></td><td>灰度观测烧穿 SLO 预算</td><td>trust region 缩半并冻结推进</td></tr>
+      <tr><td><code>topology_state_repaired</code></td><td><code>TopologyState.step()</code></td><td>输入 quaternion 非有限/非单位</td><td>reset 或 renormalize 后再积分</td></tr>
       <tr><td><code>unsafe_proposal_projected</code></td><td><code>SLOGuardrail.audit()</code></td><td>cone / magnitude 违例</td><td>只执行投影后的 action</td></tr>
       <tr><td><code>replica_bound_active</code></td><td><code>PredictiveAutoscaler.step()</code></td><td>下一副本数打到 min/max</td><td>返回 bounded integer</td></tr>
       <tr><td><code>deadline_exceeded</code></td><td><code>FastTrafficSwitcher.plan()</code></td><td>T_min &gt; deadline_s</td><td>冻结或走简单 rollback</td></tr>
       <tr><td><code>bounded_ls_residual</code></td><td><code>WeightedLoadBalancer.allocate()</code></td><td>box 饱和或 residual 非零</td><td>报告 residual，不伪装精确匹配</td></tr>
-      <tr><td><code>pool_capacity_clipped</code></td><td><code>PoolCapacityPlanner.plan()</code></td><td>预测需求超过 max 容量</td><td>clip 到 max_capacity，暴露 shortfall</td></tr>
-      <tr><td><code>topology_state_repaired</code></td><td><code>TopologyState.step()</code></td><td>输入 quaternion 非有限/非单位</td><td>reset 或 renormalize 后再积分</td></tr>
-      <tr><td><code>outlier_rejected</code></td><td><code>SignalFusion.step()</code> (gate 启用时)</td><td>观测 Mahalanobis σ &gt; gate 阈值</td><td>跳过 update 保护 posterior</td></tr>
-      <tr><td><code>stability_violation</code></td><td><code>SREControlStack.step()</code> · <code>StabilityGuard.step()</code></td><td>adapter 抛异常 · 或 dV/dt &gt; tolerance 连续 k 次</td><td>记录事件，加 DEGRADED_&lt;stage&gt;，用安全回退继续 tick</td></tr>
+      <tr><td><code>stability_violation</code></td><td><code>StabilityGuard.step()</code></td><td>dV/dt &gt; tolerance 连续 k 次</td><td>投影到稳定安全动作并进入 degraded guard</td></tr>
+      <tr><td><code>adapter_exception</code></td><td><code>SREControlStack.step()</code></td><td>adapter 抛出 <code>RecoverableControlError</code></td><td>记录 <code>DEGRADED_&lt;stage&gt;</code>，用该阶段安全回退继续 tick</td></tr>
     </tbody>
   </table>
 
@@ -890,7 +891,7 @@ disallowed: docs/*        ← 无运行时代码</div>
   <table>
     <thead><tr><th>命令</th><th>预期</th><th>耗时</th></tr></thead>
     <tbody>
-      <tr><td><code>python -m pytest tests -q</code></td><td><b>51 passed</b></td><td>~1 s</td></tr>
+      <tr><td><code>python -m pytest tests -q</code></td><td><b>85 passed</b></td><td>~1 s</td></tr>
       <tr><td><code>python -m analysis.run_all</code></td><td>All 10 studies finished</td><td>~3 s</td></tr>
       <tr><td><code>python -m examples.demo_sre_loop</code></td><td>12 行 tick trace</td><td>&lt;1 s</td></tr>
       <tr><td><code>python -m examples.demo_powered_descent</code></td><td>PDG 末态 ~2e-6 m</td><td>~0.5 s</td></tr>

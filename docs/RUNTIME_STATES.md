@@ -256,7 +256,7 @@ Current local event emitters:
 | Adapter | Local field | Event kinds |
 |---|---|---|
 | `PoolCapacityPlanner.plan()` | `info["events"]` | `pool_capacity_clipped` |
-| `SignalFusion.step()` | `trace["events"]` | `missing_sensor` |
+| `SignalFusion.step()` | `trace["events"]` | `missing_sensor`, `outlier_rejected` |
 | `CanaryScheduler.observe()` | `CanaryStep.events` | `rollout_rejected` |
 | `TopologyState.step()` | `trace["events"]` | `topology_state_repaired` |
 | `SLOGuardrail.audit()` | `audit["events"]` | `unsafe_proposal_projected` |
