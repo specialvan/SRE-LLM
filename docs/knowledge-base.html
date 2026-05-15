@@ -1013,7 +1013,8 @@ t_per_engine, residual = allocator.allocate(F_demand, tau_demand)</pre>
       <tr><td><code>FastTrafficSwitcher.plan()</code></td><td><code>deadline_exceeded</code></td><td>最短切换时间超过 deadline 时不要硬赶窗口</td></tr>
       <tr><td><code>WeightedLoadBalancer.allocate()</code></td><td><code>bounded_ls_residual</code></td><td>box 饱和或 residual 非零时报告残差，不重归一化</td></tr>
       <tr><td><code>SignalFusion.step()</code></td><td><code>outlier_rejected</code></td><td>innovation gate 拒绝异常观测，保护 posterior</td></tr>
-      <tr><td><code>SREControlStack.step()</code> / <code>StabilityGuard.step()</code></td><td><code>stability_violation</code></td><td>adapter 异常或 Lyapunov 红线触发时转成可审查事件</td></tr>
+      <tr><td><code>SREControlStack.step()</code></td><td><code>adapter_exception</code></td><td>recoverable adapter 异常触发时转成可审查事件并继续 tick</td></tr>
+      <tr><td><code>StabilityGuard.step()</code></td><td><code>stability_violation</code></td><td>Lyapunov 红线触发时转成稳定性事件</td></tr>
     </tbody>
   </table>
 

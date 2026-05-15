@@ -457,7 +457,7 @@ def test_starship_does_not_import_sre_control():
 按依赖方向"由下往上"逐步加厚：
 
 1. **已完成**：`starship/stability_monitor.py`（§2.1 Lyapunov dV/dt≤0 监视器）和 SRE wrapper `StabilityGuard`。
-2. **已完成**：`events.py` 增加 `stability_violation`，映射 adapter 异常和 Lyapunov 红线。
+2. **已完成**：`events.py` 使用 `adapter_exception` 映射 recoverable adapter 异常，`stability_violation` 只映射 Lyapunov 红线。
 3. **已完成**：`analysis/s10_failure_trace.py` 用 `runtime.events` 做 before/after 对比，展示事件密度和共现热力图。
 4. **下一步**：给 `sre_control/topology_state.py` 加 `distance_to(target)` 的方向性（当前是对称 L2，考虑加带方向约束的场景）。
 5. **下一步**：把 s10 的 JSONL 从 sample 扩展为全量 trace，并补 dashboard 查询示例。

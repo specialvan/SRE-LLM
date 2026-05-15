@@ -784,17 +784,17 @@ disallowed: docs/*        ← no runtime code
   `SREControlStack.step()` 任意 adapter 抛异常会中断控制循环——这是生产级不能接受的。
 - **范围**：
   1. 给 step 的 5 个阶段（observe / plan / canary / guard / allocate）分别包
-     try/except，异常时产 `stability_violation` event 并用**安全回退值**保证
+     try/except；当前实现只捕获 `RecoverableControlError`，异常时产 `adapter_exception` event 并用**安全回退值**保证
      下游阶段继续跑。
-  2. 注册新 event kind `stability_violation` 走完 I-2 全套同步。
-  3. **升格 I-5 为新不变量**：任何 stage 抛异常必须转为
-     `stability_violation` event + `DEGRADED_<stage>` + 安全回退。
+  2. 注册 stack 级 `adapter_exception` event，并保留 `stability_violation` 给 Lyapunov / StabilityGuard 红线。
+  3. **升格 I-5 为新不变量**：任何 stage 抛出的 recoverable control-domain failure 必须转为
+     `adapter_exception` event + `DEGRADED_<stage>` + 安全回退；programmer error 继续向上传播。
   4. 新增 2 条专门测试：fusion 崩 + autoscaler 崩，分别验证回退。
 - **DoD**（全部达成）：
   - ✅ `test_sre_stack_survives_adapter_exception` pass（fusion 抛 → 返完整 trace）
   - ✅ `test_sre_stack_survives_autoscaler_exception` pass（autoscaler 抛 → replicas 不变）
-  - ✅ I-2 schema closure 测试通过（stability_violation 必须被真实触发）
-  - ✅ 总 event kind 数从 9 → **10**
+  - ✅ I-2 schema closure 测试通过（`adapter_exception` 与 `stability_violation` 都必须被真实触发）
+  - ✅ 总 event kind 数当前为 **11**（含 `adapter_exception`）
   - ✅ I-5 明文写入 NFR-2
 - **安全回退值策略**：
   - SignalFusion 崩 → `observed_rps = forecast_rps`，清空 signals
@@ -804,9 +804,9 @@ disallowed: docs/*        ← no runtime code
   - WeightedLoadBalancer 崩 → `shares = zeros(n)`（等同于关掉流量）
 - **Evidence**：
   - 代码 `sre_control/stack.py` (+~90 LOC，`_stability_event` 静态方法)
-  - schema `sre_control/events.py::EVENT_COUNTEREXAMPLES["stability_violation"]`
+  - schema `sre_control/events.py::EVENT_COUNTEREXAMPLES["adapter_exception"]`
   - 测试 `tests/test_contracts.py` (+2 条) + `tests/test_event_schema.py` 扩展
-  - 文档 `docs/EVENT_SCHEMA.md` + V2 HTML 索引表 + 新增 I-5 不变量
+  - 文档 `docs/EVENT_SCHEMA.md` + V2 HTML 索引表 + 刷新 I-5 不变量
 
 ### 大档（跨 session）
 
@@ -825,7 +825,7 @@ disallowed: docs/*        ← no runtime code
   2. **迁移层**（新模块 `sre_control/stability_guard.py`）：
      - `StabilityGuard` 薄包装：把物理层的 `triggered` 翻译成 `stability_violation`
        event，stage 前缀 `StabilityGuard/<label>`
-     - 复用 PR-M-04 注册的 `stability_violation` kind（两个合法 producer）
+     - 使用 `stability_violation` kind；recoverable adapter 异常已拆到 `adapter_exception`
   3. **装配层**：`SREControlStack` 加 optional `stability` 字段，在 OBSERVE 之后
      PLAN 之前运行；触发时补 `DEGRADED_PLAN`
   4. **测试**：
@@ -838,10 +838,7 @@ disallowed: docs/*        ← no runtime code
   - ✅ `stability_violation` 事件能由 `StabilityGuard` 真实触发（I-2 第三次演练）
   - ✅ `DEGRADED_PLAN` 出现在 `runtime.states`（I-3）
   - ✅ `starship/stability_monitor.py` 不依赖 `sre_control/*`（I-1）
-- **为什么事件 kind 数量不增加**：`stability_violation` 由 PR-M-04 的 adapter 异常路径
-  和 PR-L-01 的监视器触发路径**共享**。用 `stage` 字段区分：`"SignalFusion"` /
-  `"PredictiveAutoscaler"` 等是异常路径；`"StabilityGuard/<label>"` 是监视器路径。
-  counter-example 保持不变（两个路径都在"不能靠放宽安全路径消化"的原则下）。
+- **为什么事件 kind 数量已增加**：历史上 `stability_violation` 曾同时承载 adapter 异常与稳定性红线；当前策略已拆分，`adapter_exception` 负责 recoverable adapter failure，`stability_violation` 仅由 `StabilityGuard/<label>` 这类 Lyapunov 红线触发。
 - **Evidence**：
   - 代码 `starship/stability_monitor.py`（~170 LOC）
   - 代码 `sre_control/stability_guard.py`（~100 LOC）
@@ -993,11 +990,11 @@ disallowed: docs/*        ← no runtime code
 - **新模块 `starship/stability_monitor.py`**：通用 `V(x)` 监视器，`n` 维状态 ×
   任意标量 Lyapunov 候选。不依赖 `sre_control/`（I-1）。
 - **新模块 `sre_control/stability_guard.py`**：薄包装，把物理层 `triggered` 翻译成
-  `stability_violation` event。**无需新 event kind**——和 PR-M-04 共享。
+  `stability_violation` event。recoverable adapter 异常已拆分为 `adapter_exception`。
 - **`SREControlStack` 扩展**：加 optional `stability` 字段，在 OBSERVE 与 PLAN 之间
   跑一次；触发即补 `DEGRADED_PLAN`。向后兼容（default `None`）。
 - **第三次演练 I-2 全套同步**：这次是"复用已有 kind 但扩展合法 producer 集合"的
-  变种，schema 不变但需要更新 doc 索引表的 `producer` 列。
+  变种，schema 已扩展到 11 个 kind，doc 索引表需区分 `adapter_exception` 与 `stability_violation`。
 - **quality gate（historical snapshot）**：`pytest` 43 → **51 passed**（+8 条）；当时 event kind 数保持 10；当前 registry 已推进到 11；
   `analysis.run_all` 仍 10 studies。
 - **Backlog 剩余从 2 降到 1**（只剩 PR-L-02 V1 HTML 重排）。
@@ -1013,7 +1010,7 @@ disallowed: docs/*        ← no runtime code
 ### v0.3.5 · 2026-05-12 · Claude Reviewer（PR-M-04 · 不变量升格到 5 条）
 
 - **PR-M-04 SHIPPED**（本轮 commit）：`SREControlStack.step()` 5 个阶段全部包进
-  try/except，adapter 抛异常转为 `stability_violation` event + 安全回退，不再崩栈。
+  recoverable-error fallback，adapter 的 `RecoverableControlError` 转为 `adapter_exception` event + 安全回退，不再崩栈。
 - **I-5 升格为不变量**：与 I-2 / I-3 并列，任何未来修改 stack 都必须保持"异常不崩栈 +
   转事件 + 回退"三件事同步。
 - **第二次演练 I-2 全套同步**：这次是带着 PR-M-03 的经验，schema 封闭测试在第一次

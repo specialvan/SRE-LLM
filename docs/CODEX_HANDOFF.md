@@ -93,7 +93,7 @@
 - 新增 `analysis/s10_failure_trace.py` 和 `tests/test_failure_trace.py`，把 event lifecycle 变成可复现 before/after 证据
 - `analysis.run_all` 已扩展到 10 studies，`SUMMARY.txt` 包含 `§10 · Failure trace`
 - `SignalFusion` 增加 innovation gating，新增 `outlier_rejected` event，防止异常观测污染 posterior
-- `SREControlStack.step()` 增加 adapter 异常兜底，异常转 `stability_violation` event 并继续 tick
+- `SREControlStack.step()` 增加 recoverable adapter 异常兜底，异常转 `adapter_exception` event 并继续 tick
 - 新增 `starship/stability_monitor.py` 与 `sre_control/stability_guard.py`，用 Lyapunov `dV/dt` 监视稳定性红线
 
 ### Codex review package（本轮）

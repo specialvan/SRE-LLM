@@ -40,7 +40,7 @@ Claude 这次不是 P0 打回。它的明确结论是 **P0 通过，建议合并
 | 缺少 import graph 测试保护 `starship/` 不 import `sre_control/` | 中 | 已修 | 新增 `tests/test_import_graph.py`，同时守住 `sre_control/events.py` 不 import `starship` | 以后改依赖边界时同步更新该测试 |
 | 缺少 failure-state before/after 图 | 中 | 已修 | `analysis/s10_failure_trace.py` 输出 event density、co-occurrence 和 JSONL sample；`analysis.run_all` 已扩到 10 studies | 后续可导出全量 JSONL 和 dashboard 查询样例 |
 | `SignalFusion` 没有 innovation gating | 中 | 已修 | `SignalFusion.gate_threshold` + `outlier_rejected` event + 单测覆盖 | 后续可做 per-sensor gate 和恢复窗口 |
-| `SREControlStack.step()` 没有 adapter 异常转 event 的 try/except | 大 | 已修 | `SREControlStack.step()` 每阶段 try/except，异常转 `stability_violation` 并继续 tick；contract tests 覆盖 | 后续细化 stage-specific rollback 策略 |
+| `SREControlStack.step()` 没有 adapter 异常转 event 的 try/except | 大 | 已修 | `SREControlStack.step()` 每阶段处理 `RecoverableControlError`，异常转 `adapter_exception` 并继续 tick；contract tests 覆盖 | 后续细化 stage-specific rollback 策略 |
 
 ## 4. 评审包自身的漂移
 
