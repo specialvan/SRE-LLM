@@ -42,7 +42,7 @@
 | Field | Meaning |
 |---|---|
 | `exception_type` | 异常类名，例如 `RecoverableControlError` |
-| `cause_type` | 失败原因分类；当前控制域 fallback 使用 `control_domain` |
+| `cause_type` | 失败原因分类；`AdapterInputError` 使用 `adapter_input`，其他可恢复控制域 fallback 使用 `control_domain` |
 | `recoverable` | 是否可用 validated fallback 安全完成本 tick |
 
 `CatchController` 属于 `starship/` 物理层，仍通过 `info["alloc_residual"]` 暴露分配残差，但不反向 import `sre_control/events.py`。如果未来需要把捕获段作为 SRE adapter 暴露，应由新的 SRE wrapper 生成 runtime event，避免 `starship/` 对迁移层产生倒置依赖。

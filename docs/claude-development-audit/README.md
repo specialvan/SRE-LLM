@@ -27,6 +27,7 @@ It does not claim any SpaceX internal implementation detail. All review claims a
 | `reports/2026-05-15-quality-gates-html-canonical.md` | Targeted pass resolving generated quality-gate counts and HTML canonical entry drift |
 | `reports/2026-05-16-package-smoke.md` | Targeted pass resolving installed-wheel smoke coverage |
 | `reports/2026-05-16-control-center-exposure.md` | Targeted pass resolving control-center localhost and route exposure policy |
+| `reports/2026-05-16-adapter-cause-taxonomy.md` | Targeted pass resolving adapter exception cause taxonomy granularity |
 | `evidence/2026-05-15-snapshot.md` | Command evidence and repository snapshot for the first report |
 | `evidence/2026-05-15-continuation-snapshot.md` | Command evidence for the follow-up pass |
 | `evidence/2026-05-15-post-commit-snapshot.md` | Command evidence for the post-commit pass |
@@ -34,6 +35,7 @@ It does not claim any SpaceX internal implementation detail. All review claims a
 | `evidence/2026-05-15-quality-gates-html-canonical-snapshot.md` | Command evidence for the quality-gate and HTML canonical pass |
 | `evidence/2026-05-16-package-smoke-snapshot.md` | Command evidence for installed-wheel smoke coverage |
 | `evidence/2026-05-16-control-center-exposure-snapshot.md` | Command evidence for control-center exposure policy |
+| `evidence/2026-05-16-adapter-cause-taxonomy-snapshot.md` | Command evidence for adapter exception cause taxonomy |
 | `git/timeline.md` | Local commit timeline interpreted for reviewers |
 | `backlog.md` | Living queue of active, resolved, and watch issues |
 
@@ -51,5 +53,5 @@ It does not claim any SpaceX internal implementation detail. All review claims a
 - Date: 2026-05-16
 - Branch: `spacex-session`
 - HEAD: `13e534e` (analysis summary sync commit; subject omitted here to avoid terminal-encoding drift)
-- Verification: 100 tests passed after adding control-center exposure policy coverage; `analysis.run_all` completed 10 studies in the latest committed evidence packet.
-- Top active risks: none in the current audit backlog; watch-list items remain for release hygiene, synthetic evidence boundaries, and adapter cause taxonomy granularity.
+- Verification: 102 tests passed after adding adapter cause taxonomy coverage; `analysis.run_all` completed 10 studies in the latest committed evidence packet.
+- Top active risks: none in the current audit backlog; watch-list items remain for release hygiene and synthetic evidence boundaries.

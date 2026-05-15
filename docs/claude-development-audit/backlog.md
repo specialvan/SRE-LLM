@@ -32,15 +32,15 @@ Status values:
 | RES-014 | Adapter exception taxonomy docs | Canonical spec, handoff docs, architecture notes, and V1 event table now route recoverable adapter failures to `adapter_exception`; committed in `c1dc48d`. |
 | RES-015 | Version policy documented | `PR-REQUIREMENTS.md` now separates spec/review-ledger version from Python package release version in NFR-7. |
 | RES-016 | Joseph-form derivation docs | `docs/SPECIAL_SOLUTIONS_DERIVATIONS.md` now separates standard covariance form from full Joseph form in formulas and code snippets; verified with `pytest tests/test_ekf.py tests/test_event_schema.py -q`. |
-| RES-017 | Generated quality-gate counts | `scripts/quality_gate_counts.py` updates current-facing pytest counts after a real full-suite pytest pass, pass/collection parity check, and installed-wheel smoke with subprocess timeouts; current generated count is 100. |
+| RES-017 | Generated quality-gate counts | `scripts/quality_gate_counts.py` updates current-facing pytest counts after a real full-suite pytest pass, pass/collection parity check, and installed-wheel smoke with subprocess timeouts; current generated count is 102. |
 | RES-018 | HTML canonical entry | `README.md`, V1 HTML, and V2 HTML now identify `docs/V2_Knowledge/knowledge-base.html` as the canonical current entry and `docs/knowledge-base.html` as a V1 archive snapshot. |
 | RES-019 | Installed wheel smoke | `scripts/package_smoke.py` builds the wheel, verifies `starship` and `sre_control` are present, imports both from the wheel path, and is covered by `tests/test_package_smoke.py`. |
 | RES-020 | Control-center exposure policy | `scripts/control_center_server.py` exposes only fixed HTML/API routes behind localhost Host checks; `tests/test_control_center.py` covers route allow/deny cases. |
+| RES-021 | Adapter cause taxonomy | `AdapterInputError` now emits `adapter_exception.cause_type=adapter_input`, while generic `RecoverableControlError` remains `control_domain`; covered by contract and event-schema tests. |
 
 ## Watch
 
 | ID | Area | Watch condition |
 |---|---|---|
 | WATCH-001 | Synthetic evidence | Keep section 5 `pos_p95` regression and section 8 residual non-improvement visible in reports. |
-| WATCH-002 | Cause taxonomy | `adapter_exception.cause_type` is currently coarse (`control_domain`). Split only when a real routing need appears. |
 | WATCH-004 | Git release hygiene | Add tags only if package/spec versions become release promises. |

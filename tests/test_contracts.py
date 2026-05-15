@@ -240,6 +240,42 @@ def test_sre_stack_recovers_from_recoverable_adapter_error():
     json.dumps(entry)
 
 
+def test_sre_stack_classifies_adapter_input_error_as_adapter_input():
+    from sre_control import AdapterInputError, SignalFusion
+
+    class _AdapterInputFusion(SignalFusion):
+        def step(self, dt, readings):
+            raise AdapterInputError("missing adapter input")
+
+    stack, metrics = _make_stack()
+    stack.fusion = _AdapterInputFusion(
+        x0=np.array([700.0, 25.0, 0.3]),
+        P0=np.diag([100.0**2, 8.0**2, 0.1**2]),
+        Q=np.diag([8.0, 0.3, 0.01]),
+        x_ref=np.array([700.0, 25.0, 0.3]),
+        theta=0.15,
+    )
+
+    entry = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([750.0, 28.0]))],
+        forecast_rps=800.0,
+        current_replicas=6,
+        zone_target=np.array([480.0, 320.0]),
+        nn_proposal=np.array([500.0, 50.0, 10.0]),
+    )
+
+    assert "DEGRADED_OBSERVE" in entry["runtime"]["states"]
+    event = next(
+        e for e in entry["runtime"]["events"] if e["kind"] == "adapter_exception"
+    )
+    assert event["stage"] == "SignalFusion"
+    assert event["exception_type"] == "AdapterInputError"
+    assert event["cause_type"] == "adapter_input"
+    assert event["recoverable"] is True
+    json.dumps(entry)
+
+
 def test_stability_recoverable_error_uses_adapter_exception():
     from sre_control import RecoverableControlError, StabilityGuard
 
@@ -462,9 +498,6 @@ def test_sre_stack_balancer_recoverable_error_bootstrap_falls_back_to_zero_share
     assert event["exception_type"] == "RecoverableControlError"
     assert event["recoverable"] is True
     json.dumps(entry)
-
-
-
 
 
 def test_package_surfaces_are_importable():
@@ -734,7 +767,9 @@ def test_stability_guard_reports_sustained_trigger_without_new_event():
         (
             entry
             for entry in entries
-            if any(ev["kind"] == "stability_violation" for ev in entry["runtime"]["events"])
+            if any(
+                ev["kind"] == "stability_violation" for ev in entry["runtime"]["events"]
+            )
         ),
         None,
     )
@@ -747,7 +782,8 @@ def test_stability_guard_reports_sustained_trigger_without_new_event():
         if ev["kind"] == "stability_violation"
     ]
     sustained_events = [
-        ev for ev in sustained_entry["runtime"]["events"]
+        ev
+        for ev in sustained_entry["runtime"]["events"]
         if ev["kind"] == "stability_violation"
     ]
     assert trigger_events

@@ -45,7 +45,7 @@ import numpy as np
 
 from .canary_scheduler import CanaryScheduler, CanaryStep
 from .events import make_event
-from .exceptions import RecoverableControlError
+from .exceptions import AdapterInputError, RecoverableControlError
 from .pool_planner import PoolCapacityPlanner
 from .predictive_autoscaler import PredictiveAutoscaler
 from .signal_fusion import Signal, SignalFusion
@@ -116,6 +116,9 @@ class SREControlStack:
     def _adapter_exception_event(
         stage_label: str, exc: RecoverableControlError
     ) -> dict:
+        cause_type = (
+            "adapter_input" if isinstance(exc, AdapterInputError) else "control_domain"
+        )
         return make_event(
             stage=stage_label,
             kind="adapter_exception",
@@ -125,7 +128,7 @@ class SREControlStack:
                 "and record DEGRADED_<stage>"
             ),
             exception_type=type(exc).__name__,
-            cause_type="control_domain",
+            cause_type=cause_type,
             recoverable=True,
         )
 

@@ -192,7 +192,7 @@
     移交：<code>spacex/docs/claude-review/</code>
   </div>
   <div class="banner-row">
-    <div class="chip"><b>tests</b> 100 passed</div>
+    <div class="chip"><b>tests</b> 102 passed</div>
     <div class="chip"><b>studies</b> 10 finished</div>
     <div class="chip"><b>HTML</b> well-formed</div>
     <div class="chip"><b>events</b> 11 kinds</div>
@@ -641,7 +641,7 @@ make_event(stage, kind, detail, safe_action):
       <tr><td><code>deadline_exceeded</code></td><td><code>FastTrafficSwitcher.plan()</code></td><td>T_min &gt; deadline_s</td><td>冻结或走简单 rollback</td></tr>
       <tr><td><code>bounded_ls_residual</code></td><td><code>WeightedLoadBalancer.allocate()</code></td><td>box 饱和或 residual 非零</td><td>报告 residual，不伪装精确匹配</td></tr>
       <tr><td><code>stability_violation</code></td><td><code>StabilityGuard.step()</code></td><td>dV/dt &gt; tolerance 连续 k 次</td><td>投影到稳定安全动作并进入 degraded guard</td></tr>
-      <tr><td><code>adapter_exception</code></td><td><code>SREControlStack.step()</code></td><td>adapter 抛出 <code>RecoverableControlError</code></td><td>记录 <code>DEGRADED_&lt;stage&gt;</code>，用该阶段安全回退继续 tick</td></tr>
+      <tr><td><code>adapter_exception</code></td><td><code>SREControlStack.step()</code></td><td>adapter 抛出 <code>RecoverableControlError</code></td><td><code>AdapterInputError</code> 标为 <code>adapter_input</code>，其他可恢复控制域错误标为 <code>control_domain</code>，并用该阶段安全回退继续 tick</td></tr>
     </tbody>
   </table>
 
@@ -891,7 +891,7 @@ disallowed: docs/*        ← 无运行时代码</div>
   <table>
     <thead><tr><th>命令</th><th>预期</th><th>耗时</th></tr></thead>
     <tbody>
-      <tr><td><code>python -m pytest tests</code></td><td><b>100 passed</b></td><td>~1 s</td></tr>
+      <tr><td><code>python -m pytest tests</code></td><td><b>102 passed</b></td><td>~1 s</td></tr>
       <tr><td><code>python -m analysis.run_all</code></td><td>All 10 studies finished</td><td>~3 s</td></tr>
       <tr><td><code>python -m examples.demo_sre_loop</code></td><td>12 行 tick trace</td><td>&lt;1 s</td></tr>
       <tr><td><code>python -m examples.demo_powered_descent</code></td><td>PDG 末态 ~2e-6 m</td><td>~0.5 s</td></tr>

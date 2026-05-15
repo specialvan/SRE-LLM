@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 
 import numpy as np
+import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -193,20 +194,29 @@ def test_all_runtime_events_follow_shared_schema():
     assert all(validate_event(event) for event in events)
 
 
-def test_adapter_exception_event_includes_machine_readable_cause_fields():
+@pytest.mark.parametrize(
+    ("exception_type", "cause_type"),
+    [
+        ("RecoverableControlError", "control_domain"),
+        ("AdapterInputError", "adapter_input"),
+    ],
+)
+def test_adapter_exception_event_includes_machine_readable_cause_fields(
+    exception_type: str, cause_type: str
+):
     event = make_event(
         stage="SignalFusion",
         kind="adapter_exception",
-        detail="RecoverableControlError: temporary failure",
+        detail=f"{exception_type}: temporary failure",
         safe_action="substitute observe fallback and continue tick",
-        exception_type="RecoverableControlError",
-        cause_type="control_domain",
+        exception_type=exception_type,
+        cause_type=cause_type,
         recoverable=True,
     )
 
     assert validate_event(event)
-    assert event["exception_type"] == "RecoverableControlError"
-    assert event["cause_type"] == "control_domain"
+    assert event["exception_type"] == exception_type
+    assert event["cause_type"] == cause_type
     assert event["recoverable"] is True
 
 
@@ -249,7 +259,7 @@ def test_runtime_states_doc_emitters_match_registry():
     doc = (REPO_ROOT / "docs" / "RUNTIME_STATES.md").read_text(encoding="utf-8")
     rows = _parse_markdown_table_rows(doc, "Current local event emitters:")
     documented_emitters = {
-        (row[0].strip("`") , row[1].strip("`")): {
+        (row[0].strip("`"), row[1].strip("`")): {
             kind.strip().strip("`") for kind in row[2].split(",") if kind.strip()
         }
         for row in rows
@@ -257,14 +267,18 @@ def test_runtime_states_doc_emitters_match_registry():
 
     assert documented_emitters == {
         ("PoolCapacityPlanner.plan()", 'info["events"]'): {"pool_capacity_clipped"},
-        ("SignalFusion.step()", 'trace["events"]'): {"missing_sensor", "outlier_rejected"},
+        ("SignalFusion.step()", 'trace["events"]'): {
+            "missing_sensor",
+            "outlier_rejected",
+        },
         ("CanaryScheduler.observe()", "CanaryStep.events"): {"rollout_rejected"},
         ("TopologyState.step()", 'trace["events"]'): {"topology_state_repaired"},
         ("SLOGuardrail.audit()", 'audit["events"]'): {"unsafe_proposal_projected"},
-        ("PredictiveAutoscaler.step()", "last_trace[\"events\"]"): {"replica_bound_active"},
+        ("PredictiveAutoscaler.step()", 'last_trace["events"]'): {
+            "replica_bound_active"
+        },
         ("FastTrafficSwitcher.plan()", 'info["events"]'): {"deadline_exceeded"},
         ("WeightedLoadBalancer.allocate()", 'info["events"]'): {"bounded_ls_residual"},
         ("StabilityGuard.step()", 'trace["events"]'): {"stability_violation"},
         ("SREControlStack.step()", 'entry["runtime"]["events"]'): {"adapter_exception"},
     }
-
