@@ -4,7 +4,10 @@ import argparse
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
+
+from scripts import package_smoke
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -72,6 +75,8 @@ def collect_pytest_count(repo_root: Path = REPO_ROOT) -> int:
     test_output = f"{test_result.stdout}\n{test_result.stderr}"
     if test_result.returncode != 0:
         raise RuntimeError("pytest quality gate failed:\n" + test_output.strip())
+    with tempfile.TemporaryDirectory(prefix="package-smoke-") as temp_dir:
+        package_smoke.build_wheel_and_smoke_imports(Path(temp_dir), repo_root)
 
     try:
         collect_result = subprocess.run(

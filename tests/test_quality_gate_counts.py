@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import scripts.quality_gate_counts as quality_gate_counts
 from scripts.quality_gate_counts import (
     collect_pytest_count,
     parse_collected_count,
@@ -61,6 +62,7 @@ def test_collect_pytest_count_runs_tests_before_parsing_collection(
     monkeypatch: pytest.MonkeyPatch,
 ):
     calls: list[list[str]] = []
+    smoke_dirs: list[Path] = []
 
     def fake_run(
         command: list[str], *args: object, **kwargs: object
@@ -73,8 +75,14 @@ def test_collect_pytest_count_runs_tests_before_parsing_collection(
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        quality_gate_counts.package_smoke,
+        "build_wheel_and_smoke_imports",
+        lambda work_dir, repo_root: smoke_dirs.append(work_dir),
+    )
 
     assert collect_pytest_count(Path("/repo")) == 90
+    assert len(smoke_dirs) == 1
     assert calls == [
         [sys.executable, "-m", "pytest", "tests", "-q"],
         [sys.executable, "-m", "pytest", "tests", "--collect-only", "-q"],
