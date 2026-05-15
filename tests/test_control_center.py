@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from analysis.control_center_data import build_control_center_payload
-from scripts.control_center_server import is_allowed_host
+from scripts.control_center_server import is_allowed_host, resolve_control_center_route
 
 
 def test_build_control_center_payload_is_json_serializable_and_structured():
@@ -107,3 +107,14 @@ def test_control_center_server_allows_only_local_hosts():
     assert is_allowed_host("localhost:8765", 8765) is True
     assert is_allowed_host("evil.example:8765", 8765) is False
     assert is_allowed_host(None, 8765) is False
+
+
+def test_control_center_server_exposes_only_fixed_routes():
+    assert resolve_control_center_route("/") == "html"
+    assert resolve_control_center_route("/control-center") == "html"
+    assert resolve_control_center_route("/control-center.html") == "html"
+    assert resolve_control_center_route("/api/control-center") == "api"
+
+    assert resolve_control_center_route("/api/control-center?debug=1") is None
+    assert resolve_control_center_route("/assets/s01_lossless_convex.png") is None
+    assert resolve_control_center_route("/../pyproject.toml") is None

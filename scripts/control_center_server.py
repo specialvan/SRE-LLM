@@ -9,6 +9,7 @@ from analysis.control_center_data import build_control_center_payload
 ROOT = Path(__file__).resolve().parent.parent
 DOCS_DIR = ROOT / "docs"
 API_PATH = "/api/control-center"
+HTML_PATHS = frozenset({"/", "/control-center", "/control-center.html"})
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
 
@@ -24,15 +25,24 @@ def is_allowed_host(host_header: str | None, port: int) -> bool:
     return normalized in allowed_hosts
 
 
+def resolve_control_center_route(path: str) -> str | None:
+    if path in HTML_PATHS:
+        return "html"
+    if path == API_PATH:
+        return "api"
+    return None
+
+
 class ControlCenterHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         if not is_allowed_host(self.headers.get("Host"), self.server.server_port):
             self.send_error(403, "Forbidden")
             return
-        if self.path in {"/", "/control-center", "/control-center.html"}:
+        route = resolve_control_center_route(self.path)
+        if route == "html":
             self._serve_file(DOCS_DIR / "control-center.html", "text/html; charset=utf-8")
             return
-        if self.path == API_PATH:
+        if route == "api":
             payload = build_control_center_payload()
             body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
             self.send_response(200)
