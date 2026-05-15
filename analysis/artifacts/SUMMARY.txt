@@ -2,9 +2,9 @@
   cone_margin_min           before=2.351e+05  after=5.27e+04  (×0.224)
   fuel                      before=1.279e+04  after=1.051e+04  (×0.822)
   pos_err                   before=148.3  after=2.125e-06  (×1.43e-08)
-  solve_ms                  before=0  after=303.8  (×inf)
+  solve_ms                  before=0  after=314.1  (×inf)
   vel_err                   before=30.92  after=3.799e-07  (×1.23e-08)
-    (elapsed 0.80s)
+    (elapsed 0.82s)
 
 === §2 Successive Convex Programming ===
   control_effort            before=19.61  after=19.78  (×1.01)
@@ -17,14 +17,14 @@
   angle_rmse_rad            before=0.05576  after=5.715e-07  (×1.02e-05)
   final_body_z_err          before=0.04464  after=1.384e-12  (×3.1e-11)
   quat_norm_drift           before=0  after=1e-12  (×inf)
-    (elapsed 0.07s)
+    (elapsed 0.06s)
 
 === §4 Thrust Pointing Cone ===
   cone_violations           before=0.974  after=0  (×0)
   mag_violations            before=0.7825  after=0  (×0)
   mean_magnitude            before=3.17e+06  after=1.5e+06  (×0.473)
   mean_projection_cost      before=0  after=2.168e+06  (×inf)
-    (elapsed 0.17s)
+    (elapsed 0.16s)
 
 === §5 EKF multi-sensor fusion ===
   pos_p95                   before=59.44  after=77.34  (×1.3)
@@ -50,13 +50,13 @@
   mean_residual             before=1.809e+06  after=1.875e+06  (×1.04)
   mean_saturation_excess    before=7.928e+04  after=0  (×0)
   saturation_violation_pct  before=33.75  after=0  (×0)
-    (elapsed 0.32s)
+    (elapsed 0.31s)
 
 === §SRE · end-to-end stack ===
   mean_replicas             before=18.43  after=26.5  (×1.44)
   peak_replicas             before=24  after=34  (×1.42)
   slo_violation_pct         before=25  after=10  (×0.4)
-    (elapsed 0.31s)
+    (elapsed 0.38s)
 
 === §10 · Failure trace (event-level evidence) ===
   background_event_fraction  before=-  after=0.0
@@ -67,4 +67,4 @@
   injected_window_coverage  before=-  after={'missing_sensor': {'expected_kind': 'missing_sensor', 'event_visible_fraction': 1.0, 'expected_kind_fraction': 1.0}, 'replica_bound_active': {'expected_kind': 'replica_bound_active', 'event_visible_fraction': 0.6, 'expected_kind_fraction': 0.6}, 'unsafe_proposal_projected': {'expected_kind': 'unsafe_proposal_projected', 'event_visible_fraction': 1.0, 'expected_kind_fraction': 1.0}}
   mttr_seconds              before=0  after=12.5  (×inf)
   true_degraded_fraction    before=-  after=0.21666666666666667
-    (elapsed 0.31s)
+    (elapsed 0.32s)
