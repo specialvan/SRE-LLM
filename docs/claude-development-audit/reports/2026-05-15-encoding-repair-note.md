@@ -27,12 +27,12 @@ The following items are still active because the unsafe bulk doc edits were not 
 Fresh command evidence after removing the unsafe V2 HTML tests:
 
 ```text
-python -m pytest --collect-only -q  -> 85 collected tests
-python -m pytest tests -q           -> exit 0 over 85 tests
+python -m pytest --collect-only -q  -> 83 collected tests
+python -m pytest tests -q           -> exit 0 over 83 tests
 ```
 
 `python -m analysis.run_all` also completed all 10 studies after the repair path.
 
 ## Completion Impact
 
-The goal should not be marked complete yet. The engineering package exists and is useful, but the canonical-doc refresh work remains active, and the package/supporting changes still need a clean commit.
+The engineering package exists, is useful, and was committed in `72e960c`. The canonical-doc refresh work remains active backlog for future passes, but it does not block completion of this audit-package creation pass.

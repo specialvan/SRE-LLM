@@ -27,7 +27,7 @@ Status values:
 | RES-005 | Allocator topology fingerprint | Current `_allocator_signature()` includes `Instance.zone_vector`, and `tests/test_contracts.py` adds a topology-only mutation regression. Pending commit. |
 | RES-006 | Docs/schema sync tests | `tests/test_event_schema.py` now parses `docs/EVENT_SCHEMA.md` and `docs/RUNTIME_STATES.md` against `EVENT_COUNTEREXAMPLES`. Pending commit. |
 | RES-007 | Package discovery | `pyproject.toml` includes both `starship*` and `sre_control*`. Pending commit. |
-| RES-008 | Review package created | `docs/claude-development-audit/` contains reports, evidence snapshots, git timeline, backlog, and completion audit. Pending commit. |
+| RES-008 | Review package created | `docs/claude-development-audit/` contains reports, evidence snapshots, git timeline, backlog, and completion audit; committed in `72e960c`. |
 
 ## Watch
 

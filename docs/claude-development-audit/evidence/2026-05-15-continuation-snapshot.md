@@ -79,7 +79,7 @@ tests/test_stability_monitor.py: 8
 tests/test_thrust_constraints.py: 3
 ```
 
-Total: 85 collected tests.
+Total: 83 collected tests.
 
 Command:
 
@@ -90,7 +90,7 @@ python -m pytest tests -q
 Observed result:
 
 ```text
-Exit code 0 over 85 collected tests.
+Exit code 0 over 83 collected tests.
 ```
 
 The quiet pytest output was dot-only:
@@ -138,7 +138,7 @@ The first report said the canonical PR spec still used the old adapter-exception
 
 The first report said Joseph-form snippets were misleading; the current working tree replaces the simplified covariance update with the full Joseph expression in `docs/SPECIAL_SOLUTIONS_DERIVATIONS.md`.
 
-The current working tree changes quality-gate docs to say `85 passed`, matching the command evidence above.
+The current working tree changes quality-gate docs to say `83 passed`, matching the command evidence above.
 
 The current working tree also clarifies HTML knowledge-base entry points: `README.md` and V2 HTML identify `docs/V2_Knowledge/knowledge-base.html` as canonical, while V1 `docs/knowledge-base.html` is labeled as an archive snapshot.
 
@@ -149,4 +149,4 @@ The current working tree refreshes the V2 HTML event index to 11 kinds, adds `ad
 | Area | Anchor |
 |---|---|
 | Local-only review state | `git status --short --branch` modified/untracked files |
-| Quality-gate count remains hand-edited | Current-facing docs now say 85 tests, but there is still no generated quality-gate source of truth. |
+| Quality-gate count remains hand-edited | Current-facing docs now say 83 tests, but there is still no generated quality-gate source of truth. |

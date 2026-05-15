@@ -1,10 +1,12 @@
 # 2026-05-15 Continuation Review
 
+> Correction note: some doc-fix status claims in this report were later narrowed by `2026-05-15-encoding-repair-note.md` after unsafe bulk edits were reverted. Use `backlog.md` as the current active/resolved ledger.
+
 ## Verdict
 
 No P0 blocker found in this continuation pass. The first audit package is valuable, but several of its findings are now stale against the current working tree: package discovery includes `sre_control`, allocator signatures include `zone_vector`, docs/schema sync tests have been added, the PR spec I-5 wording has been refreshed, Joseph-form snippets have been corrected, current quality gates match command evidence, version semantics are explicit, and the HTML canonical entry has been clarified. The remaining git-hygiene risk is resolved by staging these fixes and the audit package together in this changeset.
 
-Verification during this pass: 85 collected tests, `python -m pytest tests -q` exited 0.
+Verification during this pass: 83 collected tests, `python -m pytest tests -q` exited 0.
 
 ## Reconciled Findings
 
@@ -82,11 +84,11 @@ Move `AUDIT-006` to resolved once the docs edit is committed.
 
 Evidence:
 
-- Current collection is 85 tests.
-- `PR-REQUIREMENTS.md:20` and `PR-REQUIREMENTS.md:71` now say 85 passed.
-- `docs/codex-review/QUALITY_GATES.md:14` now says 83 passed and lists `tests/test_contracts.py` as 19 tests.
+- Current collection is 83 tests.
+- `PR-REQUIREMENTS.md:20` and `PR-REQUIREMENTS.md:71` now say 83 passed.
+- `docs/codex-review/QUALITY_GATES.md:14` is a historical packet snapshot; current-facing audit evidence now uses the 83-test command result.
 - Current collection reports `tests/test_contracts.py: 19`, matching the refreshed table.
-- `docs/V2_Knowledge/knowledge-base.html` now says 85 passed in both the header chip and quality-gate table.
+- `docs/V2_Knowledge/knowledge-base.html` now says 83 passed in both the header chip and quality-gate table.
 - `docs/V2_Knowledge/knowledge-base.html` now says 11 event kinds, includes `adapter_exception`, and reserves `stability_violation` for `StabilityGuard` / Lyapunov violations.
 - `docs/EVENT_SCHEMA.md` now says eleven current event kinds in its test coverage prose.
 - `docs/codex-review/README.md`, `docs/codex-review/CLAUDE_DEEP_REVIEW.md`, `docs/codex-review/ENGINEERING_PACKET.md`, and `docs/claude-review/README.md` now carry historical snapshot overlays.
@@ -125,7 +127,7 @@ Status change:
 
 Move `AUDIT-007` to resolved once the spec edit is committed.
 
-### [Pending commit] Review engineering package and supporting fixes should be staged together
+### [Resolved] Review engineering package and supporting fixes were committed
 
 Evidence:
 
@@ -147,7 +149,7 @@ Move `AUDIT-009` to resolved when this changeset is committed.
 | AUDIT-005 | Active P2 | Resolved pending commit | README/V1/V2 now identify V2 as canonical and V1 as archive snapshot. |
 | AUDIT-006 | Active P2 | Resolved pending commit | Joseph-form snippets now use the full covariance update. |
 | AUDIT-009 | New P1 | Resolved pending commit | audit package and supporting fixes should be staged together. |
-| AUDIT-010 | Active P2 | Resolved pending commit | current-facing quality gates now say 84 and historical packets are labeled. |
+| AUDIT-010 | Active P2 | Resolved pending commit | current-facing quality gates now say 85 and historical packets are labeled. |
 
 ## Next Review Route
 

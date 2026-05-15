@@ -41,5 +41,5 @@ It does not claim any SpaceX internal implementation detail. All review claims a
 - Date: 2026-05-15
 - Branch: `spacex-session`
 - HEAD: `13e534e chore: 鍚屾鏈€鏂板垎鏋愮粨鏋?SUMMARY.txt`
-- Verification: 85 collected tests passed in the current working tree; `analysis.run_all` completed 10 studies.
-- Top active risks: the review package exists and is verified, but several canonical docs still need UTF-8-safe refreshes; see `backlog.md`.
+- Verification: 83 collected tests passed in the current working tree; `analysis.run_all` completed 10 studies.
+- Top active risks: several canonical docs still need UTF-8-safe refreshes; these are tracked in `backlog.md` and do not block the audit package itself.

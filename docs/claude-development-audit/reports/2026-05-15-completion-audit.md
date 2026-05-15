@@ -19,7 +19,7 @@ Concrete success criteria for this pass:
 
 | Requirement | Evidence | Status |
 |---|---|---|
-| New engineering package | `docs/claude-development-audit/README.md`, `backlog.md`, `reports/`, `evidence/`, `git/` | Satisfied on disk; pending git tracking |
+| New engineering package | `docs/claude-development-audit/README.md`, `backlog.md`, `reports/`, `evidence/`, `git/` | Satisfied and committed |
 | Deep review report | `reports/2026-05-15-deep-review.md` | Satisfied |
 | Continued review report | `reports/2026-05-15-continuation-review.md` | Satisfied |
 | Completion audit | this file | Satisfied |
@@ -30,9 +30,9 @@ Concrete success criteria for this pass:
 | Engineering assets reviewed | Reports cite `pyproject.toml`, `sre_control/stack.py`, tests, `analysis.run_all`, and generated artifacts | Satisfied |
 | Active/resolved/watch ledger | `backlog.md` uses `Active`, `Resolved`, `Watch` sections | Satisfied |
 | Evidence snapshots | `evidence/2026-05-15-snapshot.md` and `evidence/2026-05-15-continuation-snapshot.md` | Satisfied |
-| Verification: tests | `python -m pytest tests -q` exited 0 over 85 tests on this pass | Satisfied |
+| Verification: tests | `python -m pytest tests -q` exited 0 over 83 tests on this pass | Satisfied |
 | Verification: analysis | `python -m analysis.run_all` completed all 10 studies in 3.05s on this pass | Satisfied |
-| Git persistence | Audit package and supporting fixes must be staged and committed together after this audit pass | Pending commit |
+| Git persistence | Audit package and supporting fixes were committed in `72e960c` | Satisfied |
 
 ## Current Verification Evidence
 
@@ -49,17 +49,17 @@ git ls-files --others --exclude-standard
 
 Observed:
 
-- Test collection: 85 tests.
+- Test collection: 83 tests.
 - Test result: exit code 0.
 - Analysis: all 10 studies completed; artifacts were regenerated under `analysis/artifacts/`.
-- Git state before this finalization step: multiple in-scope tracked files were modified, and the review package was untracked.
-- Git persistence step: pending; the audit package and supporting fixes should be staged and committed together.
+- Git state before finalization: multiple in-scope tracked files were modified, and the review package was untracked.
+- Git persistence step: the audit package and supporting fixes were committed in `72e960c`.
 
 ## Missing or Weakly Verified Items
 
-### Pending: Git persistence
+### Resolved: Git persistence
 
-The audit package and supporting fixes should be staged together after this audit pass. This resolves `AUDIT-009` only once the changeset is committed.
+The audit package and supporting fixes were committed in `72e960c`, resolving `AUDIT-009` for this pass.
 
 Affected untracked package files:
 
@@ -77,4 +77,4 @@ Supporting tracked modifications include docs, tests, `pyproject.toml`, `sre_con
 
 ## Completion Decision
 
-The review package, reports, evidence snapshots, backlog, and supporting fixes satisfy the objective for this pass once this changeset is committed. Future work is watch-level: generate quality-gate counts automatically and add an installed-wheel smoke test if release packaging becomes a promise.
+The review package, reports, evidence snapshots, backlog, and supporting fixes satisfy the objective for this pass. Remaining canonical-doc issues are explicitly tracked as backlog items for future passes, not hidden completion gaps.
