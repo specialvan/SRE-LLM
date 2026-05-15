@@ -27,7 +27,7 @@ package smoke ok: starship_recovery-0.1.0-py3-none-any.whl
 
 ```text
 python -m scripts.quality_gate_counts
-quality gate pytest count: 97
+quality gate pytest count: 99
 ```
 
 ```text
@@ -41,7 +41,7 @@ python -m scripts.build_kb
 [1/3] updating quality gate counts ...
 [2/3] building mechanism diagrams ...
 [3/3] building benefit GIFs ...
-done. open docs/knowledge-base.html in a browser.
+done. open docs/V2_Knowledge/knowledge-base.html in a browser.
 ```
 
 Full-suite verification and collection evidence are recorded in the companion evidence snapshot.

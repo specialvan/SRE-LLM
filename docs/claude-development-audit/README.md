@@ -49,5 +49,5 @@ It does not claim any SpaceX internal implementation detail. All review claims a
 - Date: 2026-05-16
 - Branch: `spacex-session`
 - HEAD: `13e534e` (analysis summary sync commit; subject omitted here to avoid terminal-encoding drift)
-- Verification: 97 tests passed after adding installed-wheel smoke coverage; `analysis.run_all` completed 10 studies in the latest committed evidence packet.
+- Verification: 99 tests passed after adding quality-gate parity and installed-wheel smoke timeout coverage; `analysis.run_all` completed 10 studies in the latest committed evidence packet.
 - Top active risks: none in the current audit backlog; watch-list items remain for release hygiene, synthetic evidence boundaries, and control-center exposure policy.

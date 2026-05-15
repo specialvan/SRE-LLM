@@ -72,7 +72,7 @@ def test_collect_pytest_count_runs_tests_before_parsing_collection(
             return SimpleNamespace(
                 returncode=0, stdout="tests/test_a.py: 90", stderr=""
             )
-        return SimpleNamespace(returncode=0, stdout="", stderr="")
+        return SimpleNamespace(returncode=0, stdout="90 passed in 1.23s", stderr="")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(
@@ -84,9 +84,34 @@ def test_collect_pytest_count_runs_tests_before_parsing_collection(
     assert collect_pytest_count(Path("/repo")) == 90
     assert len(smoke_dirs) == 1
     assert calls == [
-        [sys.executable, "-m", "pytest", "tests", "-q"],
+        [sys.executable, "-m", "pytest", "tests"],
         [sys.executable, "-m", "pytest", "tests", "--collect-only", "-q"],
     ]
+
+
+def test_collect_pytest_count_rejects_passed_collection_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    def fake_run(
+        command: list[str], *args: object, **kwargs: object
+    ) -> SimpleNamespace:
+        if "--collect-only" in command:
+            return SimpleNamespace(
+                returncode=0, stdout="tests/test_a.py: 90", stderr=""
+            )
+        return SimpleNamespace(
+            returncode=0, stdout="89 passed, 1 skipped in 1.23s", stderr=""
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        quality_gate_counts.package_smoke,
+        "build_wheel_and_smoke_imports",
+        lambda work_dir, repo_root: None,
+    )
+
+    with pytest.raises(RuntimeError, match="89 passed, 90 collected"):
+        collect_pytest_count(Path("/repo"))
 
 
 def test_collect_pytest_count_fails_loudly_on_nonzero_exit(
@@ -120,9 +145,9 @@ def test_update_quality_gate_docs_updates_only_current_fields(tmp_path: Path):
     pr.write_text(
         """
 quality-gates:
-  - pytest tests -q                 # 83 passed
+  - python -m pytest tests          # 83 passed
 
-| 单元测试 | `python -m pytest tests -q` | **83 passed** |
+| 单元测试 | `python -m pytest tests` | **83 passed** |
 
 historical snapshot: 51 passed
 """.lstrip(),
@@ -131,7 +156,7 @@ historical snapshot: 51 passed
     html.write_text(
         """
 <div class="chip"><b>tests</b> 83 passed</div>
-<tr><td><code>python -m pytest tests -q</code></td><td><b>83 passed</b></td><td>~1 s</td></tr>
+<tr><td><code>python -m pytest tests</code></td><td><b>83 passed</b></td><td>~1 s</td></tr>
 <p>historical snapshot: 51 passed</p>
 """.lstrip(),
         encoding="utf-8",
@@ -157,9 +182,9 @@ def test_update_quality_gate_docs_does_not_partially_write_on_replacement_failur
     html.parent.mkdir(parents=True)
     original_pr = """
 quality-gates:
-  - pytest tests -q                 # 83 passed
+  - python -m pytest tests          # 83 passed
 
-| 单元测试 | `python -m pytest tests -q` | **83 passed** |
+| 单元测试 | `python -m pytest tests` | **83 passed** |
 """.lstrip()
     pr.write_text(original_pr, encoding="utf-8")
     html.write_text("<p>missing current quality gate fields</p>", encoding="utf-8")

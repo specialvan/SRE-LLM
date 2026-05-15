@@ -71,7 +71,7 @@ Patch the small visible labels only, then consider a drift check.
 Post-pass update:
 
 - `README.md`, `docs/knowledge-base.html`, and `docs/V2_Knowledge/knowledge-base.html` now identify V2 as the canonical current entry and V1 as an archive snapshot.
-- `scripts/quality_gate_counts.py` now generates current-facing pytest counts after a real full-suite pytest pass; current count is 96.
+- `scripts/quality_gate_counts.py` now generates current-facing pytest counts after a real full-suite pytest pass, pass/collection parity check, and installed-wheel smoke with subprocess timeouts; current count is 99.
 
 ## Resolved Since Previous Pass
 

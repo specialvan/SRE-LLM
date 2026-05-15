@@ -61,7 +61,7 @@ def replace_once(text: str, pattern: str, replacement: str, label: str) -> str:
 def collect_pytest_count(repo_root: Path = REPO_ROOT) -> int:
     try:
         test_result = subprocess.run(
-            [sys.executable, "-m", "pytest", "tests", "-q"],
+            [sys.executable, "-m", "pytest", "tests"],
             cwd=repo_root,
             capture_output=True,
             text=True,
@@ -75,6 +75,8 @@ def collect_pytest_count(repo_root: Path = REPO_ROOT) -> int:
     test_output = f"{test_result.stdout}\n{test_result.stderr}"
     if test_result.returncode != 0:
         raise RuntimeError("pytest quality gate failed:\n" + test_output.strip())
+    passed_count = parse_pytest_passed_count(test_output)
+
     with tempfile.TemporaryDirectory(prefix="package-smoke-") as temp_dir:
         package_smoke.build_wheel_and_smoke_imports(Path(temp_dir), repo_root)
 
@@ -94,7 +96,13 @@ def collect_pytest_count(repo_root: Path = REPO_ROOT) -> int:
     collect_output = f"{collect_result.stdout}\n{collect_result.stderr}"
     if collect_result.returncode != 0:
         raise RuntimeError("pytest collection failed:\n" + collect_output.strip())
-    return parse_collected_count(collect_output)
+    collected_count = parse_collected_count(collect_output)
+    if passed_count != collected_count:
+        raise RuntimeError(
+            f"pytest quality gate count mismatch: {passed_count} passed, "
+            f"{collected_count} collected"
+        )
+    return passed_count
 
 
 def _write_updated(path: Path, text: str) -> None:
@@ -111,14 +119,14 @@ def update_quality_gate_docs(
     pr_text = pr_path.read_text(encoding="utf-8-sig")
     pr_text = replace_once(
         pr_text,
-        r"pytest tests -q\s+# \d+ passed",
-        f"pytest tests -q                 # {label}",
+        r"python -m pytest tests\s+# \d+ passed",
+        f"python -m pytest tests          # {label}",
         "PR front-matter pytest quality gate",
     )
     pr_text = replace_once(
         pr_text,
-        r"\| 单元测试 \| `python -m pytest tests -q` \| \*\*\d+ passed\*\* \|",
-        f"| 单元测试 | `python -m pytest tests -q` | **{label}** |",
+        r"\| 单元测试 \| `python -m pytest tests` \| \*\*\d+ passed\*\* \|",
+        f"| 单元测试 | `python -m pytest tests` | **{label}** |",
         "PR NFR pytest quality gate",
     )
 
@@ -132,8 +140,8 @@ def update_quality_gate_docs(
     )
     html_text = replace_once(
         html_text,
-        r"<tr><td><code>python -m pytest tests -q</code></td><td><b>\d+ passed</b></td><td>~1 s</td></tr>",
-        f"<tr><td><code>python -m pytest tests -q</code></td><td><b>{label}</b></td><td>~1 s</td></tr>",
+        r"<tr><td><code>python -m pytest tests</code></td><td><b>\d+ passed</b></td><td>~1 s</td></tr>",
+        f"<tr><td><code>python -m pytest tests</code></td><td><b>{label}</b></td><td>~1 s</td></tr>",
         "V2 quality gate row",
     )
     _write_updated(pr_path, pr_text)

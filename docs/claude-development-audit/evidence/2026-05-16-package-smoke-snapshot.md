@@ -55,7 +55,7 @@ package smoke ok: starship_recovery-0.1.0-py3-none-any.whl
 
 ```text
 python -m scripts.quality_gate_counts
-quality gate pytest count: 97
+quality gate pytest count: 99
 ```
 
 ## Full Verification
@@ -73,7 +73,7 @@ python -m scripts.build_kb
 mechanism diagrams written to: D:\workspace\SRE-LLM\spacex\docs\assets
 [3/3] building benefit GIFs ...
 benefit GIFs written to: D:\workspace\SRE-LLM\spacex\docs\assets
-done. open docs/knowledge-base.html in a browser.
+done. open docs/V2_Knowledge/knowledge-base.html in a browser.
 ```
 
 ```text

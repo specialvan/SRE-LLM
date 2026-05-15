@@ -11,6 +11,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_IMPORTS = ("starship", "sre_control")
+PACKAGE_SMOKE_TIMEOUT_SECONDS = 120
 
 
 @dataclass(frozen=True)
@@ -21,14 +22,21 @@ class PackageSmokeResult:
 
 
 def _run(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> None:
-    result = subprocess.run(
-        command,
-        cwd=cwd,
-        env=env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            command,
+            cwd=cwd,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=PACKAGE_SMOKE_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(
+            f"command timed out after {PACKAGE_SMOKE_TIMEOUT_SECONDS} seconds: "
+            f"{' '.join(command)}"
+        ) from exc
     if result.returncode != 0:
         output = f"{result.stdout}\n{result.stderr}".strip()
         raise RuntimeError(f"command failed: {' '.join(command)}\n{output}")
@@ -38,7 +46,16 @@ def _build_wheel(repo_root: Path, work_dir: Path) -> Path:
     wheel_dir = work_dir / "wheelhouse"
     wheel_dir.mkdir(parents=True, exist_ok=True)
     _run(
-        [sys.executable, "-m", "pip", "wheel", ".", "--no-deps", "--wheel-dir", str(wheel_dir)],
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "wheel",
+            ".",
+            "--no-deps",
+            "--wheel-dir",
+            str(wheel_dir),
+        ],
         cwd=repo_root,
     )
     wheels = sorted(wheel_dir.glob("*.whl"))

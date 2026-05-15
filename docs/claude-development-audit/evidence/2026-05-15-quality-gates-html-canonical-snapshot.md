@@ -31,7 +31,8 @@ tests/test_event_schema.py: 5
 tests/test_failure_trace.py: 10
 tests/test_import_graph.py: 2
 tests/test_mpc.py: 1
-tests/test_quality_gate_counts.py: 11
+tests/test_package_smoke.py: 2
+tests/test_quality_gate_counts.py: 12
 tests/test_quaternion.py: 3
 tests/test_rigid_body.py: 2
 tests/test_sre_control.py: 21
@@ -41,20 +42,20 @@ tests/test_thrust_constraints.py: 3
 
 ```text
 python -m scripts.quality_gate_counts
-quality gate pytest count: 96
+quality gate pytest count: 99
 ```
 
 ## Targeted Verification
 
 ```text
-python -m pytest tests/test_quality_gate_counts.py -q
-...........                                                              [100%]
+python -m pytest tests/test_package_smoke.py tests/test_quality_gate_counts.py -q
+..............                                                           [100%]
 ```
 
 ```text
 python -m pytest tests -q
-........................................................................ [ 75%]
-........................                                                 [100%]
+........................................................................ [ 72%]
+...........................                                              [100%]
 ```
 
 ```text
@@ -64,7 +65,7 @@ python -m scripts.build_kb
 mechanism diagrams written to: D:\workspace\SRE-LLM\spacex\docs\assets
 [3/3] building benefit GIFs ...
 benefit GIFs written to: D:\workspace\SRE-LLM\spacex\docs\assets
-done. open docs/knowledge-base.html in a browser.
+done. open docs/V2_Knowledge/knowledge-base.html in a browser.
 ```
 
 ```text

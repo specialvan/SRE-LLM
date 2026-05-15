@@ -16,7 +16,7 @@ def main() -> None:
     build_mechanism_diagrams.main()
     print("[3/3] building benefit GIFs ...")
     build_benefit_gifs.main()
-    print("done. open docs/knowledge-base.html in a browser.")
+    print("done. open docs/V2_Knowledge/knowledge-base.html in a browser.")
 
 
 if __name__ == "__main__":
