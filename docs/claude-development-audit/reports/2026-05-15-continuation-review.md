@@ -149,7 +149,7 @@ Move `AUDIT-009` to resolved when this changeset is committed.
 | AUDIT-005 | Active P2 | Resolved pending commit | README/V1/V2 now identify V2 as canonical and V1 as archive snapshot. |
 | AUDIT-006 | Active P2 | Resolved pending commit | Joseph-form snippets now use the full covariance update. |
 | AUDIT-009 | New P1 | Resolved pending commit | audit package and supporting fixes should be staged together. |
-| AUDIT-010 | Active P2 | Resolved pending commit | current-facing quality gates now say 85 and historical packets are labeled. |
+| AUDIT-010 | Active P2 | Resolved pending commit | current-facing quality gates now say 83 and historical packets are labeled. |
 
 ## Next Review Route
 
