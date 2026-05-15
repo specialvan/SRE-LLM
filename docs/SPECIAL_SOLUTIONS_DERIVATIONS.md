@@ -41,8 +41,8 @@ EKF (Extended Kalman Filter) 的预测-更新循环：
   S_k       = H_k · P_{k|k-1} · H_k^T + R_k         (创新协方差)
   K_k       = P_{k|k-1} · H_k^T · S_k^{-1}          (卡尔曼增益)
   x̂_{k|k}  = x̂_{k|k-1} + K_k · y_k
-  P_{k|k}   = (I - K_k · H_k) · P_{k|k-1}           (Joseph form)
-            = (I-KH)P(I-KH)^T + K·R·K^T              (数值稳定)
+  P_{k|k}   = (I - K_k · H_k) · P_{k|k-1}           (标准形式)
+            = (I-K_kH_k)P_{k|k-1}(I-K_kH_k)^T + K_kR_kK_k^T  (Joseph form)
 ```
 
 ### 1.2 多传感器融合
@@ -687,7 +687,7 @@ K_k       = P_{k|k-1} · H_k^T · S_k^{-1}                 (5) 卡尔曼增益
 
 x̂_{k|k}  = x̂_{k|k-1} + K_k · y_k                       (6) 状态更新
 P_{k|k}   = (I - K_k · H_k) · P_{k|k-1}                  (7a) 标准形式
-          = (I-KH)P(I-KH)^T + K·R·K^T                    (7b) Joseph形式
+          = (I-K_kH_k)P_{k|k-1}(I-K_kH_k)^T + K_kR_kK_k^T (7b) Joseph形式
 ```
 
 ### 13.2 Mahalanobis 距离
@@ -823,7 +823,8 @@ K = P_pred @ H.T @ np.linalg.inv(S)    # 卡尔曼增益
 
 # 更新状态
 x_new = x_pred + K @ y
-P_new = (np.eye(3) - K @ H) @ P_pred  # Joseph form
+joseph_left = np.eye(3) - K @ H
+P_new = joseph_left @ P_pred @ joseph_left.T + K @ R_metrics @ K.T  # Joseph form
 
 # Mahalanobis距离
 d_mahal = np.sqrt(y @ np.linalg.inv(S) @ y)

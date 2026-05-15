@@ -142,6 +142,8 @@
   .state-row:last-child,.load-row:last-child,.event-item:last-child,.event-kind:last-child{border-bottom:none}
   .state-row strong,.load-row strong,.event-kind strong,.event-item strong{font-family:var(--mono);font-size:12px;color:var(--cyan)}
   .state-row p,.load-row p,.event-kind span,.event-item p{margin:6px 0 0;color:var(--muted);font-size:12px;line-height:1.6}
+  .tick-drilldown{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  .tick-drilldown h3{margin:0 0 8px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#dce8f7}
   .bar{height:10px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;border:1px solid rgba(255,255,255,.05)}
   .bar>span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg, rgba(141,220,255,.55), rgba(242,196,123,.92))}
   .chart-card{padding:16px}
@@ -265,6 +267,16 @@
                 <div class="stat"><span>Pool Connections</span><strong id="stat-pool">--</strong></div>
                 <div class="stat"><span>Posterior QPS</span><strong id="stat-posterior-qps">--</strong></div>
                 <div class="stat"><span>Posterior Latency</span><strong id="stat-posterior-latency">--</strong></div>
+              </div>
+              <div class="tick-drilldown">
+                <div class="event-log">
+                  <h3>Tick Event Details</h3>
+                  <div id="tick-event-details"></div>
+                </div>
+                <div class="event-log">
+                  <h3>Tick Alloc Shares</h3>
+                  <div id="tick-alloc-shares"></div>
+                </div>
               </div>
             </div>
           </section>
@@ -460,6 +472,28 @@ function renderInspector(row) {
     ...row.states.map((state) => chipMarkup(state)),
   ].join('');
   document.getElementById('inspector-state-chips').innerHTML = chips;
+
+  const eventDetails = row.event_details.map((event) => `
+    <div class="event-item">
+      <strong>${escapeHtml(event.kind)}</strong>
+      <p>${escapeHtml(event.stage)} · ${escapeHtml(event.detail)}</p>
+      <p>${escapeHtml(event.safe_action)}</p>
+    </div>
+  `).join('') || '<div class="event-item"><strong>no_events</strong><p>No runtime event emitted on this tick.</p></div>';
+  document.getElementById('tick-event-details').innerHTML = eventDetails;
+
+  const totalAlloc = row.alloc_shares.reduce((sum, value) => sum + value, 0) || 1;
+  const allocDetails = row.alloc_shares.map((share, index) => {
+    const pct = Math.max(4, (share / totalAlloc) * 100);
+    return `
+      <div class="load-row">
+        <strong>slot ${escapeHtml(index + 1)}</strong>
+        <p>${escapeHtml(share.toFixed(2))} rps · ${escapeHtml(pct.toFixed(1))}% of tick allocation</p>
+        <div class="bar"><span style="width:${pct}%"></span></div>
+      </div>
+    `;
+  }).join('') || '<div class="load-row"><strong>no_alloc</strong><p>No allocation shares returned for this tick.</p></div>';
+  document.getElementById('tick-alloc-shares').innerHTML = allocDetails;
 }
 
 function renderSignalBands(series) {

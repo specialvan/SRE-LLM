@@ -23,9 +23,11 @@ It does not claim any SpaceX internal implementation detail. All review claims a
 | `reports/2026-05-15-completion-audit.md` | Prompt-to-artifact completion audit for the active goal |
 | `reports/2026-05-15-encoding-repair-note.md` | Correction note after reverting unsafe bulk doc edits |
 | `reports/2026-05-15-post-commit-review.md` | Post-commit pass reconciling committed audit work against remaining backlog |
+| `reports/2026-05-15-joseph-form-cleanup.md` | Targeted pass resolving the Joseph-form derivation drift |
 | `evidence/2026-05-15-snapshot.md` | Command evidence and repository snapshot for the first report |
 | `evidence/2026-05-15-continuation-snapshot.md` | Command evidence for the follow-up pass |
 | `evidence/2026-05-15-post-commit-snapshot.md` | Command evidence for the post-commit pass |
+| `evidence/2026-05-15-joseph-form-cleanup-snapshot.md` | Command evidence for the Joseph-form cleanup pass |
 | `git/timeline.md` | Local commit timeline interpreted for reviewers |
 | `backlog.md` | Living queue of active, resolved, and watch issues |
 
@@ -43,5 +45,5 @@ It does not claim any SpaceX internal implementation detail. All review claims a
 - Date: 2026-05-15
 - Branch: `spacex-session`
 - HEAD: `13e534e` (analysis summary sync commit; subject omitted here to avoid terminal-encoding drift)
-- Verification: 83 collected tests passed in the current working tree; `analysis.run_all` completed 10 studies.
+- Verification: 85 collected tests passed in the current dirty working tree; `analysis.run_all` completed 10 studies in the latest committed evidence packet.
 - Top active risks: several canonical docs still need UTF-8-safe refreshes; these are tracked in `backlog.md` and do not block the audit package itself.

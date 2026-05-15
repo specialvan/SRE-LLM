@@ -11,8 +11,7 @@ Status values:
 | ID | Priority | Area | Issue | Next action |
 |---|---|---|---|---|
 | AUDIT-005 | P2 | HTML knowledge base | V1 and V2 HTML entries still compete; V2 has stale quality/event summary text. | Promote one canonical page or label V2/V1 roles clearly. |
-| AUDIT-006 | P2 | Math docs | `SPECIAL_SOLUTIONS_DERIVATIONS.md` still contains misleading Joseph-form shorthand. | Replace with full Joseph form using encoding-safe edit. |
-| AUDIT-010 | P2 | Quality gates | Current test collection is 83, and counts remain hand-edited in several docs. | Generate quality-gate counts from pytest collection. |
+| AUDIT-010 | P2 | Quality gates | Current dirty-tree test collection is 85 after the control-center drilldown tests, and counts remain hand-edited in several docs. | Generate quality-gate counts from pytest collection. |
 
 ## Resolved
 
@@ -33,6 +32,7 @@ Status values:
 | RES-013 | Final analysis evidence synced | Completion audit reflects the final `analysis.run_all` timing; committed in `0b2292f`. |
 | RES-014 | Adapter exception taxonomy docs | Canonical spec, handoff docs, architecture notes, and V1 event table now route recoverable adapter failures to `adapter_exception`; committed in `c1dc48d`. |
 | RES-015 | Version policy documented | `PR-REQUIREMENTS.md` now separates spec/review-ledger version from Python package release version in NFR-7. |
+| RES-016 | Joseph-form derivation docs | `docs/SPECIAL_SOLUTIONS_DERIVATIONS.md` now separates standard covariance form from full Joseph form in formulas and code snippets; verified with `pytest tests/test_ekf.py tests/test_event_schema.py -q`. |
 
 ## Watch
 
