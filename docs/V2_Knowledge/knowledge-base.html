@@ -192,7 +192,7 @@
     移交：<code>spacex/docs/claude-review/</code>
   </div>
   <div class="banner-row">
-    <div class="chip"><b>tests</b> 85 passed</div>
+    <div class="chip"><b>tests</b> 96 passed</div>
     <div class="chip"><b>studies</b> 10 finished</div>
     <div class="chip"><b>HTML</b> well-formed</div>
     <div class="chip"><b>events</b> 11 kinds</div>
@@ -891,7 +891,7 @@ disallowed: docs/*        ← 无运行时代码</div>
   <table>
     <thead><tr><th>命令</th><th>预期</th><th>耗时</th></tr></thead>
     <tbody>
-      <tr><td><code>python -m pytest tests -q</code></td><td><b>85 passed</b></td><td>~1 s</td></tr>
+      <tr><td><code>python -m pytest tests -q</code></td><td><b>96 passed</b></td><td>~1 s</td></tr>
       <tr><td><code>python -m analysis.run_all</code></td><td>All 10 studies finished</td><td>~3 s</td></tr>
       <tr><td><code>python -m examples.demo_sre_loop</code></td><td>12 行 tick trace</td><td>&lt;1 s</td></tr>
       <tr><td><code>python -m examples.demo_powered_descent</code></td><td>PDG 末态 ~2e-6 m</td><td>~0.5 s</td></tr>
@@ -940,7 +940,7 @@ disallowed: docs/*        ← 无运行时代码</div>
   <h3>大（跨 session）</h3>
   <ul>
     <li>给 <code>StabilityMonitor</code> 增加更真实的能量函数样例（kinetic + potential + attitude error）</li>
-    <li>用 <a href="./knowledge-base.html">本 V2 知识库</a>的模板整体重排 V1 的 <a href="../knowledge-base.html">docs/knowledge-base.html</a></li>
+    <li>保持 V2 作为 canonical current entry；V1 <a href="../knowledge-base.html">docs/knowledge-base.html</a> 只作为 archive snapshot 保留。</li>
   </ul>
 
   <h3>评估"可以合并"的签收标准</h3>

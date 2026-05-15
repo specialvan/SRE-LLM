@@ -175,10 +175,11 @@ pytest -q
 ## 7. 机制级 HTML 知识库（供 Codex 审阅）
 
 把 8 个主题按"机制图 → 公式 → 动画数据收益 → SRE 控制映射 → 代码 → 局限"
-的模板全部整理成一页 HTML，位于：
+的模板全部整理成一页 HTML。当前审阅入口是 V2；V1 只保留为机制讲解 archive：
 
 ```
-docs/knowledge-base.html
+docs/V2_Knowledge/knowledge-base.html  # canonical current entry
+docs/knowledge-base.html               # V1 archive snapshot
 docs/EQUATION_DEEP_DIVE.md  # 方程逐项拆解（每符号·每项·为什么）
 docs/assets/                # 8 张机制 PNG + 8 张 before/after GIF
 ```

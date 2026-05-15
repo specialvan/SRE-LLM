@@ -6,13 +6,15 @@ Run :
 
 from __future__ import annotations
 
-from scripts import build_mechanism_diagrams, build_benefit_gifs
+from scripts import build_benefit_gifs, build_mechanism_diagrams, quality_gate_counts
 
 
 def main() -> None:
-    print("[1/2] building mechanism diagrams ...")
+    print("[1/3] updating quality gate counts ...")
+    quality_gate_counts.update_quality_gate_docs()
+    print("[2/3] building mechanism diagrams ...")
     build_mechanism_diagrams.main()
-    print("[2/2] building benefit GIFs ...")
+    print("[3/3] building benefit GIFs ...")
     build_benefit_gifs.main()
     print("done. open docs/knowledge-base.html in a browser.")
 
