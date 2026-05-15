@@ -31,7 +31,7 @@ Concrete success criteria for this pass:
 | Active/resolved/watch ledger | `backlog.md` uses `Active`, `Resolved`, `Watch` sections | Satisfied |
 | Evidence snapshots | `evidence/2026-05-15-snapshot.md` and `evidence/2026-05-15-continuation-snapshot.md` | Satisfied |
 | Verification: tests | `python -m pytest tests -q` exited 0 over 83 tests on this pass | Satisfied |
-| Verification: analysis | `python -m analysis.run_all` completed all 10 studies in 3.05s on this pass | Satisfied |
+| Verification: analysis | `python -m analysis.run_all` completed all 10 studies in 3.11s on this pass | Satisfied |
 | Git persistence | Audit package and supporting fixes were committed in `72e960c` | Satisfied |
 
 ## Current Verification Evidence
