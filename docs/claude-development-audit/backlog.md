@@ -10,11 +10,9 @@ Status values:
 
 | ID | Priority | Area | Issue | Next action |
 |---|---|---|---|---|
-| AUDIT-003 | P1 | Canonical spec | `PR-REQUIREMENTS.md` still contains historical `stability_violation` wording for adapter exceptions and stale 51-test gates. | Refresh I-5 and quality gates with UTF-8-safe editing. |
 | AUDIT-005 | P2 | HTML knowledge base | V1 and V2 HTML entries still compete; V2 has stale quality/event summary text. | Promote one canonical page or label V2/V1 roles clearly. |
 | AUDIT-006 | P2 | Math docs | `SPECIAL_SOLUTIONS_DERIVATIONS.md` still contains misleading Joseph-form shorthand. | Replace with full Joseph form using encoding-safe edit. |
-| AUDIT-007 | P2 | Versioning | Spec version and package version semantics are not explicitly separated in the canonical spec. | Add a version policy block. |
-| AUDIT-010 | P2 | Quality gates | Current test collection is 83, but several current-facing docs still say 51/64 or stale event-kind counts. | Generate or safely refresh quality-gate counts. |
+| AUDIT-010 | P2 | Quality gates | Current test collection is 83, and counts remain hand-edited in several docs. | Generate quality-gate counts from pytest collection. |
 
 ## Resolved
 
@@ -33,6 +31,8 @@ Status values:
 | RES-011 | Quality-gate count aligned | V2 and audit report count were aligned back to the verified 83-test suite; committed in `2fc5b5e`. |
 | RES-012 | Analysis summary refreshed | `analysis/artifacts/SUMMARY.txt` was regenerated after final verification; committed in `0785d9e`. |
 | RES-013 | Final analysis evidence synced | Completion audit reflects the final `analysis.run_all` timing; committed in `0b2292f`. |
+| RES-014 | Adapter exception taxonomy docs | Canonical spec, handoff docs, architecture notes, and V1 event table now route recoverable adapter failures to `adapter_exception`; committed in `c1dc48d`. |
+| RES-015 | Version policy documented | `PR-REQUIREMENTS.md` now separates spec/review-ledger version from Python package release version in NFR-7. |
 
 ## Watch
 

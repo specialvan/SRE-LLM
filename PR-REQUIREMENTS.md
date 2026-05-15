@@ -136,6 +136,13 @@ disallowed: docs/*        ← no runtime code
 - 运行时依赖锁定在 `numpy>=1.24, scipy>=1.10` + 可视化的 `matplotlib, pillow`。
 - 禁止引入 `cvxpy/osqp/torch/pandas` 作为**硬依赖**（可作为 optional fallback）。
 
+### NFR-7 · 版本策略
+
+- `PR-REQUIREMENTS.md` 的 `version` 是 spec / review-ledger 版本，用来标记需求清单演进。
+- `pyproject.toml`、`starship.__version__`、`sre_control.__version__` 是 Python package 版本。
+- Git tag 只对应 package / release artifact，不要求每次 spec-ledger bump 都打 tag。
+- 修改任一版本口径时，必须同步说明它属于 spec ledger 还是 package release。
+
 ---
 
 ## Refine Loop · 本工程的工作节奏

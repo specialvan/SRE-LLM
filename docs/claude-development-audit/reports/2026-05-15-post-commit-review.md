@@ -24,6 +24,11 @@ Next action:
 
 Use line-scoped UTF-8-safe edits only. Do not use broad PowerShell rewrite operations on Chinese docs.
 
+Post-pass update:
+
+- `c1dc48d` safely corrected adapter-exception taxonomy wording in `PR-REQUIREMENTS.md`, `docs/CODEX_HANDOFF.md`, `docs/claude-review/*`, and the V1 event table.
+- Remaining spec work under this risk is now limited to historical quality-gate wording and version policy.
+
 ### [P2] Joseph-form derivation cleanup remains active
 
 Evidence:
@@ -65,6 +70,7 @@ Patch the small visible labels only, then consider a drift check.
 | Historical event-count wording | `6000034 docs: clarify historical event counts` |
 | Quality-gate count back to 83 | `2fc5b5e docs: align audit quality gate count` |
 | Final analysis evidence | `0785d9e`, `0b2292f` |
+| Adapter exception taxonomy docs | `c1dc48d` |
 
 ## Next Review Route
 

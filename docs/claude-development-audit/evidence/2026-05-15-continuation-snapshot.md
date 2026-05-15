@@ -50,7 +50,7 @@ git log --date=iso-strict --pretty=format:"%h%x09%ad%x09%an%x09%s" -n 1
 Observed head:
 
 ```text
-13e534e  2026-05-14T21:17:52+08:00  yangqidog  chore: 鍚屾鏈€鏂板垎鏋愮粨鏋?SUMMARY.txt
+13e534e  2026-05-14T21:17:52+08:00  yangqidog  <non-ASCII subject omitted to avoid terminal-encoding drift>
 ```
 
 ## Test Collection

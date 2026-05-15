@@ -120,7 +120,7 @@ Evidence:
 
 - `PR-REQUIREMENTS.md:3` says `version: 0.3.7`.
 - `pyproject.toml:7`, `starship/__init__.py:76`, and `sre_control/__init__.py:63` say `0.1.0`.
-- `PR-REQUIREMENTS.md` now has `NFR-7 路 鐗堟湰绛栫暐`, which separates spec/review-ledger version from Python package version.
+- `PR-REQUIREMENTS.md` now has `NFR-7 · 版本策略`, which separates spec/review-ledger version from Python package version.
 - The policy says git tags should map to package/release artifacts, not every spec-ledger bump.
 
 Status change:
