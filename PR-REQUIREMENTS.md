@@ -17,7 +17,7 @@ invariants:
   - I-4 文档不钉死 HEAD：不得在文档里写"最新 commit = <具体 SHA>"，用"近期日志包含 <关键 commit>"表达
   - I-5 adapter 异常不崩栈：任何 SREControlStack 阶段抛出 `RecoverableControlError` 必须转为 `adapter_exception` event + `DEGRADED_<stage>`；`stability_violation` 仅保留给 Lyapunov / 稳定性红线
 quality-gates:
-  - pytest tests -q                 # 85 passed
+  - pytest tests -q                 # 83 passed
   - python -m analysis.run_all      # 10 studies finish <4s
   - python -m scripts.build_kb      # 16 assets rebuild
   - python -m examples.demo_sre_loop
@@ -68,7 +68,7 @@ event-kinds-total: 11
 
 | Gate | 命令 | 预期 |
 |---|---|---|
-| 单元测试 | `python -m pytest tests -q` | **85 passed** |
+| 单元测试 | `python -m pytest tests -q` | **83 passed** |
 | 基准证据 | `python -m analysis.run_all` | All 10 studies finish in ~3 s |
 | 资产构建 | `python -m scripts.build_kb` | 16 assets rebuilt |
 | 端到端 Demo | `python -m examples.demo_sre_loop` | 12 行 trace 无异常 |
@@ -567,11 +567,11 @@ disallowed: docs/*        ← no runtime code
 - **Status**: ✅ SHIPPED (commit `1ee8ae5`)
 - **范围**：
   - `sre_control/events.py`：`REQUIRED_EVENT_FIELDS`、`make_event`、`validate_event`
-  - `EVENT_COUNTEREXAMPLES` 8 条 kind 必带 counter-example
+  - 当时 `EVENT_COUNTEREXAMPLES` 覆盖 8 个 kind 且各带 counter-example；当前 registry 已扩展到 11 个 kind
   - `docs/EVENT_SCHEMA.md` 文档
 - **DoD**：
   - 新 kind 不在 `EVENT_COUNTEREXAMPLES` 时 `make_event` 抛 `ValueError`
-  - 所有 8 种 kind 都能由真实 adapter 触发并满足 `validate_event`
+  - 当时 8 个 kind 都能由真实 adapter 触发并满足 `validate_event`；当前 11 个 kind 由事件 schema 测试继续约束
 - **Evidence**：
   - 文件 `sre_control/events.py`、`docs/EVENT_SCHEMA.md`
   - 测试 `tests/test_event_schema.py` 2 条通过

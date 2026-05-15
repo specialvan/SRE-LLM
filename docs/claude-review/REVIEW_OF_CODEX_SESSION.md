@@ -107,7 +107,7 @@ def test_allocator_saturation_propagates_upward(): ...
 
 - `API_CONTRACTS.md`：每个模块有 Public surface / Contract / State / Failure modes / Counter-example 五件套。结构非常工整；作为"新人入职第一份读物"是合格的。
 - `RUNTIME_STATES.md`：先给栈级 FSM，再给模块级 FSM，再给传播矩阵。层次清晰。
-- `EVENT_SCHEMA.md`：8 种 kind × 5 列表格很密集。是当前知识库的"事件指南"。
+- `EVENT_SCHEMA.md`：该历史评审时覆盖 8 个 kind × 5 列表格；当前 registry 已扩展到 11 个 kind。
 - `ARCHITECTURE.md`：mermaid 图 + Refine Backlog 很有条理。
 - `CODEX_HANDOFF.md` / `CODEX_REVIEW_REPORT.md`：作为 session 级交接页合格；前者偏 "下一步"，后者偏 "证据表"。
 

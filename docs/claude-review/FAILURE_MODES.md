@@ -210,11 +210,11 @@ def test_stack_never_silently_executes_with_missing_observation():
     ...
 
 def test_stack_propagates_every_adapter_event_at_least_once():
-    """枚举 8 种 kind，逐一构造能触发它的输入，断言栈级 trace 能看见。"""
+    """枚举当时的 8 个 kind；当前 registry 已扩展到 11 个 kind。"""
     ...
 
 def test_stack_does_not_drop_events_on_stack_level_errors():
-    """即使某个 adapter 抛异常，stack 也应该捕获并转成 stability 事件。"""
+    """即使某个 adapter 抛可恢复异常，stack 也应该捕获并转成 adapter_exception 事件。"""
     ...
 ```
 
