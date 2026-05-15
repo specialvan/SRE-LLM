@@ -24,10 +24,15 @@ Status values:
 | RES-002 | Allocator zero fallback | `SREControlStack` now reuses last-good shares when the allocator signature is valid, and falls back to zero only on bootstrap/no valid history. |
 | RES-003 | EKF Joseph update | `starship/ekf.py` uses Joseph form and symmetrizes covariance; `tests/test_ekf.py` covers symmetry, PSD, and gated no-op behavior. |
 | RES-004 | Programmer-error swallowing | Stack catches `RecoverableControlError` only; programmer errors propagate by design. |
-| RES-005 | Allocator topology fingerprint | Current `_allocator_signature()` includes `Instance.zone_vector`, and `tests/test_contracts.py` adds a topology-only mutation regression. Pending commit. |
-| RES-006 | Docs/schema sync tests | `tests/test_event_schema.py` now parses `docs/EVENT_SCHEMA.md` and `docs/RUNTIME_STATES.md` against `EVENT_COUNTEREXAMPLES`. Pending commit. |
-| RES-007 | Package discovery | `pyproject.toml` includes both `starship*` and `sre_control*`. Pending commit. |
+| RES-005 | Allocator topology fingerprint | Current `_allocator_signature()` includes `Instance.zone_vector`, and `tests/test_contracts.py` adds a topology-only mutation regression; committed in `72e960c`. |
+| RES-006 | Docs/schema sync tests | `tests/test_event_schema.py` parses `docs/EVENT_SCHEMA.md` and `docs/RUNTIME_STATES.md` against `EVENT_COUNTEREXAMPLES`; committed in `72e960c`. |
+| RES-007 | Package discovery | `pyproject.toml` includes both `starship*` and `sre_control*`; committed in `72e960c`. |
 | RES-008 | Review package created | `docs/claude-development-audit/` contains reports, evidence snapshots, git timeline, backlog, and completion audit; committed in `72e960c`. |
+| RES-009 | Audit package status finalized | Completion-audit status was reconciled after commit; committed in `93e85ab`. |
+| RES-010 | Historical event-count wording clarified | Historical 8/10/11-kind references were clarified in review docs; committed in `6000034`. |
+| RES-011 | Quality-gate count aligned | V2 and audit report count were aligned back to the verified 83-test suite; committed in `2fc5b5e`. |
+| RES-012 | Analysis summary refreshed | `analysis/artifacts/SUMMARY.txt` was regenerated after final verification; committed in `0785d9e`. |
+| RES-013 | Final analysis evidence synced | Completion audit reflects the final `analysis.run_all` timing; committed in `0b2292f`. |
 
 ## Watch
 

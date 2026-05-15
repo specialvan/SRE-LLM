@@ -22,8 +22,10 @@ It does not claim any SpaceX internal implementation detail. All review claims a
 | `reports/2026-05-15-continuation-review.md` | Follow-up pass reconciling the first report against the current working tree |
 | `reports/2026-05-15-completion-audit.md` | Prompt-to-artifact completion audit for the active goal |
 | `reports/2026-05-15-encoding-repair-note.md` | Correction note after reverting unsafe bulk doc edits |
+| `reports/2026-05-15-post-commit-review.md` | Post-commit pass reconciling committed audit work against remaining backlog |
 | `evidence/2026-05-15-snapshot.md` | Command evidence and repository snapshot for the first report |
 | `evidence/2026-05-15-continuation-snapshot.md` | Command evidence for the follow-up pass |
+| `evidence/2026-05-15-post-commit-snapshot.md` | Command evidence for the post-commit pass |
 | `git/timeline.md` | Local commit timeline interpreted for reviewers |
 | `backlog.md` | Living queue of active, resolved, and watch issues |
 
