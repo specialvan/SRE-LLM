@@ -37,10 +37,10 @@ Status values:
 | RES-019 | Installed wheel smoke | `scripts/package_smoke.py` builds the wheel, verifies `starship` and `sre_control` are present, imports both from the wheel path, and is covered by `tests/test_package_smoke.py`. |
 | RES-020 | Control-center exposure policy | `scripts/control_center_server.py` exposes only fixed HTML/API routes behind localhost Host checks; `tests/test_control_center.py` covers route allow/deny cases. |
 | RES-021 | Adapter cause taxonomy | `AdapterInputError` now emits `adapter_exception.cause_type=adapter_input`, while generic `RecoverableControlError` remains `control_domain`; covered by contract and event-schema tests. |
+| RES-022 | Synthetic evidence boundaries | `tests/test_synthetic_evidence_boundaries.py` now locks the §5 `pos_p95` regression and §8 residual non-improvement as executable review evidence. |
 
 ## Watch
 
 | ID | Area | Watch condition |
 |---|---|---|
-| WATCH-001 | Synthetic evidence | Keep section 5 `pos_p95` regression and section 8 residual non-improvement visible in reports. |
 | WATCH-004 | Git release hygiene | Add tags only if package/spec versions become release promises. |

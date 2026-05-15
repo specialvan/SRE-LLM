@@ -2,22 +2,22 @@
   cone_margin_min           before=2.351e+05  after=5.27e+04  (×0.224)
   fuel                      before=1.279e+04  after=1.051e+04  (×0.822)
   pos_err                   before=148.3  after=2.125e-06  (×1.43e-08)
-  solve_ms                  before=0  after=314.1  (×inf)
+  solve_ms                  before=0  after=302.3  (×inf)
   vel_err                   before=30.92  after=3.799e-07  (×1.23e-08)
-    (elapsed 0.82s)
+    (elapsed 0.84s)
 
 === §2 Successive Convex Programming ===
   control_effort            before=19.61  after=19.78  (×1.01)
   final_pos_err             before=8.08  after=2.87  (×0.355)
   final_speed               before=0.1185  after=2.826  (×23.8)
   iters                     before=1  after=6
-    (elapsed 0.62s)
+    (elapsed 0.64s)
 
 === §3 6-DoF Rigid-Body Dynamics ===
   angle_rmse_rad            before=0.05576  after=5.715e-07  (×1.02e-05)
   final_body_z_err          before=0.04464  after=1.384e-12  (×3.1e-11)
   quat_norm_drift           before=0  after=1e-12  (×inf)
-    (elapsed 0.06s)
+    (elapsed 0.07s)
 
 === §4 Thrust Pointing Cone ===
   cone_violations           before=0.974  after=0  (×0)
@@ -30,33 +30,33 @@
   pos_p95                   before=59.44  after=77.34  (×1.3)
   pos_rmse                  before=33.6  after=33.15  (×0.987)
   vel_rmse                  before=481.1  after=51.07  (×0.106)
-    (elapsed 0.15s)
+    (elapsed 0.17s)
 
 === §6 Receding-Horizon MPC ===
   control_var               before=0.2791  after=0.411  (×1.47)
   final_err                 before=0.01192  after=3.463e-07  (×2.9e-05)
   tracking_rmse             before=2.098  after=2.083  (×0.993)
-    (elapsed 0.19s)
+    (elapsed 0.24s)
 
 === §7 Belly-Flop → Landing-Flip ===
   duration_s                before=3.236  after=3.236  (×1)
   final_omega_degs          before=33  after=-0  (×-0)
   final_pitch_deg           before=36.37  after=0  (×0)
   torque_margin             before=0.7  after=0  (×0)
-    (elapsed 0.10s)
+    (elapsed 0.12s)
 
 === §8 Catch-phase thrust allocation ===
   max_residual              before=6.236e+06  after=6.236e+06  (×1)
   mean_residual             before=1.809e+06  after=1.875e+06  (×1.04)
   mean_saturation_excess    before=7.928e+04  after=0  (×0)
   saturation_violation_pct  before=33.75  after=0  (×0)
-    (elapsed 0.31s)
+    (elapsed 0.34s)
 
 === §SRE · end-to-end stack ===
   mean_replicas             before=18.43  after=26.5  (×1.44)
   peak_replicas             before=24  after=34  (×1.42)
   slo_violation_pct         before=25  after=10  (×0.4)
-    (elapsed 0.38s)
+    (elapsed 0.35s)
 
 === §10 · Failure trace (event-level evidence) ===
   background_event_fraction  before=-  after=0.0
@@ -67,4 +67,4 @@
   injected_window_coverage  before=-  after={'missing_sensor': {'expected_kind': 'missing_sensor', 'event_visible_fraction': 1.0, 'expected_kind_fraction': 1.0}, 'replica_bound_active': {'expected_kind': 'replica_bound_active', 'event_visible_fraction': 0.6, 'expected_kind_fraction': 0.6}, 'unsafe_proposal_projected': {'expected_kind': 'unsafe_proposal_projected', 'event_visible_fraction': 1.0, 'expected_kind_fraction': 1.0}}
   mttr_seconds              before=0  after=12.5  (×inf)
   true_degraded_fraction    before=-  after=0.21666666666666667
-    (elapsed 0.32s)
+    (elapsed 0.39s)
