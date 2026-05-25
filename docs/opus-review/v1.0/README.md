@@ -21,14 +21,18 @@
 | [`DEEP_REVIEW_REPORT.md`](./DEEP_REVIEW_REPORT.md) | 主报告：架构、模块、证据边界、风险与建议 |
 | [`QUALITY_GATE_VERIFICATION.md`](./QUALITY_GATE_VERIFICATION.md) | 质量门复跑结果（pytest / analysis / evidence 报告） |
 | [`MODULE_INSPECTION.md`](./MODULE_INSPECTION.md) | 重点模块逐文件笔记（`sre_control/`, `starship/`, `analysis/`） |
+| [`LINE_LEVEL_FINDINGS.md`](./LINE_LEVEL_FINDINGS.md) | **行级隐患审计：42 项发现，含文件路径 + 行号 + 复现条件 + 修复建议**（第二轮深挖产物） |
+| [`REPRODUCTION_EVIDENCE.md`](./REPRODUCTION_EVIDENCE.md) | **7 项关键隐患的可粘贴运行的实证复现脚本** |
 | [`FOLLOWUP_BACKLOG.md`](./FOLLOWUP_BACKLOG.md) | 建议下一轮 codex 处理的优化项与潜在风险 |
 
 ## 阅读顺序
 
 1. 先读 `DEEP_REVIEW_REPORT.md` 获得整体判断。
-2. 想看具体跑通证据，看 `QUALITY_GATE_VERIFICATION.md`。
-3. 关注单模块实现细节看 `MODULE_INSPECTION.md`。
-4. 准备下一轮提单看 `FOLLOWUP_BACKLOG.md`。
+2. **想确认隐患是真的：直接看 `REPRODUCTION_EVIDENCE.md` — 7 个 H/M 级 bug 都能粘到终端复现。**
+3. 想看每一行级别的隐患清单：`LINE_LEVEL_FINDINGS.md`（42 条）。
+4. 想看具体跑通证据，看 `QUALITY_GATE_VERIFICATION.md`。
+5. 关注单模块实现细节看 `MODULE_INSPECTION.md`。
+6. 准备下一轮提单看 `FOLLOWUP_BACKLOG.md`。
 
 ## 与 codex 评审包的关系
 
