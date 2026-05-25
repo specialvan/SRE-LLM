@@ -1,40 +1,63 @@
-# SpaceX → SRE Project Wiki
+# SpaceX to SRE Project Wiki
 
-> 本 wiki 是当前工程知识库入口。它沉淀稳定上下文、审查边界、运行链路和后续 PR 规格；具体代码和测试仍以仓库当前状态为准。
+This wiki is the cross-session knowledge entry for the current project. It
+records stable context, evidence boundaries, runtime chains, and review backlog
+state. Current code, tests, and generated artifacts are authoritative when they
+conflict with historical review packets.
 
-## 快速读法
+## Quick Reading Map
 
-| 你想知道 | 先读 |
+| If you need | Read first |
 |---|---|
-| 工程做什么、边界是什么 | [Project Overview](./project-overview.md) |
-| 控制链路如何运行 | [Runtime Lifecycle](./runtime-lifecycle.md) |
-| 8 个数学支柱如何迁移到 SRE | [Pillar Mapping](./pillar-mapping.md) |
-| 当前证据能证明什么、不能证明什么 | [Evidence Ledger](./evidence-ledger.md) |
-| 下一轮 Codex / Claude 应推进什么 | [Review Backlog](./review-backlog.md) |
+| Project purpose and boundaries | [Project Overview](./project-overview.md) |
+| Runtime control-loop behavior | [Runtime Lifecycle](./runtime-lifecycle.md) |
+| How the 8 math pillars map to SRE | [Pillar Mapping](./pillar-mapping.md) |
+| What current evidence proves and does not prove | [Evidence Ledger](./evidence-ledger.md) |
+| What the next Codex / Claude pass should pursue | [Review Backlog](./review-backlog.md) |
 
-## 当前推荐入口
+## Current Recommended Entries
 
-| 文档 | 用途 |
+| Document | Purpose |
 |---|---|
-| [`docs/codex-review/CLAUDE_REFINED_SPEC.md`](../docs/codex-review/CLAUDE_REFINED_SPEC.md) | 下一轮实现的执行规格，优先级最高 |
-| [`docs/codex-review/ENGINEERING_PACKET.md`](../docs/codex-review/ENGINEERING_PACKET.md) | 可离线阅读的工程包 |
-| [`docs/control-center.html`](../docs/control-center.html) | 系统前端控制中心，真实消费 Python 控制栈 JSON payload |
-| [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) | 分层、依赖方向、运行链路 |
-| [`docs/API_CONTRACTS.md`](../docs/API_CONTRACTS.md) | adapter 输入/输出/状态契约 |
-| [`docs/EVENT_SCHEMA.md`](../docs/EVENT_SCHEMA.md) | runtime event schema 和 counter-example |
-| [`docs/RUNTIME_STATES.md`](../docs/RUNTIME_STATES.md) | stack/module runtime 状态与降级传播 |
+| [`docs/V2_Knowledge/knowledge-base.html`](../docs/V2_Knowledge/knowledge-base.html) | Canonical current HTML knowledge-base entry |
+| [`docs/codex-review/ENGINEERING_PACKET.md`](../docs/codex-review/ENGINEERING_PACKET.md) | Offline engineering packet and review context |
+| [`claude-review/docs/v2026-05-26/README.md`](../claude-review/docs/v2026-05-26/README.md) | Opus v2.0 深度评审报告（2026-05-26）— 已验证 quality gates、复核 v1.0 resolved 项、新发现 F50–F60 |
+| [`docs/control-center.html`](../docs/control-center.html) | Control-center frontend consuming real Python control-stack JSON payloads |
+| [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) | Layering, dependency direction, and runtime chain |
+| [`docs/API_CONTRACTS.md`](../docs/API_CONTRACTS.md) | Adapter input/output/state contracts |
+| [`docs/EVENT_SCHEMA.md`](../docs/EVENT_SCHEMA.md) | Runtime event schema and counterexamples |
+| [`docs/RUNTIME_STATES.md`](../docs/RUNTIME_STATES.md) | Stack/module runtime states and degraded-state propagation |
+| [`docs/claude-development-audit/backlog.md`](../docs/claude-development-audit/backlog.md) | Current audit ledger with resolved/watch state |
 
-## 当前基线
+`docs/codex-review/CLAUDE_REFINED_SPEC.md` remains useful historical rationale,
+but some sections describe work that is already implemented. Use the review
+backlog and current tests to decide what is actually open.
 
-- 分支：`spacex-session`
-- 工程定位：公开材料学习/工程复现，不代表 SpaceX 官方实现。
-- 质量门口径：最近 review packet 记录为 `python -m pytest tests -q` 通过 64 个测试，`python -m analysis.run_all` 完成 10 个 studies。
-- 当前新增前端入口：`python -m scripts.control_center_server` 提供 `http://127.0.0.1:8765/control-center` 与 `/api/control-center`，把控制栈真实 trace 打到前端页面。
-- 当前主要风险：质量门绿色；PR-A/PR-B/PR-C 已收敛，P1 主要剩在 allocator fallback 语义与后续 EKF hardening。
+## Current Baseline
 
-## 维护规则
+- Branch context: `spacex-session`.
+- Project boundary: public-material learning and engineering reproduction, not
+  SpaceX official implementation.
+- Current verified local gates: `python -m pytest tests -q` passes with 276
+  tests; `python -m analysis.run_all` completes 12 studies.
+  （历史 118 测试数为 v1.0 评审基线；当前为 v2.0 评审复核值，2026-05-26 实测。）
+- Control-center entry: `python -m scripts.control_center_server`, then open
+  `http://127.0.0.1:8765/control-center`.
+- Current primary risk: no active P1 defect from v1.0 review is open; **Opus
+  v2.0 评审（2026-05-26）独立发现 4 项 P1 候选**（F50 autoscaler MPC 单位错配、
+  F51 stability_monitor 反向差分滞后、F53 `stability_violation` 仅装饰、
+  F54 NaN proposal 静默放过），详见 `claude-review/docs/v2026-05-26/03-new-findings.md`，
+  尚未登记到 `docs/codex-review/OPEN_RISKS.md`。Section 10 injection coverage、
+  Section 5 multi-source EKF evidence、StabilityGuard SRE energy examples 与
+  Catch/SRE wrapper boundary 已收紧。
 
-1. wiki 记录跨会话稳定知识，不替代源码。
-2. 若 wiki 与当前代码冲突，以当前代码和测试为准，并更新 wiki。
-3. 不把合成 before/after 证据写成生产保证。
-4. 不宣称 SpaceX 内部实现细节。
+## Maintenance Rules
+
+1. The wiki records stable cross-session knowledge; it does not replace source
+   code or tests.
+2. If wiki text conflicts with current code or tests, trust the current code and
+   tests, then update the wiki.
+3. Do not turn synthetic before/after studies into production guarantees.
+4. Do not claim SpaceX internal implementation details.
+5. Mark old review packets as historical when their findings are resolved, so
+   future agents do not re-open closed work.

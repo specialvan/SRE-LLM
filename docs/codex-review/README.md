@@ -1,47 +1,58 @@
-# Codex Review Packet for Claude
+# Codex Review Packet
 
-> 本目录是 Codex 基于 `spacex-session` 当前工程状态提交给 Claude Reviewer 的汇总包。
-> 它不是替代 `docs/claude-review/`，而是对 Claude 上轮评审后的 Codex 侧推进做一次反向汇报。
+This directory is a review handoff packet. It preserves historical review
+context, but current source, tests, `wiki/review-backlog.md`, `OPEN_RISKS.md`,
+and `QUALITY_GATES.md` control live execution order.
 
-## 内容清单
+## Contents
 
-| 文件 | 用途 |
+| File | Purpose |
 |---|---|
-| [`CODEX_SUMMARY.md`](./CODEX_SUMMARY.md) | 当前架构、提交序列、证据、质量门、风险与下一步的主汇总 |
-| [`ENGINEERING_PACKET.md`](./ENGINEERING_PACKET.md) | 把工程结构、运行链路、证据资产和移交边界汇总成一份可离线阅读的工程包 |
-| [`CLAUDE_DEEP_REVIEW.md`](./CLAUDE_DEEP_REVIEW.md) | 按 Claude Reviewer 视角给出的深度梳理、发现分级和下一批 PR 建议 |
-| [`CLAUDE_REFINED_SPEC.md`](./CLAUDE_REFINED_SPEC.md) | 将 Claude 深评收敛为下一轮 Codex 可执行 PR、测试和验收门 |
-| [`CLAUDE_REVIEW_REQUEST.md`](./CLAUDE_REVIEW_REQUEST.md) | 明确请 Claude 审什么、按什么优先级审、哪些地方要挑刺 |
-| [`QUALITY_GATES.md`](./QUALITY_GATES.md) | 本轮验证命令、输出摘要、测试覆盖结构和证据产物索引 |
-| [`OPEN_RISKS.md`](./OPEN_RISKS.md) | 数值、建模、边界条件和文档漂移风险登记 |
-| [`../../wiki/README.md`](../../wiki/README.md) | 跨会话项目知识库入口，沉淀架构、证据边界和 review backlog |
+| [`CODEX_SUMMARY.md`](./CODEX_SUMMARY.md) | Historical architecture/evidence summary for Claude review |
+| [`ENGINEERING_PACKET.md`](./ENGINEERING_PACKET.md) | Offline engineering packet and review context |
+| [`CLAUDE_DEEP_REVIEW.md`](./CLAUDE_DEEP_REVIEW.md) | Historical deep review packet; now marked with current-status caveats |
+| [`CLAUDE_REFINED_SPEC.md`](./CLAUDE_REFINED_SPEC.md) | Historical PR-A through PR-D execution spec and acceptance rationale |
+| [`CLAUDE_REVIEW_REQUEST.md`](./CLAUDE_REVIEW_REQUEST.md) | Original review request and checklist |
+| [`QUALITY_GATES.md`](./QUALITY_GATES.md) | Current reproducible command gates and evidence boundaries |
+| [`OPEN_RISKS.md`](./OPEN_RISKS.md) | Current useful risk register and suggested next research slices |
+| [`../../wiki/README.md`](../../wiki/README.md) | Cross-session project wiki entry |
+| [`../../claude-review/docs/v2026-05-26/README.md`](../../claude-review/docs/v2026-05-26/README.md) | **Opus v2.0 深度评审报告（2026-05-26）** — quality gates 复跑、v1.0 resolved 项 spot-check、新发现 F50–F60、合并门禁判定 |
 
-## 5 分钟读法
+## Reading Order
 
-1. 先读 [`ENGINEERING_PACKET.md`](./ENGINEERING_PACKET.md) 的 §1、§3、§5，建立工程全局图。
-2. 再读 [`CLAUDE_DEEP_REVIEW.md`](./CLAUDE_DEEP_REVIEW.md) 的发现表，直接看问题。
-3. 执行修复时按 [`CLAUDE_REFINED_SPEC.md`](./CLAUDE_REFINED_SPEC.md) 的 PR-A/PR-B 优先级推进。
-4. 如果要复现，按 [`QUALITY_GATES.md`](./QUALITY_GATES.md) 的命令跑。
+1. Read [`../../wiki/review-backlog.md`](../../wiki/review-backlog.md) for the
+   current completed/open state.
+2. Read [`OPEN_RISKS.md`](./OPEN_RISKS.md) to choose the next research landing
+   slice.
+3. Run commands from [`QUALITY_GATES.md`](./QUALITY_GATES.md) before claiming a
+   pass is complete.
+4. Use the older review packets only as historical rationale and acceptance
+   history.
 
-## 15 分钟审查路径
+## Current Baseline
 
-1. [`ENGINEERING_PACKET.md`](./ENGINEERING_PACKET.md) §9：先看 Codex 打回评审汇总，确认哪些结论被降级为“可继续审查”。
-2. [`CLAUDE_DEEP_REVIEW.md`](./CLAUDE_DEEP_REVIEW.md) §2：确认未发现 P0，逐条看 P1。
-3. [`ENGINEERING_PACKET.md`](./ENGINEERING_PACKET.md) §4：对照 8 支柱、SRE adapter、event kind、测试。
-4. [`CLAUDE_REVIEW_REQUEST.md`](./CLAUDE_REVIEW_REQUEST.md)：检查请求是否覆盖你的额外疑虑。
-5. [`OPEN_RISKS.md`](./OPEN_RISKS.md)：把仍未修的项拆成下一批 PR。
-
-## 当前基线
-
-| 项 | 当前值 |
+| Item | Current value |
 |---|---|
-| 分支 | `spacex-session` |
-| 实现基线 | 近期日志包含 `整理 Codex 汇总评审包` 与 `同步本地推进后的评审与质量门口径` |
-| 单元测试 | `64 passed` |
-| 分析研究 | `10 studies` |
-| runtime event kinds | `11` |
-| 关键新增 | `analysis/s10_failure_trace.py`、`s10_trace_full.jsonl`、`adapter_exception`、`StabilityMonitor` |
+| Branch context | `spacex-session` |
+| Unit/integration tests | `276 passed` |
+| Analysis studies | `12 studies` |
+| Runtime event kinds | `11` |
+| Canonical HTML entry | `docs/V2_Knowledge/knowledge-base.html` |
 
-## 给 Claude 的一句话
+## Current One-Line Handoff
 
-请重点审查：Codex 是否把 Claude 上轮“事件生命周期只是叙事”的问题，真正推进成了可复现证据；以及新增的异常兜底 / stability guard 有没有把控制栈变得“看似稳健、实际吞错”。打回后的工程口径见 [`ENGINEERING_PACKET.md`](./ENGINEERING_PACKET.md) §9，本轮深评的初步结论见 [`CLAUDE_DEEP_REVIEW.md`](./CLAUDE_DEEP_REVIEW.md)。
+The runnable control-stack research package is green locally. Section 10
+bound-window coverage, Section 5 multi-source EKF evidence, StabilityGuard SRE
+energy examples, the Catch/SRE wrapper boundary, and Section 12 replay evidence
+have been tightened. Section 10/11/12 event evidence is also indexed by
+`analysis/artifacts/event_evidence_manifest.json` and documented in
+`docs/EVENT_EVIDENCE_MANIFEST.md`; `python -m analysis.evidence_report`
+validates linked artifact keys and extensions, JSON/JSONL/PNG parseability,
+runtime event schema, and key counts.
+
+**Opus v2.0 评审（2026-05-26）状态**：quality gates 实测全过；v1.0 已宣称
+resolved 项 18/19 HOLDS（F02 PARTIAL，边界缝隙）；独立审计新发现 11 项
+（F50–F60），其中 4 项 P1 候选（autoscaler 单位错配、stability_monitor
+反向差分滞后、`stability_violation` 仅装饰、guardrail NaN 透传）。详见
+`claude-review/docs/v2026-05-26/`。建议：合入前补登记 F50–F54 到
+`OPEN_RISKS.md`，或在 spacex-session 上追加 1 个 P1 修复 commit。
