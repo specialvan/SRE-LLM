@@ -26,9 +26,31 @@ class AuthoritySection:
     label: str
     required_current: tuple[str, ...] = CURRENT_LEDGER_ANCHORS
     historical: tuple[str, ...] = HISTORICAL_REVIEW_ANCHORS
+    anchor_aliases: dict[str, tuple[str, ...]] | None = None
 
 
 AUTHORITY_SECTIONS = (
+    AuthoritySection(
+        "docs/opus-review/README.md",
+        "## 首读文件",
+        "## 历史输入",
+        "首读文件",
+        anchor_aliases={
+            "docs/codex-review/OPEN_RISKS.md": (
+                "../codex-review/OPEN_RISKS.md",
+            ),
+            "wiki/review-backlog.md": ("../../wiki/review-backlog.md",),
+            "docs/opus-review/OPUS_REVIEW_PACKET.md": (
+                "OPUS_REVIEW_PACKET.md",
+            ),
+            "claude-review/docs/v2026-05-28/README.md": (
+                "../../claude-review/docs/v2026-05-28/README.md",
+            ),
+            "claude-review/docs/v2026-05-26/README.md": (
+                "../../claude-review/docs/v2026-05-26/README.md",
+            ),
+        },
+    ),
     AuthoritySection(
         "docs/opus-review/HANDOFF.md",
         "## 当前权威锚点",
@@ -55,12 +77,15 @@ def find_authority_order_errors(path: Path) -> list[str]:
 
     errors: list[str] = []
     for current_anchor in section_config.required_current:
-        if current_anchor not in section_text:
+        current_index = _anchor_index(section_text, current_anchor, section_config)
+        if current_index is None:
             errors.append(f"{path.name}: missing {current_anchor} in {label}")
             continue
-        current_index = section_text.index(current_anchor)
         for historical_anchor in section_config.historical:
-            if historical_anchor in section_text and section_text.index(historical_anchor) < current_index:
+            historical_index = _anchor_index(
+                section_text, historical_anchor, section_config
+            )
+            if historical_index is not None and historical_index < current_index:
                 errors.append(
                     f"{path.name}: {current_anchor} must appear before "
                     f"{historical_anchor} in {label}"
@@ -86,6 +111,18 @@ def _section_for_path(path: Path) -> AuthoritySection:
         "## 当前基线",
         "当前权威锚点",
     )
+
+
+def _anchor_index(
+    text: str, canonical_anchor: str, section: AuthoritySection
+) -> int | None:
+    candidates = (canonical_anchor,) + tuple(
+        (section.anchor_aliases or {}).get(canonical_anchor, ())
+    )
+    indexes = [text.index(candidate) for candidate in candidates if candidate in text]
+    if not indexes:
+        return None
+    return min(indexes)
 
 
 def _authority_section_text(

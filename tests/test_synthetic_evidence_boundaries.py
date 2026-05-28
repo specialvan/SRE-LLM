@@ -352,8 +352,13 @@ def test_wiki_recommended_entries_put_current_ledgers_before_historical_reviews(
     assert find_authority_order_errors(REPO_ROOT / "wiki/README.md") == []
 
 
+def test_opus_readme_lists_current_ledgers_before_historical_reviews() -> None:
+    assert find_authority_order_errors(REPO_ROOT / "docs/opus-review/README.md") == []
+
+
 def test_review_authority_lint_covers_current_entrypoints() -> None:
     assert set(configured_authority_paths()) == {
+        "docs/opus-review/README.md",
         "docs/opus-review/HANDOFF.md",
         "wiki/README.md",
     }
