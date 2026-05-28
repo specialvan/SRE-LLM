@@ -8,7 +8,7 @@ list. Items already resolved in code and tests are recorded in
 
 | ID | Priority | Area | Risk | Suggested next step |
 |---|---|---|---|---|
-| R1 | P2 | Synthetic evidence boundary | Before/after studies are synthetic scenario evidence and can still be overgeneralized in new prose or external summaries. | Keep reports and summaries explicit that these are scenario-internal results; live review docs now have an overclaim wording lint. |
+| R1 | P2 | Synthetic evidence boundary | Before/after studies are synthetic scenario evidence and can still be overgeneralized in new prose or external summaries. | Keep reports and summaries explicit that these are scenario-internal results; live review docs now have bilingual overclaim wording lint for English and Chinese review prose. |
 
 **说明**：F50-F60 来自 Opus v2.0 评审（2026-05-26），F61-F81 来自 Opus v2.1
 继续评审（2026-05-28），均已在当前工作区修复或收敛为文档/台账边界说明；G1 也已通过
@@ -87,6 +87,10 @@ and tests now cover them:
   V2 HTML, Codex review, Opus review, and audit-ledger entry points. It rejects
   unqualified production-readiness, official SpaceX implementation, and
   production-proof wording while allowing explicit negated boundary statements.
+  The same lint now covers Chinese review prose for unqualified claims such as
+  synthetic evidence proving production readiness or representing SpaceX
+  internal implementation, while still allowing explicit Chinese boundary
+  negations.
 - `sre_control.stack_data_contract()` now exports the current
   `SREControlStack.step()` stage boundaries as research metadata with
   `production_claim=false`, including each stage's direct runtime event kinds

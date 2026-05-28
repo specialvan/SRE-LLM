@@ -596,6 +596,10 @@ Evidence:
   `docs/opus-review/README.md` and `docs/opus-review/HANDOFF.md`, so the Opus
   first-read surface is linted for unqualified production-readiness, production
   proof, and SpaceX-internals claims.
+- The evidence-boundary lint now also recognizes Chinese review-prose
+  overclaims around synthetic evidence, production readiness, and SpaceX
+  implementation provenance, while preserving explicit Chinese boundary
+  negations in review statements.
 - `scripts.quality_gate_counts.QUALITY_GATE_TARGETS` includes
   `docs/opus-review/HANDOFF.md`, so its `quality gate pytest count` line is
   updated with the same real pytest count as PR, V2 HTML, Codex review, Opus

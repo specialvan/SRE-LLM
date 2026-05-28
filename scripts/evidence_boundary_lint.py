@@ -45,6 +45,9 @@ OVERCLAIM_PATTERNS = (
     re.compile(r"\bproduction\s+proof\b", re.IGNORECASE),
     re.compile(r"\bproduction\s+theorem\b", re.IGNORECASE),
     re.compile(r"\bproduction\s+benchmark\b", re.IGNORECASE),
+    re.compile(r"证明生产(?:就绪|可用|安全|级别|可上线)"),
+    re.compile(r"(?<!证明)生产(?:证明|定理|基准|就绪|可用|安全|级别|可上线)"),
+    re.compile(r"SpaceX\s*(?:官方|内部|内参|真实|生产)\s*实现", re.IGNORECASE),
 )
 
 NEGATION_CUES = (
@@ -66,8 +69,12 @@ NEGATION_CUES = (
     "without",
     "不要",
     "不能",
+    "不能被写成",
+    "不代表",
     "不是",
     "不得",
+    "没有",
+    "拦截",
 )
 
 

@@ -278,6 +278,23 @@ def test_evidence_boundary_lint_flags_unsafe_production_claims() -> None:
     }
 
 
+def test_evidence_boundary_lint_flags_unsafe_chinese_claims() -> None:
+    text = "这些 synthetic replay 证明生产就绪。这是 SpaceX 内部实现。"
+
+    findings = find_overclaim_phrases(text)
+
+    assert {finding.phrase for finding in findings} == {
+        "证明生产就绪",
+        "SpaceX 内部实现",
+    }
+
+
+def test_evidence_boundary_lint_allows_chinese_boundary_negation() -> None:
+    text = "这些结果不能写成生产证明，也不是 SpaceX 内部实现。"
+
+    assert find_overclaim_phrases(text) == []
+
+
 def test_evidence_boundary_lint_allows_immediate_suffix_negation() -> None:
     text = "This is production-ready, but not in a production-grade sense."
 
