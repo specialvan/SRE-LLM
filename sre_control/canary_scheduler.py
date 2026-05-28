@@ -49,9 +49,13 @@ class CanaryScheduler:
     _last_share: float = field(default=0.0, init=False)
     _last_err: float = field(default=0.0, init=False)
     _eta: float = field(default=None, init=False)
+    _initialised: bool = field(default=False, init=False)
 
     def __post_init__(self) -> None:
         self._eta = self.eta_init
+
+    def _shrink_eta(self) -> None:
+        self._eta = max(self.eta_min, self._eta * 0.5)
 
     # ------------------------------------------------------------------
     def propose(self, current_share: float) -> float:
@@ -68,6 +72,37 @@ class CanaryScheduler:
         This is the SCP update: compute the "improvement ratio" between
         the predicted drop in SLO margin and the observed one.
         """
+        if not self._initialised and abs(current_share - self._last_share) > 1e-9:
+            self._initialised = True
+            self._last_share = proposed_share
+            self._last_err = observed_error_rate
+            accepted = observed_error_rate <= self.slo_error_budget
+            local_states = ["observe", "initialise"]
+            events = []
+            if not accepted:
+                self._shrink_eta()
+                local_states.append("shrink")
+                local_states.append("freeze")
+                events.append(make_event(
+                    stage="CanaryScheduler",
+                    kind="rollout_rejected",
+                    detail="observed error burned the canary budget",
+                    safe_action="shrink trust region and freeze rollout progress",
+                    observed_error_rate=observed_error_rate,
+                    slo_error_budget=self.slo_error_budget,
+                    trust_region=self._eta,
+                ))
+            return CanaryStep(
+                from_pct=current_share,
+                to_pct=proposed_share,
+                predicted_error_rate=observed_error_rate,
+                observed_error_rate=observed_error_rate,
+                trust_region=self._eta,
+                accepted=accepted,
+                local_states=local_states,
+                events=events,
+            )
+
         predicted = self._last_err + self._b_est * (proposed_share - self._last_share)
 
         # improvement ratio ρ: ``actual_gain / predicted_gain``
@@ -81,14 +116,17 @@ class CanaryScheduler:
         # Adapt η
         local_states = ["observe"]
         events = []
-        if rho > self.rho_grow:
+        accepted = observed_error_rate <= self.slo_error_budget
+        if not accepted:
+            self._shrink_eta()
+            local_states.append("shrink")
+        elif rho > self.rho_grow:
             self._eta = min(self.eta_max, self._eta * 1.5)
             local_states.append("expand")
         elif rho < self.rho_shrink:
-            self._eta = max(self.eta_min, self._eta * 0.5)
+            self._shrink_eta()
             local_states.append("shrink")
 
-        accepted = observed_error_rate <= self.slo_error_budget
         if not accepted:
             local_states.append("freeze")
             events.append(make_event(
@@ -96,14 +134,19 @@ class CanaryScheduler:
                 kind="rollout_rejected",
                 detail="observed error burned the canary budget",
                 safe_action="shrink trust region and freeze rollout progress",
+                observed_error_rate=observed_error_rate,
+                slo_error_budget=self.slo_error_budget,
+                trust_region=self._eta,
             ))
 
-        # If accepted, refit the linear slope
-        if accepted and proposed_share - current_share > 1e-6:
+        # Every trial produces a usable local slope, even if rollout freezes.
+        if proposed_share - current_share > 1e-6:
             self._b_est = (observed_error_rate - self._last_err) / \
                           (proposed_share - current_share)
             self._last_share = proposed_share
             self._last_err = observed_error_rate
+            self._initialised = True
+            local_states.append("refit" if accepted else "refit_rejected")
 
         return CanaryStep(
             from_pct=current_share,

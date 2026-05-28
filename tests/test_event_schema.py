@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 from sre_control import (
     CanaryScheduler,
+    CatchLoadAdapter,
     FastTrafficSwitcher,
     Instance,
     PoolCapacityPlanner,
@@ -104,6 +105,14 @@ def _collect_local_events():
     )
     events.extend(alloc_info["events"])
 
+    catch_wrapper = CatchLoadAdapter(instances=balancer.instances)
+    events.extend(
+        catch_wrapper.allocate(
+            request_demand=500,
+            placement_target=[250, 250],
+        )["events"]
+    )
+
     # outlier_rejected: fusion with a tight gate and a 10-sigma reading
     gated_fusion = SignalFusion(
         x0=np.array([1000.0, 25.0, 0.3]),
@@ -194,6 +203,84 @@ def test_all_runtime_events_follow_shared_schema():
     assert all(validate_event(event) for event in events)
 
 
+def test_all_runtime_events_carry_kind_specific_fields():
+    events = {event["kind"]: event for event in _collect_local_events()}
+
+    expected_fields = {
+        "missing_sensor": {"signal"},
+        "rollout_rejected": {
+            "observed_error_rate",
+            "slo_error_budget",
+            "trust_region",
+        },
+        "unsafe_proposal_projected": {
+            "cone_violated_before",
+            "magnitude_violated_before",
+            "projection_distance",
+        },
+        "replica_bound_active": {
+            "next_replicas",
+            "replicas_min",
+            "replicas_max",
+        },
+        "deadline_exceeded": {"minimum_time_seconds", "deadline_seconds"},
+        "bounded_ls_residual": {
+            "rps_residual",
+            "rps_residual_fraction",
+            "zone_residual",
+            "demand_satisfied",
+        },
+        "pool_capacity_clipped": {
+            "clipped_slots",
+            "capacity_shortfall_rps",
+            "max_capacity",
+        },
+        "topology_state_repaired": {
+            "input_norm_valid",
+            "quaternion_norm",
+            "repair_action",
+        },
+        "outlier_rejected": {
+            "signal",
+            "innovation_mahalanobis",
+            "threshold_used",
+            "consecutive_rejections",
+        },
+        "stability_violation": {
+            "label",
+            "V",
+            "dV_dt",
+            "consecutive_violations",
+            "tolerance",
+        },
+        "adapter_exception": {
+            "exception_type",
+            "cause_type",
+            "adapter_family",
+            "fault_family",
+            "fallback_action",
+            "recoverable",
+        },
+    }
+
+    assert set(events) == set(expected_fields)
+    for kind, fields in expected_fields.items():
+        assert fields <= events[kind].keys()
+
+
+def test_validate_event_rejects_unknown_event_fields():
+    event = make_event(
+        stage="SignalFusion",
+        kind="missing_sensor",
+        detail="metrics reading was absent in this tick",
+        safe_action="skip update and keep posterior prediction",
+        signal="metrics",
+        siganl="typo should not be accepted",
+    )
+
+    assert not validate_event(event)
+
+
 @pytest.mark.parametrize(
     ("exception_type", "cause_type"),
     [
@@ -211,13 +298,32 @@ def test_adapter_exception_event_includes_machine_readable_cause_fields(
         safe_action="substitute observe fallback and continue tick",
         exception_type=exception_type,
         cause_type=cause_type,
+        adapter_family="observe",
+        fault_family="adapter_input" if cause_type == "adapter_input" else "control_domain",
+        fallback_action="use_forecast_rps_for_observed_load",
         recoverable=True,
     )
 
     assert validate_event(event)
     assert event["exception_type"] == exception_type
     assert event["cause_type"] == cause_type
+    assert event["adapter_family"] == "observe"
+    assert event["fallback_action"] == "use_forecast_rps_for_observed_load"
     assert event["recoverable"] is True
+
+
+def test_adapter_exception_event_requires_taxonomy_fields():
+    event = make_event(
+        stage="SignalFusion",
+        kind="adapter_exception",
+        detail="RecoverableControlError: temporary failure",
+        safe_action="substitute observe fallback and continue tick",
+        exception_type="RecoverableControlError",
+        cause_type="control_domain",
+        recoverable=True,
+    )
+
+    assert not validate_event(event)
 
 
 def test_every_event_kind_has_a_specific_counterexample():
@@ -279,6 +385,7 @@ def test_runtime_states_doc_emitters_match_registry():
         },
         ("FastTrafficSwitcher.plan()", 'info["events"]'): {"deadline_exceeded"},
         ("WeightedLoadBalancer.allocate()", 'info["events"]'): {"bounded_ls_residual"},
+        ("CatchLoadAdapter.allocate()", 'trace["events"]'): {"bounded_ls_residual"},
         ("StabilityGuard.step()", 'trace["events"]'): {"stability_violation"},
         ("SREControlStack.step()", 'entry["runtime"]["events"]'): {"adapter_exception"},
     }

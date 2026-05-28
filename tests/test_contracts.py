@@ -16,6 +16,7 @@ from sre_control import (
     SignalFusion,
     SLOGuardrail,
     SREControlStack,
+    StabilityGuard,
     WeightedLoadBalancer,
 )
 
@@ -97,6 +98,81 @@ def test_sre_stack_emits_a_jsonish_contract_trace():
     assert all(isinstance(flag, bool) for flag in entry["alloc_info"]["saturation"])
     assert np.linalg.norm(entry["guardrail"]["approved"]) <= 10_000.0 + 1e-6
     json.dumps(entry)
+
+
+def test_sre_stack_uses_action_norm_as_total_rps_demand():
+    stack, metrics = _make_stack()
+    stack.guardrail = SLOGuardrail(
+        nominal_direction=np.array([1.0, 0.0, 0.0]),
+        theta_max_deg=90.0,
+        magnitude_cap=10_000.0,
+    )
+    stack.balancer = WeightedLoadBalancer(
+        instances=[
+            Instance("east", np.array([1.0, 0.0, 0.0]), rps_min=0.0, rps_max=1_000.0),
+            Instance("west", np.array([0.0, 1.0, 0.0]), rps_min=0.0, rps_max=1_000.0),
+        ]
+    )
+
+    entry = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([750.0, 28.0]))],
+        forecast_rps=800.0,
+        current_replicas=6,
+        zone_target=np.array([600.0, 400.0, 0.0]),
+        nn_proposal=np.array([600.0, 800.0, 0.0]),
+    )
+
+    assert entry["alloc_info"]["demand_satisfied"] is True
+    assert entry["alloc_info"]["rps_residual"] < 1e-6
+    assert np.allclose(entry["alloc_shares"], [600.0, 400.0], atol=1e-6)
+
+
+def test_sre_stack_data_contract_exports_stage_boundaries():
+    from sre_control import stack_data_contract
+    from sre_control.events import EVENT_COUNTEREXAMPLES
+
+    contract = stack_data_contract()
+
+    assert contract["evidence_scope"] == "research_stack_data_contract"
+    assert contract["production_claim"] is False
+    assert contract["orchestration_model"] == "single_process_research_loop"
+    stages = {stage["stage"]: stage for stage in contract["stages"]}
+    assert list(stages) == ["observe", "stability", "plan", "guard", "allocate", "execute"]
+    assert stages["observe"]["producer"] == "SignalFusion.step"
+    assert "sensor_readings" in stages["observe"]["inputs"]
+    assert "state" in stages["observe"]["outputs"]
+    assert stages["observe"]["event_kinds"] == [
+        "missing_sensor",
+        "outlier_rejected",
+        "adapter_exception",
+    ]
+    assert stages["guard"]["event_kinds"] == [
+        "unsafe_proposal_projected",
+        "adapter_exception",
+    ]
+    assert stages["allocate"]["event_kinds"] == [
+        "bounded_ls_residual",
+        "adapter_exception",
+    ]
+    for stage in contract["stages"]:
+        assert set(stage["event_kinds"]).issubset(EVENT_COUNTEREXAMPLES)
+    assert contract["event_stage_routes"] == {
+        "SignalFusion": "observe",
+        "StabilityGuard": "stability",
+        "PredictiveAutoscaler": "plan",
+        "CanaryScheduler": "plan",
+        "SLOGuardrail": "guard",
+        "WeightedLoadBalancer": "allocate",
+    }
+    assert "runtime.events" in stages["execute"]["outputs"]
+    assert contract["split_ready_boundaries"] == [
+        "observe_to_plan",
+        "plan_to_guard",
+        "guard_to_allocate",
+        "allocate_to_execute",
+    ]
+    json.dumps(contract)
 
 
 def test_sre_stack_survives_missing_sensor_readings():
@@ -306,6 +382,20 @@ def test_stability_recoverable_error_uses_adapter_exception():
     assert events[0]["recoverable"] is True
 
 
+def test_adapter_exception_family_matches_stack_contract_routes():
+    from sre_control import RecoverableControlError, SREControlStack, stack_data_contract
+
+    routes = stack_data_contract()["event_stage_routes"]
+    for stage_label, expected_family in routes.items():
+        event = SREControlStack._adapter_exception_event(
+            stage_label,
+            RecoverableControlError("temporary adapter outage"),
+            "use_test_fallback",
+        )
+
+        assert event["adapter_family"] == expected_family
+
+
 def test_stability_monitor_skips_observe_fallback_state():
     from sre_control import RecoverableControlError, SignalFusion, StabilityGuard
 
@@ -427,6 +517,39 @@ def test_sre_stack_survives_recoverable_autoscaler_exception():
     json.dumps(entry)
 
 
+def test_sre_stack_autoscaler_fallback_overwrites_last_trace():
+    from sre_control import RecoverableControlError
+
+    stack, metrics = _make_stack()
+    first = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([750.0, 28.0]))],
+        forecast_rps=900.0,
+        current_replicas=6,
+        zone_target=np.array([480.0, 320.0]),
+        nn_proposal=np.array([500.0, 50.0, 10.0]),
+    )
+    assert stack.autoscaler.last_trace.get("fallback") is not True
+
+    def _boom(*_a, **_k):
+        raise RecoverableControlError("autoscaler explosion")
+
+    stack.autoscaler.step = _boom
+    second = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([760.0, 28.0]))],
+        forecast_rps=1200.0,
+        current_replicas=first["replicas_next"],
+        zone_target=np.array([480.0, 320.0]),
+        nn_proposal=np.array([500.0, 50.0, 10.0]),
+    )
+
+    assert stack.autoscaler.last_trace["fallback"] is True
+    assert stack.autoscaler.last_trace["next_replicas"] == second["replicas_next"]
+    assert stack.autoscaler.last_trace["local_states"] == ["error"]
+    assert "autoscaler explosion" in stack.autoscaler.last_trace["fallback_reason"]
+
+
 def test_sre_stack_reuses_last_successful_alloc_shares_on_recoverable_balancer_error():
     from sre_control import RecoverableControlError, WeightedLoadBalancer
 
@@ -465,8 +588,13 @@ def test_sre_stack_reuses_last_successful_alloc_shares_on_recoverable_balancer_e
     )
     assert event["exception_type"] == "RecoverableControlError"
     assert event["cause_type"] == "control_domain"
+    assert event["adapter_family"] == "allocate"
+    assert event["fault_family"] == "control_domain"
+    assert event["fallback_action"] == "reuse_last_good_shares"
     assert event["recoverable"] is True
-    json.dumps(second)
+    assert second["alloc_info"]["rps_residual"] is None
+    assert second["alloc_info"]["cost"] is None
+    json.dumps(second, allow_nan=False)
 
 
 def test_sre_stack_balancer_recoverable_error_bootstrap_falls_back_to_zero_shares():
@@ -496,8 +624,13 @@ def test_sre_stack_balancer_recoverable_error_bootstrap_falls_back_to_zero_share
         if e["kind"] == "adapter_exception" and e["stage"] == "WeightedLoadBalancer"
     )
     assert event["exception_type"] == "RecoverableControlError"
+    assert event["adapter_family"] == "allocate"
+    assert event["fault_family"] == "control_domain"
+    assert event["fallback_action"] == "bootstrap_zero_fallback"
     assert event["recoverable"] is True
-    json.dumps(entry)
+    assert entry["alloc_info"]["rps_residual"] is None
+    assert entry["alloc_info"]["cost"] is None
+    json.dumps(entry, allow_nan=False)
 
 
 def test_package_surfaces_are_importable():
@@ -509,6 +642,7 @@ def test_package_surfaces_are_importable():
     assert hasattr(starship, "RecoveryPipeline")
     assert hasattr(starship, "CatchController")
     assert hasattr(sre_control, "SREControlStack")
+    assert hasattr(sre_control, "stack_data_contract")
     assert hasattr(sre_control, "EVENT_COUNTEREXAMPLES")
 
 
@@ -590,6 +724,14 @@ def test_sre_stack_refuses_stale_alloc_history_when_only_zone_vector_changes():
     assert second["alloc_shares"] == [0.0] * len(stack.balancer.instances)
     assert "bootstrap_zero_fallback" in second["alloc_info"]["local_states"]
     assert "reuse_last_good_shares" not in second["alloc_info"]["local_states"]
+
+
+def test_sre_stack_rejects_nan_last_good_alloc_cache():
+    stack, _metrics = _make_stack()
+    stack._last_good_alloc_signature = stack._allocator_signature()
+    stack._last_good_alloc_shares = np.array([np.nan, 100.0])
+
+    assert stack._can_reuse_last_good_alloc() is False
 
 
 def test_stability_guard_triggers_degraded_plan_on_sustained_violation():
@@ -680,6 +822,154 @@ def test_stability_guard_triggers_degraded_plan_on_sustained_violation():
         for ev in all_events
     )
     json.dumps(last_entry)
+
+
+def test_stack_clamps_autoscaler_when_stability_triggered():
+    stack, metrics = _make_stack()
+    stack.fusion.theta = 0.0
+    stack.autoscaler.max_step = 4
+    stack.stability = StabilityGuard(
+        V_fn=lambda x: float(x[0]),
+        tolerance=1e-6,
+        k_violations=1,
+        label="qps",
+    )
+
+    stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([700.0, 25.0]))],
+        forecast_rps=3000.0,
+        current_replicas=6,
+        zone_target=np.array([480.0, 320.0]),
+        nn_proposal=np.array([500.0, 50.0, 10.0]),
+    )
+    triggered = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([900.0, 25.0]))],
+        forecast_rps=3000.0,
+        current_replicas=6,
+        zone_target=np.array([480.0, 320.0]),
+        nn_proposal=np.array([500.0, 50.0, 10.0]),
+    )
+
+    assert triggered["stability"]["triggered"] is True
+    assert "DEGRADED_PLAN" in triggered["runtime"]["states"]
+    assert abs(stack.autoscaler.last_trace["raw_control"]) <= 1.0 + 1e-6
+    assert triggered["replicas_next"] <= 7
+
+
+def test_stability_monitor_uses_cumulative_elapsed_time_for_variable_dt():
+    stack, metrics = _make_stack()
+
+    class _RecordingStability:
+        def __init__(self):
+            self.times = []
+
+        def step(self, x, t):
+            self.times.append(t)
+            return {"events": [], "triggered": False, "local_states": ["observe"]}
+
+    recorder = _RecordingStability()
+    stack.stability = recorder
+
+    for dt in [2.0, 5.0]:
+        stack.step(
+            dt=dt,
+            sensor_readings=[(metrics, np.array([760.0, 28.0]))],
+            forecast_rps=800.0,
+            current_replicas=6,
+            zone_target=np.array([480.0, 320.0]),
+            nn_proposal=np.array([500.0, 50.0, 10.0]),
+        )
+
+    assert recorder.times == pytest.approx([0.0, 2.0])
+
+
+def test_stability_guard_sre_error_budget_example_triggers_stack_event():
+    from sre_control import (
+        Instance,
+        PredictiveAutoscaler,
+        Signal,
+        SignalFusion,
+        SLOGuardrail,
+        SREControlStack,
+        StabilityGuard,
+        WeightedLoadBalancer,
+        sre_error_budget_V,
+    )
+
+    fusion = SignalFusion(
+        x0=np.array([1000.0, 90.0, 0.005]),
+        P0=np.diag([1.0, 1.0, 1e-6]),
+        Q=np.diag([1e-6, 1e-6, 1e-8]),
+        x_ref=np.array([1000.0, 90.0, 0.005]),
+        theta=0.0,
+    )
+    stack = SREControlStack(
+        fusion=fusion,
+        autoscaler=PredictiveAutoscaler(
+            per_replica_rps=100.0,
+            replicas_min=4,
+            replicas_max=50,
+            max_step=3,
+            dt=5.0,
+            horizon=5,
+        ),
+        guardrail=SLOGuardrail(
+            nominal_direction=np.array([1.0, 0.0, 0.0]),
+            theta_max_deg=45.0,
+            magnitude_cap=2_000.0,
+        ),
+        balancer=WeightedLoadBalancer(
+            instances=[
+                Instance("east", np.array([1.0, 0.0]), 0.0, 2_000.0),
+                Instance("west", np.array([0.0, 1.0]), 0.0, 2_000.0),
+            ]
+        ),
+        stability=StabilityGuard(
+            V_fn=sre_error_budget_V(
+                latency_target_ms=100.0,
+                latency_scale_ms=50.0,
+                error_rate_target=0.01,
+                error_rate_scale=0.02,
+            ),
+            tolerance=1e-6,
+            k_violations=2,
+            label="error_budget",
+        ),
+    )
+    metrics = Signal(
+        name="metrics",
+        h=lambda x: x,
+        H=lambda x: np.eye(3),
+        R=np.diag([1e-6, 1e-6, 1e-10]),
+    )
+
+    last_entry = None
+    for i, reading in enumerate(
+        [
+            np.array([1000.0, 100.0, 0.01]),
+            np.array([1000.0, 125.0, 0.015]),
+            np.array([1000.0, 150.0, 0.02]),
+        ]
+    ):
+        last_entry = stack.step(
+            dt=5.0,
+            sensor_readings=[(metrics, reading)],
+            forecast_rps=1000.0,
+            current_replicas=10,
+            zone_target=np.array([500.0, 500.0]),
+            nn_proposal=np.array([500.0, 500.0, 0.0]),
+        )
+
+    assert last_entry is not None
+    assert last_entry["stability"]["triggered"] is True
+    assert "DEGRADED_PLAN" in last_entry["runtime"]["states"]
+    assert any(
+        ev["kind"] == "stability_violation"
+        and ev["stage"] == "StabilityGuard/error_budget"
+        for ev in last_entry["runtime"]["events"]
+    )
 
 
 def test_stability_guard_reports_sustained_trigger_without_new_event():

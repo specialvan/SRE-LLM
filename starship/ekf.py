@@ -40,12 +40,13 @@ class EKF:
     process_noise: np.ndarray          # Q, shape (n, n)
     f: Callable[[np.ndarray, np.ndarray, float], np.ndarray]
     F_jac: Optional[Callable[[np.ndarray, np.ndarray, float], np.ndarray]] = None
+    covariance_eigenvalue_floor: float = 1e-12
 
     # ------------------------------------------------------------------
     def predict(self, u: np.ndarray, dt: float) -> None:
         F = self._jac_F(self.x, u, dt)
         self.x = self.f(self.x, u, dt)
-        self.P = F @ self.P @ F.T + self.process_noise
+        self.P = self._stabilize_covariance(F @ self.P @ F.T + self.process_noise)
 
     # ------------------------------------------------------------------
     def update(self, z: np.ndarray,
@@ -79,23 +80,41 @@ class EKF:
         S = H_mat @ self.P @ H_mat.T + R
 
         # Mahalanobis-distance gating (O(m³) where m = dim(z), typically 2-3)
+        singular_innovation_covariance = False
         try:
             S_inv_y = np.linalg.solve(S, y)
             d_mahal = float(np.sqrt(max(0.0, y @ S_inv_y)))
         except np.linalg.LinAlgError:
+            singular_innovation_covariance = True
             d_mahal = float("inf")
 
-        if gate_threshold is not None and d_mahal > gate_threshold:
+        if singular_innovation_covariance or (
+            gate_threshold is not None and d_mahal > gate_threshold
+        ):
             return {"gated": True, "innovation_mahalanobis": d_mahal}
 
         P_prior = self.P.copy()
-        K = np.linalg.solve(S.T, (P_prior @ H_mat.T).T).T
+        try:
+            K = np.linalg.solve(S.T, (P_prior @ H_mat.T).T).T
+        except np.linalg.LinAlgError:
+            return {"gated": True, "innovation_mahalanobis": d_mahal}
         self.x = self.x + K @ y
         identity_matrix = np.eye(P_prior.shape[0])
         joseph_left = identity_matrix - K @ H_mat
         posterior = joseph_left @ P_prior @ joseph_left.T + K @ R @ K.T
-        self.P = 0.5 * (posterior + posterior.T)
+        self.P = self._stabilize_covariance(posterior)
         return {"gated": False, "innovation_mahalanobis": d_mahal}
+
+    # ------------------------------------------------------------------
+    def _stabilize_covariance(self, P: np.ndarray) -> np.ndarray:
+        P_sym = 0.5 * (P + P.T)
+        floor = float(self.covariance_eigenvalue_floor)
+        if floor <= 0.0:
+            return P_sym
+        eigvals, eigvecs = np.linalg.eigh(P_sym)
+        clipped = np.maximum(eigvals, floor)
+        stabilized = (eigvecs * clipped) @ eigvecs.T
+        return 0.5 * (stabilized + stabilized.T)
 
     # ------------------------------------------------------------------
     def _jac_F(self, x: np.ndarray, u: np.ndarray, dt: float) -> np.ndarray:

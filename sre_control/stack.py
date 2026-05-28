@@ -54,6 +54,7 @@ from .stability_guard import StabilityGuard
 from .topology_state import TopologyState
 from .fast_switcher import FastTrafficSwitcher
 from .weighted_balancer import WeightedLoadBalancer
+from .stack_contract import stack_data_contract
 
 
 @dataclass
@@ -78,6 +79,7 @@ class SREControlStack:
 
     trace: List[dict] = field(default_factory=list)
     _tick_index: int = field(default=0, init=False, repr=False)
+    _elapsed_time: float = field(default=0.0, init=False, repr=False)
     _last_good_alloc_shares: Optional[np.ndarray] = field(
         default=None, init=False, repr=False
     )
@@ -107,6 +109,8 @@ class SREControlStack:
         if self._last_good_alloc_shares.size != len(self.balancer.instances):
             return False
         for share, inst in zip(self._last_good_alloc_shares, self.balancer.instances):
+            if not np.isfinite(share):
+                return False
             if share < inst.rps_min - 1e-6 or share > inst.rps_max + 1e-6:
                 return False
         return True
@@ -114,10 +118,13 @@ class SREControlStack:
     # ------------------------------------------------------------------
     @staticmethod
     def _adapter_exception_event(
-        stage_label: str, exc: RecoverableControlError
+        stage_label: str, exc: RecoverableControlError, fallback_action: str
     ) -> dict:
         cause_type = (
             "adapter_input" if isinstance(exc, AdapterInputError) else "control_domain"
+        )
+        adapter_family = stack_data_contract()["event_stage_routes"].get(
+            stage_label, "unknown"
         )
         return make_event(
             stage=stage_label,
@@ -129,6 +136,9 @@ class SREControlStack:
             ),
             exception_type=type(exc).__name__,
             cause_type=cause_type,
+            adapter_family=adapter_family,
+            fault_family=cause_type,
+            fallback_action=fallback_action,
             recoverable=True,
         )
 
@@ -166,7 +176,11 @@ class SREControlStack:
                 "P_trace": None,
                 "signals": [],
                 "local_states": ["error"],
-                "events": [self._adapter_exception_event("SignalFusion", exc)],
+                "events": [
+                    self._adapter_exception_event(
+                        "SignalFusion", exc, "use_forecast_rps_for_observed_load"
+                    )
+                ],
             }
             observed_rps = float(forecast_rps)  # safe fallback
             runtime_states.append("DEGRADED_OBSERVE")
@@ -179,7 +193,7 @@ class SREControlStack:
         stability_trace: Optional[dict] = None
         if self.stability is not None and fuse_trace.get("x") is not None:
             try:
-                tick_time = self._tick_index * dt
+                tick_time = self._elapsed_time
                 stability_trace = self.stability.step(
                     np.asarray(self.fusion.state, dtype=float), t=float(tick_time)
                 )
@@ -195,15 +209,37 @@ class SREControlStack:
                 stability_trace = {"error": f"{type(exc).__name__}: {exc}"}
                 runtime_states.append("DEGRADED_PLAN")
                 runtime_events.append(
-                    self._adapter_exception_event("StabilityGuard", exc)
+                    self._adapter_exception_event(
+                        "StabilityGuard", exc, "skip_stability_monitor_this_tick"
+                    )
                 )
+        conservative_plan = bool(
+            stability_trace is not None and stability_trace.get("triggered", False)
+        )
 
         # ========================= 2) PLAN ============================
         runtime_states.append("PLANNING")
         try:
-            next_replicas = self.autoscaler.step(
-                current_replicas, observed_rps, forecast_rps
-            )
+            if conservative_plan:
+                original_max_step = self.autoscaler.max_step
+                original_u_min = self.autoscaler._mpc.u_min.copy()
+                original_u_max = self.autoscaler._mpc.u_max.copy()
+                conservative_step = min(float(original_max_step), 1.0)
+                self.autoscaler.max_step = int(conservative_step)
+                self.autoscaler._mpc.u_min = np.array([-conservative_step])
+                self.autoscaler._mpc.u_max = np.array([conservative_step])
+                try:
+                    next_replicas = self.autoscaler.step(
+                        current_replicas, observed_rps, forecast_rps
+                    )
+                finally:
+                    self.autoscaler.max_step = original_max_step
+                    self.autoscaler._mpc.u_min = original_u_min
+                    self.autoscaler._mpc.u_max = original_u_max
+            else:
+                next_replicas = self.autoscaler.step(
+                    current_replicas, observed_rps, forecast_rps
+                )
             if next_replicas in (
                 self.autoscaler.replicas_min,
                 self.autoscaler.replicas_max,
@@ -221,12 +257,25 @@ class SREControlStack:
             )
             runtime_states.append("DEGRADED_PLAN")
             runtime_events.append(
-                self._adapter_exception_event("PredictiveAutoscaler", exc)
+                self._adapter_exception_event(
+                    "PredictiveAutoscaler", exc, "keep_current_replicas"
+                )
             )
+            self.autoscaler.last_trace = {
+                "next_replicas": next_replicas,
+                "local_states": ["error"],
+                "events": [],
+                "fallback": True,
+                "fallback_reason": f"{type(exc).__name__}: {exc}",
+            }
 
         # Canary (optional) — never crash the tick if it fails
         canary_step: Optional[CanaryStep] = None
-        if self.canary is not None and current_canary_share is not None:
+        if (
+            self.canary is not None
+            and current_canary_share is not None
+            and not conservative_plan
+        ):
             try:
                 proposed_share = self.canary.propose(current_canary_share)
                 if canary_observed_error is not None:
@@ -239,7 +288,9 @@ class SREControlStack:
             except RecoverableControlError as exc:
                 runtime_states.append("DEGRADED_PLAN")
                 runtime_events.append(
-                    self._adapter_exception_event("CanaryScheduler", exc)
+                    self._adapter_exception_event(
+                        "CanaryScheduler", exc, "skip_canary_step"
+                    )
                 )
                 canary_step = None
 
@@ -263,7 +314,11 @@ class SREControlStack:
                 "cone_margin_after": 0.0,
                 "projection_distance": 0.0,
                 "local_states": ["error"],
-                "events": [self._adapter_exception_event("SLOGuardrail", exc)],
+                "events": [
+                    self._adapter_exception_event(
+                        "SLOGuardrail", exc, "zero_guardrail_action"
+                    )
+                ],
             }
             safe_action = np.zeros(fallback_size)
             runtime_states.append("DEGRADED_GUARD")
@@ -272,6 +327,9 @@ class SREControlStack:
         # ========================= 4) ALLOCATE ========================
         runtime_states.append("ALLOCATING")
         try:
+            # Guardrail actions are direction vectors whose L2 norm encodes
+            # total demand.  Zone placement is supplied separately through
+            # zone_target, so component sums are not treated as RPS demand.
             rps_demand = float(np.linalg.norm(safe_action))
             shares, alloc_info = self.balancer.allocate(rps_demand, zone_target)
             self._last_good_alloc_shares = shares.copy()
@@ -291,12 +349,16 @@ class SREControlStack:
                 shares = np.zeros(n)
                 fallback_state = "bootstrap_zero_fallback"
             alloc_info = {
-                "rps_residual": float("nan"),
+                "rps_residual": None,
                 "zone_residual": [],
                 "saturation": [False] * n,
-                "cost": float("nan"),
+                "cost": None,
                 "local_states": ["error", fallback_state],
-                "events": [self._adapter_exception_event("WeightedLoadBalancer", exc)],
+                "events": [
+                    self._adapter_exception_event(
+                        "WeightedLoadBalancer", exc, fallback_state
+                    )
+                ],
             }
             runtime_states.append("DEGRADED_ALLOCATE")
             runtime_events.extend(alloc_info["events"])
@@ -323,4 +385,5 @@ class SREControlStack:
         }
         self.trace.append(entry)
         self._tick_index += 1
+        self._elapsed_time += float(dt)
         return entry

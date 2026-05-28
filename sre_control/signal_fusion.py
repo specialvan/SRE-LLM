@@ -23,11 +23,13 @@ single estimate with a posterior covariance you can actually alarm on
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from numbers import Integral
 from typing import Callable, List, Optional, Sequence, Tuple
 
 import numpy as np
 
 from starship.ekf import EKF
+from .exceptions import AdapterInputError
 from .events import make_event
 
 
@@ -53,6 +55,10 @@ class Signal:
     R: np.ndarray
     gate_threshold: Optional[float] = None
 
+    def __post_init__(self) -> None:
+        if self.gate_threshold is not None and self.gate_threshold <= 0:
+            raise ValueError("gate_threshold must be positive when set")
+
 
 @dataclass
 class SignalFusion:
@@ -72,16 +78,29 @@ class SignalFusion:
     gate_threshold: Optional[float] = None      # Mahalanobis distance gate
                                                 # used when a Signal does not
                                                 # override it; None = disabled
+    max_consecutive_rejections: int = 100       # cap trace counter growth
     _ekf: EKF = field(init=False, repr=False)
     _rejections: dict = field(default_factory=dict, init=False, repr=False)
 
     def __post_init__(self) -> None:
+        if self.gate_threshold is not None and self.gate_threshold <= 0:
+            raise ValueError("gate_threshold must be positive when set")
+        if (
+            isinstance(self.max_consecutive_rejections, bool)
+            or not isinstance(self.max_consecutive_rejections, Integral)
+            or self.max_consecutive_rejections <= 0
+        ):
+            raise ValueError("max_consecutive_rejections must be a positive integer")
+        self.max_consecutive_rejections = int(self.max_consecutive_rejections)
+
         def _f(x: np.ndarray, u: np.ndarray, dt: float) -> np.ndarray:
-            return x + self.theta * (self.x_ref - x) * dt
+            decay = float(np.exp(-self.theta * dt))
+            return self.x_ref + decay * (x - self.x_ref)
 
         def _F(x: np.ndarray, u: np.ndarray, dt: float) -> np.ndarray:
             n = x.size
-            return np.eye(n) * (1.0 - self.theta * dt)
+            decay = float(np.exp(-self.theta * dt))
+            return np.eye(n) * decay
 
         self._ekf = EKF(
             x=np.array(self.x0, dtype=float),
@@ -108,11 +127,27 @@ class SignalFusion:
         Signals with a ``None`` reading are skipped (sensor missing
         that tick). Returns a trace dict suitable for JSONL logging.
         """
+        names = [signal.name for signal, _ in readings]
+        if len(names) != len(set(names)):
+            raise AdapterInputError("duplicate signal name in readings")
+
+        normalized_readings = []
+        for signal, z in readings:
+            if z is None:
+                normalized_readings.append((signal, None))
+                continue
+            z_arr = np.asarray(z, dtype=float)
+            if not np.isfinite(z_arr).all():
+                raise AdapterInputError(
+                    f"non-finite sensor reading: {signal.name}"
+                )
+            normalized_readings.append((signal, z_arr))
+
         self._ekf.predict(None, dt)
         fused_trace = []
         events = []
         local_states = ["predict"]
-        for signal, z in readings:
+        for signal, z in normalized_readings:
             if z is None:
                 fused_trace.append({"signal": signal.name, "used": False})
                 if "skip_update" not in local_states:
@@ -122,9 +157,9 @@ class SignalFusion:
                     kind="missing_sensor",
                     detail=f"{signal.name} reading was absent in this tick",
                     safe_action="skip update and keep posterior prediction",
+                    signal=signal.name,
                 ))
                 continue
-            z = np.asarray(z, dtype=float)
             threshold_used = self._resolve_threshold(signal)
             update_info = self._ekf.update(
                 z, signal.h, signal.H, signal.R,
@@ -132,11 +167,27 @@ class SignalFusion:
             )
             mahal = update_info["innovation_mahalanobis"]
             if update_info["gated"]:
-                self._rejections[signal.name] = (
-                    self._rejections.get(signal.name, 0) + 1
+                consecutive_rejections = min(
+                    self._rejections.get(signal.name, 0) + 1,
+                    self.max_consecutive_rejections,
+                )
+                self._rejections[signal.name] = consecutive_rejections
+                counter_saturated = (
+                    consecutive_rejections >= self.max_consecutive_rejections
                 )
                 if "outlier_rejected" not in local_states:
                     local_states.append("outlier_rejected")
+                if (
+                    counter_saturated
+                    and "rejection_counter_saturated" not in local_states
+                ):
+                    local_states.append("rejection_counter_saturated")
+                saturation_detail = (
+                    "; rejection counter saturated at "
+                    f"{self.max_consecutive_rejections}"
+                    if counter_saturated
+                    else ""
+                )
                 events.append(make_event(
                     stage="SignalFusion",
                     kind="outlier_rejected",
@@ -144,11 +195,16 @@ class SignalFusion:
                         f"{signal.name} Mahalanobis d={mahal:.2f} exceeded "
                         f"per-sensor gate {threshold_used}; "
                         f"consecutive rejections="
-                        f"{self._rejections[signal.name]}"
+                        f"{consecutive_rejections}"
+                        f"{saturation_detail}"
                     ),
                     safe_action=(
                         "skip update to protect posterior; raise gate only "
                         "if measurement model h(x)/R are validated"),
+                    signal=signal.name,
+                    innovation_mahalanobis=mahal,
+                    threshold_used=threshold_used,
+                    consecutive_rejections=consecutive_rejections,
                 ))
                 fused_trace.append({
                     "signal": signal.name, "used": False,
@@ -156,7 +212,8 @@ class SignalFusion:
                     "innovation_mahalanobis": mahal,
                     "threshold_used": threshold_used,
                     "consecutive_rejections":
-                        self._rejections[signal.name],
+                        consecutive_rejections,
+                    "rejection_counter_saturated": counter_saturated,
                 })
                 continue
             # Successful update — reset the consecutive-rejection counter so

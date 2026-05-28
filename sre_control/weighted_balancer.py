@@ -24,6 +24,7 @@ import numpy as np
 from scipy.optimize import lsq_linear
 
 from .events import make_event
+from .exceptions import AdapterInputError, RecoverableControlError
 
 
 @dataclass
@@ -47,6 +48,26 @@ class WeightedLoadBalancer:
 
     instances: List[Instance]
 
+    def __post_init__(self) -> None:
+        if not self.instances:
+            raise ValueError("instances must not be empty")
+        expected_dim = len(np.asarray(self.instances[0].zone_vector))
+        for inst in self.instances:
+            zone_vector = np.asarray(inst.zone_vector, dtype=float)
+            if len(zone_vector) != expected_dim:
+                raise ValueError(
+                    "all instance zone_vector dimensions must match"
+                )
+            if not np.isfinite(zone_vector).all():
+                raise ValueError("finite zone_vector required")
+            if not np.isfinite([inst.rps_min, inst.rps_max]).all():
+                raise ValueError("finite rps bounds required")
+            if inst.rps_min > inst.rps_max:
+                raise ValueError("rps_min <= rps_max required")
+            inst.rps_min = float(inst.rps_min)
+            inst.rps_max = float(inst.rps_max)
+            inst.zone_vector = zone_vector
+
     def _matrix(self) -> np.ndarray:
         # Row 0 — global RPS sum constraint.
         # Rows 1..k — zone-vector aggregation.
@@ -60,22 +81,43 @@ class WeightedLoadBalancer:
                  zone_target: Sequence[float]
                  ) -> Tuple[np.ndarray, dict]:
         A = self._matrix()
-        b = np.concatenate([[rps_demand],
-                            np.asarray(zone_target, dtype=float)])
+        rps_demand = float(rps_demand)
+        if not np.isfinite(rps_demand):
+            raise AdapterInputError("non-finite rps_demand")
+        zone_target_arr = np.asarray(zone_target, dtype=float)
+        if zone_target_arr.ndim != 1 or zone_target_arr.size != len(self.instances[0].zone_vector):
+            raise AdapterInputError("zone_target dimension mismatch")
+        if not np.isfinite(zone_target_arr).all():
+            raise AdapterInputError("non-finite zone_target")
+        b = np.concatenate([[rps_demand], zone_target_arr])
         lb = np.array([i.rps_min for i in self.instances])
         ub = np.array([i.rps_max for i in self.instances])
-        res = lsq_linear(A, b, bounds=(lb, ub))
+        try:
+            res = lsq_linear(A, b, bounds=(lb, ub))
+        except (RuntimeError, ValueError) as exc:
+            raise RecoverableControlError(
+                f"bounded LS solver failed: {exc}"
+            ) from exc
+        if not bool(getattr(res, "success", False)):
+            message = getattr(res, "message", "unknown solver failure")
+            raise RecoverableControlError(
+                f"bounded LS solver did not converge: {message}"
+            )
         shares = res.x
         realised = A @ shares
         saturation = [bool((shares[i] >= ub[i] - 1e-6)
                            or (shares[i] <= lb[i] + 1e-6))
                       for i in range(len(self.instances))]
         rps_residual = float(abs(realised[0] - rps_demand))
-        zone_residual = np.abs(realised[1:] - zone_target).tolist()
+        zone_residual = np.abs(realised[1:] - zone_target_arr).tolist()
+        rps_residual_fraction = (
+            float(rps_residual / abs(rps_demand)) if abs(rps_demand) > 1e-9 else 0.0
+        )
         residual_active = (
             rps_residual > 1e-6
             or any(z > 1e-6 for z in zone_residual)
         )
+        demand_satisfied = not residual_active
         events = []
         if any(saturation) or residual_active:
             events.append(make_event(
@@ -83,6 +125,10 @@ class WeightedLoadBalancer:
                 kind="bounded_ls_residual",
                 detail="box constraints or residuals were active",
                 safe_action="report residual instead of pretending exact matching",
+                rps_residual=rps_residual,
+                rps_residual_fraction=rps_residual_fraction,
+                zone_residual=zone_residual,
+                demand_satisfied=demand_satisfied,
             ))
         local_states = ["solve_ls"]
         if any(saturation):
@@ -91,7 +137,9 @@ class WeightedLoadBalancer:
             local_states.append("report_residual")
         info = {
             "rps_residual":   rps_residual,
+            "rps_residual_fraction": rps_residual_fraction,
             "zone_residual":  zone_residual,
+            "demand_satisfied": demand_satisfied,
             "saturation":     saturation,
             "cost":           float(res.cost),
             "local_states":   local_states,

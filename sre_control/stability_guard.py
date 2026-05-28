@@ -28,6 +28,39 @@ from starship.stability_monitor import StabilityMonitor, StabilityVerdict
 from .events import make_event
 
 
+def sre_error_budget_V(
+    *,
+    latency_target_ms: float,
+    latency_scale_ms: float,
+    error_rate_target: float,
+    error_rate_scale: float,
+) -> Callable[[np.ndarray], float]:
+    """Build an SRE Lyapunov candidate for service health drift.
+
+    The expected state layout is ``[qps, latency_ms, error_rate, ...]``.
+    QPS is intentionally ignored: this guard is about whether SLO burn is
+    moving in the wrong direction, not whether traffic is high. Latency and
+    error-rate excess are normalized by operator-provided scales, clipped at
+    zero so under-budget headroom does not create energy, and squared:
+
+    ``V = max(0, latency-target)^2/scale^2 + max(0, err-target)^2/scale^2``.
+    """
+    if latency_scale_ms <= 0:
+        raise ValueError("latency_scale_ms must be positive")
+    if error_rate_scale <= 0:
+        raise ValueError("error_rate_scale must be positive")
+
+    def _V(x: np.ndarray) -> float:
+        state = np.asarray(x, dtype=float)
+        latency_excess = max(0.0, state[1] - latency_target_ms)
+        error_excess = max(0.0, state[2] - error_rate_target)
+        latency_term = (latency_excess / latency_scale_ms) ** 2
+        error_term = (error_excess / error_rate_scale) ** 2
+        return float(latency_term + error_term)
+
+    return _V
+
+
 @dataclass
 class StabilityGuard:
     """Wrap :class:`StabilityMonitor` in SRE-schema language.
@@ -92,6 +125,11 @@ class StabilityGuard:
                     "surface as DEGRADED signal; downstream controllers "
                     "should stay in conservative mode until an operator "
                     "or test explicitly resets the latched monitor"),
+                label=self.label,
+                V=verdict.V,
+                dV_dt=verdict.dV_dt,
+                consecutive_violations=verdict.consecutive_violations,
+                tolerance=self.tolerance,
             ))
         elif verdict.triggered:
             local_states.append("sustained")

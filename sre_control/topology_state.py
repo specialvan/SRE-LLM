@@ -76,6 +76,9 @@ class TopologyState:
                     "reset the topology quaternion to identity before "
                     "applying the exp-map"
                 ),
+                input_norm_valid=False,
+                quaternion_norm=q_norm if np.isfinite(q_norm) else None,
+                repair_action="reset_identity",
             ))
         elif abs(q_norm - 1.0) > 1e-6:
             self.q = q / q_norm
@@ -91,6 +94,9 @@ class TopologyState:
                     "renormalize the topology quaternion before applying "
                     "the exp-map"
                 ),
+                input_norm_valid=True,
+                quaternion_norm=q_norm,
+                repair_action="renormalize",
             ))
         else:
             self.q = q
@@ -116,7 +122,8 @@ class TopologyState:
         # Rotation angle extracted from the quaternion (any axis).
         w = float(np.clip(self.q[0], -1.0, 1.0))
         # 2 · acos(w) gives the overall rotation magnitude.
-        return float(2.0 * np.arccos(w)) * (1 if self.q[3] >= 0 else -1)
+        angle = float(2.0 * np.arccos(w)) * (1 if self.q[3] >= 0 else -1)
+        return float((angle + np.pi) % (2.0 * np.pi) - np.pi)
 
     # ------------------------------------------------------------------
     def axis(self) -> np.ndarray:

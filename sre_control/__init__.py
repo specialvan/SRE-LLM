@@ -27,8 +27,10 @@ from .signal_fusion import SignalFusion, Signal
 from .predictive_autoscaler import PredictiveAutoscaler
 from .fast_switcher import FastTrafficSwitcher
 from .weighted_balancer import WeightedLoadBalancer, Instance
-from .stability_guard import StabilityGuard
+from .catch_adapter import CatchLoadAdapter
+from .stability_guard import StabilityGuard, sre_error_budget_V
 from .stack import SREControlStack
+from .stack_contract import stack_data_contract
 from .exceptions import AdapterInputError, ControlDomainError, RecoverableControlError
 from .events import (
     EVENT_COUNTEREXAMPLES,
@@ -48,9 +50,11 @@ __all__ = [
     "PredictiveAutoscaler",
     "FastTrafficSwitcher",
     "WeightedLoadBalancer",
+    "CatchLoadAdapter",
     "Instance",
-    "StabilityGuard",
+    "StabilityGuard", "sre_error_budget_V",
     "SREControlStack",
+    "stack_data_contract",
     "AdapterInputError",
     "ControlDomainError",
     "RecoverableControlError",

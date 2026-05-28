@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import numpy as np
+import pytest
+import sre_control.weighted_balancer as weighted_balancer
+from scipy.linalg import expm
 
 from sre_control import (CanaryScheduler, FastTrafficSwitcher,
                           Instance, PoolCapacityPlanner,
                           PredictiveAutoscaler, Signal, SignalFusion,
+                          AdapterInputError, RecoverableControlError,
                           SLOGuardrail, TopologyState,
                           WeightedLoadBalancer)
 
@@ -25,6 +31,27 @@ def test_pool_planner_respects_keep_alive_floor():
     assert info["events"] == []
 
 
+def test_pool_planner_uses_true_ceiling_at_integer_demand():
+    planner = PoolCapacityPlanner(min_keep_alive=1, max_capacity=100)
+
+    plan, _info = planner.plan(demand_rps_forecast=[200.0, 200.1, 300.0])
+
+    assert plan == [2, 3, 3]
+
+
+def test_pool_planner_uses_configured_rps_per_connection():
+    planner = PoolCapacityPlanner(
+        min_keep_alive=1,
+        max_capacity=5,
+        rps_per_conn=50.0,
+    )
+
+    plan, info = planner.plan(demand_rps_forecast=[100.0, 125.0, 300.0])
+
+    assert plan == [2, 3, 5]
+    assert info["capacity_shortfall_rps"] == 50.0
+
+
 def test_pool_planner_marks_capacity_clip_event():
     planner = PoolCapacityPlanner(min_keep_alive=4, max_capacity=5)
     plan, info = planner.plan(demand_rps_forecast=[100, 800, 1_200])
@@ -33,6 +60,23 @@ def test_pool_planner_marks_capacity_clip_event():
     assert "clip" in info["local_states"]
     assert any(event["kind"] == "pool_capacity_clipped"
                for event in info["events"])
+
+
+def test_pool_planner_marks_exact_capacity_as_advisory_event():
+    planner = PoolCapacityPlanner(
+        min_keep_alive=1,
+        max_capacity=5,
+        rps_per_conn=100.0,
+    )
+
+    plan, info = planner.plan(demand_rps_forecast=[500.0])
+
+    assert plan == [5]
+    assert "clip" in info["local_states"]
+    event = next(event for event in info["events"]
+                 if event["kind"] == "pool_capacity_clipped")
+    assert event["clipped_slots"] == 0
+    assert event["capacity_shortfall_rps"] == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -61,6 +105,68 @@ def test_canary_grows_trust_region_when_safe():
     assert step.trust_region >= 0.05     # non-shrinking on success
 
 
+def test_canary_warm_start_does_not_poison_slope():
+    sched = CanaryScheduler(slo_error_budget=0.01,
+                             eta_init=0.05, eta_max=0.40)
+
+    step = sched.observe(
+        current_share=0.50,
+        proposed_share=0.55,
+        observed_error_rate=0.002,
+    )
+
+    assert step.accepted is True
+    assert step.predicted_error_rate == pytest.approx(0.002)
+    assert sched._b_est == pytest.approx(0.0)
+    assert sched._last_share == pytest.approx(0.55)
+    assert sched._last_err == pytest.approx(0.002)
+    assert "initialise" in step.local_states
+
+
+def test_canary_rejected_step_still_refits_slope_from_observation():
+    sched = CanaryScheduler(slo_error_budget=0.01, eta_init=0.05)
+
+    step = sched.observe(
+        current_share=0.0,
+        proposed_share=0.05,
+        observed_error_rate=0.03,
+    )
+
+    assert step.accepted is False
+    assert sched._b_est == pytest.approx(0.6)
+    assert sched._last_share == pytest.approx(0.05)
+    assert sched._last_err == pytest.approx(0.03)
+    assert "refit_rejected" in step.local_states
+
+
+def test_canary_rejected_warm_start_shrinks_instead_of_expanding():
+    sched = CanaryScheduler(
+        slo_error_budget=0.01,
+        eta_init=0.10,
+        eta_min=0.005,
+        eta_max=0.30,
+    )
+
+    first = sched.observe(
+        current_share=0.50,
+        proposed_share=0.60,
+        observed_error_rate=0.03,
+    )
+    second = sched.observe(
+        current_share=0.50,
+        proposed_share=0.60,
+        observed_error_rate=0.03,
+    )
+
+    assert first.accepted is False
+    assert second.accepted is False
+    assert first.trust_region < 0.10
+    assert second.trust_region <= first.trust_region
+    assert "expand" not in second.local_states
+    assert "shrink" in second.local_states
+    assert second.events[0]["trust_region"] == pytest.approx(second.trust_region)
+
+
 # ---------------------------------------------------------------------------
 # §3 TopologyState
 # ---------------------------------------------------------------------------
@@ -81,6 +187,21 @@ def test_topology_state_repairs_invalid_quaternion_event():
     assert "repair_unit_norm" in trace["local_states"]
     assert any(event["kind"] == "topology_state_repaired"
                for event in trace["events"])
+
+
+@pytest.mark.parametrize("angle", [-3.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5])
+def test_topology_ring_angle_wraps_to_principal_interval(angle):
+    ts = TopologyState(q=np.array([
+        np.cos(angle / 2.0),
+        0.0,
+        0.0,
+        np.sin(angle / 2.0),
+    ]))
+
+    wrapped = ts.ring_angle_rad
+
+    assert -np.pi <= wrapped <= np.pi
+    assert wrapped == pytest.approx(((angle + np.pi) % (2 * np.pi)) - np.pi)
 
 
 # ---------------------------------------------------------------------------
@@ -109,6 +230,38 @@ def test_guardrail_honours_magnitude_cap():
     )
     u = guard.approve([0, 0, 10_000])
     assert np.linalg.norm(u) <= 100.0 + 1e-6
+
+
+@pytest.mark.parametrize("proposal", [
+    [np.nan, 0.0, 0.0],
+    [np.inf, 0.0, 0.0],
+    [0.0, -np.inf, 0.0],
+])
+def test_guardrail_rejects_non_finite_proposal(proposal):
+    guard = SLOGuardrail(
+        nominal_direction=np.array([0, 0, 1.0]),
+        theta_max_deg=30.0,
+        magnitude_cap=100.0,
+    )
+
+    with pytest.raises(AdapterInputError, match="non-finite proposal"):
+        guard.audit(proposal)
+
+
+@pytest.mark.parametrize("proposal", [
+    [np.nan, 0.0, 0.0],
+    [np.inf, 0.0, 0.0],
+    [0.0, -np.inf, 0.0],
+])
+def test_guardrail_approve_rejects_non_finite_proposal(proposal):
+    guard = SLOGuardrail(
+        nominal_direction=np.array([0, 0, 1.0]),
+        theta_max_deg=30.0,
+        magnitude_cap=100.0,
+    )
+
+    with pytest.raises(AdapterInputError, match="non-finite proposal"):
+        guard.approve(proposal)
 
 
 # ---------------------------------------------------------------------------
@@ -158,6 +311,23 @@ def test_signal_fusion_marks_missing_sensor_as_local_event():
     assert "skip_update" in trace["local_states"]
     assert any(event["kind"] == "missing_sensor"
                for event in trace["events"])
+
+
+def test_signal_fusion_ou_prediction_uses_stable_exact_discretization():
+    fusion = SignalFusion(
+        x0=np.array([10.0]),
+        P0=np.eye(1),
+        Q=np.eye(1) * 0.01,
+        x_ref=np.array([0.0]),
+        theta=0.5,
+    )
+
+    trace = fusion.step(dt=5.0, readings=[])
+
+    transition = expm(-0.5 * np.eye(1) * 5.0)
+    expected_state = (transition @ np.array([10.0]))[0]
+    assert trace["x"][0] == pytest.approx(expected_state)
+    assert trace["x"][0] > 0.0
 
 
 def test_signal_fusion_gates_outlier_when_threshold_is_set():
@@ -331,6 +501,30 @@ def test_signal_fusion_inherits_fusion_default_when_signal_has_no_override():
     assert np.allclose(fusion.state, x_before, atol=0.5)
 
 
+@pytest.mark.parametrize("threshold", [0.0, -1.0])
+def test_signal_rejects_nonpositive_gate_threshold(threshold):
+    with pytest.raises(ValueError, match="gate_threshold"):
+        Signal(
+            name="metrics",
+            h=lambda x: x,
+            H=lambda x: np.eye(1),
+            R=np.eye(1),
+            gate_threshold=threshold,
+        )
+
+
+@pytest.mark.parametrize("threshold", [0.0, -1.0])
+def test_signal_fusion_rejects_nonpositive_default_gate_threshold(threshold):
+    with pytest.raises(ValueError, match="gate_threshold"):
+        SignalFusion(
+            x0=np.array([1.0]),
+            P0=np.eye(1),
+            Q=np.eye(1) * 0.01,
+            x_ref=np.array([1.0]),
+            gate_threshold=threshold,
+        )
+
+
 def test_signal_fusion_consecutive_rejections_reset_on_acceptance():
     """Counter increments on rejects, resets on a successful update."""
     fusion = SignalFusion(
@@ -358,6 +552,105 @@ def test_signal_fusion_consecutive_rejections_reset_on_acceptance():
     cleared = fusion.step(dt=1.0, readings=[(sig, np.array([1000.0, 25.0]))])
     assert cleared["signals"][0]["used"] is True
     assert cleared["signals"][0]["consecutive_rejections"] == 0
+
+
+def test_signal_fusion_consecutive_rejections_are_capped():
+    fusion = SignalFusion(
+        x0=np.array([1000.0, 25.0, 0.3]),
+        P0=np.diag([10**2, 2**2, 0.05**2]),
+        Q=np.diag([1e-3, 1e-3, 1e-4]),
+        x_ref=np.array([1000.0, 25.0, 0.3]),
+        theta=0.0,
+        max_consecutive_rejections=2,
+    )
+    sig = Signal(
+        name="metrics",
+        h=lambda x: x[0:2],
+        H=lambda x: np.array([[1, 0, 0], [0, 1, 0]]),
+        R=np.diag([50**2, 4**2]),
+        gate_threshold=3.0,
+    )
+
+    for _ in range(4):
+        trace = fusion.step(dt=1.0, readings=[(sig, np.array([5000.0, 200.0]))])
+
+    assert trace["signals"][0]["consecutive_rejections"] == 2
+    assert trace["signals"][0]["rejection_counter_saturated"] is True
+    assert "rejection_counter_saturated" in trace["local_states"]
+    event = next(ev for ev in trace["events"] if ev["kind"] == "outlier_rejected")
+    assert event["consecutive_rejections"] == 2
+
+
+@pytest.mark.parametrize("max_rejections", [0, -1, True])
+def test_signal_fusion_rejects_invalid_rejection_counter_cap(max_rejections):
+    with pytest.raises(ValueError, match="max_consecutive_rejections"):
+        SignalFusion(
+            x0=np.array([1.0]),
+            P0=np.eye(1),
+            Q=np.eye(1) * 0.01,
+            x_ref=np.array([1.0]),
+            max_consecutive_rejections=max_rejections,
+        )
+
+
+def test_signal_fusion_rejects_duplicate_signal_names_in_tick():
+    fusion = SignalFusion(
+        x0=np.array([1000.0, 25.0]),
+        P0=np.eye(2),
+        Q=np.eye(2) * 0.01,
+        x_ref=np.array([1000.0, 25.0]),
+        theta=0.0,
+    )
+    first = Signal(
+        name="metrics",
+        h=lambda x: x,
+        H=lambda x: np.eye(2),
+        R=np.eye(2),
+    )
+    second = Signal(
+        name="metrics",
+        h=lambda x: x,
+        H=lambda x: np.eye(2),
+        R=np.eye(2) * 2.0,
+    )
+
+    with pytest.raises(AdapterInputError, match="duplicate signal name"):
+        fusion.step(
+            dt=1.0,
+            readings=[
+                (first, np.array([1000.0, 25.0])),
+                (second, np.array([1000.0, 25.0])),
+            ],
+        )
+
+
+@pytest.mark.parametrize("reading", [
+    np.array([np.nan]),
+    np.array([np.inf]),
+    np.array([-np.inf]),
+])
+def test_signal_fusion_rejects_non_finite_sensor_reading_without_mutation(reading):
+    fusion = SignalFusion(
+        x0=np.array([10.0]),
+        P0=np.eye(1),
+        Q=np.eye(1),
+        x_ref=np.array([0.0]),
+        theta=0.5,
+    )
+    sig = Signal(
+        name="metrics",
+        h=lambda x: x,
+        H=lambda x: np.eye(1),
+        R=np.eye(1),
+    )
+    x_before = fusion.state.copy()
+    p_before = fusion.covariance.copy()
+
+    with pytest.raises(AdapterInputError, match="non-finite sensor reading"):
+        fusion.step(dt=5.0, readings=[(sig, reading)])
+
+    assert np.allclose(fusion.state, x_before)
+    assert np.allclose(fusion.covariance, p_before)
 
 
 # ---------------------------------------------------------------------------
@@ -388,6 +681,23 @@ def test_autoscaler_marks_replica_bound_as_local_event():
                for event in asc.last_trace["events"])
 
 
+def test_autoscaler_internal_plant_matches_executor_step_units():
+    asc = PredictiveAutoscaler(
+        per_replica_rps=100.0, replicas_min=1, replicas_max=50,
+        max_step=5, dt=5.0, horizon=2,
+    )
+
+    discrete_effect = asc._mpc.B[:, 0]
+    assert discrete_effect[0] == pytest.approx(1.0)
+    assert discrete_effect[1] == pytest.approx(asc.per_replica_rps)
+
+    current_replicas = 10
+    for u in [-1.0, 0.0, 1.0, float(asc.max_step)]:
+        model_next_replicas = current_replicas + discrete_effect[0] * u
+        executor_next_replicas = current_replicas + u
+        assert model_next_replicas == pytest.approx(executor_next_replicas)
+
+
 # ---------------------------------------------------------------------------
 # §7 FastTrafficSwitcher
 # ---------------------------------------------------------------------------
@@ -400,6 +710,14 @@ def test_switcher_hits_target_with_zero_residual_rate():
     assert info["events"] == []
 
 
+def test_switcher_safety_margin_preserves_terminal_share():
+    sw = FastTrafficSwitcher(rate_max=0.4, safety_margin=1.2)
+    _, share, info = sw.plan(share_from=0.0, share_to=1.0)
+
+    assert abs(share[-1] - 1.0) < 1e-6
+    assert abs(info["final_share"] - 1.0) < 1e-6
+
+
 def test_switcher_marks_deadline_exceeded_event():
     sw = FastTrafficSwitcher(rate_max=0.4)
     _, _, info = sw.plan(share_from=0.0, share_to=1.0,
@@ -408,6 +726,12 @@ def test_switcher_marks_deadline_exceeded_event():
     assert "switch_midpoint" in info["local_states"]
     assert any(event["kind"] == "deadline_exceeded"
                for event in info["events"])
+
+
+@pytest.mark.parametrize("rate_max", [0.0, -0.1])
+def test_switcher_rejects_nonpositive_rate_max(rate_max):
+    with pytest.raises(ValueError, match="rate_max"):
+        FastTrafficSwitcher(rate_max=rate_max)
 
 
 # ---------------------------------------------------------------------------
@@ -426,3 +750,103 @@ def test_balancer_matches_demand_without_saturating():
     assert not any(info["saturation"])
     assert info["local_states"] == ["solve_ls"]
     assert info["events"] == []
+
+
+def test_balancer_quantifies_residual_so_safe_does_not_mean_sufficient():
+    lb = WeightedLoadBalancer(instances=[
+        Instance("east-a", np.array([1.0, 0.0]), rps_min=0, rps_max=100),
+        Instance("west-a", np.array([0.0, 1.0]), rps_min=0, rps_max=100),
+    ])
+
+    shares, info = lb.allocate(rps_demand=300, zone_target=[150, 150])
+
+    assert np.all(shares <= 100.0 + 1e-6)
+    assert info["demand_satisfied"] is False
+    assert info["rps_residual"] >= 100.0 - 1e-6
+    assert info["rps_residual_fraction"] >= (100.0 / 300.0) - 1e-6
+    event = next(event for event in info["events"] if event["kind"] == "bounded_ls_residual")
+    assert event["demand_satisfied"] is False
+    assert event["rps_residual"] == info["rps_residual"]
+    assert event["rps_residual_fraction"] == info["rps_residual_fraction"]
+
+
+def test_balancer_rejects_mismatched_zone_vector_dimensions():
+    with pytest.raises(ValueError, match="zone_vector dimensions"):
+        WeightedLoadBalancer(instances=[
+            Instance("east-a", np.array([1.0, 0.0]), rps_min=0, rps_max=100),
+            Instance("west-a", np.array([1.0]), rps_min=0, rps_max=100),
+        ])
+
+
+def test_balancer_rejects_non_finite_static_configuration():
+    with pytest.raises(ValueError, match="finite zone_vector"):
+        WeightedLoadBalancer(instances=[
+            Instance("east-a", np.array([np.nan]), rps_min=0.0, rps_max=100.0),
+        ])
+
+    with pytest.raises(ValueError, match="finite rps bounds"):
+        WeightedLoadBalancer(instances=[
+            Instance("east-a", np.array([1.0]), rps_min=0.0, rps_max=np.inf),
+        ])
+
+    with pytest.raises(ValueError, match="rps_min <= rps_max"):
+        WeightedLoadBalancer(instances=[
+            Instance("east-a", np.array([1.0]), rps_min=10.0, rps_max=1.0),
+        ])
+
+
+@pytest.mark.parametrize("demand", [np.nan, np.inf, -np.inf])
+def test_balancer_rejects_non_finite_runtime_demand(demand):
+    lb = WeightedLoadBalancer(instances=[
+        Instance("east-a", np.array([1.0]), rps_min=0.0, rps_max=100.0),
+    ])
+
+    with pytest.raises(AdapterInputError, match="non-finite rps_demand"):
+        lb.allocate(rps_demand=demand, zone_target=[10.0])
+
+
+def test_balancer_rejects_invalid_runtime_zone_target():
+    lb = WeightedLoadBalancer(instances=[
+        Instance("east-a", np.array([1.0, 0.0]), rps_min=0.0, rps_max=100.0),
+        Instance("west-a", np.array([0.0, 1.0]), rps_min=0.0, rps_max=100.0),
+    ])
+
+    with pytest.raises(AdapterInputError, match="zone_target dimension"):
+        lb.allocate(rps_demand=10.0, zone_target=[10.0])
+
+    with pytest.raises(AdapterInputError, match="non-finite zone_target"):
+        lb.allocate(rps_demand=10.0, zone_target=[np.nan, 10.0])
+
+
+def test_balancer_wraps_solver_input_errors_as_recoverable(monkeypatch):
+    lb = WeightedLoadBalancer(instances=[
+        Instance("east-a", np.array([1.0]), rps_min=0.0, rps_max=100.0),
+    ])
+
+    def failing_solver(*_args, **_kwargs):
+        raise ValueError("synthetic solver input failure")
+
+    monkeypatch.setattr(weighted_balancer, "lsq_linear", failing_solver)
+
+    with pytest.raises(RecoverableControlError, match="bounded LS solver failed"):
+        lb.allocate(rps_demand=10.0, zone_target=[10.0])
+
+
+def test_balancer_rejects_unsuccessful_solver_result(monkeypatch):
+    lb = WeightedLoadBalancer(instances=[
+        Instance("east-a", np.array([1.0]), rps_min=0.0, rps_max=100.0),
+    ])
+
+    def unsuccessful_solver(*_args, **_kwargs):
+        return SimpleNamespace(
+            success=False,
+            message="iteration limit reached",
+            x=np.array([10.0]),
+            cost=0.0,
+        )
+
+    monkeypatch.setattr(weighted_balancer, "lsq_linear", unsuccessful_solver)
+
+    with pytest.raises(RecoverableControlError,
+                       match="bounded LS solver did not converge"):
+        lb.allocate(rps_demand=10.0, zone_target=[10.0])

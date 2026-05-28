@@ -85,6 +85,61 @@ def test_update_keeps_covariance_psd_under_near_perfect_measurement():
     assert np.min(np.linalg.eigvalsh(ekf.P)) >= -1e-12
 
 
+def test_covariance_eigenvalue_floor_limits_posterior_overconfidence():
+    def f(x, u, dt):
+        return x
+
+    def F(x, u, dt):
+        return np.eye(2)
+
+    ekf = EKF(
+        x=np.array([1.0, -1.0]),
+        P=np.eye(2),
+        process_noise=np.zeros((2, 2)),
+        f=f,
+        F_jac=F,
+        covariance_eigenvalue_floor=1e-3,
+    )
+
+    for _ in range(30):
+        ekf.predict(None, 1.0)
+        ekf.update(
+            np.array([1.0, -1.0]),
+            h=lambda x: x,
+            H=lambda x: np.eye(2),
+            R=np.eye(2) * 1e-10,
+        )
+
+    assert np.min(np.linalg.eigvalsh(ekf.P)) >= 1e-3 - 1e-12
+
+
+def test_default_covariance_floor_prevents_silent_posterior_collapse():
+    def f(x, u, dt):
+        return x
+
+    def F(x, u, dt):
+        return np.eye(2)
+
+    ekf = EKF(
+        x=np.array([1.0, -1.0]),
+        P=np.eye(2),
+        process_noise=np.zeros((2, 2)),
+        f=f,
+        F_jac=F,
+    )
+
+    for _ in range(40):
+        ekf.predict(None, 1.0)
+        ekf.update(
+            np.array([1.0, -1.0]),
+            h=lambda x: x,
+            H=lambda x: np.eye(2),
+            R=np.eye(2) * 1e-14,
+        )
+
+    assert np.min(np.linalg.eigvalsh(ekf.P)) >= 1e-12 - 1e-15
+
+
 def test_gated_update_leaves_state_and_covariance_unchanged():
     def f(x, u, dt):
         return x
@@ -111,5 +166,35 @@ def test_gated_update_leaves_state_and_covariance_unchanged():
     )
 
     assert result["gated"] is True
+    assert np.array_equal(ekf.x, x_before)
+    assert np.array_equal(ekf.P, p_before)
+
+
+def test_singular_innovation_covariance_rejects_update_without_raising():
+    def f(x, u, dt):
+        return x
+
+    def F(x, u, dt):
+        return np.eye(2)
+
+    ekf = EKF(
+        x=np.array([0.0, 0.0]),
+        P=np.eye(2),
+        process_noise=np.zeros((2, 2)),
+        f=f,
+        F_jac=F,
+    )
+    x_before = ekf.x.copy()
+    p_before = ekf.P.copy()
+
+    result = ekf.update(
+        np.array([1.0]),
+        h=lambda x: np.array([0.0]),
+        H=lambda x: np.zeros((1, 2)),
+        R=np.zeros((1, 1)),
+    )
+
+    assert result["gated"] is True
+    assert result["innovation_mahalanobis"] == float("inf")
     assert np.array_equal(ekf.x, x_before)
     assert np.array_equal(ekf.P, p_before)

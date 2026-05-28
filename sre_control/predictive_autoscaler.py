@@ -53,7 +53,7 @@ class PredictiveAutoscaler:
 
     def __post_init__(self) -> None:
         A = np.array([[0.0, 0.0], [0.0, 0.0]])   # zero-order plant
-        B = np.array([[1.0], [self.per_replica_rps]])
+        B = np.array([[1.0 / self.dt], [self.per_replica_rps / self.dt]])
         Ad, Bd = LinearDiscretizer(A, B).zoh(self.dt)
 
         Q = np.diag([self.r_cost, self.q_slo])   # penalise replicas & SLO
@@ -98,6 +98,9 @@ class PredictiveAutoscaler:
                 kind="replica_bound_active",
                 detail="next replica count is at a hard bound",
                 safe_action="return bounded integer replicas",
+                next_replicas=next_replicas,
+                replicas_min=self.replicas_min,
+                replicas_max=self.replicas_max,
             ))
         self.last_trace = {
             "target_replicas": float(target_replicas),

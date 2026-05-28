@@ -6,12 +6,12 @@ scalar Lyapunov candidate ``V(x)`` non-increasing along trajectories::
     dV(x)/dt ≤ 0       (equilibrium condition)
 
 In practice we evaluate ``V(x_k)`` at each tick and approximate the
-derivative by a finite difference over a sliding window.  When the
-moving estimate ``dV/dt`` is positive for more than ``k_violations``
-consecutive ticks we declare a stability violation. For this pass the
-monitor uses **manual-reset latch semantics**: once ``triggered`` flips
-to ``True`` it stays true until :meth:`reset` is called. The SRE side
-maps that latched red line to ``stability_violation``.
+derivative by a recent-pair backward difference.  When the estimate
+``dV/dt`` is positive for more than ``k_violations`` consecutive ticks
+we declare a stability violation. For this pass the monitor uses
+**manual-reset latch semantics**: once ``triggered`` flips to ``True``
+it stays true until :meth:`reset` is called. The SRE side maps that
+latched red line to ``stability_violation``.
 
 This module is intentionally **generic**:
 
@@ -69,15 +69,21 @@ class StabilityMonitor:
         Once ``triggered`` becomes True it remains latched until
         :meth:`reset` is called.
     window
-        Number of recent ``V`` samples to retain; used for smoothed
-        backward-difference computation.  A window of 2 degenerates to
-        a plain ``ΔV/Δt``.
+        Number of recent ``V`` samples to retain for summaries and future
+        smoothing extensions. The live violation decision uses the most
+        recent pair, so an old spike cannot anchor recovery-period
+        derivatives.
+    min_derivative_dt
+        Minimum time span required before computing ``dV/dt``. This avoids
+        treating scheduler jitter or duplicate timestamps as large
+        finite-difference derivatives.
     """
 
     V_fn: Callable[[np.ndarray], float]
     tolerance: float = 1e-6
     k_violations: int = 3
     window: int = 4
+    min_derivative_dt: float = 1e-9
 
     _history: Deque[float] = field(default_factory=deque, init=False,
                                    repr=False)
@@ -105,12 +111,13 @@ class StabilityMonitor:
         V = float(self.V_fn(x))
 
         if self._history:
-            # smoothed backward-difference: use oldest and newest point in
-            # the current window to damp per-tick numerical noise.
-            V_old = self._history[0]
-            t_old = self._t_history[0]
-            dt = max(t - t_old, 1e-9)
-            dV_dt: Optional[float] = (V - V_old) / dt
+            V_old = self._history[-1]
+            t_old = self._t_history[-1]
+            dt = t - t_old
+            if dt < self.min_derivative_dt:
+                dV_dt = None
+            else:
+                dV_dt = (V - V_old) / dt
         else:
             dV_dt = None
 

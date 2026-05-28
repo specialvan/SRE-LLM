@@ -25,6 +25,7 @@ from typing import Sequence
 import numpy as np
 
 from starship.thrust_constraints import ConeQPFilter, pointing_cone_constraint
+from .exceptions import AdapterInputError
 from .events import make_event
 
 
@@ -57,18 +58,25 @@ class SLOGuardrail:
             T_min=self.magnitude_floor,
         )
 
+    def _validate_proposal(self, proposal: Sequence[float]) -> np.ndarray:
+        proposal_arr = np.asarray(proposal, dtype=float)
+        if not np.isfinite(proposal_arr).all():
+            raise AdapterInputError("non-finite proposal")
+        return proposal_arr
+
     # ------------------------------------------------------------------
     def approve(self, proposal: Sequence[float]) -> np.ndarray:
         """Project the proposal onto the feasible set.
 
         Returns the safe action exactly like :meth:`ConeQPFilter.filter`.
         """
-        return self._filter.filter(proposal)
+        return self._filter.filter(self._validate_proposal(proposal))
 
     # ------------------------------------------------------------------
     def audit(self, proposal: Sequence[float]) -> dict:
         """Return a structured trace the on-call can attach to change-logs."""
-        proposal = np.asarray(proposal, dtype=float)
+        proposal = self._validate_proposal(proposal)
+
         cone_margin_before = pointing_cone_constraint(
             proposal, self._filter.n_hat, self._filter.theta_max)
         magnitude_before = float(np.linalg.norm(proposal))
@@ -86,6 +94,9 @@ class SLOGuardrail:
                 kind="unsafe_proposal_projected",
                 detail="proposal violated cone or magnitude constraints",
                 safe_action="execute only the projected action",
+                cone_violated_before=cone_violated,
+                magnitude_violated_before=magnitude_violated,
+                projection_distance=projection_distance,
             ))
 
         return {

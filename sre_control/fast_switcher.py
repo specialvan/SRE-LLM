@@ -43,6 +43,11 @@ class FastTrafficSwitcher:
     safety_margin: float = 1.0
 
     # ------------------------------------------------------------------
+    def __post_init__(self) -> None:
+        if self.rate_max <= 0:
+            raise ValueError("rate_max must be positive")
+
+    # ------------------------------------------------------------------
     def plan(self, share_from: float, share_to: float,
              dt: float = 0.1,
              deadline_s: float | None = None
@@ -71,7 +76,7 @@ class FastTrafficSwitcher:
 
         # Two-phase profile: symmetric about t = T_min / 2
         mid = T_min / 2.0
-        a = self.rate_max * sign          # "acceleration" of share (/s²)
+        a = 0.0 if mag == 0.0 else sign * mag / (mid * mid)
         share = np.zeros_like(t)
         rate = np.zeros_like(t)
         for i, tk in enumerate(t):
@@ -92,6 +97,8 @@ class FastTrafficSwitcher:
                 kind="deadline_exceeded",
                 detail="minimum-time switch is slower than the incident deadline",
                 safe_action="freeze the change or choose a simpler rollback path",
+                minimum_time_seconds=T_min,
+                deadline_seconds=deadline_s,
             ))
 
         info = {

@@ -7,6 +7,7 @@ import numpy as np
 from starship.stability_monitor import (StabilityMonitor,
                                          kinetic_plus_potential_V,
                                          quadratic_V)
+from sre_control.stability_guard import sre_error_budget_V
 
 
 # ---------------------------------------------------------------------------
@@ -48,6 +49,41 @@ def test_single_blip_does_not_trigger():
     for i, v in enumerate(series):
         verdict = mon.step(np.array([v]), t=float(i))
     assert mon.triggered is False
+
+
+def test_spike_recovery_does_not_keep_counting_old_anchor():
+    mon = StabilityMonitor(
+        V_fn=lambda x: float(x[0]),
+        tolerance=1e-6,
+        k_violations=2,
+        window=4,
+    )
+    verdicts = [
+        mon.step(np.array([value]), t=float(i))
+        for i, value in enumerate([5.0, 10.0, 9.0, 8.0, 7.0, 6.0])
+    ]
+
+    assert verdicts[2].violating is False
+    assert verdicts[3].violating is False
+    assert verdicts[4].consecutive_violations == 0
+    assert mon.triggered is False
+
+
+def test_tiny_time_delta_can_be_ignored_to_avoid_derivative_jitter():
+    mon = StabilityMonitor(
+        V_fn=lambda x: float(x[0]),
+        tolerance=1e-6,
+        k_violations=1,
+        min_derivative_dt=0.1,
+    )
+
+    first = mon.step(np.array([1.0]), t=0.0)
+    second = mon.step(np.array([1.0001]), t=1e-6)
+
+    assert first.dV_dt is None
+    assert second.dV_dt is None
+    assert second.violating is False
+    assert second.triggered is False
 
 
 def test_reset_clears_state():
@@ -105,3 +141,74 @@ def test_quadratic_V_reference_frame():
         x = np.array([i * 0.5, i * 0.5])     # walk toward [5,5]
         mon.step(x, t=i * 1.0)
     assert mon.triggered is False
+
+
+def test_sre_error_budget_V_normalizes_latency_and_error_rate():
+    V_fn = sre_error_budget_V(
+        latency_target_ms=100.0,
+        latency_scale_ms=50.0,
+        error_rate_target=0.01,
+        error_rate_scale=0.02,
+    )
+
+    at_budget = V_fn(np.array([1200.0, 100.0, 0.01]))
+    latency_over = V_fn(np.array([1200.0, 150.0, 0.01]))
+    error_over = V_fn(np.array([1200.0, 100.0, 0.03]))
+    both_over = V_fn(np.array([1200.0, 150.0, 0.03]))
+
+    assert at_budget == 0.0
+    assert np.isclose(latency_over, 1.0)
+    assert np.isclose(error_over, 1.0)
+    assert np.isclose(both_over, 2.0)
+
+
+def test_sre_error_budget_V_ignores_under_budget_headroom():
+    V_fn = sre_error_budget_V(
+        latency_target_ms=100.0,
+        latency_scale_ms=50.0,
+        error_rate_target=0.01,
+        error_rate_scale=0.02,
+    )
+
+    assert V_fn(np.array([1200.0, 70.0, 0.0])) == 0.0
+
+
+def test_sre_error_budget_energy_improvement_does_not_trigger():
+    V_fn = sre_error_budget_V(
+        latency_target_ms=100.0,
+        latency_scale_ms=50.0,
+        error_rate_target=0.01,
+        error_rate_scale=0.02,
+    )
+    mon = StabilityMonitor(V_fn=V_fn, tolerance=1e-6, k_violations=2)
+
+    samples = [
+        np.array([1200.0, 160.0, 0.04]),
+        np.array([1200.0, 140.0, 0.03]),
+        np.array([1200.0, 120.0, 0.02]),
+        np.array([1200.0, 100.0, 0.01]),
+    ]
+    for i, sample in enumerate(samples):
+        mon.step(sample, t=float(i))
+
+    assert mon.triggered is False
+
+
+def test_sre_error_budget_energy_regression_triggers():
+    V_fn = sre_error_budget_V(
+        latency_target_ms=100.0,
+        latency_scale_ms=50.0,
+        error_rate_target=0.01,
+        error_rate_scale=0.02,
+    )
+    mon = StabilityMonitor(V_fn=V_fn, tolerance=1e-6, k_violations=2)
+
+    samples = [
+        np.array([1200.0, 100.0, 0.01]),
+        np.array([1200.0, 125.0, 0.015]),
+        np.array([1200.0, 150.0, 0.02]),
+    ]
+    for i, sample in enumerate(samples):
+        verdict = mon.step(sample, t=float(i))
+
+    assert verdict.triggered is True

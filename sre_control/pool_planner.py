@@ -18,6 +18,7 @@ the relaxation is lossless.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 
 from .events import make_event
 
@@ -38,6 +39,7 @@ class PoolCapacityPlanner:
     max_capacity: int = 200
     unit_cost: float = 1.0           # cost / (connection · second)
     horizon_seconds: float = 10.0
+    rps_per_conn: float = 100.0
 
     def plan(self, demand_rps_forecast: list[float]
              ) -> tuple[list[int], dict]:
@@ -53,7 +55,6 @@ class PoolCapacityPlanner:
         For the simple scalar case this has a closed form:
         ``sigma_k = clip(ceil(forecast_k / rps_per_conn), min, max)``.
         """
-        rps_per_conn = 100.0
         pool_plan = []
         total_cost = 0.0
         violations_baseline = 0
@@ -62,8 +63,9 @@ class PoolCapacityPlanner:
         local_states = ["relax"]
         clipped_slots = 0
         capacity_shortfall_rps = 0.0
+        at_capacity_slots = 0
         for rps in demand_rps_forecast:
-            demanded = rps / rps_per_conn
+            demanded = rps / self.rps_per_conn
             # baseline: either 0 or max_capacity (on/off) — this is the
             # non-convex "donut" behaviour we want to fix.
             baseline = 0 if rps < 1e-6 else self.max_capacity
@@ -73,14 +75,18 @@ class PoolCapacityPlanner:
 
             # after: lossless convex relaxation
             sigma = max(self.min_keep_alive,
-                        min(self.max_capacity, int(demanded) + 1))
+                        min(self.max_capacity, math.ceil(demanded)))
             if sigma == self.min_keep_alive and demanded < self.min_keep_alive:
                 if "keep_alive_floor" not in local_states:
                     local_states.append("keep_alive_floor")
-            shortfall = max(0.0, rps - self.max_capacity * rps_per_conn)
+            shortfall = max(0.0, rps - self.max_capacity * self.rps_per_conn)
             if shortfall > 0:
                 clipped_slots += 1
                 capacity_shortfall_rps += shortfall
+                if "clip" not in local_states:
+                    local_states.append("clip")
+            elif sigma == self.max_capacity and rps > 0:
+                at_capacity_slots += 1
                 if "clip" not in local_states:
                     local_states.append("clip")
             if 0 < sigma < self.min_keep_alive:
@@ -89,7 +95,7 @@ class PoolCapacityPlanner:
             total_cost += self.unit_cost * sigma
 
         events = []
-        if clipped_slots:
+        if clipped_slots or at_capacity_slots:
             events.append(make_event(
                 stage="PoolCapacityPlanner",
                 kind="pool_capacity_clipped",
@@ -101,6 +107,9 @@ class PoolCapacityPlanner:
                     "clip pool size at max_capacity and expose the "
                     "capacity shortfall"
                 ),
+                clipped_slots=clipped_slots,
+                capacity_shortfall_rps=capacity_shortfall_rps,
+                max_capacity=self.max_capacity,
             ))
 
         info = {
