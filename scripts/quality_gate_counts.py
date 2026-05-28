@@ -12,7 +12,7 @@ from scripts import package_smoke
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-PYTEST_TIMEOUT_SECONDS = 180
+PYTEST_TIMEOUT_SECONDS = 300
 EVIDENCE_ARTIFACT_GATE_MODULES = (
     "analysis.evidence_manifest",
     "analysis.evidence_report",

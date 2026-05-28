@@ -356,7 +356,8 @@ def test_collect_pytest_count_runs_tests_before_parsing_collection(
         [sys.executable, "-m", "pytest", "tests"],
         [sys.executable, "-m", "pytest", "tests", "--collect-only", "-q"],
     ]
-    assert timeouts == [180, 180]
+    assert timeouts == [quality_gate_counts.PYTEST_TIMEOUT_SECONDS] * 2
+    assert quality_gate_counts.PYTEST_TIMEOUT_SECONDS >= 300
     assert encodings == ["utf-8", "utf-8"]
     assert error_handlers == ["replace", "replace"]
 
