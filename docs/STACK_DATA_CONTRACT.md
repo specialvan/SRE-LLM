@@ -46,6 +46,14 @@ Current split-ready boundaries:
 3. `guard_to_allocate`
 4. `allocate_to_execute`
 
+## Input Constraints
+
+`SREControlStack.step(dt=...)` treats `dt` as the elapsed seconds for one
+control tick. The stack rejects non-numeric, boolean, non-finite, zero, and
+negative `dt` values with `AdapterInputError` before invoking any adapter, so a
+bad tick interval cannot mutate EKF state, trace history, tick index, or
+cumulative elapsed time.
+
 ## Action And Placement Semantics
 
 The `guard` stage emits `safe_action` as a guarded direction vector. The

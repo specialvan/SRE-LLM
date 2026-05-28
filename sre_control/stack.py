@@ -39,6 +39,7 @@ propagate. ``stability_violation`` is reserved for Lyapunov/stability red-lines.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from numbers import Real
 from typing import List, Optional, Sequence
 
 import numpy as np
@@ -162,6 +163,12 @@ class SREControlStack:
         """
         runtime_states = ["OBSERVING"]
         runtime_events = []
+
+        if isinstance(dt, bool) or not isinstance(dt, Real):
+            raise AdapterInputError('dt must be positive and finite')
+        dt = float(dt)
+        if not np.isfinite(dt) or dt <= 0.0:
+            raise AdapterInputError('dt must be positive and finite')
 
         # ========================= 1) OBSERVE =========================
         try:

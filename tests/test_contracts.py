@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from sre_control import (
+    AdapterInputError,
     CanaryScheduler,
     Instance,
     PredictiveAutoscaler,
@@ -63,6 +64,29 @@ def _make_stack():
         R=np.diag([25.0**2, 3.0**2]),
     )
     return stack, metrics
+
+
+@pytest.mark.parametrize('dt', [0.0, -1.0, np.nan, np.inf, -np.inf])
+def test_sre_stack_rejects_invalid_dt_before_mutating_tick_state(dt):
+    stack, metrics = _make_stack()
+    x_before = stack.fusion.state.copy()
+    p_before = stack.fusion.covariance.copy()
+
+    with pytest.raises(AdapterInputError, match='dt must be positive and finite'):
+        stack.step(
+            dt=dt,
+            sensor_readings=[(metrics, np.array([760.0, 28.0]))],
+            forecast_rps=800.0,
+            current_replicas=6,
+            zone_target=np.array([480.0, 320.0]),
+            nn_proposal=np.array([500.0, 50.0, 10.0]),
+        )
+
+    assert stack.trace == []
+    assert stack._tick_index == 0
+    assert stack._elapsed_time == 0.0
+    assert np.allclose(stack.fusion.state, x_before)
+    assert np.allclose(stack.fusion.covariance, p_before)
 
 
 def test_sre_stack_emits_a_jsonish_contract_trace():
