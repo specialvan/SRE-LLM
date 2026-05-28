@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 
 import pytest
@@ -24,6 +25,13 @@ EXPECTED_OPERATOR_ACTION_KINDS = {
     "stability_violation",
     "unsafe_proposal_projected",
 }
+
+
+def _artifact_digest(relative_path: str) -> str | None:
+    path = REPO_ROOT / relative_path
+    if not path.exists():
+        return None
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _assert_operator_actions_cover_expected_kinds(
@@ -78,8 +86,11 @@ def test_catch_allocation_report_keeps_residual_tradeoff_visible(seed: int) -> N
 
 
 @pytest.mark.parametrize("seed", [0])
-def test_catch_sre_wrapper_reports_residual_instead_of_hiding_capacity(seed: int) -> None:
-    result = s11_catch_sre_wrapper.main(seed=seed)
+def test_catch_sre_wrapper_reports_residual_instead_of_hiding_capacity(
+    seed: int, tmp_path
+) -> None:
+    before_digest = _artifact_digest("analysis/artifacts/s11_catch_sre_wrapper.png")
+    result = s11_catch_sre_wrapper.main(seed=seed, artifacts_dir=tmp_path)
 
     before = result["before"]
     after = result["after"]
@@ -89,11 +100,16 @@ def test_catch_sre_wrapper_reports_residual_instead_of_hiding_capacity(seed: int
     assert after["capacity_violation_pct"] == 0.0
     assert after["reported_residual_mean"] > 0.0
     assert after["event_visible_fraction"] == 1.0
+    assert (tmp_path / "s11_catch_sre_wrapper.png").exists()
+    assert _artifact_digest("analysis/artifacts/s11_catch_sre_wrapper.png") == before_digest
 
 
 @pytest.mark.parametrize("seed", [0])
-def test_catch_sre_wrapper_covers_feasible_overload_and_placement_cases(seed: int) -> None:
-    result = s11_catch_sre_wrapper.main(n_cases=9, seed=seed)
+def test_catch_sre_wrapper_covers_feasible_overload_and_placement_cases(
+    seed: int, tmp_path
+) -> None:
+    before_digest = _artifact_digest("analysis/artifacts/s11_catch_sre_wrapper.png")
+    result = s11_catch_sre_wrapper.main(n_cases=9, seed=seed, artifacts_dir=tmp_path)
     diagnostics = result["diagnostics"]
 
     case_counts = diagnostics["case_counts"]
@@ -108,6 +124,8 @@ def test_catch_sre_wrapper_covers_feasible_overload_and_placement_cases(seed: in
     assert diagnostics["feasible_quiet_fraction"] == 1.0
     assert diagnostics["total_overload_event_visible_fraction"] == 1.0
     assert diagnostics["placement_infeasible_event_visible_fraction"] == 1.0
+    assert (tmp_path / "s11_catch_sre_wrapper.png").exists()
+    assert _artifact_digest("analysis/artifacts/s11_catch_sre_wrapper.png") == before_digest
 
 
 def test_sre_replay_fixture_is_labeled_and_covers_expected_event_kinds() -> None:
