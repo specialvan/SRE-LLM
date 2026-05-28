@@ -6,7 +6,7 @@ with older review packets.
 
 ## Current Verified Baseline
 
-- Full test suite: `python -m pytest tests -q` passes with 483 tests in the
+- Full test suite: `python -m pytest tests -q` passes with 485 tests in the
   current workspace.
 - Analysis suite: `python -m analysis.run_all` completes all 12 studies and
   refreshes `analysis/artifacts/SUMMARY.txt`.
