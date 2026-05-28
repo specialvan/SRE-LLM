@@ -45,6 +45,14 @@ def _bullet_command_lines() -> str:
     )
 
 
+def _count_and_command_lines(count: int = 83) -> str:
+    return (
+        f"quality gate pytest count: {count}\n"
+        "python -m pytest tests -q\n"
+        + _command_lines()
+    )
+
+
 def _write_minimal_quality_gate_docs(root: Path) -> None:
     pr = root / "PR-REQUIREMENTS.md"
     html = root / "docs" / "V2_Knowledge" / "knowledge-base.html"
@@ -83,7 +91,8 @@ def _write_minimal_quality_gate_docs(root: Path) -> None:
         encoding="utf-8",
     )
     backlog.write_text(
-        "- Full test suite: `python -m pytest tests -q` passes with 83 tests\n",
+        "- Full test suite: `python -m pytest tests -q` passes with 83 tests\n"
+        + _command_lines(),
         encoding="utf-8",
     )
     evidence_ledger.write_text(
@@ -114,7 +123,7 @@ def _write_minimal_quality_gate_docs(root: Path) -> None:
         "quality gate pytest count: 83\n",
         encoding="utf-8",
     )
-    opus_handoff.write_text("quality gate pytest count: 83\n", encoding="utf-8")
+    opus_handoff.write_text(_count_and_command_lines(), encoding="utf-8")
 
 
 def test_parse_pytest_passed_count_supports_pytest_summary_formats():
@@ -267,6 +276,11 @@ def test_quality_gate_command_docs_include_development_audit_backlog():
         "docs/claude-development-audit/backlog.md"
         in quality_gate_counts.QUALITY_GATE_COMMAND_DOCS
     )
+
+
+def test_quality_gate_command_docs_include_live_review_ledgers():
+    assert "wiki/review-backlog.md" in quality_gate_counts.QUALITY_GATE_COMMAND_DOCS
+    assert "docs/opus-review/HANDOFF.md" in quality_gate_counts.QUALITY_GATE_COMMAND_DOCS
 
 
 def test_require_quality_gate_commands_reports_missing_doc_path():
@@ -980,7 +994,8 @@ quality-gates:
         encoding="utf-8",
     )
     backlog.write_text(
-        "- Full test suite: `python -m pytest tests -q` passes with 83 tests\n",
+        "- Full test suite: `python -m pytest tests -q` passes with 83 tests\n"
+        + _command_lines(),
         encoding="utf-8",
     )
     evidence_ledger.write_text(
@@ -1022,7 +1037,7 @@ quality-gates:
         "quality gate pytest count: 83\n",
         encoding="utf-8",
     )
-    opus_handoff.write_text("quality gate pytest count: 83\n", encoding="utf-8")
+    opus_handoff.write_text(_count_and_command_lines(), encoding="utf-8")
 
     update_quality_gate_docs(tmp_path)
 
@@ -1199,7 +1214,8 @@ historical snapshot: 51 passed
 - Full test suite: `python -m pytest tests -q` passes with 83 tests in the
   current workspace.
 - Historical note: 51 tests in an older packet.
-""".lstrip(),
+""".lstrip()
+        + _command_lines(),
         encoding="utf-8",
     )
     wiki_readme.write_text(
@@ -1254,7 +1270,8 @@ historical snapshot: 51 passed
         encoding="utf-8",
     )
     opus_handoff.write_text(
-        "quality gate pytest count: 83\n"
+        _count_and_command_lines()
+        +
         "historical snapshot: 51 passed\n",
         encoding="utf-8",
     )
@@ -1356,7 +1373,8 @@ quality-gates:
         encoding="utf-8",
     )
     backlog.write_text(
-        "- Full test suite: `python -m pytest tests -q` passes with 83 tests\n",
+        "- Full test suite: `python -m pytest tests -q` passes with 83 tests\n"
+        + _command_lines(),
         encoding="utf-8",
     )
     wiki_readme.write_text(
@@ -1392,7 +1410,7 @@ quality-gates:
         "quality gate pytest count: 83\n",
         encoding="utf-8",
     )
-    opus_handoff.write_text("quality gate pytest count: 83\n", encoding="utf-8")
+    opus_handoff.write_text(_count_and_command_lines(), encoding="utf-8")
 
     with pytest.raises(RuntimeError) as excinfo:
         update_quality_gate_docs(tmp_path, 85)
@@ -1407,9 +1425,12 @@ def test_update_quality_gate_docs_requires_manifest_report_gates(tmp_path: Path)
     pr = tmp_path / "PR-REQUIREMENTS.md"
     html = tmp_path / "docs" / "V2_Knowledge" / "knowledge-base.html"
     quality_gates = tmp_path / "docs" / "codex-review" / "QUALITY_GATES.md"
+    review_backlog = tmp_path / "wiki" / "review-backlog.md"
     audit_backlog = tmp_path / "docs" / "claude-development-audit" / "backlog.md"
     opus_packet = tmp_path / "docs" / "opus-review" / "OPUS_REVIEW_PACKET.md"
+    opus_handoff = tmp_path / "docs" / "opus-review" / "HANDOFF.md"
     html.parent.mkdir(parents=True)
+    review_backlog.parent.mkdir(parents=True)
     quality_gates.parent.mkdir(parents=True)
     audit_backlog.parent.mkdir(parents=True)
     opus_packet.parent.mkdir(parents=True)
@@ -1451,28 +1472,19 @@ quality-gates:
         encoding="utf-8",
     )
     audit_backlog.write_text(
-        "python -m pytest tests\n"
-        "python -m analysis.s10_failure_trace\n"
-        "python -m analysis.run_all\n"
-        "python -m analysis.evidence_manifest\n"
-        "python -m analysis.evidence_report\n"
-        "python -m scripts.control_center_integration_audit\n"
-        "python -m examples.demo_sre_loop\n"
-        "python -m examples.demo_powered_descent\n"
-        "python -m examples.demo_catch_phase\n",
+        _command_lines(),
         encoding="utf-8",
     )
     opus_packet.write_text(
-        "python -m pytest tests\n"
-        "python -m analysis.s10_failure_trace\n"
-        "python -m analysis.run_all\n"
-        "python -m analysis.evidence_manifest\n"
-        "python -m analysis.evidence_report\n"
-        "python -m scripts.control_center_integration_audit\n"
-        "python -m examples.demo_sre_loop\n"
-        "python -m examples.demo_powered_descent\n"
-        "python -m examples.demo_catch_phase\n"
+        _command_lines()
+        +
         "quality gate pytest count: 83\n",
+        encoding="utf-8",
+    )
+    opus_handoff.write_text(_count_and_command_lines(), encoding="utf-8")
+    review_backlog.write_text(
+        "- Full test suite: `python -m pytest tests -q` passes with 83 tests\n"
+        + _command_lines(),
         encoding="utf-8",
     )
 

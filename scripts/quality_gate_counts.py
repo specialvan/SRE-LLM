@@ -67,7 +67,9 @@ QUALITY_GATE_COMMAND_DOCS = (
     "docs/V2_Knowledge/knowledge-base.html",
     "docs/codex-review/QUALITY_GATES.md",
     "docs/claude-development-audit/backlog.md",
+    "docs/opus-review/HANDOFF.md",
     "docs/opus-review/OPUS_REVIEW_PACKET.md",
+    "wiki/review-backlog.md",
 )
 
 

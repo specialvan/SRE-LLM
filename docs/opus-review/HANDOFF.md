@@ -89,6 +89,8 @@
 python -m pytest tests -q
 python -u -m scripts.quality_gate_counts
 python -m scripts.quality_gate_counts --check --skip-expensive
+python -m analysis.s10_failure_trace
+python -m analysis.run_all
 python -m analysis.evidence_manifest
 python -m analysis.evidence_report
 python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json
@@ -103,7 +105,7 @@ python -m examples.demo_catch_phase
 当前文档同步目标中的关键输出：
 
 ```text
-quality gate pytest count: 485
+quality gate pytest count: 486
 artifact_check ok studies=3 files=8
 manifest_replay=normal+backend_error+frontend_error
 control-center integration audit ok

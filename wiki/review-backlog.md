@@ -6,7 +6,7 @@ with older review packets.
 
 ## Current Verified Baseline
 
-- Full test suite: `python -m pytest tests -q` passes with 485 tests in the
+- Full test suite: `python -m pytest tests -q` passes with 486 tests in the
   current workspace.
 - Analysis suite: `python -m analysis.run_all` completes all 12 studies and
   refreshes `analysis/artifacts/SUMMARY.txt`.
@@ -657,6 +657,7 @@ python -m analysis.evidence_report
 python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json
 python -m scripts.package_smoke
 python -m scripts.control_center_integration_audit
+python -m scripts.review_authority_lint
 python -m examples.demo_sre_loop
 python -m examples.demo_powered_descent
 python -m examples.demo_catch_phase
