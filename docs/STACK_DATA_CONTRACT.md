@@ -54,6 +54,13 @@ negative `dt` values with `AdapterInputError` before invoking any adapter, so a
 bad tick interval cannot mutate EKF state, trace history, tick index, or
 cumulative elapsed time.
 
+`PredictiveAutoscaler.step(...)` rejects non-finite or negative
+`observed_rps`/`forecast_rps`, and rejects boolean, fractional, or negative
+`current_replicas`. Through `SREControlStack.step(...)`, those plan-stage
+adapter-input failures become `adapter_exception` events with
+`fallback_action=keep_current_replicas`, rather than letting invalid metrics
+flow into the MPC solve or downstream allocation stage.
+
 ## Action And Placement Semantics
 
 The `guard` stage emits `safe_action` as a guarded direction vector. The

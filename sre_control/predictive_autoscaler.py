@@ -22,10 +22,12 @@ as the replicas approach their hard cap.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from numbers import Integral
 import numpy as np
 
 from starship.mpc import LinearDiscretizer, QuadraticMPC
 from .events import make_event
+from .exceptions import AdapterInputError
 
 
 @dataclass
@@ -75,6 +77,26 @@ class PredictiveAutoscaler:
         The MPC returns a ``u`` ∈ [-max_step, +max_step] we round to
         the nearest integer and bound to [min, max].
         """
+        if (
+            isinstance(current_replicas, bool)
+            or not isinstance(current_replicas, Integral)
+            or int(current_replicas) < 0
+        ):
+            raise AdapterInputError(
+                'current_replicas must be a non-negative integer'
+            )
+        current_replicas = int(current_replicas)
+        if isinstance(observed_rps, bool):
+            raise AdapterInputError('observed_rps must be non-negative and finite')
+        observed_rps = float(observed_rps)
+        if not np.isfinite(observed_rps) or observed_rps < 0.0:
+            raise AdapterInputError('observed_rps must be non-negative and finite')
+        if isinstance(forecast_rps, bool):
+            raise AdapterInputError('forecast_rps must be non-negative and finite')
+        forecast_rps = float(forecast_rps)
+        if not np.isfinite(forecast_rps) or forecast_rps < 0.0:
+            raise AdapterInputError('forecast_rps must be non-negative and finite')
+
         # Shift the reference into the error frame: we want the plant's
         # rps_served to match the forecast.
         target_replicas = forecast_rps / self.per_replica_rps

@@ -574,6 +574,36 @@ def test_sre_stack_autoscaler_fallback_overwrites_last_trace():
     assert "autoscaler explosion" in stack.autoscaler.last_trace["fallback_reason"]
 
 
+def test_sre_stack_handles_invalid_forecast_as_plan_adapter_input_error():
+    stack, metrics = _make_stack()
+
+    entry = stack.step(
+        dt=5.0,
+        sensor_readings=[(metrics, np.array([750.0, 28.0]))],
+        forecast_rps=np.nan,
+        current_replicas=6,
+        zone_target=np.array([480.0, 320.0]),
+        nn_proposal=np.array([500.0, 50.0, 10.0]),
+    )
+
+    assert entry['replicas_next'] == 6
+    assert 'DEGRADED_PLAN' in entry['runtime']['states']
+    event = next(
+        e
+        for e in entry['runtime']['events']
+        if e['kind'] == 'adapter_exception'
+        and e['stage'] == 'PredictiveAutoscaler'
+    )
+    assert event['exception_type'] == 'AdapterInputError'
+    assert event['cause_type'] == 'adapter_input'
+    assert event['fallback_action'] == 'keep_current_replicas'
+    assert stack.autoscaler.last_trace['fallback'] is True
+    assert 'forecast_rps must be non-negative and finite' in (
+        stack.autoscaler.last_trace['fallback_reason']
+    )
+    json.dumps(entry, allow_nan=False)
+
+
 def test_sre_stack_reuses_last_successful_alloc_shares_on_recoverable_balancer_error():
     from sre_control import RecoverableControlError, WeightedLoadBalancer
 

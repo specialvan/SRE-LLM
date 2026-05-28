@@ -698,6 +698,41 @@ def test_autoscaler_internal_plant_matches_executor_step_units():
         assert model_next_replicas == pytest.approx(executor_next_replicas)
 
 
+@pytest.mark.parametrize(
+    ('field', 'value', 'match'),
+    [
+        ('observed_rps', np.nan, 'observed_rps must be non-negative and finite'),
+        ('observed_rps', np.inf, 'observed_rps must be non-negative and finite'),
+        ('observed_rps', -1.0, 'observed_rps must be non-negative and finite'),
+        ('forecast_rps', np.nan, 'forecast_rps must be non-negative and finite'),
+        ('forecast_rps', np.inf, 'forecast_rps must be non-negative and finite'),
+        ('forecast_rps', -1.0, 'forecast_rps must be non-negative and finite'),
+        ('current_replicas', -1, 'current_replicas must be a non-negative integer'),
+        ('current_replicas', 1.5, 'current_replicas must be a non-negative integer'),
+        ('current_replicas', True, 'current_replicas must be a non-negative integer'),
+    ],
+)
+def test_autoscaler_rejects_invalid_runtime_inputs_without_trace_mutation(
+    field, value, match
+):
+    asc = PredictiveAutoscaler(
+        per_replica_rps=100.0, replicas_min=1, replicas_max=50,
+        max_step=5, dt=5.0, horizon=2,
+    )
+    asc.last_trace = {'previous': True}
+    kwargs = {
+        'current_replicas': 5,
+        'observed_rps': 500.0,
+        'forecast_rps': 600.0,
+    }
+    kwargs[field] = value
+
+    with pytest.raises(AdapterInputError, match=match):
+        asc.step(**kwargs)
+
+    assert asc.last_trace == {'previous': True}
+
+
 # ---------------------------------------------------------------------------
 # §7 FastTrafficSwitcher
 # ---------------------------------------------------------------------------
