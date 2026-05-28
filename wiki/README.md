@@ -19,10 +19,10 @@ conflict with historical review packets.
 
 | Document | Purpose |
 |---|---|
+| [`docs/codex-review/OPEN_RISKS.md`](../docs/codex-review/OPEN_RISKS.md) | Current live risk register and next research-slice boundary |
+| [`wiki/review-backlog.md`](./review-backlog.md) | Current completed/open review state and evidence index |
 | [`docs/V2_Knowledge/knowledge-base.html`](../docs/V2_Knowledge/knowledge-base.html) | Canonical current HTML knowledge-base entry |
 | [`docs/codex-review/ENGINEERING_PACKET.md`](../docs/codex-review/ENGINEERING_PACKET.md) | Offline engineering packet and review context |
-| [`claude-review/docs/v2026-05-28/README.md`](../claude-review/docs/v2026-05-28/README.md) | Opus v2.1 continuation review (2026-05-28): F61-F81 and browser evidence / quality-gate follow-up |
-| [`claude-review/docs/v2026-05-26/README.md`](../claude-review/docs/v2026-05-26/README.md) | Opus v2.0 深度评审报告（2026-05-26）：quality gates 复跑、v1.0 resolved 项 spot-check、新发现 F50–F60 与 G1 |
 | [`docs/control-center.html`](../docs/control-center.html) | Control-center frontend consuming real Python control-stack JSON payloads |
 | [`docs/CONTROL_CENTER_HANDOFF.md`](../docs/CONTROL_CENTER_HANDOFF.md) | Locked black-gold OpenDesign control-center style and interaction handoff |
 | [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) | Layering, dependency direction, and runtime chain |
@@ -30,6 +30,8 @@ conflict with historical review packets.
 | [`docs/EVENT_SCHEMA.md`](../docs/EVENT_SCHEMA.md) | Runtime event schema and counterexamples |
 | [`docs/RUNTIME_STATES.md`](../docs/RUNTIME_STATES.md) | Stack/module runtime states and degraded-state propagation |
 | [`docs/claude-development-audit/backlog.md`](../docs/claude-development-audit/backlog.md) | Current audit ledger with resolved/watch state |
+| [`claude-review/docs/v2026-05-28/README.md`](../claude-review/docs/v2026-05-28/README.md) | Historical Opus v2.1 continuation review context |
+| [`claude-review/docs/v2026-05-26/README.md`](../claude-review/docs/v2026-05-26/README.md) | Historical Opus v2.0 review context |
 
 `docs/codex-review/CLAUDE_REFINED_SPEC.md` remains useful historical rationale,
 but some sections describe work that is already implemented. Use the review

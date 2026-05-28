@@ -596,6 +596,10 @@ Evidence:
   `wiki/review-backlog.md` before `docs/opus-review/OPUS_REVIEW_PACKET.md` and
   older Claude/Opus packets in its reviewer flow, and the order is covered by a
   regression test so historical packets do not become the first authority again.
+- `wiki/README.md` now lists `docs/codex-review/OPEN_RISKS.md` and
+  `wiki/review-backlog.md` before historical Claude/Opus review packets in the
+  current recommended entries table, with a regression test covering that wiki
+  entry order.
 - `scripts.evidence_boundary_lint.PUBLIC_EVIDENCE_BOUNDARY_DOCS` includes
   `docs/opus-review/README.md` and `docs/opus-review/HANDOFF.md`, so the Opus
   first-read surface is linted for unqualified production-readiness, production

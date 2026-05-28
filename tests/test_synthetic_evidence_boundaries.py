@@ -354,6 +354,22 @@ def test_opus_handoff_reads_current_ledgers_before_historical_packets() -> None:
     assert section.index(current_risk) < section.index(old_opus_review)
 
 
+def test_wiki_recommended_entries_put_current_ledgers_before_historical_reviews() -> None:
+    text = (REPO_ROOT / "wiki/README.md").read_text(encoding="utf-8")
+    section = text.split("## Current Recommended Entries", 1)[1].split(
+        "## Current Baseline", 1
+    )[0]
+
+    open_risks = "docs/codex-review/OPEN_RISKS.md"
+    review_backlog = "wiki/review-backlog.md"
+    old_opus_review = "claude-review/docs/v2026-05-28/README.md"
+
+    assert open_risks in section
+    assert review_backlog in section
+    assert section.index(open_risks) < section.index(old_opus_review)
+    assert section.index(review_backlog) < section.index(old_opus_review)
+
+
 def test_development_audit_backlog_tracks_current_review_state() -> None:
     text = (REPO_ROOT / "docs/claude-development-audit/backlog.md").read_text(
         encoding="utf-8"
