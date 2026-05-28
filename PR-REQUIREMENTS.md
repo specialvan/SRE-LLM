@@ -17,7 +17,7 @@ invariants:
   - I-4 文档不钉死 HEAD：不得在文档里写"最新 commit = <具体 SHA>"，用"近期日志包含 <关键 commit>"表达
   - I-5 adapter 异常不崩栈：任何 SREControlStack 阶段抛出 `RecoverableControlError` 必须转为 `adapter_exception` event + `DEGRADED_<stage>`；`stability_violation` 仅保留给 Lyapunov / 稳定性红线
 quality-gates:
-  - python -m pytest tests          # 489 passed
+  - python -m pytest tests          # 494 passed
   - python -m analysis.s10_failure_trace
   - python -m analysis.run_all      # 12 studies finish <4s
   - python -m analysis.evidence_manifest
@@ -75,7 +75,7 @@ event-kinds-total: 11
 
 | Gate | 命令 | 预期 |
 |---|---|---|
-| 单元测试 | `python -m pytest tests` | **489 passed** |
+| 单元测试 | `python -m pytest tests` | **494 passed** |
 | Section 10 trace | `python -m analysis.s10_failure_trace` | full/sample JSONL trace artifacts exported |
 | 基准证据 | `python -m analysis.run_all` | All 12 studies finish in ~3 s |
 | 事件证据 manifest | `python -m analysis.evidence_manifest` | S10/S11/S12 JSON/JSONL evidence + stack contract exported |
