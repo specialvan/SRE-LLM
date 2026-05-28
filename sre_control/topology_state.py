@@ -29,6 +29,7 @@ import numpy as np
 
 from starship.quaternion import Quaternion, integrate_quaternion
 
+from .exceptions import AdapterInputError
 from .events import make_event
 
 
@@ -57,6 +58,18 @@ class TopologyState:
     def step(self, velocity: Sequence[float],
              angular_velocity: Sequence[float], dt: float) -> dict:
         """Advance (position, q) by one dt using the quaternion exp-map."""
+        if isinstance(dt, bool):
+            raise AdapterInputError('dt must be positive and finite')
+        dt = float(dt)
+        if not np.isfinite(dt) or dt <= 0.0:
+            raise AdapterInputError('dt must be positive and finite')
+        velocity_arr = np.asarray(velocity, dtype=float)
+        if not np.isfinite(velocity_arr).all():
+            raise AdapterInputError('non-finite topology velocity')
+        angular_velocity_arr = np.asarray(angular_velocity, dtype=float)
+        if not np.isfinite(angular_velocity_arr).all():
+            raise AdapterInputError('non-finite angular velocity')
+
         events = []
         local_states = []
 
@@ -101,8 +114,8 @@ class TopologyState:
         else:
             self.q = q
 
-        self.position = self.position + np.asarray(velocity, dtype=float) * dt
-        self.omega = np.asarray(angular_velocity, dtype=float)
+        self.position = self.position + velocity_arr * dt
+        self.omega = angular_velocity_arr
         self.q = integrate_quaternion(self.q, self.omega, dt)
         local_states.append("integrate")
         return {

@@ -204,6 +204,40 @@ def test_topology_ring_angle_wraps_to_principal_interval(angle):
     assert wrapped == pytest.approx(((angle + np.pi) % (2 * np.pi)) - np.pi)
 
 
+@pytest.mark.parametrize(
+    ('kwargs', 'match'),
+    [
+        ({'dt': 0.0}, 'dt must be positive and finite'),
+        ({'dt': -0.1}, 'dt must be positive and finite'),
+        ({'dt': np.nan}, 'dt must be positive and finite'),
+        ({'velocity': [np.nan, 0.0, 0.0]}, 'non-finite topology velocity'),
+        ({'angular_velocity': [0.0, np.inf, 0.0]}, 'non-finite angular velocity'),
+    ],
+)
+def test_topology_state_rejects_invalid_step_inputs_without_mutation(kwargs, match):
+    ts = TopologyState(
+        position=np.array([1.0, 2.0, 3.0]),
+        q=np.array([1.0, 0.0, 0.0, 0.0]),
+        omega=np.array([0.01, 0.02, 0.03]),
+    )
+    before_position = ts.position.copy()
+    before_q = ts.q.copy()
+    before_omega = ts.omega.copy()
+    call = {
+        'velocity': [0.1, 0.2, 0.3],
+        'angular_velocity': [0.01, 0.02, 0.03],
+        'dt': 0.05,
+    }
+    call.update(kwargs)
+
+    with pytest.raises(AdapterInputError, match=match):
+        ts.step(**call)
+
+    assert np.allclose(ts.position, before_position)
+    assert np.allclose(ts.q, before_q)
+    assert np.allclose(ts.omega, before_omega)
+
+
 # ---------------------------------------------------------------------------
 # §4 SLOGuardrail
 # ---------------------------------------------------------------------------

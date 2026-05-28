@@ -91,6 +91,7 @@ Public surface:
 
 Contract:
 
+- `step` rejects non-positive/non-finite `dt` and non-finite `velocity` or `angular_velocity` with `AdapterInputError` before mutating `position`, `q`, or `omega`.
 - `q` 始终按 unit quaternion 理解。
 - `step` 之后姿态应保持在单位球附近。
 - `step()["events"]` 必须在输入 quaternion 被 reset / renormalize 时报告 `topology_state_repaired`。
