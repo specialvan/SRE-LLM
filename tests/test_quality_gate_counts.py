@@ -57,6 +57,7 @@ def _write_minimal_quality_gate_docs(root: Path) -> None:
     engineering_packet = root / "docs" / "codex-review" / "ENGINEERING_PACKET.md"
     audit_backlog = root / "docs" / "claude-development-audit" / "backlog.md"
     opus_packet = root / "docs" / "opus-review" / "OPUS_REVIEW_PACKET.md"
+    opus_handoff = root / "docs" / "opus-review" / "HANDOFF.md"
     html.parent.mkdir(parents=True)
     backlog.parent.mkdir(parents=True)
     codex_summary.parent.mkdir(parents=True)
@@ -113,6 +114,7 @@ def _write_minimal_quality_gate_docs(root: Path) -> None:
         "quality gate pytest count: 83\n",
         encoding="utf-8",
     )
+    opus_handoff.write_text("quality gate pytest count: 83\n", encoding="utf-8")
 
 
 def test_parse_pytest_passed_count_supports_pytest_summary_formats():
@@ -151,6 +153,7 @@ def test_quality_gate_targets_are_data_driven_with_unique_labels():
     assert "PR-REQUIREMENTS.md" in paths
     assert "docs/V2_Knowledge/knowledge-base.html" in paths
     assert "docs/codex-review/QUALITY_GATES.md" in paths
+    assert "docs/opus-review/HANDOFF.md" in paths
     assert "docs/opus-review/OPUS_REVIEW_PACKET.md" in paths
     assert all(target.pattern for target in QUALITY_GATE_TARGETS)
     assert all(target.replacement_template for target in QUALITY_GATE_TARGETS)
@@ -871,6 +874,7 @@ def test_update_quality_gate_docs_runs_evidence_gates_after_pytest_count(
     engineering_packet = tmp_path / "docs" / "codex-review" / "ENGINEERING_PACKET.md"
     audit_backlog = tmp_path / "docs" / "claude-development-audit" / "backlog.md"
     opus_packet = tmp_path / "docs" / "opus-review" / "OPUS_REVIEW_PACKET.md"
+    opus_handoff = tmp_path / "docs" / "opus-review" / "HANDOFF.md"
     html.parent.mkdir(parents=True)
     backlog.parent.mkdir(parents=True)
     codex_summary.parent.mkdir(parents=True)
@@ -962,6 +966,7 @@ quality-gates:
         "quality gate pytest count: 83\n",
         encoding="utf-8",
     )
+    opus_handoff.write_text("quality gate pytest count: 83\n", encoding="utf-8")
 
     update_quality_gate_docs(tmp_path)
 
@@ -1067,6 +1072,7 @@ def test_update_quality_gate_docs_updates_only_current_fields(tmp_path: Path):
     engineering_packet = tmp_path / "docs" / "codex-review" / "ENGINEERING_PACKET.md"
     audit_backlog = tmp_path / "docs" / "claude-development-audit" / "backlog.md"
     opus_packet = tmp_path / "docs" / "opus-review" / "OPUS_REVIEW_PACKET.md"
+    opus_handoff = tmp_path / "docs" / "opus-review" / "HANDOFF.md"
     html.parent.mkdir(parents=True)
     backlog.parent.mkdir(parents=True)
     codex_summary.parent.mkdir(parents=True)
@@ -1175,6 +1181,11 @@ historical snapshot: 51 passed
         "historical snapshot: 51 passed\n",
         encoding="utf-8",
     )
+    opus_handoff.write_text(
+        "quality gate pytest count: 83\n"
+        "historical snapshot: 51 passed\n",
+        encoding="utf-8",
+    )
 
     update_quality_gate_docs(tmp_path, 85)
 
@@ -1188,6 +1199,7 @@ historical snapshot: 51 passed
     quality_gates_text = quality_gates.read_text(encoding="utf-8")
     engineering_packet_text = engineering_packet.read_text(encoding="utf-8")
     opus_packet_text = opus_packet.read_text(encoding="utf-8")
+    opus_handoff_text = opus_handoff.read_text(encoding="utf-8")
     assert "# 85 passed" in pr_text
     assert "**85 passed**" in pr_text
     assert "historical snapshot: 51 passed" in pr_text
@@ -1210,6 +1222,8 @@ historical snapshot: 51 passed
     assert "historical snapshot: 51 passed" in engineering_packet_text
     assert "quality gate pytest count: 85" in opus_packet_text
     assert "historical snapshot: 51 passed" in opus_packet_text
+    assert "quality gate pytest count: 85" in opus_handoff_text
+    assert "historical snapshot: 51 passed" in opus_handoff_text
 
 
 def test_update_quality_gate_docs_does_not_partially_write_on_replacement_failure(
@@ -1226,6 +1240,7 @@ def test_update_quality_gate_docs_does_not_partially_write_on_replacement_failur
     engineering_packet = tmp_path / "docs" / "codex-review" / "ENGINEERING_PACKET.md"
     audit_backlog = tmp_path / "docs" / "claude-development-audit" / "backlog.md"
     opus_packet = tmp_path / "docs" / "opus-review" / "OPUS_REVIEW_PACKET.md"
+    opus_handoff = tmp_path / "docs" / "opus-review" / "HANDOFF.md"
     html.parent.mkdir(parents=True)
     backlog.parent.mkdir(parents=True)
     codex_summary.parent.mkdir(parents=True)
@@ -1303,6 +1318,7 @@ quality-gates:
         "quality gate pytest count: 83\n",
         encoding="utf-8",
     )
+    opus_handoff.write_text("quality gate pytest count: 83\n", encoding="utf-8")
 
     with pytest.raises(RuntimeError) as excinfo:
         update_quality_gate_docs(tmp_path, 85)

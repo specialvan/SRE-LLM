@@ -165,6 +165,12 @@ QUALITY_GATE_TARGETS = (
         "quality gate pytest count: {count}",
         "Opus packet pytest baseline",
     ),
+    QualityGateTarget(
+        "docs/opus-review/HANDOFF.md",
+        r"quality gate pytest count: \d+",
+        "quality gate pytest count: {count}",
+        "Opus handoff pytest baseline",
+    ),
 )
 
 
