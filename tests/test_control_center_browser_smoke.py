@@ -163,6 +163,15 @@ def test_control_center_browser_smoke_exposes_real_browser_assertions():
 
 
 
+def test_write_dom_dump_normalizes_line_endings(tmp_path):
+    smoke = importlib.import_module("scripts.control_center_browser_smoke")
+    path = tmp_path / "dom.html"
+
+    smoke.write_dom_dump(path, "<p>a</p>\r\n<p>b</p>\r<p>c</p>\n")
+
+    assert path.read_bytes() == b"<p>a</p>\n<p>b</p>\n<p>c</p>\n"
+
+
 def test_write_evidence_manifest_records_artifacts(tmp_path):
     smoke = importlib.import_module("scripts.control_center_browser_smoke")
     api = tmp_path / "api.json"

@@ -374,7 +374,7 @@
     ],
     "version": "control-center.v1"
   },
-  "generated_at": "2026-05-28T18:12:34.593311+00:00",
+  "generated_at": "2026-05-28T19:50:57.020430+00:00",
   "hero": {
     "subtitle": "基于 OpenDesign dashboard 设计系统，把 8 个控制算法、运行时遥测和前后收益打到同一个可交互决策屏。",
     "theme": "OpenDesign 现代任务控制台",

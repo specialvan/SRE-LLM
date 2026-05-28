@@ -8,9 +8,9 @@
     "timeline_fields": 14,
     "top_level": 11
   },
-  "error_viewport": "desktop:1440x960:dom107555",
+  "error_viewport": "desktop:1440x960:dom107235",
   "frontend_api_url": "/api/control-center",
-  "frontend_error_viewport": "desktop:1440x960:dom107537",
+  "frontend_error_viewport": "desktop:1440x960:dom107217",
   "health_status": "ok",
   "manifest_paths": {
     "backend_error": "analysis/artifacts/control-center-browser-error-smoke-manifest.json",
@@ -21,22 +21,22 @@
     "backend_error": {
       "bytes": 680,
       "path": "analysis/artifacts/control-center-browser-error-smoke-manifest.json",
-      "sha256": "4a544563053e717add16b1896da53ffe8d1683bc170a6c5ac3ca2666388ea303"
+      "sha256": "7e7a2d1bd95be9e08cff9a910f17d3f16aa5e393e6321be074ab85041c5c76f2"
     },
     "frontend_error": {
       "bytes": 707,
       "path": "analysis/artifacts/control-center-browser-frontend-error-smoke-manifest.json",
-      "sha256": "9b367c0baed9e42853680e62eb84f3ab493d24c5e58e38eece1d042ca3fbf371"
+      "sha256": "884f54d7a3e31cc0a4b0f5e4361d68fe25de926ec1fde36e2b71f95bff32f7c1"
     },
     "normal": {
       "bytes": 2727,
       "path": "analysis/artifacts/control-center-browser-smoke-manifest.json",
-      "sha256": "f917bbf89479d007d9e12c764bd7bec80f61428ed5d27b2a4afd936b5db2e27e"
+      "sha256": "e6b85543218d489eb2d0af7079d3871e198e7f45b83d2f5efffb9ceac75708ec"
     }
   },
   "normal_viewports": [
-    "desktop:1440x960:dom148445",
-    "mobile:390x844:dom148445"
+    "desktop:1440x960:dom148125",
+    "mobile:390x844:dom148125"
   ],
   "timeline": "12 rows / 12 ticks / 23 events"
 }

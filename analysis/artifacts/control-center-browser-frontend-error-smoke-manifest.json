@@ -1,21 +1,21 @@
 {
   "dom_dump": {
-    "bytes": 107537,
+    "bytes": 107217,
     "path": "analysis/artifacts/control-center-browser-frontend-error-smoke-desktop.html",
-    "sha256": "da87a6c8178f39f88f242b5f43bbd5a463ae11f23dc12fd7c92994b450cfd122"
+    "sha256": "d20fa26c2256f28fcccd484cc51333d847ca2a2f46650a3f3eb1101d5bf80b64"
   },
   "mode": "frontend-contract-error",
   "screenshot": {
-    "bytes": 415078,
+    "bytes": 415071,
     "path": "analysis/artifacts/control-center-browser-frontend-error-smoke-desktop.png",
     "png": {
       "blank": false,
       "height": 960,
       "width": 1440
     },
-    "sha256": "225cfcac2c2f683972d6879e1794b7f3c01a9b4edca7ab6fdb02a2ad8c7efa04"
+    "sha256": "6d53407a9c563ad552dd8e2f65a55ac6aef2cf99afb3bfb95fc68576b19f8383"
   },
-  "url": "http://127.0.0.1:52430/control-center",
+  "url": "http://127.0.0.1:52750/control-center",
   "viewport": {
     "height": 960,
     "name": "desktop",

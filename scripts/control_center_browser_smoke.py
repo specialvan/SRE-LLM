@@ -73,6 +73,12 @@ REQUIRED_SELECTORS = [
     "#capacity-budget-list .capacity-item",
 ]
 
+def write_dom_dump(path: Path, html: str) -> None:
+    """Write browser DOM evidence with stable LF line endings."""
+    normalized = html.replace("\r\n", "\n").replace("\r", "\n")
+    path.write_text(normalized, encoding="utf-8", newline="\n")
+
+
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -755,7 +761,7 @@ def _run_browser_smoke(
         if errors:
             raise AssertionError(f"browser console errors: {errors}")
         dom = page.content()
-        dom_dump_path.write_text(dom, encoding="utf-8")
+        write_dom_dump(dom_dump_path, dom)
         _assert_dumped_dom(dom, payload)
         page.screenshot(path=str(screenshot_path), full_page=True)
         browser.close()
@@ -979,7 +985,7 @@ def _run_system_browser_smoke(
             f"exit={result.returncode} stderr={stderr.strip()}"
         )
 
-    dom_dump_path.write_text(stdout, encoding="utf-8")
+    write_dom_dump(dom_dump_path, stdout)
     _assert_dumped_dom(stdout, payload)
     if not screenshot_path.exists() or screenshot_path.stat().st_size == 0:
         raise AssertionError(f"screenshot was not written: {screenshot_path}")
@@ -1047,7 +1053,7 @@ def _run_system_browser_frontend_contract_smoke(
             f"exit={result.returncode} stderr={stderr.strip()}"
         )
 
-    dom_dump_path.write_text(stdout, encoding="utf-8")
+    write_dom_dump(dom_dump_path, stdout)
     _assert_frontend_contract_error_dom(stdout)
     if not screenshot_path.exists() or screenshot_path.stat().st_size == 0:
         raise AssertionError(f"screenshot was not written: {screenshot_path}")
@@ -1092,7 +1098,7 @@ def _run_system_browser_error_smoke(
             f"exit={result.returncode} stderr={stderr.strip()}"
         )
 
-    dom_dump_path.write_text(stdout, encoding="utf-8")
+    write_dom_dump(dom_dump_path, stdout)
     _assert_error_dom(stdout)
     if not screenshot_path.exists() or screenshot_path.stat().st_size == 0:
         raise AssertionError(f"screenshot was not written: {screenshot_path}")

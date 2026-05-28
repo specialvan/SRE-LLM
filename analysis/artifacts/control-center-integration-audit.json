@@ -17,7 +17,7 @@
     "timeline_rows": 12
   },
   "browser_evidence": {
-    "backend_error_viewport": "desktop:1440x960:dom107555",
+    "backend_error_viewport": "desktop:1440x960:dom107235",
     "contract": "control-center.v1 @ /api/control-center",
     "contract_depth": {
       "array_item_fields": 36,
@@ -27,7 +27,7 @@
       "timeline_fields": 14,
       "top_level": 11
     },
-    "frontend_error_viewport": "desktop:1440x960:dom107537",
+    "frontend_error_viewport": "desktop:1440x960:dom107217",
     "manifest_paths": {
       "backend_error": "analysis/artifacts/control-center-browser-error-smoke-manifest.json",
       "frontend_error": "analysis/artifacts/control-center-browser-frontend-error-smoke-manifest.json",
@@ -35,19 +35,19 @@
     },
     "manifest_records": "normal+backend_error+frontend_error",
     "normal_viewports": [
-      "desktop:1440x960:dom148445",
-      "mobile:390x844:dom148445"
+      "desktop:1440x960:dom148125",
+      "mobile:390x844:dom148125"
     ]
   },
   "contract": {
     "api_path": "/api/control-center",
     "version": "control-center.v1"
   },
-  "generated_at": "2026-05-28T18:53:03.163108+00:00",
+  "generated_at": "2026-05-28T19:52:27.660903+00:00",
   "package_smoke": {
     "contract_depth": "top_level:11 object_groups:5 object_fields:21 array_item_groups:7 array_item_fields:36 timeline_fields:14",
     "manifest_replay": "normal+backend_error+frontend_error",
-    "summary": "control-center.v1 @ /api/control-center; desktop+mobile; error=desktop:1440x960:dom107555; frontend_error=desktop:1440x960:dom107537; manifest_records=normal+backend_error+frontend_error; manifest_replay=normal+backend_error+frontend_error; contract_depth=top_level:11 object_groups:5 object_fields:21 array_item_groups:7 array_item_fields:36 timeline_fields:14"
+    "summary": "control-center.v1 @ /api/control-center; desktop+mobile; error=desktop:1440x960:dom107235; frontend_error=desktop:1440x960:dom107217; manifest_records=normal+backend_error+frontend_error; manifest_replay=normal+backend_error+frontend_error; contract_depth=top_level:11 object_groups:5 object_fields:21 array_item_groups:7 array_item_fields:36 timeline_fields:14"
   },
   "source_artifacts": {
     "browser_api_snapshot": "analysis/artifacts/control-center-browser-smoke-api.json",
