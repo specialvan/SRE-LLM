@@ -45,6 +45,11 @@
 | `3fb5464` | 控制中心集成审计可复现 | `generated_at` 是否不再污染工作区，连续写出是否稳定 |
 | `1da8e3f` | S11 wrapper 图像刷新 | S11 图像是否与当前生成器输出一致 |
 | `bf63c43` | Opus handoff 与 475 gate 计数同步 | 本交接入口、Opus/Codex/wiki 计数和证据资产是否一致 |
+| `7a99411` | 中文化 Opus 复审交接入口 | 首读顺序、边界说明和提交分组是否便于 Opus 直接复审 |
+| `77540c3` | 隔离 Section 11 测试产物写入 | 全量 pytest 后是否不再把 canonical S11 证据图污染成测试图 |
+| `9b0c88d` | Opus 交接入口纳入证据边界 lint | `HANDOFF.md` / Opus README 是否被 R1 synthetic evidence boundary 防线覆盖 |
+| `3198d8e` | Opus handoff 测试计数同步 | `quality_gate_counts` 是否会同步 `HANDOFF.md` 里的 pytest count |
+| `b5c950d` | pytest 质量门超时余量 | 当前 full-suite 复跑是否有足够 timeout headroom，避免复审机器抖动误超时 |
 
 后续 handoff 修订应只包含评审入口和计数同步，不应混入运行时代码。
 
