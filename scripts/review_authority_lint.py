@@ -44,6 +44,12 @@ AUTHORITY_SECTIONS = (
         },
     ),
     AuthoritySection(
+        'docs/opus-review/OPUS_REVIEW_PACKET.md',
+        '## 0. Review Position',
+        '## 1. Verification Snapshot For Current Handoff',
+        'Review Position',
+    ),
+    AuthoritySection(
         "docs/opus-review/README.md",
         "## 首读文件",
         "## 历史输入",
