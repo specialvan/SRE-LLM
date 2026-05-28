@@ -356,8 +356,13 @@ def test_opus_readme_lists_current_ledgers_before_historical_reviews() -> None:
     assert find_authority_order_errors(REPO_ROOT / "docs/opus-review/README.md") == []
 
 
+def test_codex_review_readme_lists_current_ledgers_before_historical_reviews() -> None:
+    assert find_authority_order_errors(REPO_ROOT / 'docs/codex-review/README.md') == []
+
+
 def test_review_authority_lint_covers_current_entrypoints() -> None:
     assert set(configured_authority_paths()) == {
+        'docs/codex-review/README.md',
         "docs/opus-review/README.md",
         "docs/opus-review/HANDOFF.md",
         "wiki/README.md",

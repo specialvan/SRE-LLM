@@ -31,6 +31,19 @@ class AuthoritySection:
 
 AUTHORITY_SECTIONS = (
     AuthoritySection(
+        'docs/codex-review/README.md',
+        '## Reading Order',
+        '## Current Baseline',
+        'Reading Order',
+        anchor_aliases={
+            'docs/codex-review/OPEN_RISKS.md': ('OPEN_RISKS.md', './OPEN_RISKS.md'),
+            'wiki/review-backlog.md': ('../../wiki/review-backlog.md',),
+            'docs/opus-review/OPUS_REVIEW_PACKET.md': ('../opus-review/OPUS_REVIEW_PACKET.md',),
+            'claude-review/docs/v2026-05-28/README.md': ('../../claude-review/docs/v2026-05-28/README.md',),
+            'claude-review/docs/v2026-05-26/README.md': ('../../claude-review/docs/v2026-05-26/README.md',),
+        },
+    ),
+    AuthoritySection(
         "docs/opus-review/README.md",
         "## 首读文件",
         "## 历史输入",
