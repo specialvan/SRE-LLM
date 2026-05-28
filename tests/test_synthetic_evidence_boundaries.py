@@ -315,6 +315,8 @@ def test_evidence_boundary_lint_covers_public_and_review_entrypoints() -> None:
         "wiki/README.md",
         "docs/V2_Knowledge/knowledge-base.html",
         "docs/codex-review/CLAUDE_REVIEW_REQUEST.md",
+        "docs/opus-review/README.md",
+        "docs/opus-review/HANDOFF.md",
         "docs/opus-review/OPUS_REVIEW_PACKET.md",
     }
 

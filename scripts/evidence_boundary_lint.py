@@ -23,6 +23,8 @@ PUBLIC_EVIDENCE_BOUNDARY_DOCS = (
     "docs/codex-review/CLAUDE_DEEP_REVIEW.md",
     "docs/codex-review/CLAUDE_REFINED_SPEC.md",
     "docs/codex-review/CLAUDE_REVIEW_REQUEST.md",
+    "docs/opus-review/README.md",
+    "docs/opus-review/HANDOFF.md",
     "docs/opus-review/OPUS_REVIEW_PACKET.md",
     "docs/claude-development-audit/backlog.md",
 )
