@@ -1,0 +1,95 @@
+{
+  "contracts": [
+    {
+      "artifact_metadata": {
+        "contract_json": {
+          "sha256": "fbc076907346c502bcda2917eb3a3474bc83968b97634e676336f12e7cf89cc5",
+          "size_bytes": 2738
+        }
+      },
+      "artifact_paths": {
+        "contract_json": "analysis/artifacts/sre_stack_data_contract.json"
+      },
+      "contract": "sre_stack_data_contract",
+      "evidence_scope": "research_stack_data_contract",
+      "orchestration_model": "single_process_research_loop",
+      "production_claim": false
+    }
+  ],
+  "evidence_scope": "synthetic_sre_event_evidence",
+  "studies": [
+    {
+      "artifact_metadata": {
+        "full_trace_jsonl": {
+          "sha256": "eb29d37ac1bab352446d8b47c6c43940c5c9f4941393ac6ccc7f9591a9132da5",
+          "size_bytes": 4513
+        },
+        "sample_trace_jsonl": {
+          "sha256": "5957a1eac9b6d2791597e0fbd7274b7706b051b1f16449bea75f84071b47a543",
+          "size_bytes": 2388
+        }
+      },
+      "artifact_paths": {
+        "full_trace_jsonl": "analysis/artifacts/s10_trace_full.jsonl",
+        "sample_trace_jsonl": "analysis/artifacts/s10_trace_sample.jsonl"
+      },
+      "background_event_fraction": 0.0,
+      "event_count_total": 16,
+      "evidence_label": "synthetic_fault_window_trace",
+      "section": 10,
+      "study": "s10_failure_trace"
+    },
+    {
+      "artifact_metadata": {
+        "diagnostics_json": {
+          "sha256": "3d70840432c1b6db8ef4c0c043ca27266cdd5af8958ae3887ec05140a0c1f9c4",
+          "size_bytes": 250
+        },
+        "summary_png": {
+          "sha256": "1e17f9808f94dcf3dde99a083a0bf643b73680b3019bef6d52ce028f4e6f31aa",
+          "size_bytes": 29862
+        }
+      },
+      "artifact_paths": {
+        "diagnostics_json": "analysis/artifacts/s11_catch_sre_wrapper_diagnostics.json",
+        "summary_png": "analysis/artifacts/s11_catch_sre_wrapper.png"
+      },
+      "case_counts": {
+        "feasible": 40,
+        "placement_infeasible": 40,
+        "total_overload": 40
+      },
+      "event_visible_fraction": 1.0,
+      "evidence_label": "synthetic_wrapper_boundary",
+      "section": 11,
+      "study": "s11_catch_sre_wrapper"
+    },
+    {
+      "artifact_metadata": {
+        "diagnostics_json": {
+          "sha256": "b998ca3c6372971cfa7ade8e21b430ca696bccadbaf9513a23e3885a5b8f325a",
+          "size_bytes": 1491
+        },
+        "fixture_jsonl": {
+          "sha256": "c0c38c2fe3edfa7a2a0af5abb2f4d83d87e07a31699a98c763eb7984955d6f5b",
+          "size_bytes": 3957
+        },
+        "trace_jsonl": {
+          "sha256": "92e6a03a0b266316b4f44ab09b65d5225d4514f284fdd907a3c2b8bcfe813cdc",
+          "size_bytes": 31874
+        }
+      },
+      "artifact_paths": {
+        "diagnostics_json": "analysis/artifacts/s12_replay_diagnostics.json",
+        "fixture_jsonl": "analysis/fixtures/sre_replay.jsonl",
+        "trace_jsonl": "analysis/artifacts/s12_replay_trace.jsonl"
+      },
+      "event_count_total": 11.0,
+      "evidence_label": "synthetic_replay_fixture",
+      "multi_signal_window_coverage": 1.0,
+      "replay_tick_count": 19,
+      "section": 12,
+      "study": "s12_sre_replay"
+    }
+  ]
+}

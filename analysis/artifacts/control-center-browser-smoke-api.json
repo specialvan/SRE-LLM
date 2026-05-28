@@ -1,0 +1,1104 @@
+{
+  "adapters": [
+    {
+      "detail": "容量缺口 0.0 RPS",
+      "id": "pool-planner",
+      "label": "连接池容量规划",
+      "metric": "13 连接",
+      "status": "healthy"
+    },
+    {
+      "detail": "后验 QPS 1199.8",
+      "id": "signal-fusion",
+      "label": "多源信号融合",
+      "metric": "P-trace 6.66",
+      "status": "healthy"
+    },
+    {
+      "detail": "当前 30 -> 下一拍 30",
+      "id": "predictive-autoscaler",
+      "label": "预测式自动扩缩容",
+      "metric": "下一拍 30 副本",
+      "status": "attention"
+    },
+    {
+      "detail": "置信域 0.013",
+      "id": "canary-scheduler",
+      "label": "灰度置信域调度",
+      "metric": "62.0%",
+      "status": "attention"
+    },
+    {
+      "detail": "candidate, approved",
+      "id": "slo-guardrail",
+      "label": "SLO 安全护栏",
+      "metric": "投影 0.00",
+      "status": "healthy"
+    },
+    {
+      "detail": "solve_ls, report_residual",
+      "id": "weighted-balancer",
+      "label": "约束负载分配",
+      "metric": "残差 114.85",
+      "status": "attention"
+    },
+    {
+      "detail": "已为故障切换规划预热",
+      "id": "fast-switcher",
+      "label": "紧急流量切换",
+      "metric": "待命",
+      "status": "standby"
+    },
+    {
+      "detail": "3 类事件覆盖时间线",
+      "id": "runtime-events",
+      "label": "运行时事件",
+      "metric": "23",
+      "status": "healthy"
+    }
+  ],
+  "algorithm_benefits": [
+    {
+      "after_label": "凸化末端误差",
+      "after_value": 2e-06,
+      "algorithm": "无损凸化 PDG",
+      "before_label": "朴素末端误差",
+      "before_value": 148.0,
+      "customer_value": "把末端落点从百米级误差压到数值零误差，给塔架捕获窗口留出确定性余量。",
+      "improvement": "约 1e8x 精度",
+      "lower_is_better": true,
+      "module": "starship/lossless_convex.py",
+      "pillar": "§1",
+      "unit": "m"
+    },
+    {
+      "after_label": "6 轮收敛误差",
+      "after_value": 2.87,
+      "algorithm": "序列凸规划 SCP",
+      "before_label": "单次线性化误差",
+      "before_value": 8.08,
+      "customer_value": "在非线性轨迹里逐轮收敛，让规划器能从粗参考轨迹稳定逼近可执行路径。",
+      "improvement": "约 2.8x 精度",
+      "lower_is_better": true,
+      "module": "starship/scp.py",
+      "pillar": "§2",
+      "unit": "m"
+    },
+    {
+      "after_label": "RK4 四元数误差",
+      "after_value": 3.3e-05,
+      "algorithm": "四元数 6-DoF 动力学",
+      "before_label": "欧拉积分姿态误差",
+      "before_value": 3.2,
+      "customer_value": "避免欧拉角奇异和姿态漂移，让翻转、栅格翼和发动机矢量控制有可信状态基准。",
+      "improvement": "约 1e5x 精度",
+      "lower_is_better": true,
+      "module": "starship/rigid_body.py",
+      "pillar": "§3",
+      "unit": "deg"
+    },
+    {
+      "after_label": "投影后违规率",
+      "after_value": 0.0,
+      "algorithm": "推力锥硬约束",
+      "before_label": "候选推力违规率",
+      "before_value": 97.4,
+      "customer_value": "把 AI 或启发式候选推力投回发动机真实可行域，避免不可执行指令进入控制链路。",
+      "improvement": "违规清零",
+      "lower_is_better": true,
+      "module": "starship/thrust_constraints.py",
+      "pillar": "§4",
+      "unit": "%"
+    },
+    {
+      "after_label": "EKF 速度 RMSE",
+      "after_value": 51.0,
+      "algorithm": "EKF 多源融合",
+      "before_label": "裸雷达速度 RMSE",
+      "before_value": 481.0,
+      "customer_value": "融合雷达、IMU 与塔架视觉标志，在遮挡和噪声下保持控制器可用的后验状态。",
+      "improvement": "约 9.4x 精度",
+      "lower_is_better": true,
+      "module": "starship/ekf.py",
+      "pillar": "§5",
+      "unit": "m/s"
+    },
+    {
+      "after_label": "MPC 末态误差",
+      "after_value": 3.5e-07,
+      "algorithm": "滚动时域 MPC",
+      "before_label": "PD 末态误差",
+      "before_value": 0.012,
+      "customer_value": "每 5 秒重算一次最优动作，用最新后验状态修正容量与推力分配决策。",
+      "improvement": "约 3.4e4x 精度",
+      "lower_is_better": true,
+      "module": "starship/mpc.py",
+      "pillar": "§6",
+      "unit": "state"
+    },
+    {
+      "after_label": "翻转规划末态俯仰",
+      "after_value": 0.0,
+      "algorithm": "Belly-Flop 翻转规划",
+      "before_label": "恒扭矩末态俯仰",
+      "before_value": 36.4,
+      "customer_value": "把大角度翻转变成可验证的 bang-bang 机动，保证落地前姿态和角速度同时归零。",
+      "improvement": "姿态归零",
+      "lower_is_better": true,
+      "module": "starship/flip_maneuver.py",
+      "pillar": "§7",
+      "unit": "deg"
+    },
+    {
+      "after_label": "约束分配越界样本",
+      "after_value": 0.0,
+      "algorithm": "塔架捕获推力分配",
+      "before_label": "伪逆越界样本",
+      "before_value": 34.0,
+      "customer_value": "在发动机饱和、姿态补偿和塔架窗口之间做约束分配，让最后 50 米动作可审计。",
+      "improvement": "越界清零",
+      "lower_is_better": true,
+      "module": "starship/catch_controller.py",
+      "pillar": "§8",
+      "unit": "%"
+    }
+  ],
+  "design_system": {
+    "local_ports": [
+      56261,
+      56265
+    ],
+    "provider": "OpenDesign",
+    "source": "G:/Open Design release-stable-win/resources/open-design/design-systems/dashboard/DESIGN.md",
+    "style": "dashboard + application"
+  },
+  "events": {
+    "distinct_kinds": 3,
+    "kinds": [
+      {
+        "count": 12,
+        "kind": "bounded_ls_residual"
+      },
+      {
+        "count": 7,
+        "kind": "outlier_rejected"
+      },
+      {
+        "count": 4,
+        "kind": "rollout_rejected"
+      }
+    ],
+    "recent": [
+      {
+        "detail": "box constraints or residuals were active",
+        "kind": "bounded_ls_residual",
+        "safe_action": "report residual instead of pretending exact matching",
+        "stage": "WeightedLoadBalancer",
+        "tick": 8,
+        "time_s": 40.0
+      },
+      {
+        "detail": "metrics Mahalanobis d=3.28 exceeded per-sensor gate 3.2; consecutive rejections=7",
+        "kind": "outlier_rejected",
+        "safe_action": "skip update to protect posterior; raise gate only if measurement model h(x)/R are validated",
+        "stage": "SignalFusion",
+        "tick": 9,
+        "time_s": 45.0
+      },
+      {
+        "detail": "observed error burned the canary budget",
+        "kind": "rollout_rejected",
+        "safe_action": "shrink trust region and freeze rollout progress",
+        "stage": "CanaryScheduler",
+        "tick": 9,
+        "time_s": 45.0
+      },
+      {
+        "detail": "box constraints or residuals were active",
+        "kind": "bounded_ls_residual",
+        "safe_action": "report residual instead of pretending exact matching",
+        "stage": "WeightedLoadBalancer",
+        "tick": 9,
+        "time_s": 45.0
+      },
+      {
+        "detail": "observed error burned the canary budget",
+        "kind": "rollout_rejected",
+        "safe_action": "shrink trust region and freeze rollout progress",
+        "stage": "CanaryScheduler",
+        "tick": 10,
+        "time_s": 50.0
+      },
+      {
+        "detail": "box constraints or residuals were active",
+        "kind": "bounded_ls_residual",
+        "safe_action": "report residual instead of pretending exact matching",
+        "stage": "WeightedLoadBalancer",
+        "tick": 10,
+        "time_s": 50.0
+      },
+      {
+        "detail": "observed error burned the canary budget",
+        "kind": "rollout_rejected",
+        "safe_action": "shrink trust region and freeze rollout progress",
+        "stage": "CanaryScheduler",
+        "tick": 11,
+        "time_s": 55.0
+      },
+      {
+        "detail": "box constraints or residuals were active",
+        "kind": "bounded_ls_residual",
+        "safe_action": "report residual instead of pretending exact matching",
+        "stage": "WeightedLoadBalancer",
+        "tick": 11,
+        "time_s": 55.0
+      }
+    ],
+    "total": 23
+  },
+  "frontend_contract": {
+    "api_path": "/api/control-center",
+    "array_item_required_fields": {
+      "adapters": [
+        "id",
+        "label",
+        "metric",
+        "detail",
+        "status"
+      ],
+      "algorithm_benefits": [
+        "pillar",
+        "algorithm",
+        "customer_value",
+        "module",
+        "before_label",
+        "before_value",
+        "after_label",
+        "after_value",
+        "improvement",
+        "unit",
+        "lower_is_better"
+      ],
+      "events.kinds": [
+        "kind",
+        "count"
+      ],
+      "events.recent": [
+        "tick",
+        "time_s",
+        "stage",
+        "kind",
+        "detail",
+        "safe_action"
+      ],
+      "load_split": [
+        "instance",
+        "zone",
+        "share",
+        "pct"
+      ],
+      "stage_rollup": [
+        "state",
+        "count"
+      ],
+      "timeline.event_details": [
+        "tick",
+        "time_s",
+        "stage",
+        "kind",
+        "detail",
+        "safe_action"
+      ]
+    },
+    "object_required_fields": {
+      "design_system": [
+        "provider",
+        "style",
+        "local_ports"
+      ],
+      "events": [
+        "total",
+        "distinct_kinds",
+        "kinds",
+        "recent"
+      ],
+      "hero": [
+        "title",
+        "subtitle",
+        "theme"
+      ],
+      "series": [
+        "replicas",
+        "observed_rps",
+        "forecast_rps",
+        "pool_connections",
+        "degraded_mask"
+      ],
+      "summary": [
+        "ticks",
+        "degraded_ticks",
+        "event_visible_fraction",
+        "current_replicas",
+        "canary_share_pct",
+        "peak_forecast_rps"
+      ]
+    },
+    "timeline_required_fields": [
+      "tick",
+      "time_s",
+      "forecast_rps",
+      "observed_rps",
+      "replicas_next",
+      "degraded",
+      "states",
+      "events",
+      "event_details",
+      "alloc_shares",
+      "pool_connections",
+      "posterior_qps",
+      "posterior_latency",
+      "guardrail_projection_distance"
+    ],
+    "top_level_required_fields": [
+      "generated_at",
+      "design_system",
+      "hero",
+      "summary",
+      "timeline",
+      "adapters",
+      "events",
+      "series",
+      "load_split",
+      "stage_rollup",
+      "algorithm_benefits"
+    ],
+    "version": "control-center.v1"
+  },
+  "generated_at": "2026-05-28T18:12:34.593311+00:00",
+  "hero": {
+    "subtitle": "基于 OpenDesign dashboard 设计系统，把 8 个控制算法、运行时遥测和前后收益打到同一个可交互决策屏。",
+    "theme": "OpenDesign 现代任务控制台",
+    "title": "星舰回收 SRE 客户数据看板"
+  },
+  "load_split": [
+    {
+      "instance": "east-a",
+      "pct": 31.19,
+      "share": 299.82,
+      "zone": "east"
+    },
+    {
+      "instance": "east-b",
+      "pct": 31.19,
+      "share": 299.82,
+      "zone": "east"
+    },
+    {
+      "instance": "west-a",
+      "pct": 18.81,
+      "share": 180.74,
+      "zone": "west"
+    },
+    {
+      "instance": "west-b",
+      "pct": 18.81,
+      "share": 180.74,
+      "zone": "west"
+    }
+  ],
+  "series": {
+    "degraded_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "forecast_rps": [
+      1000.0,
+      1123.7,
+      1239.71,
+      1340.82,
+      1420.74,
+      1474.49,
+      1498.75,
+      1491.99,
+      1454.65,
+      1389.04,
+      1299.24,
+      1190.83
+    ],
+    "observed_rps": [
+      1000.05,
+      1112.74,
+      1221.53,
+      1343.23,
+      1401.05,
+      1494.09,
+      1502.96,
+      1490.82,
+      1400.88,
+      1312.99,
+      1225.57,
+      1140.13
+    ],
+    "pool_connections": [
+      10,
+      11,
+      12,
+      12,
+      13,
+      13,
+      13,
+      13,
+      13,
+      13,
+      13,
+      13
+    ],
+    "replicas": [
+      10,
+      10,
+      11,
+      13,
+      15,
+      18,
+      21,
+      24,
+      27,
+      29,
+      30,
+      30
+    ]
+  },
+  "stage_rollup": [
+    {
+      "count": 12,
+      "state": "ALLOCATING"
+    },
+    {
+      "count": 12,
+      "state": "DEGRADED_ALLOCATE"
+    },
+    {
+      "count": 12,
+      "state": "EXECUTING"
+    },
+    {
+      "count": 12,
+      "state": "GUARDING"
+    },
+    {
+      "count": 12,
+      "state": "OBSERVING"
+    },
+    {
+      "count": 12,
+      "state": "PLANNING"
+    },
+    {
+      "count": 7,
+      "state": "DEGRADED_OBSERVE"
+    },
+    {
+      "count": 4,
+      "state": "DEGRADED_PLAN"
+    }
+  ],
+  "summary": {
+    "avg_observed_rps": 1303.84,
+    "canary_share_pct": 61.95,
+    "current_replicas": 30,
+    "degraded_ticks": 12,
+    "event_visible_fraction": 1.0,
+    "peak_forecast_rps": 1498.75,
+    "ticks": 12
+  },
+  "timeline": [
+    {
+      "alloc_shares": [
+        251.78,
+        251.78,
+        151.78,
+        151.78
+      ],
+      "degraded": true,
+      "event_details": [
+        {
+          "detail": "box constraints or residuals were active",
+          "kind": "bounded_ls_residual",
+          "safe_action": "report residual instead of pretending exact matching",
+          "stage": "WeightedLoadBalancer",
+          "tick": 0,
+          "time_s": 0.0
+        }
+      ],
+      "events": [
+        "bounded_ls_residual"
+      ],
+      "forecast_rps": 1000.0,
+      "guardrail_projection_distance": 0.0,
+      "observed_rps": 1000.05,
+      "pool_connections": 10,
+      "posterior_latency": 26.86,
+      "posterior_qps": 1023.12,
+      "replicas_next": 10,
+      "states": [
+        "OBSERVING",
+        "PLANNING",
+        "GUARDING",
+        "ALLOCATING",
+        "DEGRADED_ALLOCATE",
+        "EXECUTING"
+      ],
+      "tick": 0,
+      "time_s": 0.0
+    },
+    {
+      "alloc_shares": [
+        282.99,
+        282.99,
+        170.62,
+        170.62
+      ],
+      "degraded": true,
+      "event_details": [
+        {
+          "detail": "box constraints or residuals were active",
+          "kind": "bounded_ls_residual",
+          "safe_action": "report residual instead of pretending exact matching",
+          "stage": "WeightedLoadBalancer",
+          "tick": 1,
+          "time_s": 5.0
+        }
+      ],
+      "events": [
+        "bounded_ls_residual"
+      ],
+      "forecast_rps": 1123.7,
+      "guardrail_projection_distance": 0.0,
+      "observed_rps": 1112.74,
+      "pool_connections": 11,
+      "posterior_latency": 28.53,
+      "posterior_qps": 1115.89,
+      "replicas_next": 10,
+      "states": [
+        "OBSERVING",
+        "PLANNING",
+        "GUARDING",
+        "ALLOCATING",
+        "DEGRADED_ALLOCATE",
+        "EXECUTING"
+      ],
+      "tick": 1,
+      "time_s": 5.0
+    },
+    {
+      "alloc_shares": [
+        312.21,
+        312.21,
+        188.24,
+        188.24
+      ],
+      "degraded": true,
+      "event_details": [
+        {
+          "detail": "box constraints or residuals were active",
+          "kind": "bounded_ls_residual",
+          "safe_action": "report residual instead of pretending exact matching",
+          "stage": "WeightedLoadBalancer",
+          "tick": 2,
+          "time_s": 10.0
+        }
+      ],
+      "events": [
+        "bounded_ls_residual"
+      ],
+      "forecast_rps": 1239.71,
+      "guardrail_projection_distance": 0.0,
+      "observed_rps": 1221.53,
+      "pool_connections": 12,
+      "posterior_latency": 29.35,
+      "posterior_qps": 1162.37,
+      "replicas_next": 11,
+      "states": [
+        "OBSERVING",
+        "PLANNING",
+        "GUARDING",
+        "ALLOCATING",
+        "DEGRADED_ALLOCATE",
+        "EXECUTING"
+      ],
+      "tick": 2,
+      "time_s": 10.0
+    },
+    {
+      "alloc_shares": [
+        337.72,
+        337.72,
+        203.64,
+        203.64
+      ],
+      "degraded": true,
+      "event_details": [
+        {
+          "detail": "metrics Mahalanobis d=3.21 exceeded per-sensor gate 3.2; consecutive rejections=1",
+          "kind": "outlier_rejected",
+          "safe_action": "skip update to protect posterior; raise gate only if measurement model h(x)/R are validated",
+          "stage": "SignalFusion",
+          "tick": 3,
+          "time_s": 15.0
+        },
+        {
+          "detail": "box constraints or residuals were active",
+          "kind": "bounded_ls_residual",
+          "safe_action": "report residual instead of pretending exact matching",
+          "stage": "WeightedLoadBalancer",
+          "tick": 3,
+          "time_s": 15.0
+        }
+      ],
+      "events": [
+        "outlier_rejected",
+        "bounded_ls_residual"
+      ],
+      "forecast_rps": 1340.82,
+      "guardrail_projection_distance": 0.0,
+      "observed_rps": 1343.23,
+      "pool_connections": 12,
+      "posterior_latency": 29.7,
+      "posterior_qps": 1182.22,
+      "replicas_next": 13,
+      "states": [
+        "OBSERVING",
+        "DEGRADED_OBSERVE",
+        "PLANNING",
+        "GUARDING",
+        "ALLOCATING",
+        "DEGRADED_ALLOCATE",
+        "EXECUTING"
+      ],
+      "tick": 3,
+      "time_s": 15.0
+    },
+    {
+      "alloc_shares": [
+        357.73,
+        357.73,
+        215.66,
+        215.66
+      ],
+      "degraded": true,
+      "event_details": [
+        {
+          "detail": "metrics Mahalanobis d=4.18 exceeded per-sensor gate 3.2; consecutive rejections=2",
+          "kind": "outlier_rejected",
+          "safe_action": "skip update to protect posterior; raise gate only if measurement model h(x)/R are validated",
+          "stage": "SignalFusion",
+          "tick": 4,
+          "time_s": 20.0
+        },
+        {
+          "detail": "box constraints or residuals were active",
+          "kind": "bounded_ls_residual",
+          "safe_action": "report residual instead of pretending exact matching",
+          "stage": "WeightedLoadBalancer",
+          "tick": 4,
+          "time_s": 20.0
+        }
+      ],
+      "events": [
+        "outlier_rejected",
+        "bounded_ls_residual"
+      ],
+      "forecast_rps": 1420.74,
+      "guardrail_projection_distance": 0.0,
+      "observed_rps": 1401.05,
+      "pool_connections": 13,
+      "posterior_latency": 29.81,
+      "posterior_qps": 1191.6,
+      "replicas_next": 15,
+      "states": [
+        "OBSERVING",
+        "DEGRADED_OBSERVE",
+        "PLANNING",
+        "GUARDING",
+        "ALLOCATING",
+        "DEGRADED_ALLOCATE",
+        "EXECUTING"
+      ],
+      "tick": 4,
+      "time_s": 20.0
+    },
+    {
+      "alloc_shares": [
+        371.25,
+        371.25,
+        223.8,
+        223.8
+      ],
+      "degraded": true,
+      "event_details": [
+        {
+          "detail": "metrics Mahalanobis d=5.97 exceeded per-sensor gate 3.2; consecutive rejections=3",
+          "kind": "outlier_rejected",
+          "safe_action": "skip update to protect posterior; raise gate only if measurement model h(x)/R are validated",
+          "stage": "SignalFusion",
+          "tick": 5,
+          "time_s": 25.0
+        },
+        {
+          "detail": "box constraints or residuals were active",
+          "kind": "bounded_ls_residual",
+          "safe_action": "report residual instead of pretending exact matching",
+          "stage": "WeightedLoadBalancer",
+          "tick": 5,
+          "time_s": 25.0
+        }
+      ],
+      "events": [
+        "outlier_rejected",
+        "bounded_ls_residual"
+      ],
+      "forecast_rps": 1474.49,
+      "guardrail_projection_distance": 0.0,
+      "observed_rps": 1494.09,
+      "pool_connections": 13,
+      "posterior_latency": 29.76,
+      "posterior_qps": 1196.03,
+      "replicas_next": 18,
+      "states": [
+        "OBSERVING",
+        "DEGRADED_OBSERVE",
+        "PLANNING",
+        "GUARDING",
+        "ALLOCATING",
+        "DEGRADED_ALLOCATE",
+        "EXECUTING"
+      ],
+      "tick": 5,
+      "time_s": 25.0
+    },
+    {
+      "alloc_shares": [
+        377.4,
+        377.4,
+        227.53,
+        227.53
+      ],
+      "degraded": true,
+      "event_details": [
+        {
+          "detail": "metrics Mahalanobis d=6.18 exceeded per-sensor gate 3.2; consecutive rejections=4",
+          "kind": "outlier_rejected",
+          "safe_action": "skip update to protect posterior; raise gate only if measurement model h(x)/R are validated",
+          "stage": "SignalFusion",
+          "tick": 6,
+          "time_s": 30.0
+        },
+        {
+          "detail": "box constraints or residuals were active",
+          "kind": "bounded_ls_residual",
+          "safe_action": "report residual instead of pretending exact matching",
+          "stage": "WeightedLoadBalancer",
+          "tick": 6,
+          "time_s": 30.0
+        }
+      ],
+      "events": [
+        "outlier_rejected",
+        "bounded_ls_residual"
+      ],
+      "forecast_rps": 1498.75,
+      "guardrail_projection_distance": 0.0,
+      "observed_rps": 1502.96,
+      "pool_connections": 13,
+      "posterior_latency": 29.62,
+      "posterior_qps": 1198.13,
+      "replicas_next": 21,
+      "states": [
+        "OBSERVING",
+        "DEGRADED_OBSERVE",
+        "PLANNING",
+        "GUARDING",
+        "ALLOCATING",
+        "DEGRADED_ALLOCATE",
+        "EXECUTING"
+      ],
+      "tick": 6,
+      "time_s": 30.0
+    },
+    {
+      "alloc_shares": [
+        375.68,
+        375.68,
+        226.48,
+        226.48
+      ],
+      "degraded": true,
+      "event_details": [
+        {
+          "detail": "metrics Mahalanobis d=6.05 exceeded per-sensor gate 3.2; consecutive rejections=5",
+          "kind": "outlier_rejected",
+          "safe_action": "skip update to protect posterior; raise gate only if measurement model h(x)/R are validated",
+          "stage": "SignalFusion",
+          "tick": 7,
+          "time_s": 35.0
+        },
+        {
+          "detail": "box constraints or residuals were active",
+          "kind": "bounded_ls_residual",
+          "safe_action": "report residual instead of pretending exact matching",
+          "stage": "WeightedLoadBalancer",
+          "tick": 7,
+          "time_s": 35.0
+        }
+      ],
+      "events": [
+        "outlier_rejected",
+        "bounded_ls_residual"
+      ],
+      "forecast_rps": 1491.99,
+      "guardrail_projection_distance": 0.0,
+      "observed_rps": 1490.82,
+      "pool_connections": 13,
+      "posterior_latency": 29.45,
+      "posterior_qps": 1199.11,
+      "replicas_next": 24,
+      "states": [
+        "OBSERVING",
+        "DEGRADED_OBSERVE",
+        "PLANNING",
+        "GUARDING",
+        "ALLOCATING",
+        "DEGRADED_ALLOCATE",
+        "EXECUTING"
+      ],
+      "tick": 7,
+      "time_s": 35.0
+    },
+    {
+      "alloc_shares": [
+        366.26,
+        366.26,
+        220.79,
+        220.79
+      ],
+      "degraded": true,
+      "event_details": [
+        {
+          "detail": "metrics Mahalanobis d=4.54 exceeded per-sensor gate 3.2; consecutive rejections=6",
+          "kind": "outlier_rejected",
+          "safe_action": "skip update to protect posterior; raise gate only if measurement model h(x)/R are validated",
+          "stage": "SignalFusion",
+          "tick": 8,
+          "time_s": 40.0
+        },
+        {
+          "detail": "observed error burned the canary budget",
+          "kind": "rollout_rejected",
+          "safe_action": "shrink trust region and freeze rollout progress",
+          "stage": "CanaryScheduler",
+          "tick": 8,
+          "time_s": 40.0
+        },
+        {
+          "detail": "box constraints or residuals were active",
+          "kind": "bounded_ls_residual",
+          "safe_action": "report residual instead of pretending exact matching",
+          "stage": "WeightedLoadBalancer",
+          "tick": 8,
+          "time_s": 40.0
+        }
+      ],
+      "events": [
+        "outlier_rejected",
+        "rollout_rejected",
+        "bounded_ls_residual"
+      ],
+      "forecast_rps": 1454.65,
+      "guardrail_projection_distance": 0.0,
+      "observed_rps": 1400.88,
+      "pool_connections": 13,
+      "posterior_latency": 29.3,
+      "posterior_qps": 1199.58,
+      "replicas_next": 27,
+      "states": [
+        "OBSERVING",
+        "DEGRADED_OBSERVE",
+        "PLANNING",
+        "DEGRADED_PLAN",
+        "GUARDING",
+        "ALLOCATING",
+        "DEGRADED_ALLOCATE",
+        "EXECUTING"
+      ],
+      "tick": 8,
+      "time_s": 40.0
+    },
+    {
+      "alloc_shares": [
+        349.85,
+        349.85,
+        210.94,
+        210.94
+      ],
+      "degraded": true,
+      "event_details": [
+        {
+          "detail": "metrics Mahalanobis d=3.28 exceeded per-sensor gate 3.2; consecutive rejections=7",
+          "kind": "outlier_rejected",
+          "safe_action": "skip update to protect posterior; raise gate only if measurement model h(x)/R are validated",
+          "stage": "SignalFusion",
+          "tick": 9,
+          "time_s": 45.0
+        },
+        {
+          "detail": "observed error burned the canary budget",
+          "kind": "rollout_rejected",
+          "safe_action": "shrink trust region and freeze rollout progress",
+          "stage": "CanaryScheduler",
+          "tick": 9,
+          "time_s": 45.0
+        },
+        {
+          "detail": "box constraints or residuals were active",
+          "kind": "bounded_ls_residual",
+          "safe_action": "report residual instead of pretending exact matching",
+          "stage": "WeightedLoadBalancer",
+          "tick": 9,
+          "time_s": 45.0
+        }
+      ],
+      "events": [
+        "outlier_rejected",
+        "rollout_rejected",
+        "bounded_ls_residual"
+      ],
+      "forecast_rps": 1389.04,
+      "guardrail_projection_distance": 0.0,
+      "observed_rps": 1312.99,
+      "pool_connections": 13,
+      "posterior_latency": 29.21,
+      "posterior_qps": 1199.8,
+      "replicas_next": 29,
+      "states": [
+        "OBSERVING",
+        "DEGRADED_OBSERVE",
+        "PLANNING",
+        "DEGRADED_PLAN",
+        "GUARDING",
+        "ALLOCATING",
+        "DEGRADED_ALLOCATE",
+        "EXECUTING"
+      ],
+      "tick": 9,
+      "time_s": 45.0
+    },
+    {
+      "alloc_shares": [
+        327.12,
+        327.12,
+        197.19,
+        197.19
+      ],
+      "degraded": true,
+      "event_details": [
+        {
+          "detail": "observed error burned the canary budget",
+          "kind": "rollout_rejected",
+          "safe_action": "shrink trust region and freeze rollout progress",
+          "stage": "CanaryScheduler",
+          "tick": 10,
+          "time_s": 50.0
+        },
+        {
+          "detail": "box constraints or residuals were active",
+          "kind": "bounded_ls_residual",
+          "safe_action": "report residual instead of pretending exact matching",
+          "stage": "WeightedLoadBalancer",
+          "tick": 10,
+          "time_s": 50.0
+        }
+      ],
+      "events": [
+        "rollout_rejected",
+        "bounded_ls_residual"
+      ],
+      "forecast_rps": 1299.24,
+      "guardrail_projection_distance": 0.0,
+      "observed_rps": 1225.57,
+      "pool_connections": 13,
+      "posterior_latency": 29.08,
+      "posterior_qps": 1199.97,
+      "replicas_next": 30,
+      "states": [
+        "OBSERVING",
+        "PLANNING",
+        "DEGRADED_PLAN",
+        "GUARDING",
+        "ALLOCATING",
+        "DEGRADED_ALLOCATE",
+        "EXECUTING"
+      ],
+      "tick": 10,
+      "time_s": 50.0
+    },
+    {
+      "alloc_shares": [
+        299.82,
+        299.82,
+        180.74,
+        180.74
+      ],
+      "degraded": true,
+      "event_details": [
+        {
+          "detail": "observed error burned the canary budget",
+          "kind": "rollout_rejected",
+          "safe_action": "shrink trust region and freeze rollout progress",
+          "stage": "CanaryScheduler",
+          "tick": 11,
+          "time_s": 55.0
+        },
+        {
+          "detail": "box constraints or residuals were active",
+          "kind": "bounded_ls_residual",
+          "safe_action": "report residual instead of pretending exact matching",
+          "stage": "WeightedLoadBalancer",
+          "tick": 11,
+          "time_s": 55.0
+        }
+      ],
+      "events": [
+        "rollout_rejected",
+        "bounded_ls_residual"
+      ],
+      "forecast_rps": 1190.83,
+      "guardrail_projection_distance": 0.0,
+      "observed_rps": 1140.13,
+      "pool_connections": 13,
+      "posterior_latency": 29.13,
+      "posterior_qps": 1199.83,
+      "replicas_next": 30,
+      "states": [
+        "OBSERVING",
+        "PLANNING",
+        "DEGRADED_PLAN",
+        "GUARDING",
+        "ALLOCATING",
+        "DEGRADED_ALLOCATE",
+        "EXECUTING"
+      ],
+      "tick": 11,
+      "time_s": 55.0
+    }
+  ]
+}

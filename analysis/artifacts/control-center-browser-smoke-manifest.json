@@ -1,0 +1,92 @@
+{
+  "api_response": {
+    "api_header": "/api/control-center",
+    "cache_control": "no-store",
+    "content_type": "application/json; charset=utf-8",
+    "contract_header": "control-center.v1",
+    "status": 200
+  },
+  "api_snapshot": {
+    "bytes": 29693,
+    "path": "analysis/artifacts/control-center-browser-smoke-api.json",
+    "sha256": "fa59b8032a8d887a531c60607d3f24f9aefe93d299f5e52e419f9405629f6e3e"
+  },
+  "contract": {
+    "api_path": "/api/control-center",
+    "version": "control-center.v1"
+  },
+  "frontend_response": {
+    "api_header": "/api/control-center",
+    "api_url": "/api/control-center",
+    "cache_control": "no-store",
+    "content_type": "text/html; charset=utf-8",
+    "contract_header": "control-center.v1",
+    "status": 200
+  },
+  "health_response": {
+    "api_header": "/api/control-center",
+    "cache_control": "no-store",
+    "content_type": "application/json; charset=utf-8",
+    "contract_header": "control-center.v1",
+    "payload": {
+      "contract": {
+        "api_path": "/api/control-center",
+        "version": "control-center.v1"
+      },
+      "routes": {
+        "api": "/api/control-center",
+        "frontend": "/control-center"
+      },
+      "status": "ok"
+    },
+    "status": 200
+  },
+  "summary": {
+    "events_total": 23,
+    "ticks": 12,
+    "timeline_rows": 12
+  },
+  "url": "http://127.0.0.1:63552/control-center",
+  "viewports": [
+    {
+      "dom_dump": {
+        "bytes": 148445,
+        "path": "analysis/artifacts/control-center-browser-smoke-desktop.html",
+        "sha256": "72b8027475471b45cca794f4cce0dc1f65312b03b64eb62538041612086b552f"
+      },
+      "height": 960,
+      "name": "desktop",
+      "screenshot": {
+        "bytes": 465808,
+        "path": "analysis/artifacts/control-center-browser-smoke-desktop.png",
+        "png": {
+          "blank": false,
+          "height": 960,
+          "width": 1440
+        },
+        "sha256": "99dced131e36b22d7fb4aef9ab0383377dfd2e1d8620cb48db3f4fd15db8447e"
+      },
+      "width": 1440
+    },
+    {
+      "dom_dump": {
+        "bytes": 148445,
+        "path": "analysis/artifacts/control-center-browser-smoke-mobile.html",
+        "sha256": "40e8b4b629661a7179b4a48c003050b0902faa1971757e650086b35cbb39eb62"
+      },
+      "height": 844,
+      "name": "mobile",
+      "screenshot": {
+        "bytes": 117804,
+        "path": "analysis/artifacts/control-center-browser-smoke-mobile.png",
+        "png": {
+          "blank": false,
+          "height": 844,
+          "width": 390
+        },
+        "sha256": "3b672b020f8c0223913b7b76a641d0983edc5fd22aaf6cf01e012f9774cbb046"
+      },
+      "width": 390
+    }
+  ]
+}

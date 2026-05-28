@@ -1,0 +1,10 @@
+{
+  "case_counts": {
+    "feasible": 40,
+    "placement_infeasible": 40,
+    "total_overload": 40
+  },
+  "feasible_quiet_fraction": 1.0,
+  "placement_infeasible_event_visible_fraction": 1.0,
+  "total_overload_event_visible_fraction": 1.0
+}

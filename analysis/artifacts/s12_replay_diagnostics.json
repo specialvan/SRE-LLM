@@ -1,0 +1,48 @@
+{
+  "background_event_fraction": 0.0,
+  "event_count_total": 11.0,
+  "evidence_label": "synthetic_replay_fixture",
+  "expected_event_count": 8,
+  "expected_event_visible_fraction": 1.0,
+  "fixture_path": "analysis/fixtures/sre_replay.jsonl",
+  "max_incident_window_ticks": 3.0,
+  "max_multi_signal_recovery_ticks": 1.0,
+  "max_recovery_ticks": 1.0,
+  "multi_signal_window_count": 1,
+  "multi_signal_window_coverage": 1.0,
+  "multi_signal_window_recovered_fraction": 1.0,
+  "observed_expected_kinds": [
+    "bounded_ls_residual",
+    "missing_sensor",
+    "replica_bound_active",
+    "stability_violation",
+    "unsafe_proposal_projected"
+  ],
+  "operator_action_coverage": 1.0,
+  "operator_actions_by_kind": {
+    "bounded_ls_residual": [
+      "inspect capacity and placement target"
+    ],
+    "missing_sensor": [
+      "check telemetry source and continue degraded"
+    ],
+    "replica_bound_active": [
+      "check quota and restore autoscaler cap"
+    ],
+    "stability_violation": [
+      "hold conservative mode and review error budget"
+    ],
+    "unsafe_proposal_projected": [
+      "audit upstream policy proposal"
+    ]
+  },
+  "operator_actions_by_window": {
+    "compound_telemetry_policy_capacity": [
+      "coordinate telemetry repair, policy rollback, and capacity restoration"
+    ]
+  },
+  "recovered_window_fraction": 1.0,
+  "recovery_window_count": 5.0,
+  "replay_tick_count": 19,
+  "stability_event_visible_fraction": 1.0
+}

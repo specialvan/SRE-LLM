@@ -1,0 +1,42 @@
+{
+  "contract": "control-center.v1 @ /api/control-center",
+  "contract_depth": {
+    "array_item_fields": 36,
+    "array_item_groups": 7,
+    "object_fields": 21,
+    "object_groups": 5,
+    "timeline_fields": 14,
+    "top_level": 11
+  },
+  "error_viewport": "desktop:1440x960:dom107555",
+  "frontend_api_url": "/api/control-center",
+  "frontend_error_viewport": "desktop:1440x960:dom107537",
+  "health_status": "ok",
+  "manifest_paths": {
+    "backend_error": "analysis/artifacts/control-center-browser-error-smoke-manifest.json",
+    "frontend_error": "analysis/artifacts/control-center-browser-frontend-error-smoke-manifest.json",
+    "normal": "analysis/artifacts/control-center-browser-smoke-manifest.json"
+  },
+  "manifest_records": {
+    "backend_error": {
+      "bytes": 680,
+      "path": "analysis/artifacts/control-center-browser-error-smoke-manifest.json",
+      "sha256": "4a544563053e717add16b1896da53ffe8d1683bc170a6c5ac3ca2666388ea303"
+    },
+    "frontend_error": {
+      "bytes": 707,
+      "path": "analysis/artifacts/control-center-browser-frontend-error-smoke-manifest.json",
+      "sha256": "9b367c0baed9e42853680e62eb84f3ab493d24c5e58e38eece1d042ca3fbf371"
+    },
+    "normal": {
+      "bytes": 2727,
+      "path": "analysis/artifacts/control-center-browser-smoke-manifest.json",
+      "sha256": "f917bbf89479d007d9e12c764bd7bec80f61428ed5d27b2a4afd936b5db2e27e"
+    }
+  },
+  "normal_viewports": [
+    "desktop:1440x960:dom148445",
+    "mobile:390x844:dom148445"
+  ],
+  "timeline": "12 rows / 12 ticks / 23 events"
+}
