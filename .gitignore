@@ -11,3 +11,4 @@ build/
 .env
 .env.*
 examples/trace.jsonl
+LLM-WIKI/
