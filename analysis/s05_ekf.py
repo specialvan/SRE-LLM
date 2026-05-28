@@ -19,12 +19,13 @@ from __future__ import annotations
 
 import numpy as np
 
-from starship.ekf import EKF, MultiSensorEKF, RadarMeasurement, FiducialMeasurement
+from starship.ekf import EKF, MultiSensorEKF, RadarMeasurement
 from analysis._common import HAS_MPL, save_fig, summary_banner
 
 
 DT = 0.1
 T_FINAL = 8.0
+FIDUCIAL_START_S = 5.0
 G = np.array([0.0, 0.0, -9.80665])
 
 
@@ -64,10 +65,22 @@ def main(seed: int = 0) -> dict:
     # radar (cf. SpaceX tower radar during a catch).
     radar = RadarMeasurement(tower=np.zeros(3),
                               R=np.diag([40.0 ** 2, 5e-3 ** 2, 5e-3 ** 2]))
-    fiducial = FiducialMeasurement(
-        marker_world=np.array([0.0, 0.0, 80.0]),
-        R=np.diag([4.0, 4.0]),
-    )
+    class _FiducialPositionAdapter:
+        """Near-field tower fiducial as a direct position fix for this 6D study."""
+
+        R = np.diag([4.0**2, 4.0**2, 4.0**2])
+
+        @staticmethod
+        def h(x: np.ndarray) -> np.ndarray:
+            return x[0:3]
+
+        @staticmethod
+        def H(x: np.ndarray) -> np.ndarray:
+            H = np.zeros((3, x.size))
+            H[0:3, 0:3] = np.eye(3)
+            return H
+
+    fiducial = _FiducialPositionAdapter()
 
     # Noisy measurements
     radar_z = []
@@ -76,10 +89,10 @@ def main(seed: int = 0) -> dict:
         x_true = np.concatenate([truth_r[k], truth_v[k], [1, 0, 0, 0], [0, 0, 0]])
         zr = radar.h(x_true) + rng.multivariate_normal(np.zeros(3), radar.R)
         radar_z.append(zr)
-        try:
-            zf_true = fiducial.h(x_true)
-            zf = zf_true + rng.multivariate_normal(np.zeros(2), fiducial.R)
-        except Exception:
+        if k * DT >= FIDUCIAL_START_S:
+            zf_true = fiducial.h(x_true[0:6])
+            zf = zf_true + rng.multivariate_normal(np.zeros(3), fiducial.R)
+        else:
             zf = None
         fiducial_z.append(zf)
 
@@ -105,13 +118,14 @@ def main(seed: int = 0) -> dict:
     # explain a 60 m/s drop with huge covariance-driven velocity updates.
     init_v = (base_r[1] - base_r[0]) / DT if N > 0 else np.zeros(3)
 
-    ekf = EKF(
-        x=np.concatenate([base_r[0], init_v]),
-        P=np.diag([80.0 ** 2] * 3 + [30.0 ** 2] * 3),
-        process_noise=np.diag([1e-2] * 3 + [1.0] * 3),
-        f=dynamics,
-        F_jac=F_jac,
-    )
+    def _new_ekf() -> EKF:
+        return EKF(
+            x=np.concatenate([base_r[0], init_v]),
+            P=np.diag([80.0**2] * 3 + [30.0**2] * 3),
+            process_noise=np.diag([1e-2] * 3 + [1.0] * 3),
+            f=dynamics,
+            F_jac=F_jac,
+        )
 
     # Tiny wrapper to use only the first 3 state entries for radar
     class _RadarAdapter:
@@ -124,29 +138,88 @@ def main(seed: int = 0) -> dict:
             return H_full[:, 0:6]
 
     radar_adapter = _RadarAdapter(radar)
-    fused = MultiSensorEKF(ekf)
+    radar_only_filter = MultiSensorEKF(_new_ekf())
+    fused = MultiSensorEKF(_new_ekf())
 
     est_r = np.zeros_like(base_r)
     est_v = np.zeros_like(base_r)
-    est_r[0], est_v[0] = ekf.x[0:3], ekf.x[3:6]
+    radar_only_r = np.zeros_like(base_r)
+    radar_only_v = np.zeros_like(base_r)
+    est_r[0], est_v[0] = fused.ekf.x[0:3], fused.ekf.x[3:6]
+    radar_only_r[0], radar_only_v[0] = (
+        radar_only_filter.ekf.x[0:3],
+        radar_only_filter.ekf.x[3:6],
+    )
+    radar_updates = 0
+    fiducial_updates = 0
+    multi_source_ticks = 0
     for k in range(N):
-        fused.step(u=np.zeros(0), dt=DT,
-                    measurements=[(radar_adapter, radar_z[k + 1])])
+        radar_only_filter.step(
+            u=np.zeros(0),
+            dt=DT,
+            measurements=[(radar_adapter, radar_z[k + 1])],
+        )
+        radar_only_r[k + 1] = radar_only_filter.ekf.x[0:3]
+        radar_only_v[k + 1] = radar_only_filter.ekf.x[3:6]
+
+        measurements = [(radar_adapter, radar_z[k + 1])]
+        radar_updates += 1
+        if fiducial_z[k + 1] is not None:
+            measurements.append((fiducial, fiducial_z[k + 1]))
+            fiducial_updates += 1
+            multi_source_ticks += 1
+        fused.step(u=np.zeros(0), dt=DT, measurements=measurements)
         est_r[k + 1] = fused.ekf.x[0:3]
         est_v[k + 1] = fused.ekf.x[3:6]
 
     # Metrics -------------------------------------------------------
     def _rmse(a, b): return float(np.sqrt(np.mean(np.sum((a - b) ** 2, axis=1))))
 
+    near_field_mask = np.arange(N + 1) * DT >= FIDUCIAL_START_S
+
     before = {
         "pos_rmse": _rmse(base_r, truth_r),
         "vel_rmse": _rmse(base_v, truth_v),
         "pos_p95":  float(np.quantile(np.linalg.norm(base_r - truth_r, axis=1), 0.95)),
     }
+    radar_only = {
+        "pos_rmse": _rmse(radar_only_r, truth_r),
+        "vel_rmse": _rmse(radar_only_v, truth_v),
+        "pos_p95": float(
+            np.quantile(np.linalg.norm(radar_only_r - truth_r, axis=1), 0.95)
+        ),
+        "near_field_pos_rmse": _rmse(
+            radar_only_r[near_field_mask],
+            truth_r[near_field_mask],
+        ),
+        "near_field_pos_p95": float(
+            np.quantile(
+                np.linalg.norm(
+                    radar_only_r[near_field_mask] - truth_r[near_field_mask],
+                    axis=1,
+                ),
+                0.95,
+            )
+        ),
+    }
     after = {
         "pos_rmse": _rmse(est_r, truth_r),
         "vel_rmse": _rmse(est_v, truth_v),
         "pos_p95":  float(np.quantile(np.linalg.norm(est_r - truth_r, axis=1), 0.95)),
+        "near_field_pos_rmse": _rmse(est_r[near_field_mask], truth_r[near_field_mask]),
+        "near_field_pos_p95": float(
+            np.quantile(
+                np.linalg.norm(est_r[near_field_mask] - truth_r[near_field_mask], axis=1),
+                0.95,
+            )
+        ),
+        "fiducial_updates": float(fiducial_updates),
+        "multi_source_tick_fraction": float(multi_source_ticks / max(1, N)),
+    }
+    diagnostics = {
+        "radar_updates": radar_updates,
+        "fiducial_updates": fiducial_updates,
+        "multi_source_tick_fraction": multi_source_ticks / max(1, N),
     }
 
     banner = summary_banner("§5 EKF multi-sensor fusion", before, after)
@@ -158,23 +231,33 @@ def main(seed: int = 0) -> dict:
         t = np.arange(N + 1) * DT
         axes[0].plot(t, np.linalg.norm(base_r - truth_r, axis=1),
                       label="baseline (raw radar)")
+        axes[0].plot(t, np.linalg.norm(radar_only_r - truth_r, axis=1),
+                      label="EKF radar-only")
         axes[0].plot(t, np.linalg.norm(est_r - truth_r, axis=1),
-                      label="EKF fused")
+                      label="EKF radar+fiducial")
         axes[0].set_xlabel("t [s]"); axes[0].set_ylabel("‖position error‖ [m]")
         axes[0].set_title("position error")
         axes[0].legend(); axes[0].grid(True, alpha=0.3)
 
         axes[1].plot(t, np.linalg.norm(base_v - truth_v, axis=1),
                       label="baseline (diff of radar)")
+        axes[1].plot(t, np.linalg.norm(radar_only_v - truth_v, axis=1),
+                      label="EKF radar-only")
         axes[1].plot(t, np.linalg.norm(est_v - truth_v, axis=1),
-                      label="EKF")
+                      label="EKF radar+fiducial")
         axes[1].set_xlabel("t [s]"); axes[1].set_ylabel("‖velocity error‖ [m/s]")
         axes[1].set_title("velocity error")
         axes[1].legend(); axes[1].grid(True, alpha=0.3)
         save_fig(fig, "s05_ekf")
         plt.close(fig)
 
-    return {"before": before, "after": after, "banner": banner}
+    return {
+        "before": before,
+        "radar_only": radar_only,
+        "after": after,
+        "diagnostics": diagnostics,
+        "banner": banner,
+    }
 
 
 if __name__ == "__main__":

@@ -53,6 +53,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -76,6 +77,8 @@ from analysis._common import ARTIFACTS, HAS_MPL, save_fig, summary_banner
 DT = 5.0
 T_FINAL = 300.0
 SLO_BUDGET_MS = 60.0
+INITIAL_REPLICAS = 10
+POST_BOUND_RECOVERY_FORECAST_FLOOR_RPS = 1_200.0
 
 # Fault-injection windows (seconds)
 WINDOW_MISSING = (40, 60)
@@ -126,7 +129,7 @@ def _build_stack() -> tuple[SREControlStack, Signal]:
     asc = PredictiveAutoscaler(
         per_replica_rps=100.0,
         replicas_min=4,
-        replicas_max=50,
+        replicas_max=100,
         max_step=5,
         dt=DT,
         horizon=10,
@@ -163,7 +166,7 @@ def _run_scenario() -> tuple[list[list[dict]], np.ndarray, np.ndarray]:
     """
     rng = np.random.default_rng(0)
     t_grid = np.arange(0, T_FINAL, DT)
-    replicas = 10
+    replicas = INITIAL_REPLICAS
     event_lists: list[list[dict]] = []
     replicas_trace, latency_trace = [], []
 
@@ -187,15 +190,19 @@ def _run_scenario() -> tuple[list[list[dict]], np.ndarray, np.ndarray]:
             # to violate `unsafe_proposal_projected`.
             nn_proposal = np.array([rps * 1.0, -rps * 1.0, 0.0])
 
+        forecast_rps = _true_rps(t + 20)
+        if WINDOW_BOUND[1] < t < WINDOW_UNSAFE[0]:
+            forecast_rps = max(forecast_rps, POST_BOUND_RECOVERY_FORECAST_FLOOR_RPS)
         original_replicas_max = stack.autoscaler.replicas_max
         if WINDOW_BOUND[0] <= t <= WINDOW_BOUND[1]:
             stack.autoscaler.replicas_max = 18
+            forecast_rps = max(forecast_rps, 2_500.0)
 
         try:
             entry = stack.step(
                 dt=DT,
                 sensor_readings=[(metrics, reading)],
-                forecast_rps=_true_rps(t + 20),
+                forecast_rps=forecast_rps,
                 current_replicas=replicas,
                 zone_target=zone_target,
                 nn_proposal=nn_proposal,
@@ -203,7 +210,7 @@ def _run_scenario() -> tuple[list[list[dict]], np.ndarray, np.ndarray]:
         finally:
             stack.autoscaler.replicas_max = original_replicas_max
 
-        replicas = max(entry["replicas_next"], 10)
+        replicas = int(entry["replicas_next"])
         replicas_trace.append(replicas)
         latency_trace.append(lat)
         event_lists.append(entry["runtime"].get("events", []))
@@ -219,6 +226,12 @@ def _run_scenario() -> tuple[list[list[dict]], np.ndarray, np.ndarray]:
 def _ticks_in_window(t_grid: np.ndarray, bounds: tuple[float, float]) -> list[int]:
     start, end = bounds
     return [i for i, t in enumerate(t_grid) if start <= t <= end]
+
+
+def _fraction_or_default(numerator: int, denominator: int, default: float) -> float:
+    if denominator == 0:
+        return default
+    return numerator / denominator
 
 
 def _derive_metrics(event_lists: list[list[dict]]) -> dict:
@@ -243,11 +256,15 @@ def _derive_metrics(event_lists: list[list[dict]]) -> dict:
             i for i in tick_idxs if window.expected_kind in kinds_per_tick[i]
         ]
         visible_ticks = [i for i in tick_idxs if counts[i] > 0]
-        denominator = max(1, len(tick_idxs))
+        denominator = len(tick_idxs)
         injected_window_coverage[window.name] = {
             "expected_kind": window.expected_kind,
-            "event_visible_fraction": len(visible_ticks) / denominator,
-            "expected_kind_fraction": len(expected_kind_ticks) / denominator,
+            "event_visible_fraction": _fraction_or_default(
+                len(visible_ticks), denominator, 1.0
+            ),
+            "expected_kind_fraction": _fraction_or_default(
+                len(expected_kind_ticks), denominator, 1.0
+            ),
         }
 
     # mean time-to-recover: ticks between first and last event of each kind
@@ -263,11 +280,11 @@ def _derive_metrics(event_lists: list[list[dict]]) -> dict:
         "distinct_kinds": int(len(all_kinds)),
         "degraded_tick_fraction": 100.0 * degraded_ticks / max(1, len(counts)),
         "true_degraded_fraction": len(injected_ticks) / max(1, len(event_lists)),
-        "event_visible_fraction": (
-            len(visible_injected_ticks) / max(1, len(injected_ticks))
+        "event_visible_fraction": _fraction_or_default(
+            len(visible_injected_ticks), len(injected_ticks), 1.0
         ),
-        "background_event_fraction": (
-            len(visible_background_ticks) / max(1, len(background_ticks))
+        "background_event_fraction": _fraction_or_default(
+            len(visible_background_ticks), len(background_ticks), 0.0
         ),
         "injected_window_coverage": injected_window_coverage,
         "mttr_seconds": mttr,
@@ -297,7 +314,10 @@ def _jaccard_matrix(kinds_per_tick: list[set], all_kinds: list[str]) -> np.ndarr
 # ---------------------------------------------------------------------------
 
 
-def main() -> dict:
+def main(artifacts_dir: Path | str | None = None) -> dict:
+    artifacts = Path(artifacts_dir) if artifacts_dir is not None else ARTIFACTS
+    artifacts.mkdir(parents=True, exist_ok=True)
+
     event_lists, replicas, latency = _run_scenario()
     after = _derive_metrics(event_lists)
     # "Before" = pretend the stack has no runtime.events channel, so
@@ -333,15 +353,15 @@ def main() -> dict:
         for tick_idx, evs in enumerate(event_lists)
         for ev in evs
     ]
-    full_path = ARTIFACTS / "s10_trace_full.jsonl"
+    full_path = artifacts / "s10_trace_full.jsonl"
     with open(full_path, "w", encoding="utf-8") as fh:
         for row in trace_rows:
-            fh.write(json.dumps(row) + "\n")
+            fh.write(json.dumps(row, sort_keys=True, allow_nan=False) + "\n")
 
-    sample_path = ARTIFACTS / "s10_trace_sample.jsonl"
+    sample_path = artifacts / "s10_trace_sample.jsonl"
     with open(sample_path, "w", encoding="utf-8") as fh:
         for row in trace_rows[:10]:
-            fh.write(json.dumps(row) + "\n")
+            fh.write(json.dumps(row, sort_keys=True, allow_nan=False) + "\n")
 
     if HAS_MPL:
         import matplotlib.pyplot as plt
@@ -387,7 +407,7 @@ def main() -> dict:
         ax.legend(loc="upper right")
         fig.tight_layout()
         fig.savefig(docs_assets / "s10_event_density.png", dpi=130, bbox_inches="tight")
-        save_fig(fig, "s10_event_density")
+        save_fig(fig, "s10_event_density", artifacts_dir=artifacts)
         plt.close(fig)
 
         # ---- (2) co-occurrence heat map ----
@@ -418,7 +438,7 @@ def main() -> dict:
             fig.savefig(
                 docs_assets / "s10_cooccurrence.png", dpi=130, bbox_inches="tight"
             )
-            save_fig(fig, "s10_cooccurrence")
+            save_fig(fig, "s10_cooccurrence", artifacts_dir=artifacts)
             plt.close(fig)
 
     # Clean the banner-metrics dict to what summary_banner expects

@@ -1,0 +1,19 @@
+{"t":0,"rps":900,"latency_ms":42,"error_rate":0.004,"forecast_rps":920,"zone_target":[450,450],"nn_proposal":[900,0,0],"expected_kind":null}
+{"t":5,"rps":940,"latency_ms":43,"error_rate":0.004,"forecast_rps":960,"zone_target":[470,470],"nn_proposal":[940,0,0],"expected_kind":null}
+{"t":10,"rps":980,"latency_ms":45,"error_rate":0.005,"forecast_rps":1000,"zone_target":[490,490],"nn_proposal":[980,0,0],"expected_kind":null}
+{"t":15,"rps":1020,"latency_ms":46,"error_rate":0.005,"forecast_rps":1040,"zone_target":[510,510],"nn_proposal":[1020,0,0],"expected_kind":null}
+{"t":20,"rps":1040,"latency_ms":47,"error_rate":0.006,"forecast_rps":1060,"zone_target":[520,520],"nn_proposal":[1040,0,0],"sensor_missing":true,"expected_kind":"missing_sensor","operator_action":"check telemetry source and continue degraded"}
+{"t":25,"rps":1060,"latency_ms":49,"error_rate":0.006,"forecast_rps":1080,"zone_target":[530,530],"nn_proposal":[1060,0,0],"expected_kind":null}
+{"t":30,"rps":1100,"latency_ms":52,"error_rate":0.007,"forecast_rps":1120,"zone_target":[550,550],"nn_proposal":[1100,0,0],"expected_kind":null}
+{"t":35,"rps":1120,"latency_ms":53,"error_rate":0.007,"forecast_rps":1140,"zone_target":[560,560],"nn_proposal":[1120,0,0],"expected_kind":null}
+{"t":40,"rps":1150,"latency_ms":55,"error_rate":0.008,"forecast_rps":1180,"zone_target":[575,575],"nn_proposal":[0,1150,0],"expected_kind":"unsafe_proposal_projected","operator_action":"audit upstream policy proposal"}
+{"t":45,"rps":1180,"latency_ms":57,"error_rate":0.008,"forecast_rps":2500,"zone_target":[590,590],"nn_proposal":[1180,0,0],"expected_kind":null}
+{"t":50,"rps":1220,"latency_ms":60,"error_rate":0.009,"forecast_rps":10000,"zone_target":[610,610],"nn_proposal":[1220,0,0],"replicas_max":17,"expected_kind":"replica_bound_active","operator_action":"check quota and restore autoscaler cap"}
+{"t":55,"rps":1260,"latency_ms":62,"error_rate":0.010,"forecast_rps":1280,"zone_target":[980,980],"nn_proposal":[1260,0,0],"replicas_max":30,"expected_kind":"bounded_ls_residual","operator_action":"inspect capacity and placement target"}
+{"t":60,"rps":1280,"latency_ms":76,"error_rate":0.018,"forecast_rps":1300,"zone_target":[640,640],"nn_proposal":[1280,0,0],"expected_kind":null}
+{"t":65,"rps":1300,"latency_ms":90,"error_rate":0.025,"forecast_rps":1300,"zone_target":[650,650],"nn_proposal":[1300,0,0],"expected_kind":"stability_violation","operator_action":"hold conservative mode and review error budget"}
+{"t":70,"rps":900,"latency_ms":48,"error_rate":0.006,"forecast_rps":900,"zone_target":[450,450],"nn_proposal":[900,0,0],"expected_kind":null}
+{"t":75,"rps":1320,"latency_ms":64,"error_rate":0.011,"forecast_rps":1340,"zone_target":[660,660],"nn_proposal":[0,1320,0],"sensor_missing":true,"incident_id":"compound_telemetry_policy_capacity","expected_kinds":["missing_sensor","unsafe_proposal_projected"],"operator_action":"check telemetry source and continue degraded","window_operator_action":"coordinate telemetry repair, policy rollback, and capacity restoration"}
+{"t":80,"rps":1360,"latency_ms":68,"error_rate":0.012,"forecast_rps":10000,"zone_target":[680,680],"nn_proposal":[1360,0,0],"replicas_max":17,"incident_id":"compound_telemetry_policy_capacity","expected_kinds":["replica_bound_active"],"operator_action":"check quota and restore autoscaler cap","window_operator_action":"coordinate telemetry repair, policy rollback, and capacity restoration"}
+{"t":85,"rps":1380,"latency_ms":70,"error_rate":0.013,"forecast_rps":1400,"zone_target":[980,980],"nn_proposal":[1380,0,0],"replicas_max":30,"incident_id":"compound_telemetry_policy_capacity","expected_kinds":["bounded_ls_residual"],"operator_action":"inspect capacity and placement target","window_operator_action":"coordinate telemetry repair, policy rollback, and capacity restoration"}
+{"t":90,"rps":920,"latency_ms":50,"error_rate":0.006,"forecast_rps":920,"zone_target":[460,460],"nn_proposal":[920,0,0],"expected_kind":null}
