@@ -913,6 +913,7 @@ disallowed: docs/*        ← 无运行时代码</div>
       <tr><td><code>python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json</code></td><td>Control-center normal/error manifests replay into browser evidence report</td><td>&lt;1 s</td></tr>
       <tr><td><code>python -m scripts.package_smoke</code></td><td>Installed wheel imports plus control-center evidence report validation</td><td>~5 s</td></tr>
       <tr><td><code>python -m scripts.control_center_integration_audit</code></td><td>Control-center browser evidence and backend payload fingerprint match</td><td>&lt;1 s</td></tr>
+      <tr><td><code>python -m scripts.review_authority_lint</code></td><td>Current review ledgers stay before historical packets in handoff entrypoints</td><td>&lt;1 s</td></tr>
       <tr><td><code>python -m examples.demo_sre_loop</code></td><td>12 行 tick trace</td><td>&lt;1 s</td></tr>
       <tr><td><code>python -m examples.demo_powered_descent</code></td><td>PDG 末态 ~2e-6 m</td><td>~0.5 s</td></tr>
       <tr><td><code>python -m examples.demo_catch_phase</code></td><td>末态 lateral_error 稳定</td><td>~1 s</td></tr>

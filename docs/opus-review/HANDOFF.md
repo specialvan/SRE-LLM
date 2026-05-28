@@ -94,6 +94,7 @@ python -m analysis.evidence_report
 python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json
 python -m scripts.package_smoke
 python -m scripts.control_center_integration_audit
+python -m scripts.review_authority_lint
 python -m examples.demo_sre_loop
 python -m examples.demo_powered_descent
 python -m examples.demo_catch_phase

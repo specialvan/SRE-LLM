@@ -177,6 +177,15 @@ def test_current_quality_gate_commands_include_browser_and_package_smoke_gates()
     assert "python -m scripts.package_smoke" in quality_gate_counts.CURRENT_QUALITY_GATE_COMMANDS
 
 
+def test_current_quality_gate_commands_include_review_authority_lint_gate():
+    assert "python -m scripts.review_authority_lint" in (
+        quality_gate_counts.CURRENT_QUALITY_GATE_COMMANDS
+    )
+    assert quality_gate_counts.REVIEW_AUTHORITY_GATE_MODULES == (
+        "scripts.review_authority_lint",
+    )
+
+
 def test_current_quality_gate_commands_include_section_10_trace_gate():
     assert "python -m analysis.s10_failure_trace" in (
         quality_gate_counts.CURRENT_QUALITY_GATE_COMMANDS
@@ -203,6 +212,10 @@ def test_current_quality_gate_commands_match_executed_gate_modules():
         + tuple(
             f"python -m {module}"
             for module in quality_gate_counts.INTEGRATION_AUDIT_GATE_MODULES
+        )
+        + tuple(
+            f"python -m {module}"
+            for module in quality_gate_counts.REVIEW_AUTHORITY_GATE_MODULES
         )
         + tuple(
             f"python -m {module}"
@@ -668,6 +681,22 @@ def test_run_integration_audit_gate_runs_control_center_audit(
     assert calls == [[sys.executable, "-m", "scripts.control_center_integration_audit"]]
 
 
+def test_run_review_authority_gate_runs_review_authority_lint(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], *args: object, **kwargs: object) -> SimpleNamespace:
+        calls.append(command)
+        return SimpleNamespace(returncode=0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    quality_gate_counts.run_review_authority_gate(Path("/repo"))
+
+    assert calls == [[sys.executable, "-m", "scripts.review_authority_lint"]]
+
+
 def test_run_browser_evidence_gate_runs_report_manifest_command(
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -746,6 +775,11 @@ def test_update_quality_gate_docs_runs_analysis_before_artifact_gates(
     )
     monkeypatch.setattr(
         quality_gate_counts,
+        "run_review_authority_gate",
+        lambda repo_root: calls.append("authority"),
+    )
+    monkeypatch.setattr(
+        quality_gate_counts,
         "run_demo_smoke_gate",
         lambda repo_root: calls.append("demo"),
     )
@@ -761,6 +795,7 @@ def test_update_quality_gate_docs_runs_analysis_before_artifact_gates(
         "evidence",
         "package",
         "audit",
+        "authority",
         "demo",
     ]
 
@@ -810,6 +845,9 @@ def test_update_quality_gate_docs_runs_demo_smoke_after_artifact_gates(
     def fake_audit_gate(repo_root: Path) -> None:
         calls.append("audit")
 
+    def fake_authority_gate(repo_root: Path) -> None:
+        calls.append("authority")
+
     monkeypatch.setattr(quality_gate_counts, "collect_pytest_count", fake_collect)
     monkeypatch.setattr(quality_gate_counts, "run_analysis_suite_gate", fake_analysis_gate)
     monkeypatch.setattr(
@@ -818,13 +856,23 @@ def test_update_quality_gate_docs_runs_demo_smoke_after_artifact_gates(
     monkeypatch.setattr(quality_gate_counts, "run_browser_evidence_gate", fake_browser_gate)
     monkeypatch.setattr(quality_gate_counts, "run_package_smoke_gate", fake_package_gate)
     monkeypatch.setattr(quality_gate_counts, "run_integration_audit_gate", fake_audit_gate)
+    monkeypatch.setattr(quality_gate_counts, "run_review_authority_gate", fake_authority_gate)
     monkeypatch.setattr(quality_gate_counts, "run_demo_smoke_gate", fake_demo_gate)
 
     _write_minimal_quality_gate_docs(tmp_path)
 
     update_quality_gate_docs(tmp_path)
 
-    assert calls == ["browser", "pytest", "analysis", "evidence", "package", "audit", "demo"]
+    assert calls == [
+        "browser",
+        "pytest",
+        "analysis",
+        "evidence",
+        "package",
+        "audit",
+        "authority",
+        "demo",
+    ]
 
 
 def test_update_quality_gate_docs_runs_evidence_gates_after_pytest_count(
@@ -854,6 +902,9 @@ def test_update_quality_gate_docs_runs_evidence_gates_after_pytest_count(
     def fake_audit_gate(repo_root: Path) -> None:
         calls.append("audit")
 
+    def fake_authority_gate(repo_root: Path) -> None:
+        calls.append("authority")
+
     monkeypatch.setattr(quality_gate_counts, "collect_pytest_count", fake_collect)
     monkeypatch.setattr(quality_gate_counts, "run_analysis_suite_gate", fake_analysis_gate)
     monkeypatch.setattr(
@@ -862,6 +913,7 @@ def test_update_quality_gate_docs_runs_evidence_gates_after_pytest_count(
     monkeypatch.setattr(quality_gate_counts, "run_browser_evidence_gate", fake_browser_gate)
     monkeypatch.setattr(quality_gate_counts, "run_package_smoke_gate", fake_package_gate)
     monkeypatch.setattr(quality_gate_counts, "run_integration_audit_gate", fake_audit_gate)
+    monkeypatch.setattr(quality_gate_counts, "run_review_authority_gate", fake_authority_gate)
     monkeypatch.setattr(quality_gate_counts, "run_demo_smoke_gate", fake_demo_gate)
 
     pr = tmp_path / "PR-REQUIREMENTS.md"
@@ -892,6 +944,7 @@ quality-gates:
   - python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json
   - python -m scripts.package_smoke
   - python -m scripts.control_center_integration_audit
+  - python -m scripts.review_authority_lint
   - python -m examples.demo_sre_loop
   - python -m examples.demo_powered_descent
   - python -m examples.demo_catch_phase
@@ -914,6 +967,7 @@ quality-gates:
 <tr><td><code>python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json</code></td><td>Control-center browser evidence report exported</td><td>&lt;1 s</td></tr>
 <tr><td><code>python -m scripts.package_smoke</code></td><td>Package smoke validates evidence report</td><td>&lt;1 s</td></tr>
 <tr><td><code>python -m scripts.control_center_integration_audit</code></td><td>Control-center integration audit exported</td><td>&lt;1 s</td></tr>
+<tr><td><code>python -m scripts.review_authority_lint</code></td><td>Review authority order validates</td><td>&lt;1 s</td></tr>
 <tr><td><code>python -m examples.demo_sre_loop</code></td><td>Demo trace prints</td><td>&lt;1 s</td></tr>
 <tr><td><code>python -m examples.demo_powered_descent</code></td><td>PDG demo prints terminal state</td><td>&lt;1 s</td></tr>
 <tr><td><code>python -m examples.demo_catch_phase</code></td><td>Catch demo prints lateral error</td><td>&lt;1 s</td></tr>
@@ -951,6 +1005,7 @@ quality-gates:
         "python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json\n"
         "python -m scripts.package_smoke\n"
         "python -m scripts.control_center_integration_audit\n"
+        "python -m scripts.review_authority_lint\n"
         "python -m examples.demo_sre_loop\n"
         "python -m examples.demo_powered_descent\n"
         "python -m examples.demo_catch_phase\n",
@@ -971,7 +1026,16 @@ quality-gates:
 
     update_quality_gate_docs(tmp_path)
 
-    assert calls == ["browser", "pytest", "analysis", "evidence", "package", "audit", "demo"]
+    assert calls == [
+        "browser",
+        "pytest",
+        "analysis",
+        "evidence",
+        "package",
+        "audit",
+        "authority",
+        "demo",
+    ]
 
 
 def test_update_quality_gate_docs_refreshes_browser_report_before_count_gate(
@@ -1008,6 +1072,11 @@ def test_update_quality_gate_docs_refreshes_browser_report_before_count_gate(
         quality_gate_counts,
         "run_integration_audit_gate",
         lambda repo_root: calls.append("audit"),
+    )
+    monkeypatch.setattr(
+        quality_gate_counts,
+        "run_review_authority_gate",
+        lambda repo_root: calls.append("authority"),
     )
     monkeypatch.setattr(
         quality_gate_counts,
@@ -1090,6 +1159,7 @@ quality-gates:
   - python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json
   - python -m scripts.package_smoke
   - python -m scripts.control_center_integration_audit
+  - python -m scripts.review_authority_lint
   - python -m examples.demo_sre_loop
   - python -m examples.demo_powered_descent
   - python -m examples.demo_catch_phase
@@ -1114,6 +1184,7 @@ historical snapshot: 51 passed
 <tr><td><code>python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json</code></td><td>Control-center browser evidence report exported</td><td>&lt;1 s</td></tr>
 <tr><td><code>python -m scripts.package_smoke</code></td><td>Package smoke validates evidence report</td><td>&lt;1 s</td></tr>
 <tr><td><code>python -m scripts.control_center_integration_audit</code></td><td>Control-center integration audit exported</td><td>&lt;1 s</td></tr>
+<tr><td><code>python -m scripts.review_authority_lint</code></td><td>Review authority order validates</td><td>&lt;1 s</td></tr>
 <tr><td><code>python -m examples.demo_sre_loop</code></td><td>Demo trace prints</td><td>&lt;1 s</td></tr>
 <tr><td><code>python -m examples.demo_powered_descent</code></td><td>PDG demo prints terminal state</td><td>&lt;1 s</td></tr>
 <tr><td><code>python -m examples.demo_catch_phase</code></td><td>Catch demo prints lateral error</td><td>&lt;1 s</td></tr>
@@ -1257,6 +1328,7 @@ quality-gates:
   - python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json
   - python -m scripts.package_smoke
   - python -m scripts.control_center_integration_audit
+  - python -m scripts.review_authority_lint
   - python -m examples.demo_sre_loop
   - python -m examples.demo_powered_descent
   - python -m examples.demo_catch_phase
@@ -1277,6 +1349,7 @@ quality-gates:
         "python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json\n"
         "python -m scripts.package_smoke\n"
         "python -m scripts.control_center_integration_audit\n"
+        "python -m scripts.review_authority_lint\n"
         "python -m examples.demo_sre_loop\n"
         "python -m examples.demo_powered_descent\n"
         "python -m examples.demo_catch_phase\n",

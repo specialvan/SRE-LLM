@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import sys
 
 
 CURRENT_LEDGER_ANCHORS = (
@@ -67,6 +68,13 @@ def find_authority_order_errors(path: Path) -> list[str]:
     return errors
 
 
+def check_authority_order(repo_root: Path) -> list[str]:
+    errors: list[str] = []
+    for relative_path in configured_authority_paths():
+        errors.extend(find_authority_order_errors(repo_root / relative_path))
+    return errors
+
+
 def _section_for_path(path: Path) -> AuthoritySection:
     normalized = path.as_posix()
     for section in AUTHORITY_SECTIONS:
@@ -90,3 +98,15 @@ def _authority_section_text(
         section_text = section_text.split(section.end_marker, 1)[0]
     return section_text, section.label
 
+
+def main(argv: list[str] | None = None) -> None:
+    args = argv if argv is not None else sys.argv[1:]
+    repo_root = Path(args[0]) if args else Path(__file__).resolve().parents[1]
+    errors = check_authority_order(repo_root)
+    if errors:
+        raise SystemExit("\n".join(errors))
+    print("review authority order ok")
+
+
+if __name__ == "__main__":
+    main()

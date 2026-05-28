@@ -16,6 +16,7 @@ python -m analysis.evidence_report
 python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json
 python -m scripts.package_smoke
 python -m scripts.control_center_integration_audit
+python -m scripts.review_authority_lint
 python -m examples.demo_sre_loop
 python -m examples.demo_powered_descent
 python -m examples.demo_catch_phase
@@ -47,6 +48,9 @@ package smoke ok; control-center evidence report validates normal, backend error
 
 python -m scripts.control_center_integration_audit
 writes analysis/artifacts/control-center-integration-audit.json after validating the live backend payload contract, reading the browser evidence report, and reusing package-smoke evidence verification so frontend/backend integration proof is available as one machine-readable artifact.
+
+python -m scripts.review_authority_lint
+review authority order ok
 
 python -m examples.demo_sre_loop
 trace prints without error

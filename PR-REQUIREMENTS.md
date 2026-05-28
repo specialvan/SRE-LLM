@@ -25,6 +25,7 @@ quality-gates:
   - python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json
   - python -m scripts.package_smoke
   - python -m scripts.control_center_integration_audit
+  - python -m scripts.review_authority_lint
   - python -m examples.demo_sre_loop
   - python -m examples.demo_powered_descent
   - python -m examples.demo_catch_phase
@@ -82,6 +83,7 @@ event-kinds-total: 11
 | Browser evidence | `python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json` | normal/backend-error/frontend-error manifest replay and report export |
 | Package smoke | `python -m scripts.package_smoke` | installed wheel imports plus control-center evidence report validation |
 | 控制中心联调审计 | `python -m scripts.control_center_integration_audit` | Browser evidence report + current backend payload fingerprint match |
+| Review authority lint | `python -m scripts.review_authority_lint` | Current ledgers remain before historical review packets in handoff entrypoints |
 | 端到端 Demo | `python -m examples.demo_sre_loop` | 12 行 trace 无异常 |
 | PDG Demo | `python -m examples.demo_powered_descent` | 末态位置 ~2e-6 m |
 | Catch Demo | `python -m examples.demo_catch_phase` | lateral_error 稳定在窗口内 |

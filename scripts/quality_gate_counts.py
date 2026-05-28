@@ -24,6 +24,7 @@ BROWSER_EVIDENCE_GATE_COMMANDS = (
 )
 PACKAGE_SMOKE_GATE_MODULES = ("scripts.package_smoke",)
 INTEGRATION_AUDIT_GATE_MODULES = ("scripts.control_center_integration_audit",)
+REVIEW_AUTHORITY_GATE_MODULES = ("scripts.review_authority_lint",)
 DEMO_SMOKE_GATE_MODULES = (
     "examples.demo_sre_loop",
     "examples.demo_powered_descent",
@@ -58,6 +59,7 @@ CURRENT_QUALITY_GATE_COMMANDS = (
     *BROWSER_EVIDENCE_GATE_COMMANDS,
     *(command_for_module(module) for module in PACKAGE_SMOKE_GATE_MODULES),
     *(command_for_module(module) for module in INTEGRATION_AUDIT_GATE_MODULES),
+    *(command_for_module(module) for module in REVIEW_AUTHORITY_GATE_MODULES),
     *(command_for_module(module) for module in DEMO_SMOKE_GATE_MODULES),
 )
 QUALITY_GATE_COMMAND_DOCS = (
@@ -307,6 +309,22 @@ def run_integration_audit_gate(repo_root: Path = REPO_ROOT) -> None:
             raise RuntimeError(f"{module} failed:\n{output}")
 
 
+def run_review_authority_gate(repo_root: Path = REPO_ROOT) -> None:
+    for module in REVIEW_AUTHORITY_GATE_MODULES:
+        result = subprocess.run(
+            [sys.executable, "-m", module],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        if result.returncode != 0:
+            output = f"{result.stdout}\n{result.stderr}".strip()
+            raise RuntimeError(f"{module} failed:\n{output}")
+
+
 def run_analysis_suite_gate(repo_root: Path = REPO_ROOT) -> None:
     for module in ANALYSIS_SUITE_GATE_MODULES:
         result = subprocess.run(
@@ -478,6 +496,7 @@ def update_quality_gate_docs(
         run_evidence_artifact_gates(repo_root)
         run_package_smoke_gate(repo_root)
         run_integration_audit_gate(repo_root)
+        run_review_authority_gate(repo_root)
         run_demo_smoke_gate(repo_root)
     else:
         current_count = count
@@ -514,6 +533,7 @@ def check_quality_gate_docs(
         run_evidence_artifact_gates(repo_root)
         run_package_smoke_gate(repo_root)
         run_integration_audit_gate(repo_root)
+        run_review_authority_gate(repo_root)
         run_demo_smoke_gate(repo_root)
     else:
         current_count = count
