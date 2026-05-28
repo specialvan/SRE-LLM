@@ -7,6 +7,10 @@
 
 本文是给 Opus 重新介入评审的首读入口。当前事实以源代码、测试输出和已提交证据产物为准；旧版 Opus v1.0 包和 Claude review 只作为历史上下文。
 
+## 当前权威锚点
+
+当前开放风险先看 `docs/codex-review/OPEN_RISKS.md`，跨会话完成状态先看 `wiki/review-backlog.md`。`docs/opus-review/OPUS_REVIEW_PACKET.md` 和 `claude-review/docs/v2026-05-28/README.md` 只在这两个当前 ledger 之后作为复审上下文和历史 finding 对照。
+
 ## 当前基线
 
 当前 HEAD 已包含本轮评审入口、质量门计数、知识库快照和证据产物同步。不要把这些改动理解为新的生产安全声明；Opus 复核时应以当前源码和复核命令输出为准。
@@ -36,9 +40,9 @@
 
 1. `docs/opus-review/HANDOFF.md`：本交接入口。
 2. `docs/opus-review/README.md`：当前 Opus 包入口和权威顺序。
-3. `docs/opus-review/OPUS_REVIEW_PACKET.md`：复审命令、证据资产和历史 finding 对照。
-4. `docs/codex-review/OPEN_RISKS.md`：当前唯一开放风险边界。
-5. `wiki/review-backlog.md`：跨会话完成状态和证据索引。
+3. `docs/codex-review/OPEN_RISKS.md`：当前唯一开放风险边界。
+4. `wiki/review-backlog.md`：跨会话完成状态和证据索引。
+5. `docs/opus-review/OPUS_REVIEW_PACKET.md`：复审命令、证据资产和历史 finding 对照。
 6. `docs/EVENT_EVIDENCE_MANIFEST.md` 与 `docs/STACK_DATA_CONTRACT.md`：机器可验的证据/契约边界。
 7. `docs/CONTROL_CENTER_HANDOFF.md`：控制中心浏览器证据和前端契约细节。
 8. `claude-review/docs/v2026-05-28/README.md`：上一轮外部评审上下文。

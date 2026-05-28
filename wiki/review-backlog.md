@@ -592,6 +592,10 @@ Evidence:
 - `docs/opus-review/HANDOFF.md` is the current Opus first-read entry and now
   lists the post-v2.1 hardening commits, review focus, expected replay outputs,
   and evidence assets without pinning HEAD to a single commit SHA.
+- `docs/opus-review/HANDOFF.md` now puts `docs/codex-review/OPEN_RISKS.md` and
+  `wiki/review-backlog.md` before `docs/opus-review/OPUS_REVIEW_PACKET.md` and
+  older Claude/Opus packets in its reviewer flow, and the order is covered by a
+  regression test so historical packets do not become the first authority again.
 - `scripts.evidence_boundary_lint.PUBLIC_EVIDENCE_BOUNDARY_DOCS` includes
   `docs/opus-review/README.md` and `docs/opus-review/HANDOFF.md`, so the Opus
   first-read surface is linted for unqualified production-readiness, production

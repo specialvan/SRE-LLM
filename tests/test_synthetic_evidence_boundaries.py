@@ -340,6 +340,20 @@ def test_evidence_boundary_lint_covers_public_and_review_entrypoints() -> None:
     assert expected_paths <= set(PUBLIC_EVIDENCE_BOUNDARY_DOCS)
 
 
+def test_opus_handoff_reads_current_ledgers_before_historical_packets() -> None:
+    text = (REPO_ROOT / "docs/opus-review/HANDOFF.md").read_text(encoding="utf-8")
+    section = text.split("## 当前权威锚点", 1)[1].split("## 当前基线", 1)[0]
+
+    current_risk = "docs/codex-review/OPEN_RISKS.md"
+    current_backlog = "wiki/review-backlog.md"
+    opus_packet = "docs/opus-review/OPUS_REVIEW_PACKET.md"
+    old_opus_review = "claude-review/docs/v2026-05-28/README.md"
+
+    assert section.index(current_risk) < section.index(opus_packet)
+    assert section.index(current_backlog) < section.index(opus_packet)
+    assert section.index(current_risk) < section.index(old_opus_review)
+
+
 def test_development_audit_backlog_tracks_current_review_state() -> None:
     text = (REPO_ROOT / "docs/claude-development-audit/backlog.md").read_text(
         encoding="utf-8"
