@@ -1,89 +1,175 @@
 # Opus 评审交接
 
-日期：2026-05-29
-仓库：`D:\workspace\SRE-LLM\spacex`
-分支：`spacex-session`
-近期关键基线：日志中应包含 `bf63c43 docs(opus): 增加复审交接并同步质量门计数`；实际 HEAD 以 `git log -1 --oneline` 为准。
+日期: 2026-05-29
+仓库: `D:\workspace\SRE-LLM\spacex`
+分支: `spacex-session`
+范围: 给 Opus 重新介入评审的首读 handoff, 按当前工作区 git 内容域梳理。
 
-本文是给 Opus 重新介入评审的首读入口。当前事实以源代码、测试输出和已提交证据产物为准；旧版 Opus v1.0 包和 Claude review 只作为历史上下文。
+当前 HEAD 不在本文里钉死到某个 SHA。Opus 介入时请以 `git log -1 --oneline` 和
+`git log --reverse --oneline origin/spacex-session..HEAD` 为准。本文整理时本地分支相对
+`origin/spacex-session` ahead 49 个提交。
+
+本文只承担评审交接职责: 解释入口、提交分组、证据资产和复核命令。它不新增运行时语义,
+也不把 synthetic scenario evidence 升级为线上安全结论。本仓库仍是公开材料研究复现,
+不代表 SpaceX 官方实现。
 
 ## 当前权威锚点
 
-当前开放风险先看 `docs/codex-review/OPEN_RISKS.md`，跨会话完成状态先看 `wiki/review-backlog.md`。`docs/opus-review/OPUS_REVIEW_PACKET.md` 和 `claude-review/docs/v2026-05-28/README.md` 只在这两个当前 ledger 之后作为复审上下文和历史 finding 对照。
+Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
+
+1. `docs/codex-review/OPEN_RISKS.md`: 当前开放风险入口。现在仍保留的核心风险是 R1
+   synthetic evidence boundary, 即新摘要和外部转述不能把场景内结果泛化。
+2. `wiki/review-backlog.md`: 跨会话完成状态和证据索引, 用来判断历史 finding 是否已经被
+   代码、测试或文档边界收敛。
+3. `docs/opus-review/OPUS_REVIEW_PACKET.md`: Opus 当前工程包, 用于命令复跑和 finding
+   对照, 但不能覆盖上面两个 live ledger。
+4. `claude-review/docs/v2026-05-28/README.md` 和
+   `claude-review/docs/v2026-05-26/README.md`: 外部历史评审上下文, 只作为复核输入。
+
+这条顺序已由 `scripts.review_authority_lint` 约束, 并接入 `scripts.quality_gate_counts`。
 
 ## 当前基线
 
-当前 HEAD 已包含本轮评审入口、质量门计数、知识库快照和证据产物同步。不要把这些改动理解为新的生产安全声明；Opus 复核时应以当前源码和复核命令输出为准。
+- 工作区: 本文改写前 `git status --short --branch` 显示
+  `## spacex-session...origin/spacex-session [ahead 49]`。
+- 最新提交: 本文改写前 `git log -1 --oneline` 为
+  `0a0252f test(review): 固化Opus README权威顺序`。
+- 当前文档同步目标中的 pytest 数量为 487; 规范输出行只在下方复核摘要中保留一次。
+- 当前质量门已覆盖 review authority lint、浏览器证据 replay、包烟测、控制中心集成审计、
+  三个 demo smoke 和 S10/S11/S12 证据链。
+- 当前唯一 live 风险仍以 `docs/codex-review/OPEN_RISKS.md` 为准: 场景内证据不能被写成
+  泛化结论或官方算法说明。
 
-按内容分组：
+## Opus 首读顺序
 
-| 分组 | 文件 | 评审重点 |
+1. `docs/opus-review/HANDOFF.md`: 这份交接, 先拿到范围、提交分组和复核命令。
+2. `docs/opus-review/README.md`: Opus 包入口和首读表, 重点看 live ledger 是否排在历史包前。
+3. `docs/codex-review/OPEN_RISKS.md`: 判断是否仍有 blocker 或只剩边界提醒。
+4. `wiki/review-backlog.md`: 对照完成状态、证据索引和下一步候选。
+5. `docs/opus-review/OPUS_REVIEW_PACKET.md`: 复核命令、证据资产和历史 finding 对照。
+6. `docs/EVENT_EVIDENCE_MANIFEST.md` 与 `docs/STACK_DATA_CONTRACT.md`: 机器可验的证据和
+   stack 边界。
+7. `docs/CONTROL_CENTER_HANDOFF.md`: 控制中心浏览器证据、本地暴露边界和前端契约。
+8. `claude-review/docs/v2026-05-28/README.md`: 上一轮外部评审上下文。
+
+## 按内容域拆分的提交索引
+
+以下按 `origin/spacex-session..HEAD` 的 49 个提交整理。每行给出 Opus 建议优先看的复核点。
+
+### A. 历史审计包和 Codex/Claude 台账基线
+
+| Commit | 中文说明 | Opus 复核点 |
 | --- | --- | --- |
-| Opus 入口 | `docs/opus-review/HANDOFF.md`, `docs/opus-review/README.md`, `docs/opus-review/OPUS_REVIEW_PACKET.md` | Opus 首读顺序、权威来源、当前 gate 计数和历史材料降级语义是否一致 |
-| Codex 评审包 | `docs/codex-review/*.md`, `wiki/*.md`, `PR-REQUIREMENTS.md` | 当前质量门、开放风险和证据边界是否同步；R1 synthetic evidence boundary 是否仍被保留 |
-| 质量门脚本 | `scripts/quality_gate_counts.py`, `tests/test_quality_gate_counts.py` | 必跑命令是否在 PR/V2/Codex/Opus 文档同时出现，`--check` 是否只读，pytest count 是否数据驱动同步 |
-| 证据边界 lint | `scripts/evidence_boundary_lint.py`, `tests/test_synthetic_evidence_boundaries.py` | 公开入口是否拒绝未限定的 production/SpaceX-internals 表述，Opus 入口是否纳入 lint 面 |
-| 知识库快照 | `docs/V2_Knowledge/knowledge-base.html` | 只应反映当前证据与入口，不应新增 runtime 语义 |
-| 分析产物 | `analysis/artifacts/SUMMARY.txt`, `analysis/artifacts/event_evidence_manifest.json`, `analysis/artifacts/s11_catch_sre_wrapper.png` | 是否由现有分析命令重放生成，byte identity 是否匹配 manifest，差异是否只是当前产物刷新 |
+| `72e960c` | 落地 Claude development audit 包, 增加审计证据、报告、计划和初始 schema/contract 测试。 | 历史审计材料是否被标成上下文, 不应覆盖当前 live ledger。 |
+| `93e85ab` | 收尾审计包状态, 把完成/待办口径改成可交接版本。 | 状态词是否和实际代码、测试结果一致。 |
+| `6000034` | 澄清历史事件计数, 避免旧统计被误读为当前生成结果。 | 旧数字是否被降级为历史记录。 |
+| `2fc5b5e` | 对齐审计文档里的质量门计数。 | 计数是否由脚本同步, 而不是散落手写。 |
+| `0785d9e` | 刷新审计后的 `analysis/artifacts/SUMMARY.txt`。 | SUMMARY 变化是否来自生成器当前输出。 |
+| `0b2292f` | 同步最终分析证据, 修正 audit completion 报告引用。 | 文档引用是否指向存在的当前产物。 |
+| `5664d73` | 增加 post-commit review pass 和对应 snapshot/report。 | post-commit 结论是否只作为当时快照。 |
+| `c1dc48d` | 对齐 adapter exception taxonomy 相关文档。 | runtime 事件字段和文档术语是否一致。 |
+| `32913d0` | 记录 version policy 后续项。 | 版本策略是否仍只是 release hygiene, 没有伪造发布流程。 |
+| `66e55d7` | 收敛 Joseph form 文档漂移, 同步推导说明和控制中心 escaping 测试。 | EKF 文档、代码和测试是否仍一致。 |
 
-## 本轮 handoff 已固化的防线
+### B. 基础质量门、包烟测、发布卫生和公开边界
 
-| 防线 | 当前状态 | Opus 可复核点 |
+| Commit | 中文说明 | Opus 复核点 |
 | --- | --- | --- |
-| 首读入口 | `README.md` 指向本文件，本文件给出复审顺序、边界和命令 | 从 `docs/opus-review/README.md` 进入时不需要依赖旧 v1.0 包判断当前状态 |
-| 计数同步 | pytest 计数由 `scripts.quality_gate_counts.QUALITY_GATE_TARGETS` 同步 | 修改测试数量后运行 `python -u -m scripts.quality_gate_counts` 应同时更新 Opus handoff 和 packet |
-| 证据边界 | `docs/opus-review/README.md`、`HANDOFF.md`、`OPUS_REVIEW_PACKET.md` 均在 `PUBLIC_EVIDENCE_BOUNDARY_DOCS` 内 | 新增未限定的生产证明或 SpaceX 内部实现表述应被测试拦截 |
-| 产物隔离 | Section 11 测试使用 pytest `tmp_path`，不写 canonical `analysis/artifacts/s11_catch_sre_wrapper.png` | 全量 pytest 后 `git status --short` 不应出现 S11 图像污染 |
-| 复跑余量 | full pytest timeout 已提高到 300 s，本机当前约 174 s | Opus 复审机器抖动不应因为 180 s 硬边界误报失败 |
+| `056fd12` | 新增 `scripts.quality_gate_counts`, 自动同步 pytest count 和 canonical V2 HTML 入口。 | count target 是否覆盖 PR/V2/Codex/wiki/Opus 当前入口。 |
+| `982469e` | 增加 installed-wheel package smoke gate。 | wheel 安装后 import surface 是否真实验证。 |
+| `e90125c` | 加固 package smoke 质量门, 缺失命令和失败输出更明确。 | 失败时是否能定位缺口, `--check` 是否只读。 |
+| `0e82c1f` | 锁定 control-center 本地暴露边界。 | 默认 bind/Host 策略是否只允许本地回环。 |
+| `0ae5740` | 拆分 adapter exception cause taxonomy。 | `adapter_exception` 是否能区分 stage、fault family 和 fallback action。 |
+| `1b23897` | 增加 synthetic evidence boundary guard。 | 公开文档是否被 lint, 是否拒绝未限定的过界表述。 |
+| `8d8e064` | 增加 release hygiene 测试。 | 未发布项目是否避免误导性的 release/spec 口径。 |
 
-## 建议首读顺序
+### C. Opus 历史评审输入
 
-1. `docs/opus-review/HANDOFF.md`：本交接入口。
-2. `docs/opus-review/README.md`：当前 Opus 包入口和权威顺序。
-3. `docs/codex-review/OPEN_RISKS.md`：当前唯一开放风险边界。
-4. `wiki/review-backlog.md`：跨会话完成状态和证据索引。
-5. `docs/opus-review/OPUS_REVIEW_PACKET.md`：复审命令、证据资产和历史 finding 对照。
-6. `docs/EVENT_EVIDENCE_MANIFEST.md` 与 `docs/STACK_DATA_CONTRACT.md`：机器可验的证据/契约边界。
-7. `docs/CONTROL_CENTER_HANDOFF.md`：控制中心浏览器证据和前端契约细节。
-8. `claude-review/docs/v2026-05-28/README.md`：上一轮外部评审上下文。
-
-## 已拆分的近期提交
-
-| Commit | 主题 | Opus 建议关注点 |
+| Commit | 中文说明 | Opus 复核点 |
 | --- | --- | --- |
-| `f679e6d` | SRE 控制适配器边界与数值安全 | 非有限值、异常事件、EKF/稳定性/负载分配边界是否都有测试覆盖 |
-| `fa73ac0` | S10/S11/S12 事件证据清单与回放 | manifest byte identity、strict JSON、fixture 是否避免过度解释 |
-| `64b8dd9` | 控制中心契约与本地暴露边界 | loopback/Host 策略、share-state 白名单、DOM XSS 防护和浏览器 smoke 覆盖 |
-| `d00dc8b` | 包烟测和质量门编排 | `--check` 是否只读，缺失命令是否失败，质量门是否覆盖必须命令 |
-| `8fd9b84` | Opus/Codex 台账同步 | 历史评审、当前风险和完成状态是否冲突 |
-| `b6ee79b` | 分析与浏览器审计产物刷新 | 产物是否与生成脚本/manifest 一致 |
-| `9b70909` | 稳定 DOM 证据哈希 | Windows 行尾是否还会造成 manifest sha/bytes 漂移 |
-| `3fb5464` | 控制中心集成审计可复现 | `generated_at` 是否不再污染工作区，连续写出是否稳定 |
-| `1da8e3f` | S11 wrapper 图像刷新 | S11 图像是否与当前生成器输出一致 |
-| `bf63c43` | Opus handoff 与 gate 计数同步 | 本交接入口、Opus/Codex/wiki 计数和证据资产是否一致 |
-| `7a99411` | 中文化 Opus 复审交接入口 | 首读顺序、边界说明和提交分组是否便于 Opus 直接复审 |
-| `77540c3` | 隔离 Section 11 测试产物写入 | 全量 pytest 后是否不再把 canonical S11 证据图污染成测试图 |
-| `9b0c88d` | Opus 交接入口纳入证据边界 lint | `HANDOFF.md` / Opus README 是否被 R1 synthetic evidence boundary 防线覆盖 |
-| `3198d8e` | Opus handoff 测试计数同步 | `quality_gate_counts` 是否会同步 `HANDOFF.md` 里的 pytest count |
-| `b5c950d` | pytest 质量门超时余量 | 当前 full-suite 复跑是否有足够 timeout headroom，避免复审机器抖动误超时 |
-| `52b629a` | 交接补齐 hardening 提交 | handoff 是否覆盖 S11 隔离、lint/count sync、timeout headroom |
-| `a8444fa` | 完整质量门 477 计数同步 | PR/V2/Codex/Opus/wiki 当前-facing 计数是否一致，是否避免 prose 里写死易漂移数字 |
-| `9b050e5` | 评审台账记录 Opus 入口硬化 | `wiki/review-backlog.md` 是否记录 handoff/gate hardening 的验证证据 |
+| `4cc2032` | 沉淀 Opus v1.0 深度评审包。 | v1.0 只作为历史 finding 来源。 |
+| `31e6ba9` | 补充 Opus v1.0 第二轮行级隐患和复现实证。 | 行级 finding 是否都能映射到当前测试或台账。 |
+| `925f62c` | 增加 Opus v2.0 Codex 工程包评审产出。 | F50-F60/G1 是否已转入当前 backlog 的 resolved/live 状态。 |
 
-后续 handoff 修订应只包含评审入口和计数同步，不应混入运行时代码。
+### D. SRE 运行时边界和数值安全收敛
 
-## 按内容域复审路径
+| Commit | 中文说明 | Opus 复核点 |
+| --- | --- | --- |
+| `f679e6d` | 按 Opus 反馈收敛 SRE 控制边界: non-finite 输入、EKF/Joseph、fallback、事件 schema、稳定性和负载分配等。 | `sre_control/`, `starship/ekf.py`, `starship/stability_monitor.py` 与 `tests/test_sre_control.py`、`tests/test_contracts.py`、`tests/test_ekf.py` 是否形成回归网。 |
 
-1. **入口/台账一致性**：对照 `docs/opus-review/README.md`、本文件、`docs/codex-review/OPEN_RISKS.md`、`wiki/review-backlog.md`。确认旧 Opus/Claude 包只作为历史输入，当前开放风险仍是 R1 synthetic evidence boundary。
-2. **质量门可复跑性**：从 `scripts/quality_gate_counts.py` 的 `CURRENT_QUALITY_GATE_COMMANDS` 和 `QUALITY_GATE_TARGETS` 开始，核对 `tests/test_quality_gate_counts.py` 覆盖命令存在性、manifest→report 顺序、只读 `--check`、Opus handoff 计数同步。
-3. **证据边界与 overclaim lint**：从 `scripts/evidence_boundary_lint.py` 开始，核对 `tests/test_synthetic_evidence_boundaries.py` 中 live review docs lint 和入口覆盖测试；重点确认新文案没有把 synthetic scenario evidence 写成生产证明。
-4. **机器证据链**：从 `analysis.evidence_manifest`、`analysis.evidence_report`、`docs/EVENT_EVIDENCE_MANIFEST.md`、`docs/STACK_DATA_CONTRACT.md` 开始，核对 repo-relative path、SHA-256/bytes、strict JSON/JSONL/PNG parse 和 stack contract 非生产声明。
-5. **控制中心浏览器证据**：从 `scripts.control_center_browser_smoke`、`analysis/artifacts/control-center-browser-evidence-report.json`、`docs/CONTROL_CENTER_HANDOFF.md` 开始，核对 normal/backend_error/frontend_error 三类 manifest replay 和 DOM/contract 错误信息。
-6. **运行时 hardening 抽查**：从 `sre_control/`、`starship/ekf.py`、`tests/test_sre_control.py`、`tests/test_contracts.py`、`tests/test_ekf.py` 开始，抽查 F50-F81 与 v1.0 P0/P1 findings 的回归测试是否仍在。
+### E. 事件证据链、S10/S11/S12 和分析报告
+
+| Commit | 中文说明 | Opus 复核点 |
+| --- | --- | --- |
+| `fa73ac0` | 建立 S10/S11/S12 事件证据清单、manifest、report、fixed replay fixture 和 stack contract 校验。 | repo-relative path、SHA/bytes、strict JSON/JSONL/PNG parse、事件 schema 校验是否都在 report 中失败可见。 |
+| `b6ee79b` | 刷新分析和浏览器审计产物。 | 产物是否由当前命令重放生成, manifest byte identity 是否匹配。 |
+| `9b70909` | 稳定控制中心 DOM 证据哈希, 降低 Windows 行尾/HTML 大块漂移。 | manifest sha/bytes 是否不再因不必要 HTML snapshot 漂移。 |
+| `3fb5464` | 让控制中心集成审计可复现, 避免 `generated_at` 污染。 | 连续运行 audit 是否保持稳定输出。 |
+| `1da8e3f` | 刷新 S11 catch/SRE wrapper 图像。 | 图像是否和当前生成器输出一致。 |
+
+### F. 控制中心前端契约和本地浏览器证据
+
+| Commit | 中文说明 | Opus 复核点 |
+| --- | --- | --- |
+| `64b8dd9` | 加固 control-center 前端契约、本地服务暴露边界、浏览器 smoke 和 integration audit。 | share-state 白名单、动态文本 escaping、normal/backend_error/frontend_error 三类 manifest replay 是否都被测试和质量门覆盖。 |
+
+### G. 质量门扩展和命令同步
+
+| Commit | 中文说明 | Opus 复核点 |
+| --- | --- | --- |
+| `d00dc8b` | 扩展评审质量门和包烟测, 将 browser/package/integration 等命令纳入同步。 | 必跑命令是否同时出现在 PR/V2/Codex/Opus/wiki 文档。 |
+| `3198d8e` | 让 Opus handoff 中的 pytest count 进入 `QUALITY_GATE_TARGETS`。 | 修改测试数后 handoff 是否会被同一脚本更新。 |
+| `b5c950d` | 将 full pytest 和 collect-only 质量门 timeout 提高到 300 秒。 | Opus 复跑机器抖动是否有足够余量。 |
+| `a8444fa` | 同步完整质量门 477 count。 | 旧 count 是否只通过脚本写入。 |
+| `3e062d1` | 同步质量门 481 count。 | 新增 authority-order 测试后的 count 是否全入口一致。 |
+| `934e650` | 同步质量门 483 count。 | 抽象 lint 后的 count 是否全入口一致。 |
+| `014df0a` | 将 `scripts.review_authority_lint` 接入质量门命令集合。 | 当前 ledger 优先顺序是否成为必跑 gate。 |
+| `896a333` | 同步质量门 485 count。 | gate 增量后所有文档 target 是否一致。 |
+| `b6073c8` | 扩展 live 评审台账命令校验, 覆盖 handoff 和 wiki backlog。 | `QUALITY_GATE_COMMAND_DOCS` 是否包含 live ledger。 |
+| `0a0252f` | 固化 Opus README 权威顺序, 支持 README 相对路径 alias。 | Opus README 的首读表是否和 live ledger 顺序一致。 |
+
+### H. Opus 交接、live ledger 和 authority-order 硬化
+
+| Commit | 中文说明 | Opus 复核点 |
+| --- | --- | --- |
+| `8fd9b84` | 同步 Opus/Codex 评审包和证据边界台账, 新增 `OPUS_REVIEW_PACKET.md`。 | 当前风险、历史 finding 和证据资产是否没有互相冲突。 |
+| `bf63c43` | 增加 Opus 复审 handoff 并同步质量门计数。 | handoff 是否列出复核命令、证据资产和边界。 |
+| `7a99411` | 中文化 Opus 复审交接入口。 | 中文入口是否方便 Opus 直接阅读。 |
+| `77540c3` | 隔离 Section 11 测试产物写入到 pytest `tmp_path`。 | 全量 pytest 后 canonical S11 图像是否不被测试污染。 |
+| `9b0c88d` | 将 Opus handoff/README 纳入 evidence-boundary lint。 | 新交接文案是否会被过界表述测试拦截。 |
+| `52b629a` | 补齐 handoff 中的 review hardening 提交。 | handoff 是否覆盖 S11 隔离、lint/count sync、timeout 余量。 |
+| `9b050e5` | 在 wiki backlog 记录 Opus 入口硬化台账。 | 长期 ledger 是否能追踪这轮入口加固。 |
+| `50ac77b` | 强化复审首读交接入口和 Opus README。 | 首读顺序、边界和命令入口是否明确。 |
+| `fd39d89` | 扩展中文 evidence-boundary lint。 | 中文评审文案里的 synthetic evidence 过界是否可被测试发现。 |
+| `41dcc01` | 固化 Opus handoff 的当前 ledger 优先顺序。 | `OPEN_RISKS` 和 `review-backlog` 是否排在历史 packet 前。 |
+| `cc2008a` | 固化 wiki 推荐入口的当前 ledger 优先顺序。 | wiki 当前入口是否不会先导向历史包。 |
+| `f992531` | 抽象 review authority lint, 统一入口顺序检查。 | 新增评审入口时是否只需扩展一个 lint 配置。 |
+
+## 按内容域复核路径
+
+1. **入口/台账一致性**: 对照 `docs/opus-review/README.md`、本文件、
+   `docs/codex-review/OPEN_RISKS.md`、`wiki/review-backlog.md` 和
+   `scripts/review_authority_lint.py`。重点确认当前 ledger 先于历史 packet。
+2. **质量门可复跑性**: 从 `scripts/quality_gate_counts.py` 的
+   `CURRENT_QUALITY_GATE_COMMANDS`、`QUALITY_GATE_COMMAND_DOCS`、`QUALITY_GATE_TARGETS` 开始,
+   核对 `tests/test_quality_gate_counts.py` 对命令存在性、manifest-report 顺序、只读 `--check`、
+   Opus handoff count sync 的覆盖。
+3. **证据边界与文案 lint**: 从 `scripts/evidence_boundary_lint.py` 和
+   `tests/test_synthetic_evidence_boundaries.py` 开始, 核对 README、PR、wiki、V2、Codex、Opus
+   review 入口是否都在 lint 面内。
+4. **机器证据链**: 从 `analysis.evidence_manifest`、`analysis.evidence_report`、
+   `docs/EVENT_EVIDENCE_MANIFEST.md`、`docs/STACK_DATA_CONTRACT.md` 开始, 核对 repo-relative
+   path、SHA-256/bytes、strict JSON/JSONL/PNG parse、runtime event schema 和 stack contract。
+5. **控制中心浏览器证据**: 从 `scripts.control_center_browser_smoke`、
+   `analysis/artifacts/control-center-browser-evidence-report.json`、`docs/CONTROL_CENTER_HANDOFF.md`
+   开始, 核对 normal/backend_error/frontend_error 三类 replay 和 DOM/contract 错误信息。
+6. **运行时 hardening 抽查**: 从 `sre_control/`、`starship/ekf.py`、
+   `starship/stability_monitor.py`、`tests/test_sre_control.py`、`tests/test_contracts.py`、
+   `tests/test_ekf.py` 开始, 抽查 F50-F81 与 v1.0 P0/P1 finding 的回归测试是否还在。
 
 ## 复核命令
 
-建议 Opus 从干净工作区或清晰暂存范围运行：
+建议 Opus 从干净工作区或清晰暂存范围运行。下面命令同时也是当前质量门文档必须保留的命令集合。
 
 ```powershell
 python -m pytest tests -q
@@ -102,20 +188,23 @@ python -m examples.demo_powered_descent
 python -m examples.demo_catch_phase
 ```
 
-当前文档同步目标中的关键输出：
+当前文档同步目标中的关键输出摘要应包含:
 
 ```text
 quality gate pytest count: 487
 artifact_check ok studies=3 files=8
 manifest_replay=normal+backend_error+frontend_error
 control-center integration audit ok
+review authority order ok
 ```
 
-浏览器证据命令的期望摘要仍应包含三类 manifest replay：normal、backend contract error、frontend contract error。若 DOM hash 或 bytes 变化，优先检查是否是生成器当前输出变化，不要直接当作源代码回归。
+浏览器证据命令的摘要还应包含 normal desktop+mobile、backend contract error、frontend contract
+error 三类 replay。若 DOM hash 或 bytes 变化, 先判断是否是当前生成器输出差异, 不要直接当成
+源码回归。
 
 ## 证据资产
 
-机器可读重点：
+机器可读重点:
 
 - `analysis/artifacts/event_evidence_manifest.json`
 - `analysis/artifacts/s10_trace_full.jsonl`
@@ -128,7 +217,7 @@ control-center integration audit ok
 - `analysis/artifacts/control-center-browser-evidence-report.json`
 - `analysis/artifacts/control-center-integration-audit.json`
 
-视觉重点：
+视觉和 HTML 重点:
 
 - `analysis/artifacts/s10_event_density.png`
 - `analysis/artifacts/s11_catch_sre_wrapper.png`
@@ -137,21 +226,36 @@ control-center integration audit ok
 
 ## 建议审查问题
 
-1. SRE runtime guard 是否在入口拒绝非有限值，而不是依赖下游偶然失败。
-2. `adapter_exception`、`bounded_ls_residual`、`stability_violation` 等事件 payload 是否满足 `sre_control.events.EVENT_FIELD_SCHEMA`。
-3. `analysis.evidence_report` 是否严格校验 repo-relative path、bytes、sha256、JSON/JSONL/PNG 可解析性和 stack contract 非生产声明。
-4. 控制中心前端是否只通过白名单恢复 share-state，动态文本是否走 text/escape 路径，错误路径是否不能注入 DOM。
-5. 浏览器 smoke 的 manifest replay 错误信息是否给出 manifest、viewport、DOM path 和 regeneration command。
-6. `scripts.quality_gate_counts` 是否真正保持 PR、V2 HTML、Codex quality gates、Opus packet 中的命令/计数同步。
+1. SRE runtime guard 是否在入口拒绝 non-finite 值, 而不是依赖下游偶然失败。
+2. `adapter_exception`、`bounded_ls_residual`、`stability_violation` 等事件 payload 是否满足
+   `sre_control.events.EVENT_FIELD_SCHEMA`。
+3. `analysis.evidence_report` 是否严格校验 repo-relative path、bytes、sha256、JSON/JSONL/PNG
+   可解析性和 stack contract 边界。
+4. control-center 前端是否只通过白名单恢复 share-state, 动态文本是否走 text/escape 路径,
+   错误路径是否不能注入 DOM。
+5. 浏览器 smoke 的 manifest replay 错误信息是否给出 manifest、viewport、DOM path 和 regeneration
+   command。
+6. `scripts.quality_gate_counts` 是否真正保持 PR、V2 HTML、Codex quality gates、Opus packet、
+   Opus handoff、wiki ledger 中的命令和计数同步。
+7. `scripts.review_authority_lint` 是否覆盖所有当前评审入口, 且当前 ledger 永远先于历史 packet。
 
 ## 边界
 
-- 当前开放风险仍以 `docs/codex-review/OPEN_RISKS.md` 为准：synthetic evidence boundary 不能被写成生产证明。
-- 本仓库是公开材料研究复现，不代表 SpaceX 官方实现。
-- `analysis.run_all`、`scripts.quality_gate_counts` 和 evidence manifest 命令可能刷新产物时间或图像；复跑后先判断是否是生成器输出差异。
-- 旧 `docs/opus-review/v1.0/` 和 `claude-review/docs/v2026-05-26/` 是历史输入，不是当前 open-risk ledger。
-- 浏览器 smoke 的三类生成模式不要并行运行；系统浏览器可能共享临时 profile。
+- 当前开放风险以 `docs/codex-review/OPEN_RISKS.md` 为准。场景内 synthetic evidence 不能被写成
+  泛化结论。
+- 本仓库是公开材料研究复现, 不代表 SpaceX 官方实现。
+- `analysis.run_all`、`scripts.quality_gate_counts` 和 evidence manifest 命令可能刷新产物时间、
+  图像或摘要。复跑后先判断差异是否来自当前生成器输出。
+- `docs/opus-review/v1.0/`、`claude-review/docs/v2026-05-26/`、
+  `claude-review/docs/v2026-05-28/` 是历史输入, 不是当前 open-risk ledger。
+- 浏览器 smoke 的三类生成模式不要并行运行; 系统浏览器可能共享临时 profile。
 
 ## 交付判定
 
-本轮交付目标是让 Opus 能快速复审，而不是合并到主干。复审应能做到：按提交分组定位代码和证据、用固定命令重放证据链、从当前风险台账判断是否仍有 blocker、把历史 findings 与当前代码/测试/产物对应起来。
+本轮 handoff 的目标是让 Opus 快速复审当前工作区, 不是合并到主干。Opus 应能做到:
+
+- 按内容域定位代码、测试、证据和文档。
+- 用固定命令重放证据链。
+- 从当前风险台账判断是否仍有 blocker。
+- 把历史 finding 与当前代码、测试、产物对应起来。
+- 发现新问题时, 优先写成可复现 finding, 再进入下一轮小步修复。
