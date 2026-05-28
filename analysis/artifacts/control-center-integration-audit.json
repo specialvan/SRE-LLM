@@ -43,7 +43,7 @@
     "api_path": "/api/control-center",
     "version": "control-center.v1"
   },
-  "generated_at": "2026-05-28T19:52:27.660903+00:00",
+  "generated_at": "1970-01-01T00:00:00+00:00",
   "package_smoke": {
     "contract_depth": "top_level:11 object_groups:5 object_fields:21 array_item_groups:7 array_item_fields:36 timeline_fields:14",
     "manifest_replay": "normal+backend_error+frontend_error",

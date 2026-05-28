@@ -176,5 +176,14 @@ def test_control_center_integration_audit_writes_stable_json_artifact(
     artifact = json.loads(output_path.read_text(encoding="utf-8"))
     assert artifact["artifact"] == "control-center-integration-audit.v1"
     assert artifact["status"] == "ok"
+    first_bytes = output_path.read_bytes()
+    written_again = control_center_integration_audit.write_integration_audit(
+        output_path=output_path,
+        report_path=report_path,
+        repo_root=tmp_path,
+    )
+
+    assert written_again == output_path
+    assert output_path.read_bytes() == first_bytes
     assert artifact["source_artifacts"]["browser_report"] == "browser-report.json"
     assert artifact["source_artifacts"]["browser_api_snapshot"] == "analysis/artifacts/control-center-browser-smoke-api.json"

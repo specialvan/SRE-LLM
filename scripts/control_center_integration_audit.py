@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from datetime import UTC, datetime
 from pathlib import Path
 
 from analysis.control_center_data import build_control_center_payload
@@ -24,6 +23,7 @@ DEFAULT_AUDIT_PATH = (
 )
 AUDIT_ARTIFACT = "control-center-integration-audit.v1"
 VOLATILE_API_FIELDS = ("generated_at",)
+REPRODUCIBLE_GENERATED_AT = "1970-01-01T00:00:00+00:00"
 
 
 def _summary_value(summary: str, key: str) -> str | None:
@@ -158,7 +158,7 @@ def build_integration_audit(
 
     return {
         "artifact": AUDIT_ARTIFACT,
-        "generated_at": datetime.now(UTC).isoformat(),
+        "generated_at": REPRODUCIBLE_GENERATED_AT,
         "status": "ok",
         "contract": {"version": CONTRACT_VERSION, "api_path": API_PATH},
         "backend_payload": _payload_counts(payload),
