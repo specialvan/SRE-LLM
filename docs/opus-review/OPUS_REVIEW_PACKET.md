@@ -81,7 +81,7 @@ python -u -m scripts.quality_gate_counts
 Observed outputs from the current workspace:
 
 ```text
-quality gate pytest count: 475
+quality gate pytest count: 477
 artifact_check ok studies=3 files=8
 ```
 

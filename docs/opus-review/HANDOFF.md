@@ -15,7 +15,7 @@
 
 | 分组 | 文件 | 评审重点 |
 | --- | --- | --- |
-| Opus 入口 | `docs/opus-review/HANDOFF.md`, `docs/opus-review/README.md`, `docs/opus-review/OPUS_REVIEW_PACKET.md` | Opus 首读顺序、权威来源和 475-test gate 计数是否一致 |
+| Opus 入口 | `docs/opus-review/HANDOFF.md`, `docs/opus-review/README.md`, `docs/opus-review/OPUS_REVIEW_PACKET.md` | Opus 首读顺序、权威来源和当前 gate 计数是否一致 |
 | Codex 评审包 | `docs/codex-review/*.md`, `wiki/*.md`, `PR-REQUIREMENTS.md` | 当前质量门、开放风险和证据边界是否同步 |
 | 知识库快照 | `docs/V2_Knowledge/knowledge-base.html` | 只应反映当前证据与入口，不应新增 runtime 语义 |
 | 分析产物 | `analysis/artifacts/SUMMARY.txt`, `analysis/artifacts/s11_catch_sre_wrapper.png` | 是否由现有分析命令重放生成，差异是否只是当前产物刷新 |
@@ -44,7 +44,7 @@
 | `9b70909` | 稳定 DOM 证据哈希 | Windows 行尾是否还会造成 manifest sha/bytes 漂移 |
 | `3fb5464` | 控制中心集成审计可复现 | `generated_at` 是否不再污染工作区，连续写出是否稳定 |
 | `1da8e3f` | S11 wrapper 图像刷新 | S11 图像是否与当前生成器输出一致 |
-| `bf63c43` | Opus handoff 与 475 gate 计数同步 | 本交接入口、Opus/Codex/wiki 计数和证据资产是否一致 |
+| `bf63c43` | Opus handoff 与 gate 计数同步 | 本交接入口、Opus/Codex/wiki 计数和证据资产是否一致 |
 | `7a99411` | 中文化 Opus 复审交接入口 | 首读顺序、边界说明和提交分组是否便于 Opus 直接复审 |
 | `77540c3` | 隔离 Section 11 测试产物写入 | 全量 pytest 后是否不再把 canonical S11 证据图污染成测试图 |
 | `9b0c88d` | Opus 交接入口纳入证据边界 lint | `HANDOFF.md` / Opus README 是否被 R1 synthetic evidence boundary 防线覆盖 |
@@ -71,7 +71,7 @@ python -m scripts.control_center_integration_audit
 当前文档同步目标中的关键输出：
 
 ```text
-quality gate pytest count: 475
+quality gate pytest count: 477
 artifact_check ok studies=3 files=8
 manifest_replay=normal+backend_error+frontend_error
 control-center integration audit ok
