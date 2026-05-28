@@ -583,6 +583,37 @@ Evidence:
 - Browser manifest replay failures now include manifest, viewport, DOM artifact
   path, and the regeneration command.
 
+### Opus Handoff / Gate Hardening
+
+Status: implemented and verified for the current handoff slice.
+
+Evidence:
+
+- `docs/opus-review/HANDOFF.md` is the current Opus first-read entry and now
+  lists the post-v2.1 hardening commits, review focus, expected replay outputs,
+  and evidence assets without pinning HEAD to a single commit SHA.
+- `scripts.evidence_boundary_lint.PUBLIC_EVIDENCE_BOUNDARY_DOCS` includes
+  `docs/opus-review/README.md` and `docs/opus-review/HANDOFF.md`, so the Opus
+  first-read surface is linted for unqualified production-readiness, production
+  proof, and SpaceX-internals claims.
+- `scripts.quality_gate_counts.QUALITY_GATE_TARGETS` includes
+  `docs/opus-review/HANDOFF.md`, so its `quality gate pytest count` line is
+  updated with the same real pytest count as PR, V2 HTML, Codex review, Opus
+  packet, and wiki ledgers.
+- Section 11 analysis tests write wrapper plots to pytest `tmp_path` and assert
+  the canonical `analysis/artifacts/s11_catch_sre_wrapper.png` hash is not
+  changed, so a full pytest run no longer dirties committed evidence art.
+- `scripts.quality_gate_counts` now gives full-suite pytest and collect-only
+  parity checks a 300 s timeout budget. The current local full suite takes about
+  174 s, so Opus has practical headroom for review-machine jitter.
+- Fresh verification for this slice:
+  `python -u -m scripts.quality_gate_counts` reports
+  `quality gate pytest count: 477`; `python -m pytest tests -q` passes and
+  leaves the worktree clean; `python -m scripts.quality_gate_counts --check
+  --skip-expensive` reports `quality gate docs check passed`; and
+  `python -m analysis.evidence_report` reports
+  `artifact_check ok studies=3 files=8`.
+
 ## Active Research Landing Candidates
 
 Opus v2.0 review on 2026-05-26 added F50-F60 and G1. Opus v2.1 continuation
