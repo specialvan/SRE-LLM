@@ -1,14 +1,28 @@
 # Claude Refined Spec for Next Codex Pass
 
+> Current status (2026-05-24): this file is historical execution rationale, not
+> the live backlog. PR-A through PR-D, allocator fallback semantics, EKF Joseph
+> hardening, docs/schema sync, package smoke, control-center exposure policy,
+> and release hygiene are implemented and covered by tests. Use
+> `wiki/review-backlog.md` and `docs/codex-review/OPEN_RISKS.md` for the current
+> next-work candidates.
+
 > Scope: refine the `spacex-session` Codex review packet into executable engineering work. This spec is based on Claude's follow-up review of `docs/codex-review/*`, current code, and current tests.
 
-> Status update (2026-05-14): PR-A, PR-B, PR-C, and the minimal PR-D slice are implemented in the current workspace and reflected in tests/docs. The live execution focus for the next pass is allocator fallback semantics, EKF hardening, and docs drift control. Historical sections below remain as rationale and acceptance history.
+> Historical status update (2026-05-14): PR-A, PR-B, PR-C, and the minimal
+> PR-D slice were implemented in that workspace and reflected in tests/docs.
+> Later passes also implemented allocator fallback semantics, EKF Joseph
+> hardening, docs drift control, package smoke, and release hygiene. Historical
+> sections below remain as rationale and acceptance history.
 
 ## Current verdict and source of truth
 
 Quality gates pass, and the remaining P1 semantic risks are now narrower than this document's first draft.
 
-This file is the canonical execution spec for the next Codex pass. Earlier review packets remain evidence and rationale; where priority wording differs, this refined spec controls implementation order.
+This file is historical execution rationale for the pass that implemented the
+listed PR-A through PR-D work. Earlier review packets remain evidence and
+rationale; where priority wording differs, current source, tests, and
+`wiki/review-backlog.md` control implementation order.
 
 Do not describe the current branch as "production-ready control stack". PR-A through PR-D are materially complete in the current workspace. The follow-on hardening items below remain open.
 
@@ -184,7 +198,7 @@ Rationale: conservative operation is safer than silent auto-recovery. Auto-recov
 python -m pytest tests/test_stability_monitor.py tests/test_contracts.py -q
 ```
 
-## PR-D: Add per-sensor innovation gate policy
+## Historical PR-D: Add per-sensor innovation gate policy
 
 Priority: P1
 

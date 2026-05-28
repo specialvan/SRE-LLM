@@ -57,5 +57,5 @@ It does not claim any SpaceX internal implementation detail. All review claims a
 - Date: 2026-05-16
 - Branch: `spacex-session`
 - HEAD: `0ae5740` (`audit: split adapter exception causes`)
-- Verification: 106 tests passed after adding release-hygiene coverage; `analysis.run_all` completed 10 studies in the latest evidence packet.
+- Verification: 107 tests pass in the current continuation after adding Section 10 coverage hardening; `analysis.run_all` completes 10 studies.
 - Top active risks: none in the current audit backlog; no watch items remain after the release-hygiene pass.

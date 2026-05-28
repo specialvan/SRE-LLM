@@ -48,8 +48,12 @@
 ### 数值证据 (§5)
 | 指标 | Before | After |
 |------|--------|-------|
-| vel_rmse | 481.1 | 51.07 |
-| pos_rmse | 33.6 | 33.15 |
+| vel_rmse | 629.4 | 9.374 |
+| pos_rmse | 42.19 | 11.27 |
+| pos_p95 | 88.14 | 23.61 |
+| fiducial_updates | - | 31 |
+| multi_source_tick_fraction | - | 0.3875 |
+| near_field_pos_rmse | - | 2.52 |
 
 ---
 
@@ -96,6 +100,7 @@
 | 饱和检测 | `weighted_balancer.py:70-72` | EPS 容差边界检测 |
 | 残差报告 | `weighted_balancer.py:73-78` | rps/zone 双残差 |
 | Fallback | `stack.py:277-294` | last-good + bootstrap |
+| Catch/SRE wrapper | `catch_adapter.py` | wrapper-layer residual visibility without `starship/` reverse dependency |
 
 ### 测试覆盖
 - `tests/test_allocation.py`: Bounded LS 测试
@@ -103,12 +108,26 @@
   - `test_sre_stack_carries_allocator_events_upward`: 饱和事件上报
   - `test_sre_stack_reuses_last_successful_alloc_shares_on_recoverable_balancer_error`: 复用
   - `test_sre_stack_balancer_recoverable_error_bootstrap_falls_back_to_zero_shares`: 归零
+- `tests/test_catch_adapter.py`:
+  - wrapper trace is JSON-safe
+  - overloaded-capacity residuals emit `bounded_ls_residual`
+  - feasible cases stay quiet
 
 ### 数值证据 (§8)
 | 指标 | Before | After |
 |------|--------|-------|
 | saturation_violation_pct | 33.75 | 0 |
 | mean_saturation_excess | 7.928e+04 | 0 |
+
+### Section 11 Catch/SRE wrapper evidence
+| 指标 | Before | After |
+|------|--------|-------|
+| capacity_violation_pct | 66.67 | 0 |
+| event_visible_fraction | - | 1.0 |
+| reported_residual_mean | 0 | visible residual |
+
+Coverage: feasible quiet solves, total-capacity overload, and
+placement-infeasible zone targets.
 
 ---
 
@@ -156,18 +175,22 @@
 | 离散差分 | `stability_monitor.py:66-73` | `dV/dt ≈ (V - prev_V) / dt` |
 | 锁存语义 | `stability_monitor.py:78-87` | `triggered` 保持到 `reset()` |
 | SRE 包装 | `stability_guard.py:48-94` | `stability_violation` 事件 |
+| SRE energy example | `stability_guard.py::sre_error_budget_V` | normalized latency/error-rate burn |
 
 ### 测试覆盖
-- `tests/test_stability_monitor.py`: 7个测试
+- `tests/test_stability_monitor.py`: 12个测试
   - `test_trigger_latches_until_explicit_reset`: 锁存语义
   - `test_reset_clears_state`: 重置
   - `test_kinetic_plus_potential_V_for_falling_object`: 能量守恒
+  - `test_sre_error_budget_V_normalizes_latency_and_error_rate`: SRE error-budget energy
 - `tests/test_contracts.py`:
   - `test_stability_guard_reports_sustained_trigger_without_new_event`: 持续触发
   - `test_stability_monitor_skips_observe_fallback_state`: fallback
+  - `test_stability_guard_sre_error_budget_example_triggers_stack_event`: stack-level SRE energy event
 
 ### 数值证据
-无独立 analysis study，主要通过单元测试验证。
+无独立 analysis study；通过单元测试和 stack-level contract 验证
+`sre_error_budget_V = max(0, latency-target)^2/scale^2 + max(0, error-target)^2/scale^2`。
 
 ---
 
@@ -283,9 +306,38 @@
 ### 数值证据 (§10)
 | 指标 | 值 |
 |------|-----|
-| event_visible_fraction | 0.846 |
+| event_visible_fraction | 1.0 |
 | background_event_fraction | 0.0 |
 | distinct_kinds | 4 |
+
+---
+
+## 10.1 Section 12 SRE replay fixture
+
+### Code locations
+- `analysis/fixtures/sre_replay.jsonl`: fixed synthetic replay input stream
+- `analysis/s12_sre_replay.py`: one continuous `SREControlStack` replay
+
+### Evidence boundary
+This is synthetic replay evidence, not production trace evidence.
+
+| Metric | Before | After |
+|------|--------|-------|
+| expected_event_visible_fraction | 0 | 1 |
+| stability_event_visible_fraction | - | 1 |
+| operator_action_coverage | - | 1 |
+| background_event_fraction | 0 | 0 |
+| recovered_window_fraction | - | 1 |
+| max_recovery_ticks | - | 1 |
+| replay_tick_count | - | 19 |
+| multi_signal_window_coverage | - | 1 |
+| max_incident_window_ticks | - | 3 |
+
+Covered expected events: `missing_sensor`, `unsafe_proposal_projected`,
+`replica_bound_active`, `bounded_ls_residual`, and `stability_violation`.
+Each expected-event row carries an `operator_action` annotation. The
+`compound_telemetry_policy_capacity` incident covers a 3-tick multi-signal
+window with a window-level operator action.
 
 ---
 
@@ -311,6 +363,12 @@ python -m analysis.run_all
 
 # 单独运行 §10
 python -m analysis.s10_failure_trace
+
+# S10/S11/S12 事件证据 manifest
+python -m analysis.evidence_manifest
+
+# 校验 manifest 引用的证据文件
+python -m analysis.evidence_report
 
 # 导入图检查
 python -m pytest tests/test_import_graph.py -q

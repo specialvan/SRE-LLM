@@ -16,6 +16,7 @@ and `QUALITY_GATES.md` control live execution order.
 | [`QUALITY_GATES.md`](./QUALITY_GATES.md) | Current reproducible command gates and evidence boundaries |
 | [`OPEN_RISKS.md`](./OPEN_RISKS.md) | Current useful risk register and suggested next research slices |
 | [`../../wiki/README.md`](../../wiki/README.md) | Cross-session project wiki entry |
+| [`../../claude-review/docs/v2026-05-28/README.md`](../../claude-review/docs/v2026-05-28/README.md) | **Opus v2.1 continuation review (2026-05-28)** - F61-F81 and browser evidence / quality-gate follow-up |
 | [`../../claude-review/docs/v2026-05-26/README.md`](../../claude-review/docs/v2026-05-26/README.md) | **Opus v2.0 深度评审报告（2026-05-26）** — quality gates 复跑、v1.0 resolved 项 spot-check、新发现 F50–F60、合并门禁判定 |
 
 ## Reading Order
@@ -34,7 +35,7 @@ and `QUALITY_GATES.md` control live execution order.
 | Item | Current value |
 |---|---|
 | Branch context | `spacex-session` |
-| Unit/integration tests | `276 passed` |
+| Unit/integration tests | `474 passed` |
 | Analysis studies | `12 studies` |
 | Runtime event kinds | `11` |
 | Canonical HTML entry | `docs/V2_Knowledge/knowledge-base.html` |
@@ -52,7 +53,7 @@ runtime event schema, and key counts.
 
 **Opus v2.0 评审（2026-05-26）状态**：quality gates 实测全过；v1.0 已宣称
 resolved 项 18/19 HOLDS（F02 PARTIAL，边界缝隙）；独立审计新发现 11 项
-（F50–F60），其中 4 项 P1 候选（autoscaler 单位错配、stability_monitor
-反向差分滞后、`stability_violation` 仅装饰、guardrail NaN 透传）。详见
-`claude-review/docs/v2026-05-26/`。建议：合入前补登记 F50–F54 到
-`OPEN_RISKS.md`，或在 spacex-session 上追加 1 个 P1 修复 commit。
+（F50–F60），其中 4 项 P1 候选。当前工作区已修复 F50–F60 并增加回归测试；
+G1 evidence manifest / PNG byte-identity process trap 也已通过
+`quality_gate_counts` 的 manifest→report 自愈合顺序修复。详细原始评审包见
+`claude-review/docs/v2026-05-26/`。

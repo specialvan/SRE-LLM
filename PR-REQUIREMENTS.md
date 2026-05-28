@@ -17,11 +17,17 @@ invariants:
   - I-4 文档不钉死 HEAD：不得在文档里写"最新 commit = <具体 SHA>"，用"近期日志包含 <关键 commit>"表达
   - I-5 adapter 异常不崩栈：任何 SREControlStack 阶段抛出 `RecoverableControlError` 必须转为 `adapter_exception` event + `DEGRADED_<stage>`；`stability_violation` 仅保留给 Lyapunov / 稳定性红线
 quality-gates:
-  - python -m pytest tests          # 106 passed
-  - python -m analysis.run_all      # 10 studies finish <4s
-  - python -m scripts.build_kb      # 16 assets rebuild
+  - python -m pytest tests          # 474 passed
+  - python -m analysis.s10_failure_trace
+  - python -m analysis.run_all      # 12 studies finish <4s
+  - python -m analysis.evidence_manifest
+  - python -m analysis.evidence_report
+  - python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json
+  - python -m scripts.package_smoke
+  - python -m scripts.control_center_integration_audit
   - python -m examples.demo_sre_loop
-  - HTML well-formed (html.parser)
+  - python -m examples.demo_powered_descent
+  - python -m examples.demo_catch_phase
 event-kinds-total: 11
 ---
 
@@ -68,14 +74,25 @@ event-kinds-total: 11
 
 | Gate | 命令 | 预期 |
 |---|---|---|
-| 单元测试 | `python -m pytest tests` | **106 passed** |
-| 基准证据 | `python -m analysis.run_all` | All 10 studies finish in ~3 s |
-| 资产构建 | `python -m scripts.build_kb` | 16 assets rebuilt |
+| 单元测试 | `python -m pytest tests` | **474 passed** |
+| Section 10 trace | `python -m analysis.s10_failure_trace` | full/sample JSONL trace artifacts exported |
+| 基准证据 | `python -m analysis.run_all` | All 12 studies finish in ~3 s |
+| 事件证据 manifest | `python -m analysis.evidence_manifest` | S10/S11/S12 JSON/JSONL evidence + stack contract exported |
+| 事件证据报告 | `python -m analysis.evidence_report` | Manifest-linked artifacts byte identity (SHA-256 + size), parse, schema-check, and counts validate |
+| Browser evidence | `python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json` | normal/backend-error/frontend-error manifest replay and report export |
+| Package smoke | `python -m scripts.package_smoke` | installed wheel imports plus control-center evidence report validation |
+| 控制中心联调审计 | `python -m scripts.control_center_integration_audit` | Browser evidence report + current backend payload fingerprint match |
 | 端到端 Demo | `python -m examples.demo_sre_loop` | 12 行 trace 无异常 |
 | PDG Demo | `python -m examples.demo_powered_descent` | 末态位置 ~2e-6 m |
 | Catch Demo | `python -m examples.demo_catch_phase` | lateral_error 稳定在窗口内 |
-| HTML | `html.parser` validation | `issues == []` |
 | JSON trace | `json.dumps(stack.trace)` | 无异常，无 `numpy.bool_` 泄漏 |
+
+Conditional checks for docs/HTML asset changes:
+
+| Gate | Command | When |
+|---|---|---|
+| HTML parse sanity | `html.parser` validation | Run when `docs/*.html` changes. |
+| Knowledge-base asset rebuild | `python -m scripts.build_kb` | Run when mechanism PNG/GIF or V2 knowledge assets change. |
 
 ### NFR-2 · Invariants（三大硬约束，违反即拒绝合并）
 
@@ -340,7 +357,7 @@ disallowed: docs/*        ← no runtime code
 - **DoD**：雷达失效 1 s 内仅用 IMU+视觉仍可把位置 drift ≤ 1 m。
 - **Evidence**：
   - 文件 `starship/ekf.py`
-  - 证据 analysis s05 `vel_rmse 481.1 → 51.07 m/s`（×9.4）
+  - 证据 analysis s05 `vel_rmse 629.4 → 9.374 m/s`，并记录 `fiducial_updates=31` 与 `multi_source_tick_fraction=0.3875`
 
 ---
 
@@ -708,6 +725,15 @@ disallowed: docs/*        ← no runtime code
 - **Evidence**：`docs/ARCHITECTURE.md §4.5` 第 5 条从原来的"建议 wrap"改成"已搬移"
   指针（指向 CODEX_HANDOFF）。
 
+#### PR-S-04 · Catch/SRE wrapper 边界落地
+
+- **Status**: ✅ SHIPPED (current workspace)
+- **范围**：新增 `sre_control.CatchLoadAdapter`，作为 catch/load allocation
+  residual evidence 的 SRE 侧 wrapper。
+- **Evidence**：`tests/test_catch_adapter.py`、`analysis/s11_catch_sre_wrapper.py`
+  和 `tests/test_import_graph.py`。
+- **边界**：复用 `bounded_ls_residual`；`starship/` 仍不 import `sre_control/`。
+
 ### 中档（单 commit 可完成）
 
 #### PR-M-01 · 依赖方向护栏测试
@@ -736,11 +762,11 @@ disallowed: docs/*        ← no runtime code
      - `docs/assets/s10_event_density.png` + `V2_Knowledge/assets/` 同步
      - `docs/assets/s10_cooccurrence.png` + `V2_Knowledge/assets/` 同步
      - `analysis/artifacts/s10_trace_sample.jsonl`（10 行）
-  3. `analysis.run_all` STUDIES 列表追加 s10（→ 10 studies）。
+  3. `analysis.run_all` STUDIES 列表追加 s10（当时为 10 studies；当前已扩展到 s11）。
   4. `docs/V2_Knowledge/knowledge-base.html` 的 `#lifecycle` 节嵌入两张图。
 - **DoD**（全部达成）：
   - ✅ `python -m analysis.s10_failure_trace` 跑通；3 件证据写入对应路径
-  - ✅ `analysis.run_all` 报告 **All 10 studies finished**
+  - ✅ `analysis.run_all` 报告 **All current studies finished**
   - ✅ `SUMMARY.txt` 新增 `§10 · Failure trace` 条目，带 event_count / distinct_kinds / mttr
   - ✅ 新产物不破坏 I-2 / I-3 / I-4（无新 event kind，无钉死 SHA）
   - ✅ 新增 `tests/test_failure_trace.py` 4 条契约测试固化证据可复现
@@ -843,6 +869,7 @@ disallowed: docs/*        ← no runtime code
   - ✅ 单次 blip 不触发（噪声容忍）
   - ✅ `reset()` 清理状态
   - ✅ `stability_violation` 事件能由 `StabilityGuard` 真实触发（I-2 第三次演练）
+  - ✅ `sre_error_budget_V` 提供 SRE latency/error-rate burn 的具体能量函数样例，并由 stack-level contract 触发 `StabilityGuard/error_budget`
   - ✅ `DEGRADED_PLAN` 出现在 `runtime.states`（I-3）
   - ✅ `starship/stability_monitor.py` 不依赖 `sre_control/*`（I-1）
 - **为什么事件 kind 数量已增加**：历史上 `stability_violation` 曾同时承载 adapter 异常与稳定性红线；当前策略已拆分，`adapter_exception` 负责 recoverable adapter failure，`stability_violation` 仅由 `StabilityGuard/<label>` 这类 Lyapunov 红线触发。
@@ -1003,7 +1030,7 @@ disallowed: docs/*        ← no runtime code
 - **第三次演练 I-2 全套同步**：这次是"复用已有 kind 但扩展合法 producer 集合"的
   变种，schema 已扩展到 11 个 kind，doc 索引表需区分 `adapter_exception` 与 `stability_violation`。
 - **quality gate（historical snapshot）**：`pytest` 43 → **51 passed**（+8 条）；当时 event kind 数保持 10；当前 registry 已推进到 11；
-  `analysis.run_all` 仍 10 studies。
+  `analysis.run_all` 当时仍为 10 studies；当前已扩展到 12 studies。
 - **Backlog 剩余从 2 降到 1**（只剩 PR-L-02 V1 HTML 重排）。
 
 ### v0.3.6 · 2026-05-12 · Claude Reviewer（清空小档 Backlog）
@@ -1011,7 +1038,8 @@ disallowed: docs/*        ← no runtime code
 - **PR-S-02 SHIPPED**：`API_CONTRACTS.md §2.9 CatchController` 顶部加"属 starship 物理
   层"note，引用 I-1 不变量。
 - **PR-S-03 SHIPPED**：`ARCHITECTURE.md §4.5` 第 5 条改为"已搬移"指针；
-  `CODEX_HANDOFF.md` 成为 CatchController wrapper 建议的 single source。
+  `CODEX_HANDOFF.md` 当时成为 CatchController wrapper 建议的 single source；当前 wrapper 已由
+  `sre_control.CatchLoadAdapter` 落地。
 - 无代码改动。Backlog 从 3 条降到 **2 条**（都是大档 cross-session，PR-L-01/PR-L-02）。
 
 ### v0.3.5 · 2026-05-12 · Claude Reviewer（PR-M-04 · 不变量升格到 5 条）
@@ -1044,7 +1072,7 @@ disallowed: docs/*        ← no runtime code
 - **PR-M-02 SHIPPED**（本轮同一 commit）：Claude 拉取自己上轮写的 spec，实现
   `analysis/s10_failure_trace.py` (280 LOC) + `tests/test_failure_trace.py` (4 tests) +
   3 件证据（density PNG / co-occurrence heatmap / JSONL sample）+ V2_Knowledge 嵌入。
-- **quality gate 升级**：`pytest` 35 → **39 passed**；`analysis.run_all` 9 → **10 studies**。
+- **quality gate 升级（historical snapshot）**：`pytest` 35 → **39 passed**；`analysis.run_all` 9 → **10 studies**。
 - **证据级别升级**：SRE 栈除了"控制效果变好"的 9 条证据，现在多了 1 条"可观测性
   本身"的数值证据。Before: `0 events` / After: `83 events, 4 distinct kinds`。
 - **反馈循环再证明**：Claude 写 spec → Codex triage → Claude 回填 spec + 写测试 + 补证据。
@@ -1059,7 +1087,7 @@ disallowed: docs/*        ← no runtime code
   的可拉取清单，含反面案例和依赖声明。
 - **新增 Spec ↔ Triage 反馈循环节**：显式描述 Claude（纵向深入）+ Codex（横向清单化）
   + Spec（状态账本）三端协议，并给出健康度验收信号。
-- **quality gate 注脚更新**：`analysis.run_all` 已扩展到 10 studies。
+- **quality gate 注脚更新（historical snapshot）**：`analysis.run_all` 当时已扩展到 10 studies。
 - head-commit 维持 `dd9cd7a`；本轮无代码改动。
 
 ### v0.3.1 · 2026-05-12 · 同步 Codex 下轮产出

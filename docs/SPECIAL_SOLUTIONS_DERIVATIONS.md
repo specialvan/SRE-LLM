@@ -89,11 +89,15 @@ self.P = 0.5 * (posterior + posterior.T)  # 对称化
 
 | 指标 | Before | After | 改善 |
 |------|--------|-------|------|
-| vel_rmse | 481.1 | 51.07 | 0.106× |
-| pos_rmse | 33.6 | 33.15 | 0.987× |
-| pos_p95 | 59.44 | 77.34 | 1.30× (变差) |
+| vel_rmse | 629.4 | 9.374 | 0.0149x |
+| pos_rmse | 42.19 | 11.27 | 0.267x |
+| pos_p95 | 88.14 | 23.61 | 0.268x |
+| fiducial_updates | - | 31 | source-use evidence |
+| multi_source_tick_fraction | - | 0.3875 | source-use evidence |
+| near_field_pos_rmse | - | 2.52 | near-field evidence |
 
-⚠️ **注意**: pos_p95 变差说明 EKF 在某些场景下会牺牲位置精度换取速度精度。
+Note: this is still synthetic radar + near-field fiducial evidence; it should
+not be described as production sensor integrity proof.
 
 ---
 
@@ -155,6 +159,16 @@ if next_r == replicas_max:
 ---
 
 ## 3. Weighted Load Balancer (Bounded LS)
+
+`SREControlStack.step()` passes `WeightedLoadBalancer.allocate()` a scalar
+`rps_demand` and a separate `zone_target`. In the stack contract, the guarded
+action vector is a direction vector whose **L2 norm is the scalar demand
+magnitude**; zone placement is not recovered from the component sum of that
+vector. Placement distribution is supplied by `zone_target` and solved by the
+bounded least-squares system below. This is the explicit modeling convention
+behind the Opus F05 review item; changing it to `sum(abs(safe_action))` would
+double-count direction components and saturate the current Section 10 failure
+trace with background allocation residuals.
 
 ### 3.1 约束优化问题
 
@@ -323,6 +337,21 @@ class StabilityMonitor:
         
         return StabilityVerdict(V=V, dV_dt=dV_dt, ...)
 ```
+
+### 5.2 SRE error-budget energy example
+
+For SRE state `x = [qps, latency_ms, error_rate]`, the concrete helper
+`sre_error_budget_V` uses:
+
+```
+V(x) = max(0, latency_ms - latency_target_ms)^2 / latency_scale_ms^2
+     + max(0, error_rate - error_rate_target)^2 / error_rate_scale^2
+```
+
+QPS is ignored by this energy candidate: high traffic is not itself unstable;
+the red line is sustained growth in latency/error-rate burn. Under-budget
+headroom contributes zero energy. This is a synthetic SRE candidate, not a
+universal alert rule.
 
 ### 5.3 常用 V 函数
 
@@ -573,14 +602,14 @@ def step(self, dt, sensor_readings, ...):
 |------|----------|--------|-------|------|
 | Lossless Convexification | pos_err | 148.3 | 2.125e-6 | 1.4e-8 |
 | Thrust Cone | cone_violations | 0.974 | 0 | 0 |
-| EKF Fusion | vel_rmse | 481.1 | 51.07 | 0.106 |
+| EKF Fusion | vel_rmse | 629.4 | 9.374 | 0.0149 |
 | MPC | final_err | 0.01192 | 3.463e-7 | 2.9e-5 |
 | Bounded LS | saturation | 33.75% | 0% | 0 |
 | SRE Stack | slo_violation | 25% | 10% | 0.4 |
 
 ### 11.2 注意事项
 
-1. **EKF pos_p95 变差**: 速度精度提升的代价
+1. **EKF source scope**: radar + near-field fiducial is synthetic evidence, not production sensor proof
 2. **Bounded LS 残差不变**: 容量约束无法消除残差
 3. **MPC control_var 增大**: 更激进控制
 4. **SRE Stack 副本数增加 44%**: 用资源换 SLO
@@ -602,7 +631,8 @@ if WINDOW_MISSING[0] <= t <= WINDOW_MISSING[1]:
     reading = None  # 触发 missing_sensor
 
 if WINDOW_BOUND[0] <= t <= WINDOW_BOUND[1]:
-    stack.autoscaler.replicas_max = 18  # 触发 replica_bound_active
+    stack.autoscaler.replicas_max = 18
+    forecast_rps = max(forecast_rps, 2500.0)  # bounded-capacity demand surge
 
 if WINDOW_UNSAFE[0] <= t <= WINDOW_UNSAFE[1]:
     nn_proposal = np.array([rps * 1.0, -rps * 1.0, 0.0])  # 触发 unsafe_proposal_projected
@@ -652,9 +682,9 @@ def _derive_metrics(event_lists):
 
 | 指标 | 值 | 含义 |
 |------|-----|------|
-| event_count_total | 14 | 总事件数 |
+| event_count_total | 16 | 总事件数 |
 | distinct_kinds | 4 | 不同事件类型数 |
-| event_visible_fraction | 0.846 | 注入窗口内可观测率 |
+| event_visible_fraction | 1.0 | 注入窗口内可观测率 |
 | background_event_fraction | 0.0 | 背景事件率（理想值） |
 | true_degraded_fraction | 0.217 | 注入tick占总tick比例 |
 
@@ -663,13 +693,13 @@ def _derive_metrics(event_lists):
 | 窗口 | 期望事件 | 覆盖率 | 分析 |
 |------|----------|--------|------|
 | missing_sensor | missing_sensor | 1.0 | 完美 |
-| replica_bound_active | replica_bound_active | 0.6 | 只有60%，需分析原因 |
+| replica_bound_active | replica_bound_active | 1.0 | bounded-capacity demand surge keeps the planner at the hard cap |
 | unsafe_proposal_projected | unsafe_proposal_projected | 1.0 | 完美 |
 
-⚠️ **replica_bound_active 覆盖率 0.6 分析**：
-- 窗口长度 20秒 / DT=5秒 = 4个tick
-- 只有 2-3 个 tick 触发边界事件
-- 原因：autoscaler 在边界激活后，下一步规划可能自动调整到边界内
+**replica_bound_active 覆盖率说明**：
+- 窗口长度 20秒 / DT=5秒，按闭区间采样为 5 个 tick。
+- bound window 同时注入 `replicas_max=18` 与高需求 forecast，确保每个 tick 都触达硬上界。
+- 该证据只证明合成窗口内事件通道可观测，不代表生产容量规划最优。
 
 ---
 
@@ -808,8 +838,10 @@ gate_threshold = 3.0                  # Mahalanobis 门限
 
 # 预测步骤
 dt = 1.0
-F = np.eye(3) * (1.0 - 0.2 * dt)     # OU 过程模型
-x_pred = x0 + 0.2 * (np.array([1200, 25, 0.3]) - x0) * dt
+x_ref = np.array([1200, 25, 0.3])
+decay = np.exp(-0.2 * dt)            # exact OU discretization
+F = np.eye(3) * decay
+x_pred = x_ref + decay * (x0 - x_ref)
 P_pred = F @ P0 @ F.T + Q
 
 # 更新步骤

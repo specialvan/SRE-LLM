@@ -1,5 +1,10 @@
 # Codex Handoff
 
+> Historical handoff from 2026-05-12. It is preserved for traceability, but the
+> current cross-session entry is `wiki/README.md`, and the current engineering
+> packet is `docs/codex-review/ENGINEERING_PACKET.md`. Counts and next steps
+> below are historical unless explicitly called out by those current ledgers.
+
 - 分支: `spacex-session`
 - 更新时间: 2026-05-12
 - 上一次编辑者: Codex triage (Claude review follow-up)
@@ -110,7 +115,7 @@
 - `pos_err 148.3 -> 2.125e-6` （§1 PDG）
 - `angle_rmse 0.0558 rad -> 5.715e-7 rad` （§3 刚体动力学）
 - `cone_violations 97.4% -> 0%` （§4 硬护栏）
-- `vel_rmse 481.1 -> 51.07` （§5 EKF 融合）
+- `vel_rmse 629.4 -> 9.374`，`fiducial_updates=31`（§5 EKF radar + near-field fiducial 融合）
 - `final_err 0.01192 -> 3.463e-7` （§6 MPC）
 - `saturation_violation 33.75% -> 0%` （§8 有界分配）
 - SRE 栈：`slo_violation_pct 25 -> 10`, `mean_replicas 18.43 -> 26.5` （§9 端到端）

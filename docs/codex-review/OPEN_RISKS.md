@@ -9,21 +9,11 @@ list. Items already resolved in code and tests are recorded in
 | ID | Priority | Area | Risk | Suggested next step |
 |---|---|---|---|---|
 | R1 | P2 | Synthetic evidence boundary | Before/after studies are synthetic scenario evidence and can still be overgeneralized in new prose or external summaries. | Keep reports and summaries explicit that these are scenario-internal results; live review docs now have an overclaim wording lint. |
-| F50 | **P1** | PredictiveAutoscaler MPC | ZOH 后 `Bd = B · dt` 让 MPC 内部"u=1"等于 5 个 replica，但 executor 直接 `+u`；MPC 系统性欠下达 5× | 二选一：executor 改 `+u*dt`，或 B 缩放为 `B/dt`；新增 plant/executor 一步演化一致性测试。详见 `claude-review/docs/v2026-05-26/03-new-findings.md#f50` |
-| F51 | **P1** | StabilityMonitor | 反向差分用窗口最旧样本作为 anchor，单个 V 尖峰污染后续 `window-1` 个 tick，恢复期仍报 violating | 改 recent-pair 差分，或在单调下降时驱逐 anchor；新增 spike→recovery 回归测试 |
-| F52 | P2 | CanaryScheduler | `_last_share=0.0` 默认值在 warm-start 时引入幻影斜率，污染 trust-region | 增加 `_initialised` flag，首次 observe 仅记录初值不 refit |
-| F53 | **P1** | SREControlStack × StabilityGuard | `stability_violation` 触发后 autoscaler/canary 仍按常规参数执行；红线只是装饰，与文档不一致 | 三选一：文档收敛声明 observe-only；部分接入 clamp autoscaler.max_step；或全面接入 stability state 作为 step 输入 |
-| F54 | **P1** | SLOGuardrail | NaN proposal 透传不 raise、不 emit event；下游 NaN 污染 balancer 后才崩，fault localisation 失效 | `audit` 顶部 `np.isfinite(proposal).all()` 校验：要么 raise `AdapterInputError`，要么发出 `unsafe_proposal_projected(reason=non_finite_input)` |
-| F55 | P2 | SREControlStack | autoscaler `last_trace` 在 recoverable fallback 路径滞留旧值，遥测与实际执行不一致 | fallback 分支显式覆盖 `last_trace = {fallback: True, ...}` |
-| F56 | P2 | SignalFusion | `_rejections` 按 `Signal.name` 索引；同名重复 Signal 计数器互覆 | 改用 `id(signal)` 索引，或构造期校验 name 唯一性 |
-| F57 | P3 | SREControlStack | `_can_reuse_last_good_alloc` 对 NaN 不敏感（NaN 比较恒 False） | 循环里加 `not np.isfinite(share)` 拒绝条件 |
-| F58 | P3 | PoolCapacityPlanner | 精确饱和（`sigma == max_capacity` 且 `shortfall == 0`）跳过 `pool_capacity_clipped` 事件 | 新增 `pool_at_capacity` advisory，或扩展现有事件在 `clipped_slots=0` 时也发出 |
-| F59 | P3 | TopologyState | `ring_angle_rad` 实际区间 `[-2π, 2π]` 与 docstring `[-π, π]` 不一致 | 增加 mod-wrap 或更正 docstring；加参数化测试覆盖 ±0.5 / ±1.5 / ±2.5 / ±3.5 |
-| F60 | P3 | tests | OU sanity 测试用相同解析公式回算 expected_state，是同义反复式自验证 | 用 `scipy.linalg.expm` 或精细 Euler 多步积分作为独立 oracle |
-| G1 | P2 | Evidence manifest process | matplotlib PNG 跨机器 byte-identity 易漂移；reviewer 漏跑 `evidence_manifest` 会复现 `artifact_identity_mismatch` 假阴性 | `scripts/quality_gate_counts.py` 自愈合或 PNG 写入端 strip 非确定 chunk；packet "review commands" 强调先 manifest 再 report |
 
-**说明**：F50–F60 与 G1 来自 Opus v2.0 评审（2026-05-26），详见
-`claude-review/docs/v2026-05-26/03-new-findings.md` 与 `04-evidence-manifest-audit.md`。
+**说明**：F50-F60 来自 Opus v2.0 评审（2026-05-26），F61-F81 来自 Opus v2.1
+继续评审（2026-05-28），均已在当前工作区修复或收敛为文档/台账边界说明；G1 也已通过
+`scripts.quality_gate_counts` 自愈合顺序修复。原始评审详见
+`claude-review/docs/v2026-05-26/` 与 `claude-review/docs/v2026-05-28/`。
 
 ## Resolved Since Earlier Packets
 
@@ -60,6 +50,9 @@ and tests now cover them:
 - `analysis.evidence_manifest` now exports a repo-relative
   `event_evidence_manifest.json` index plus Section 11 diagnostics and Section
   12 replay trace/diagnostics artifacts for reviewer inspection.
+- Opus F13 is resolved in `analysis.evidence_manifest`: artifact directories are
+  now passed explicitly into the Section 10/11 generators instead of
+  monkey-patching `_common.ARTIFACTS` or `s10_failure_trace.ARTIFACTS`.
 - `docs/EVENT_EVIDENCE_MANIFEST.md` documents the manifest contract, and
   `tests/test_evidence_manifest.py` checks generated entries against that
   markdown table.
@@ -69,11 +62,15 @@ and tests now cover them:
   where the artifact SHA-256 digest or size no longer matches the manifest.
 - `scripts.quality_gate_counts` now fails if `analysis.evidence_manifest` or
   `analysis.evidence_report` drops out of the current PR/V2 quality-gate docs.
+- Opus F15 is resolved in `scripts.quality_gate_counts`: current-facing pytest
+  count replacements now come from `QUALITY_GATE_TARGETS`, and replacement
+  failures include the affected target path.
 - `analysis._common.summary_banner` now renders zero-baseline before/after
   ratios as `ratio=undefined; zero baseline` instead of an infinite multiplier.
-- `starship.EKF` now has an opt-in `covariance_eigenvalue_floor` to prevent
-  repeated low-noise updates from collapsing the covariance below a configured
-  floor; `tests/test_ekf.py` covers the overconfidence regression.
+- `starship.EKF` now defaults `covariance_eigenvalue_floor` to `1e-12` to
+  prevent repeated low-noise updates from silently collapsing covariance; an
+  explicit `0.0` remains the opt-out path, and `tests/test_ekf.py` covers the
+  overconfidence regression.
 - `starship.StabilityMonitor` now has an opt-in `min_derivative_dt` so tiny
   timestamp deltas can be ignored instead of turning scheduler jitter into
   large finite-difference derivatives.
@@ -84,7 +81,10 @@ and tests now cover them:
 - `adapter_exception` events now include `adapter_family`, `fault_family`, and
   `fallback_action`, so recoverable failures can be routed by stage family and
   concrete fallback path rather than by exception class alone.
-- `tests/test_synthetic_evidence_boundaries.py` now lints live review docs for
+- `scripts.evidence_boundary_lint.PUBLIC_EVIDENCE_BOUNDARY_DOCS` now defines the
+  public/review document surface linted by
+  `tests/test_synthetic_evidence_boundaries.py`, including README, PR spec, wiki,
+  V2 HTML, Codex review, Opus review, and audit-ledger entry points. It rejects
   unqualified production-readiness, official SpaceX implementation, and
   production-proof wording while allowing explicit negated boundary statements.
 - `sre_control.stack_data_contract()` now exports the current
@@ -105,18 +105,32 @@ and tests now cover them:
   traces now use sorted JSON keys, and the failure-trace tests assert serialized
   key order so manifest byte identity is not sensitive to dict construction
   order.
+- Opus F06 is resolved for Section 10 scenario feedback: `_run_scenario()` now
+  records the stack-returned `replicas_next` directly instead of applying a
+  hidden floor, while the post-bound recovery forecast floor is explicit and
+  keeps injected-window evidence isolated.
 - Opus F23 is resolved in the evidence report: S10 trace-time validation now
   allows tick-scaled floating-point drift while still rejecting whole-second
   mismatches.
 - Opus F07 is resolved in `SignalFusion`: the default OU process model now uses
   exact exponential discretization for both state prediction and Jacobian, so
   large `theta * dt` values no longer flip the prediction sign.
+- Opus F08 is resolved in `CanaryScheduler`: rejected rollout observations now
+  refit the local slope and tag the trace with `refit_rejected`, so repeated
+  SLO-burning trials no longer leave the SCP model at `_b_est=0`.
+- Opus F09 is resolved in Section 10 evidence metrics: empty injected-window
+  visibility now follows the same vacuous-truth convention as
+  `analysis.evidence_report`, while empty background windows still report zero
+  event leakage.
 - Opus F10 is resolved in `PoolCapacityPlanner`: pool sizing now uses true
   `math.ceil(demanded)` so exact integer demand no longer over-allocates one
   connection slot.
 - Opus F19 is resolved for `SignalFusion`: per-sensor and fusion-wide
   `gate_threshold` values must now be positive when set, with `None` preserved
   as the no-gating mode.
+- Opus F20 is resolved for `SignalFusion`: per-sensor consecutive rejection
+  counters are capped by `max_consecutive_rejections`, and saturated ticks are
+  surfaced in the local trace state without minting a new event kind.
 - Opus F18 is resolved in `WeightedLoadBalancer`: empty instance lists and
   mismatched `zone_vector` dimensions are rejected at construction time instead
   of failing later during bounded-LS matrix assembly.
@@ -129,6 +143,9 @@ and tests now cover them:
 - Opus F16 is resolved in the evidence-boundary lint: negated boundary wording
   now checks a short suffix window after the matched overclaim phrase, not only
   the prefix context.
+- Opus F17 is resolved in `SREControlStack`: stability monitoring now receives
+  cumulative elapsed time rather than `_tick_index * dt`, so variable-duration
+  ticks no longer distort the Lyapunov derivative timestamp.
 - Opus F37 is resolved for recovery diagnostics: unrecovered windows are now
   represented as strict-JSON `null` values instead of non-standard `Infinity`
   in both generator-side and report-side diagnostics.
@@ -138,18 +155,61 @@ and tests now cover them:
 - Opus F39 is resolved in the evidence report: SHA-256 metadata shape checks now
   accept uppercase hexadecimal characters while byte-identity comparison remains
   exact.
+- Opus F31 is resolved in `analysis.evidence_report`: JSONL parsing,
+  Section 10 trace-shape checks, Section 12 fixture-shape checks, and event
+  schema validation now collect multiple row-level errors in one report pass
+  instead of stopping at the first bad row.
 - Opus F32 is resolved in `PoolCapacityPlanner`: `rps_per_conn` is now a
   configurable dataclass field used consistently by sizing and shortfall
   calculations.
+- Opus F41 is resolved in `analysis.run_all`: import or study execution
+  failures are recorded in `analysis/artifacts/SUMMARY.txt`, later studies
+  continue running, and the command exits nonzero after the summary is written.
+- Opus v2.0 F50 is resolved in `PredictiveAutoscaler`: the continuous plant
+  input matrix is scaled by `1/dt`, so ZOH produces a one-step `Bd` matching
+  executor units (`u=1` means one replica per control step). The regression test
+  checks plant/executor one-step agreement.
+- Opus v2.0 F51 is resolved in `StabilityMonitor`: `dV/dt` now uses the recent
+  pair rather than the oldest window anchor, preventing spike recovery from
+  continuing to count stale violations.
+- Opus v2.0 F52 is resolved in `CanaryScheduler`: warm-start from a nonzero
+  share initialises baseline state without fitting a phantom slope from share 0.
+- Opus v2.0 F53 is resolved in `SREControlStack`: a triggered stability guard
+  clamps autoscaler control to `±1` for that tick and skips canary advancement.
+- Opus v2.0 F54 is resolved in `SLOGuardrail`: non-finite proposals raise
+  `AdapterInputError` before projection, preserving fault localisation.
+- Opus v2.0 F55 is resolved in `SREControlStack`: autoscaler recoverable
+  fallback now overwrites `last_trace` with a fallback sentinel and reason.
+- Opus v2.0 F56 is resolved in `SignalFusion`: duplicate signal names within
+  one tick are rejected before prediction, avoiding rejection-counter collision.
+- Opus v2.0 F57 is resolved in `SREControlStack`: last-good allocation reuse now
+  rejects non-finite cached shares.
+- Opus v2.0 F58 is resolved in `PoolCapacityPlanner`: exact saturation emits a
+  `pool_capacity_clipped` advisory with `clipped_slots=0` and zero shortfall.
+- Opus v2.0 F59 is resolved in `TopologyState`: `ring_angle_rad` is wrapped to
+  the documented `[-pi, pi]` interval with parameterized coverage.
+- Opus v2.0 F60 is resolved in tests: the OU exact-discretization test now uses
+  `scipy.linalg.expm` as an independent oracle.
+- Opus v2.0 G1 is resolved in `scripts.quality_gate_counts`: the quality-gate
+  updater now runs `analysis.evidence_manifest` before `analysis.evidence_report`
+  when collecting the live pytest count, so reviewer command order is
+  self-healing for the manifest byte-identity check.
+- Opus v2.1 F61-F81 are resolved in the current workspace. The main closures are:
+  refreshed browser evidence manifests and replay report; non-finite guards for
+  `SignalFusion`, `SLOGuardrail.approve()/audit()`, and `WeightedLoadBalancer`;
+  rejected Canary warm-start trust-region shrink behavior; strict JSON writers
+  with `allow_nan=False`; repo-relative browser manifest artifact paths; proper
+  `analysis.run_all(artifacts_dir=...)` forwarding; control-center share-state
+  whitelisting and dynamic text escaping; loopback-only bind enforcement;
+  browser/package/integration gates in `scripts.quality_gate_counts`; a read-only
+  `python -m scripts.quality_gate_counts --check` mode; and manifest replay error
+  messages that include manifest, viewport, DOM path, and regeneration command.
 
 ## Numerical Risks
 
 | Risk | Concrete behavior | Impact |
 |---|---|---|
-| **F50 — PredictiveAutoscaler MPC 单位错配** | ZOH 后 plant 模型与 executor 对 `u` 物理意义不一致：MPC 认为 1 单位 = `per_replica_rps * dt`，executor 当作 1 replica/step | 控制指令系统性欠下达；scenario 测试因 `max_step` 饱和路径而通过，对抗路径会暴露 |
-| **F51 — StabilityMonitor 反向差分滞后** | `dV/dt = (V_new - V_oldest_in_window)/(t_new - t_oldest)`；窗口内任一尖峰会污染后续 `window-1` 个 tick | 恢复期持续假阳性 `stability_violation`；与 latch-until-reset 叠加可能长时间挂红 |
-| **F54 — SLOGuardrail NaN 静默放过** | NaN 比较恒 False，所有 violation flag 不触发；NaN proposal 透传到 balancer 才崩 | fault localisation 错位、原始 programmer-error 信号丢失 |
-| 历史无其他数值风险记录（v1.0 评审遗留项已闭合）。 | 保持新数值断言绑定 scenario-specific 测试与制品。 | 把新数值证据视为未验证，直到有回归测试或生成制品。 |
+| 当前无开放数值风险记录。 | v1.0 与 v2.0 已知数值 findings 已迁入 resolved ledger，并绑定回归测试。 | 新数值断言仍需保持 scenario-specific，不得升级为 production proof。 |
 
 ## Modeling Risks
 
@@ -162,17 +222,9 @@ and tests now cover them:
 
 ## Suggested Next PR
 
-Prefer one of these research-landing slices（按 Opus v2.0 评审优先级排序）：
+Prefer one of these research-landing slices：
 
-1. **修 F50 / F53 / F54 任一项**（推荐 F53：仅需文档收敛 + 1 行 stack 改动
-   即可让"stability 红线"真实接入闭环）。
-2. **修 F51**：把 stability_monitor 反向差分换成 recent-pair，加恢复期回归
-   测试。改动局限，回归风险低。
-3. **修 F50**：autoscaler MPC 单位错配；改 executor 侧或 B 矩阵都可。需要
-   配套 plant/executor 一致性测试。
-4. **修 G1**：让 `scripts/quality_gate_counts.py` 在校验前自愈合执行
-   `manifest → report` 序列，或在 PNG 写入侧 strip 非确定 chunk。
-5. Add release-pipeline automation only if this repository starts publishing
+1. Add release-pipeline automation only if this repository starts publishing
    versioned artifacts.
-6. Continue review-ledger hygiene when new packets are added, keeping old
+2. Continue review-ledger hygiene when new packets are added, keeping old
    packets labeled as historical when their findings are already resolved.

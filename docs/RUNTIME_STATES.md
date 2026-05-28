@@ -263,6 +263,7 @@ Current local event emitters:
 | `PredictiveAutoscaler.step()` | `last_trace["events"]` | `replica_bound_active` |
 | `FastTrafficSwitcher.plan()` | `info["events"]` | `deadline_exceeded` |
 | `WeightedLoadBalancer.allocate()` | `info["events"]` | `bounded_ls_residual` |
+| `CatchLoadAdapter.allocate()` | `trace["events"]` | `bounded_ls_residual` |
 | `StabilityGuard.step()` | `trace["events"]` | `stability_violation` |
 | `SREControlStack.step()` | `entry["runtime"]["events"]` | `adapter_exception` |
 
@@ -271,11 +272,14 @@ Recoverable fallback policy is explicit:
 - `ControlDomainError` marks expected control-domain failures.
 - `RecoverableControlError` means a validated fallback can safely complete the tick.
 - `AdapterInputError` is a recoverable invalid/missing adapter input case.
+- `adapter_exception` payloads include `adapter_family`, `fault_family`, and
+  `fallback_action` so a reviewer can route the event by control stage and
+  concrete fallback path.
 - programmer errors such as `AttributeError` and `TypeError` are not swallowed; they propagate to the caller.
 
 The exact schema and counter-examples are pinned in `docs/EVENT_SCHEMA.md`.
 This is intentionally coarse. It is a review trace, not a full production incident timeline.
-`starship/CatchController` stays outside this table because it is the physical layer primitive; SRE-facing residual events should be emitted by `WeightedLoadBalancer` or a future wrapper, not by importing the SRE event schema into `starship/`.
+`starship/CatchController` stays outside this table because it is the physical layer primitive; SRE-facing residual events are emitted by `WeightedLoadBalancer` or `CatchLoadAdapter`, not by importing the SRE event schema into `starship/`.
 
 ---
 

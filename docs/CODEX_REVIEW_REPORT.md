@@ -34,7 +34,7 @@
 | 2 | SCP | final_pos_err 8.08 m | 2.87 m | 迭代线性化把局部轨迹拉回可行域 |
 | 3 | 6-DoF | angle_rmse 0.05576 rad | 5.715e-7 rad | 流形积分优于朴素姿态累积 |
 | 4 | Cone filter | cone_violations 97.4% | 0% | 硬护栏把不合法推力彻底投影掉 |
-| 5 | EKF | vel_rmse 481.1 m/s | 51.07 m/s | 融合显著改善速度估计 |
+| 5 | EKF | vel_rmse 629.4 m/s | 9.374 m/s | radar + near-field fiducial 融合显著改善估计 |
 | 6 | MPC | final_err 0.01192 | 3.463e-7 | 滚动优化优于静态 PD |
 | 7 | Flip | final_pitch 36.37 deg | 0 deg | bang-bang 达到最短收敛 |
 | 8 | Allocation | saturation_violation 33.75% | 0% | 有界 LS 消除了超界分配 |

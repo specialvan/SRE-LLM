@@ -192,8 +192,8 @@
     移交：<code>spacex/docs/claude-review/</code>
   </div>
   <div class="banner-row">
-    <div class="chip"><b>tests</b> 106 passed</div>
-    <div class="chip"><b>studies</b> 10 finished</div>
+    <div class="chip"><b>tests</b> 474 passed</div>
+    <div class="chip"><b>studies</b> 12 finished</div>
     <div class="chip"><b>HTML</b> well-formed</div>
     <div class="chip"><b>events</b> 11 kinds</div>
     <div class="chip"><b>history</b> recent review commits referenced</div>
@@ -547,6 +547,11 @@ min ‖A·t − [F;τ]‖²  s.t. T_min ≤ t_i ≤ T_max</div>
   <h2><span class="tag">⊚</span>SRE 端到端装配 · 一次 <code>step()</code> 的完整链路</h2>
   <p class="lead">8 个 adapter 只有组合起来才产生复利。<code>SREControlStack.step()</code> 把它们串成 OBSERVE→PLAN→GUARD→ALLOCATE→EXECUTE。</p>
 
+  <p><code>safe_action</code> is a guarded direction vector. Its L2 norm is the
+  scalar RPS demand passed to allocation, while <code>zone_target</code> carries
+  placement distribution. This explicit contract resolves the Opus F05 L2-vs-sum
+  ambiguity without changing Section 10 trace semantics.</p>
+
   <div class="formula">SREControlStack.step(dt, sensors, forecast_rps, replicas, zone_target, nn_proposal):
 
   ① OBSERVING    → SignalFusion.step()          §5
@@ -599,7 +604,7 @@ min ‖A·t − [F;τ]‖²  s.t. T_min ≤ t_i ≤ T_max</div>
       <tr><td>2</td><td>SCP</td><td>final_pos_err 8.08 m</td><td>2.87 m</td><td>×2.8</td><td><code>rollout_rejected</code></td></tr>
       <tr><td>3</td><td>6-DoF</td><td>angle_rmse 0.0558 rad</td><td>5.7×10⁻⁷ rad</td><td>×10⁵</td><td><code>topology_state_repaired</code></td></tr>
       <tr><td>4</td><td>Cone filter</td><td>violations 97.4%</td><td>0%</td><td>归零</td><td><code>unsafe_proposal_projected</code></td></tr>
-      <tr><td>5</td><td>EKF</td><td>vel_rmse 481.1 m/s</td><td>51.07 m/s</td><td>×9.4</td><td><code>missing_sensor</code></td></tr>
+      <tr><td>5</td><td>EKF</td><td>vel_rmse 629.4 m/s</td><td>9.374 m/s</td><td>×67</td><td><code>missing_sensor</code></td></tr>
       <tr><td>6</td><td>MPC</td><td>final_err 0.01192</td><td>3.46×10⁻⁷</td><td>×3.4×10⁴</td><td><code>replica_bound_active</code></td></tr>
       <tr><td>7</td><td>Flip</td><td>final_pitch 36.37°</td><td>0°</td><td>归零</td><td><code>deadline_exceeded</code></td></tr>
       <tr><td>8</td><td>Allocation</td><td>saturation 33.75%</td><td>0%</td><td>归零</td><td><code>bounded_ls_residual</code></td></tr>
@@ -623,12 +628,21 @@ validate_event(event) 必须：
   1. 四字段全存在且是非空字符串
   2. kind ∈ EVENT_COUNTEREXAMPLES.keys()
 
+  3. set(event) == REQUIRED_EVENT_FIELDS + EVENT_FIELD_SCHEMA[kind]
+
 make_event(stage, kind, detail, safe_action):
   if kind not in EVENT_COUNTEREXAMPLES:
       raise ValueError   ← 强制配 counter-example 才能通过</div>
 
   <h3>11 种 kind 索引</h3>
   <table>
+    <caption>Runtime validation now enforces exact per-kind fields for all 11
+    kinds and rejects unknown extras. Examples include
+    <code>missing_sensor.signal</code>,
+    <code>outlier_rejected.innovation_mahalanobis</code>,
+    <code>replica_bound_active.next_replicas</code>,
+    <code>bounded_ls_residual.zone_residual</code>, and
+    <code>adapter_exception.fallback_action</code>.</caption>
     <thead><tr><th>Kind</th><th>Producer</th><th>Trigger</th><th>Safe action</th></tr></thead>
     <tbody>
       <tr><td><code>pool_capacity_clipped</code></td><td><code>PoolCapacityPlanner.plan()</code></td><td>预测需求超过 max 容量</td><td>clip 到 max_capacity，暴露 shortfall</td></tr>
@@ -891,14 +905,21 @@ disallowed: docs/*        ← 无运行时代码</div>
   <table>
     <thead><tr><th>命令</th><th>预期</th><th>耗时</th></tr></thead>
     <tbody>
-      <tr><td><code>python -m pytest tests</code></td><td><b>106 passed</b></td><td>~1 s</td></tr>
-      <tr><td><code>python -m analysis.run_all</code></td><td>All 10 studies finished</td><td>~3 s</td></tr>
+      <tr><td><code>python -m pytest tests</code></td><td><b>474 passed</b></td><td>~1 s</td></tr>
+      <tr><td><code>python -m analysis.s10_failure_trace</code></td><td>Section 10 full/sample trace exported</td><td>~1 s</td></tr>
+      <tr><td><code>python -m analysis.run_all</code></td><td>All 12 studies finished</td><td>~3 s</td></tr>
+      <tr><td><code>python -m analysis.evidence_manifest</code></td><td>S10/S11/S12 JSON/JSONL evidence + stack contract exported</td><td>~2 s</td></tr>
+      <tr><td><code>python -m analysis.evidence_report</code></td><td>Manifest-linked artifacts byte identity (SHA-256 + size), parse, schema-check, and counts validate</td><td>&lt;1 s</td></tr>
+      <tr><td><code>python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json</code></td><td>Control-center normal/error manifests replay into browser evidence report</td><td>&lt;1 s</td></tr>
+      <tr><td><code>python -m scripts.package_smoke</code></td><td>Installed wheel imports plus control-center evidence report validation</td><td>~5 s</td></tr>
+      <tr><td><code>python -m scripts.control_center_integration_audit</code></td><td>Control-center browser evidence and backend payload fingerprint match</td><td>&lt;1 s</td></tr>
       <tr><td><code>python -m examples.demo_sre_loop</code></td><td>12 行 tick trace</td><td>&lt;1 s</td></tr>
       <tr><td><code>python -m examples.demo_powered_descent</code></td><td>PDG 末态 ~2e-6 m</td><td>~0.5 s</td></tr>
       <tr><td><code>python -m examples.demo_catch_phase</code></td><td>末态 lateral_error 稳定</td><td>~1 s</td></tr>
-      <tr><td><code>python -m scripts.build_kb</code></td><td>16 assets 重建</td><td>~60 s</td></tr>
     </tbody>
   </table>
+
+  <p>条件检查：当 HTML 或知识库资产变更时，再运行 <code>html.parser</code> sanity check；当机制 PNG/GIF 或 V2 知识库资产变更时，再运行 <code>python -m scripts.build_kb</code>。</p>
 
   <h3>阅读顺序（20 分钟预算）</h3>
   <ol>
@@ -926,7 +947,7 @@ disallowed: docs/*        ← 无运行时代码</div>
   <ul>
     <li><code>test_event_schema.py</code> 的 counter-example 文案签名已放宽为 <code>Do not</code> / <code>Avoid</code> 前缀</li>
     <li><code>API_CONTRACTS.md §2.9 CatchController</code> 已说明属 <code>starship/</code> 物理层，不反向依赖 SRE event schema</li>
-    <li><code>ARCHITECTURE.md</code> 与 <code>CODEX_HANDOFF.md</code> 都提到 CatchController wrapper 建议，收敛到 handoff 一处</li>
+    <li><code>CatchLoadAdapter</code> 已在 SRE 层落地 Catch/SRE wrapper 边界，<code>starship/</code> 仍不反向依赖 SRE schema</li>
   </ul>
 
   <h3>中（单 commit 可完成）</h3>
@@ -939,7 +960,7 @@ disallowed: docs/*        ← 无运行时代码</div>
 
   <h3>大（跨 session）</h3>
   <ul>
-    <li>给 <code>StabilityMonitor</code> 增加更真实的能量函数样例（kinetic + potential + attitude error）</li>
+    <li><code>StabilityGuard</code> 已有 <code>sre_error_budget_V</code> 样例；后续可推进 Catch/SRE wrapper 边界。</li>
     <li>保持 V2 作为 canonical current entry；V1 <a href="../knowledge-base.html">docs/knowledge-base.html</a> 只作为 archive snapshot 保留。</li>
   </ul>
 
