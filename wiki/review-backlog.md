@@ -600,6 +600,10 @@ Evidence:
   `wiki/review-backlog.md` before historical Claude/Opus review packets in the
   current recommended entries table, with a regression test covering that wiki
   entry order.
+- `scripts.review_authority_lint` centralizes the current-ledger-before-history
+  ordering rule for Opus handoff and wiki entrypoints, so future review packet
+  additions can extend one lint surface instead of duplicating one-off string
+  assertions.
 - `scripts.evidence_boundary_lint.PUBLIC_EVIDENCE_BOUNDARY_DOCS` includes
   `docs/opus-review/README.md` and `docs/opus-review/HANDOFF.md`, so the Opus
   first-read surface is linted for unqualified production-readiness, production

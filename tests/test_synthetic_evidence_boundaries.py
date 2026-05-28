@@ -15,6 +15,10 @@ from scripts.evidence_boundary_lint import (
     PUBLIC_EVIDENCE_BOUNDARY_DOCS,
     find_overclaim_phrases,
 )
+from scripts.review_authority_lint import (
+    configured_authority_paths,
+    find_authority_order_errors,
+)
 
 
 REPO_ROOT = __import__("pathlib").Path(__file__).resolve().parents[1]
@@ -341,33 +345,41 @@ def test_evidence_boundary_lint_covers_public_and_review_entrypoints() -> None:
 
 
 def test_opus_handoff_reads_current_ledgers_before_historical_packets() -> None:
-    text = (REPO_ROOT / "docs/opus-review/HANDOFF.md").read_text(encoding="utf-8")
-    section = text.split("## 当前权威锚点", 1)[1].split("## 当前基线", 1)[0]
-
-    current_risk = "docs/codex-review/OPEN_RISKS.md"
-    current_backlog = "wiki/review-backlog.md"
-    opus_packet = "docs/opus-review/OPUS_REVIEW_PACKET.md"
-    old_opus_review = "claude-review/docs/v2026-05-28/README.md"
-
-    assert section.index(current_risk) < section.index(opus_packet)
-    assert section.index(current_backlog) < section.index(opus_packet)
-    assert section.index(current_risk) < section.index(old_opus_review)
+    assert find_authority_order_errors(REPO_ROOT / "docs/opus-review/HANDOFF.md") == []
 
 
 def test_wiki_recommended_entries_put_current_ledgers_before_historical_reviews() -> None:
-    text = (REPO_ROOT / "wiki/README.md").read_text(encoding="utf-8")
-    section = text.split("## Current Recommended Entries", 1)[1].split(
-        "## Current Baseline", 1
-    )[0]
+    assert find_authority_order_errors(REPO_ROOT / "wiki/README.md") == []
 
-    open_risks = "docs/codex-review/OPEN_RISKS.md"
-    review_backlog = "wiki/review-backlog.md"
-    old_opus_review = "claude-review/docs/v2026-05-28/README.md"
 
-    assert open_risks in section
-    assert review_backlog in section
-    assert section.index(open_risks) < section.index(old_opus_review)
-    assert section.index(review_backlog) < section.index(old_opus_review)
+def test_review_authority_lint_covers_current_entrypoints() -> None:
+    assert set(configured_authority_paths()) == {
+        "docs/opus-review/HANDOFF.md",
+        "wiki/README.md",
+    }
+
+
+def test_review_authority_lint_reports_historical_packet_before_current_ledger(
+    tmp_path,
+) -> None:
+    doc = tmp_path / "HANDOFF.md"
+    doc.write_text(
+        "## 当前权威锚点\n"
+        "先读 `claude-review/docs/v2026-05-28/README.md`。\n"
+        "再读 `docs/codex-review/OPEN_RISKS.md` 和 `wiki/review-backlog.md`。\n"
+        "最后读 `docs/opus-review/OPUS_REVIEW_PACKET.md`。\n"
+        "## 当前基线\n",
+        encoding="utf-8",
+    )
+
+    errors = find_authority_order_errors(doc)
+
+    assert errors == [
+        "HANDOFF.md: docs/codex-review/OPEN_RISKS.md must appear before "
+        "claude-review/docs/v2026-05-28/README.md in 当前权威锚点",
+        "HANDOFF.md: wiki/review-backlog.md must appear before "
+        "claude-review/docs/v2026-05-28/README.md in 当前权威锚点",
+    ]
 
 
 def test_development_audit_backlog_tracks_current_review_state() -> None:
