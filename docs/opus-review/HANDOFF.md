@@ -102,7 +102,7 @@ python -m examples.demo_catch_phase
 当前文档同步目标中的关键输出：
 
 ```text
-quality gate pytest count: 481
+quality gate pytest count: 483
 artifact_check ok studies=3 files=8
 manifest_replay=normal+backend_error+frontend_error
 control-center integration audit ok
