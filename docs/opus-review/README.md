@@ -1,5 +1,9 @@
 # Opus Review
 
+Current handoff for Opus reviewer intake:
+
+- [`HANDOFF.md`](./HANDOFF.md)
+
 Current Opus engineering packet:
 
 - [`OPUS_REVIEW_PACKET.md`](./OPUS_REVIEW_PACKET.md)
