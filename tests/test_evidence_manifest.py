@@ -2920,6 +2920,42 @@ def test_event_evidence_report_rejects_malformed_stack_contract_fallback_fields(
     assert "artifact_check failed studies=3 inconsistent=1" in output
 
 
+@pytest.mark.parametrize(
+    ("fallback_action_modes", "expected_error"),
+    [
+        (
+            {"wrong_observe_fallback": "substitute_observed_rps"},
+            "stage_fallback_action_modes_mismatch=observe",
+        ),
+        (
+            {"use_forecast_rps_for_observed_load": "keep_current_value"},
+            "stage_fallback_action_mode_unknown=observe",
+        ),
+    ],
+)
+def test_event_evidence_report_rejects_stack_contract_fallback_action_mode_map_drift(
+    tmp_path, capsys, fallback_action_modes, expected_error
+) -> None:
+    result = evidence_manifest.main(artifacts_dir=tmp_path)
+    contract_path = tmp_path / "sre_stack_data_contract.json"
+    contract = json.loads(contract_path.read_text(encoding="utf-8"))
+    contract["stages"][0]["fallback_action_modes"] = fallback_action_modes
+    contract_path.write_text(
+        json.dumps(contract, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    ok = evidence_report.main(
+        manifest_path=result["manifest_path"],
+        repo_root=tmp_path,
+    )
+    output = capsys.readouterr().out
+
+    assert ok is False
+    assert f"inconsistent_artifact sre_stack_data_contract.json {expected_error}" in output
+    assert "artifact_check failed studies=3 inconsistent=1" in output
+
+
 def test_event_evidence_report_rejects_trace_fallback_mode_not_allowed_by_stage(
     tmp_path, capsys
 ) -> None:

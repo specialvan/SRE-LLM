@@ -35,12 +35,30 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
   Opus/Codex 评审入口硬化、SRE runtime 输入边界加固、`adapter_exception` fallback
   模式路由和 evidence report 合同收敛提交。
 - 最新提交: 不在本文中写死具体 SHA; 用 `git log -1 --oneline` 现场确认。
-- 当前文档同步目标中的 pytest 数量为 603; 规范输出行只在下方复核摘要中保留一次。
+- 当前文档同步目标中的 pytest 数量为 605; 规范输出行只在下方复核摘要中保留一次。
 - 当前质量门已覆盖 review authority lint、浏览器证据 replay、包烟测、控制中心集成审计、
   三个 demo smoke、S10/S11/S12 证据链, 以及 `adapter_exception` 的 stage/family/cause/
-  fallback/recoverable 合同漂移检查。
+  fallback/recoverable 合同漂移检查。最近新增的 2 条测试专门覆盖 `fallback_action_modes`
+  映射键漂移和 mode 值未声明两类 stack contract 漂移。
 - 当前唯一 live 风险仍以 `docs/codex-review/OPEN_RISKS.md` 为准: 场景内证据不能被写成
   泛化结论或官方算法说明。
+
+## 最近一轮交接重点
+
+本轮 Claude/Opus 复审前的新增工作集中在 `adapter_exception` fallback 语义闭环, 不是新增
+控制算法能力。Opus 抽查时应把它当成证据合同和运行时降级路径的一致性问题来看。
+
+- `sre_control/stack_contract.py` 现在同时导出 `fallback_actions`、`fallback_action_modes` 和
+  `fallback_modes`; 具体 action 必须被 routed stage 声明, action 到 mode 的映射也必须被该
+  stage 声明。
+- `sre_control/stack.py::_fallback_mode()` 从 stack contract 派生映射, 未知 action 直接拒绝,
+  不再落到隐式 `custom_fallback`。
+- `analysis/evidence_report.py` 同时校验合同字段形态、action/mode 集合、trace 里的 routed
+  stage、`adapter_family`、`fault_family`、`cause_type`、`fallback_action`、`fallback_mode` 和
+  `recoverable=True`。
+- `tests/test_evidence_manifest.py` 现在覆盖字段畸形、action 集合漂移、mode 集合漂移、
+  action/mode 配对错误、映射键不匹配和 mode 值未声明; `tests/test_contracts.py` 覆盖运行时
+  `_fallback_mode()` 与导出合同的一致性。
 
 ## Opus 首读顺序
 
@@ -140,7 +158,7 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
 | `b6073c8` | 扩展 live 评审台账命令校验, 覆盖 handoff 和 wiki backlog。 | `QUALITY_GATE_COMMAND_DOCS` 是否包含 live ledger。 |
 | `0a0252f` | 固化 Opus README 权威顺序, 支持 README 相对路径 alias。 | Opus README 的首读表是否和 live ledger 顺序一致。 |
 | `dd3d2a7` / `71b2c0a` / `cdbe01c` / `0c8f624` / `a61c446` / `3c54105` / `94ddb83` / `20dbb59` | 伴随运行时输入边界加固持续同步质量门计数。 | 每次新增回归测试后, PR/V2/Codex/Opus/wiki 的 pytest count 是否由 `scripts.quality_gate_counts` 同步。 |
-| `92fab09` | 将 StabilityGuard 布尔边界新增测试后的质量门目标同步到 589。 | 这是最近一轮前置基线, 不是当前最终 count; 当前 count 以 603 和现场 `quality_gate_counts` 输出为准。 |
+| `92fab09` | 将 StabilityGuard 布尔边界新增测试后的质量门目标同步到 589。 | 这是最近一轮前置基线, 不是当前最终 count; 当前 count 以 605 和现场 `quality_gate_counts` 输出为准。 |
 
 ### H. Adapter exception fallback 路由和证据合同加固
 
@@ -153,10 +171,17 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
 | `a8bc91b` | 校验 `exception_type` 到 `cause_type` 的映射: `AdapterInputError -> adapter_input`。 | 输入边界错误是否被报告为 adapter 输入问题, 而不是泛化成控制域异常。 |
 | `b38e1bb` | 校验 `RecoverableControlError -> control_domain` 的原因映射。 | 控制域可恢复异常是否和 adapter 输入异常保持可区分。 |
 | `6e2efdd` | 拒绝 `adapter_exception.recoverable != True` 的证据 trace。 | evidence report 是否阻止不可恢复或 programmer-error 路径被伪装成 recoverable fallback 证据。 |
+| `051898f` | 校验 `fallback_action` 必须由 routed stage 的 `fallback_actions` 声明。 | trace 里的具体降级动作是否不能跨 stage 借用或伪造。 |
+| `be7ec40` | 校验 `fallback_action` 与 `fallback_mode` 必须按合同成对出现。 | `keep_current_replicas` 这类 action 是否不能错误标成 `skip_optional_stage`。 |
+| `9fa84af` | 固化 stack contract 与运行时 `_fallback_mode()` 映射一致性。 | 导出合同和实际事件生成路径是否不会各自维护一套 fallback truth。 |
+| `28483f` | 拒绝未知 fallback action, 移除隐式 `custom_fallback` 兜底。 | 新增降级动作是否必须先进入合同, 不能靠默认 mode 悄悄通过。 |
+| `cba363c` | 收敛 `fallback_actions`、`fallback_modes`、`fallback_action_modes` 字段畸形校验。 | 合同字段类型错误是否在 evidence report 中以 stage interface 错误失败。 |
 
 Opus 抽查这一组时, 优先看 `analysis/evidence_report.py` 的 `_contract_event_errors`,
 `tests/test_evidence_manifest.py` 中注入 S10 trace 语义漂移的用例, 以及
-`docs/STACK_DATA_CONTRACT.md` 对 `fallback_modes` 和异常分类的边界说明。
+`docs/STACK_DATA_CONTRACT.md` 对 `fallback_actions`、`fallback_action_modes`、`fallback_modes`
+和异常分类的边界说明。当前未写进上表 SHA 的最新测试增量还覆盖 `stage_fallback_action_modes_mismatch`
+与 `stage_fallback_action_mode_unknown` 两个合同一致性分支, 以现场 `git log -1 --oneline` 为准。
 
 ### I. Opus 交接、live ledger 和 authority-order 硬化
 
@@ -227,7 +252,7 @@ python -m examples.demo_catch_phase
 当前文档同步目标中的关键输出摘要应包含:
 
 ```text
-quality gate pytest count: 603
+quality gate pytest count: 605
 artifact_check ok studies=3 files=8
 manifest_replay=normal+backend_error+frontend_error
 control-center integration audit ok

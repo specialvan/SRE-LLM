@@ -46,7 +46,7 @@ Core mappings:
 ## Current Verification
 
 ```bash
-python -m pytest tests -q      # 603 passed in this continuation pass
+python -m pytest tests -q      # 605 passed in this continuation pass
 python -m analysis.run_all     # all 12 studies finished
 python -m analysis.evidence_manifest
 python -m analysis.evidence_report
