@@ -32,11 +32,13 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
 ## 当前基线
 
 - 工作区: 以 `git status --short --branch` 为准; 本轮 handoff 更新时, 本地分支已包含
-  Opus/Codex 评审入口硬化、SRE runtime 输入边界加固和质量门同步提交。
+  Opus/Codex 评审入口硬化、SRE runtime 输入边界加固、`adapter_exception` fallback
+  模式路由和 evidence report 合同收敛提交。
 - 最新提交: 不在本文中写死具体 SHA; 用 `git log -1 --oneline` 现场确认。
-- 当前文档同步目标中的 pytest 数量为 589; 规范输出行只在下方复核摘要中保留一次。
+- 当前文档同步目标中的 pytest 数量为 596; 规范输出行只在下方复核摘要中保留一次。
 - 当前质量门已覆盖 review authority lint、浏览器证据 replay、包烟测、控制中心集成审计、
-  三个 demo smoke 和 S10/S11/S12 证据链。
+  三个 demo smoke、S10/S11/S12 证据链, 以及 `adapter_exception` 的 stage/family/cause/
+  fallback/recoverable 合同漂移检查。
 - 当前唯一 live 风险仍以 `docs/codex-review/OPEN_RISKS.md` 为准: 场景内证据不能被写成
   泛化结论或官方算法说明。
 
@@ -138,9 +140,25 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
 | `b6073c8` | 扩展 live 评审台账命令校验, 覆盖 handoff 和 wiki backlog。 | `QUALITY_GATE_COMMAND_DOCS` 是否包含 live ledger。 |
 | `0a0252f` | 固化 Opus README 权威顺序, 支持 README 相对路径 alias。 | Opus README 的首读表是否和 live ledger 顺序一致。 |
 | `dd3d2a7` / `71b2c0a` / `cdbe01c` / `0c8f624` / `a61c446` / `3c54105` / `94ddb83` / `20dbb59` | 伴随运行时输入边界加固持续同步质量门计数。 | 每次新增回归测试后, PR/V2/Codex/Opus/wiki 的 pytest count 是否由 `scripts.quality_gate_counts` 同步。 |
-| 本轮质量门同步 | 将 StabilityGuard 新增测试后的质量门目标同步到 589。 | Opus 介入时应重新运行 `python -u -m scripts.quality_gate_counts` 和只读 `--check --skip-expensive`。 |
+| `92fab09` | 将 StabilityGuard 布尔边界新增测试后的质量门目标同步到 589。 | 这是最近一轮前置基线, 不是当前最终 count; 当前 count 以 596 和现场 `quality_gate_counts` 输出为准。 |
 
-### H. Opus 交接、live ledger 和 authority-order 硬化
+### H. Adapter exception fallback 路由和证据合同加固
+
+| Commit | 中文说明 | Opus 复核点 |
+| --- | --- | --- |
+| `77524e7` | 增加 `adapter_exception.fallback_mode`, 将具体 fallback action 映射为粗粒度替代策略, 并同步 stack data contract。 | `sre_control/events.py`、`sre_control/stack.py`、`sre_control/stack_contract.py` 是否对 schema、event factory 和导出合同保持一致。 |
+| `8f7237c` | 让 `analysis.evidence_report` 校验 trace 中的 `fallback_mode` 必须被 routed stage 的 `fallback_modes` 声明。 | 篡改 S10 trace 的 `fallback_mode` 时, report 是否给出 `contract_unrouted_fallback_mode`。 |
+| `ab63733` | 校验 `adapter_exception.adapter_family` 与 stack contract 中由 `event.stage` 路由出的 contract stage 一致。 | trace 不能把 `SignalFusion` 事件伪装成 `guard`/`allocate` 等其他 adapter family。 |
+| `637df4c` | 校验 `fault_family` 与 `cause_type` 同步, 避免相同异常被两个字段表达成不同故障族。 | `fault_family` 是否仍只作为可路由维度, 不制造和 `cause_type` 冲突的第二套真相。 |
+| `a8bc91b` | 校验 `exception_type` 到 `cause_type` 的映射: `AdapterInputError -> adapter_input`。 | 输入边界错误是否被报告为 adapter 输入问题, 而不是泛化成控制域异常。 |
+| `b38e1bb` | 校验 `RecoverableControlError -> control_domain` 的原因映射。 | 控制域可恢复异常是否和 adapter 输入异常保持可区分。 |
+| `6e2efdd` | 拒绝 `adapter_exception.recoverable != True` 的证据 trace。 | evidence report 是否阻止不可恢复或 programmer-error 路径被伪装成 recoverable fallback 证据。 |
+
+Opus 抽查这一组时, 优先看 `analysis/evidence_report.py` 的 `_contract_event_errors`,
+`tests/test_evidence_manifest.py` 中注入 S10 trace 语义漂移的用例, 以及
+`docs/STACK_DATA_CONTRACT.md` 对 `fallback_modes` 和异常分类的边界说明。
+
+### I. Opus 交接、live ledger 和 authority-order 硬化
 
 | Commit | 中文说明 | Opus 复核点 |
 | --- | --- | --- |
@@ -174,10 +192,14 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
 4. **机器证据链**: 从 `analysis.evidence_manifest`、`analysis.evidence_report`、
    `docs/EVENT_EVIDENCE_MANIFEST.md`、`docs/STACK_DATA_CONTRACT.md` 开始, 核对 repo-relative
    path、SHA-256/bytes、strict JSON/JSONL/PNG parse、runtime event schema 和 stack contract。
-5. **控制中心浏览器证据**: 从 `scripts.control_center_browser_smoke`、
+5. **Adapter exception 语义路由**: 从 `sre_control/stack.py`、`sre_control/events.py`、
+   `sre_control/stack_contract.py`、`analysis/evidence_report.py`、`tests/test_contracts.py` 和
+   `tests/test_evidence_manifest.py` 开始, 核对 `event.stage` 路由出的 contract stage 是否同时约束
+   `adapter_family`、`fallback_mode`、异常原因映射、`fault_family` 和 `recoverable=True`。
+6. **控制中心浏览器证据**: 从 `scripts.control_center_browser_smoke`、
    `analysis/artifacts/control-center-browser-evidence-report.json`、`docs/CONTROL_CENTER_HANDOFF.md`
    开始, 核对 normal/backend_error/frontend_error 三类 replay 和 DOM/contract 错误信息。
-6. **运行时 hardening 抽查**: 从 `sre_control/`、`starship/ekf.py`、
+7. **运行时 hardening 抽查**: 从 `sre_control/`、`starship/ekf.py`、
    `starship/stability_monitor.py`、`tests/test_sre_control.py`、`tests/test_contracts.py`、
    `tests/test_ekf.py` 开始, 抽查 F50-F81 与 v1.0 P0/P1 finding 的回归测试是否还在。
 
@@ -242,7 +264,9 @@ error 三类 replay。若 DOM hash 或 bytes 变化, 先判断是否是当前生
 
 1. SRE runtime guard 是否在入口拒绝 non-finite 值, 而不是依赖下游偶然失败。
 2. `adapter_exception`、`bounded_ls_residual`、`stability_violation` 等事件 payload 是否满足
-   `sre_control.events.EVENT_FIELD_SCHEMA`。
+   `sre_control.events.EVENT_FIELD_SCHEMA`; 尤其是 `adapter_exception` 的 `adapter_family`、
+   `fault_family`、`fallback_action`、`fallback_mode` 和 `recoverable` 是否不能和 routed contract
+   stage 漂移。
 3. `analysis.evidence_report` 是否严格校验 repo-relative path、bytes、sha256、JSON/JSONL/PNG
    可解析性和 stack contract 边界。
 4. control-center 前端是否只通过白名单恢复 share-state, 动态文本是否走 text/escape 路径,
