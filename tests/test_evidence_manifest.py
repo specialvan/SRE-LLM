@@ -7,7 +7,13 @@ import re
 
 import pytest
 
-from analysis import _common, evidence_manifest, evidence_report, s10_failure_trace
+from analysis import (
+    _common,
+    evidence_artifacts,
+    evidence_manifest,
+    evidence_report,
+    s10_failure_trace,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -852,7 +858,7 @@ def test_event_evidence_report_rejects_s10_trace_time_mismatch(
 
 
 def test_s10_trace_shape_allows_float_accumulation_drift(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr(evidence_report.s10_failure_trace, "DT", 0.1)
+    monkeypatch.setattr(evidence_artifacts.s10_failure_trace, "DT", 0.1)
     tick = 1_000
     accumulated_time = tick * 0.1 + 2e-9
     trace_path = tmp_path / "s10_trace_full.jsonl"
@@ -861,7 +867,7 @@ def test_s10_trace_shape_allows_float_accumulation_drift(tmp_path, monkeypatch) 
         encoding="utf-8",
     )
 
-    errors = evidence_report._s10_trace_shape_errors(
+    errors = evidence_artifacts._s10_trace_shape_errors(
         trace_path,
         "s10_trace_full.jsonl",
     )
@@ -883,7 +889,7 @@ def test_s10_trace_shape_collects_all_invalid_rows(tmp_path) -> None:
         encoding="utf-8",
     )
 
-    errors = evidence_report._s10_trace_shape_errors(
+    errors = evidence_artifacts._s10_trace_shape_errors(
         trace_path,
         "s10_trace_full.jsonl",
     )
@@ -910,7 +916,7 @@ def test_jsonl_validation_collects_all_invalid_rows(tmp_path) -> None:
         encoding="utf-8",
     )
 
-    errors = evidence_report._invalid_jsonl_errors(trace_path, "bad.jsonl")
+    errors = evidence_artifacts._invalid_jsonl_errors(trace_path, "bad.jsonl")
 
     assert errors == [
         "invalid_artifact bad.jsonl line=1",
@@ -939,7 +945,7 @@ def test_s12_fixture_shape_collects_all_invalid_rows(tmp_path) -> None:
         encoding="utf-8",
     )
 
-    errors = evidence_report._s12_fixture_shape_errors(
+    errors = evidence_artifacts._s12_fixture_shape_errors(
         fixture_path,
         "sre_replay.jsonl",
     )
@@ -975,7 +981,7 @@ def test_schema_validation_collects_all_invalid_s10_events(tmp_path) -> None:
         "artifact_paths": {"full_trace_jsonl": "s10_trace_full.jsonl"},
     }
 
-    errors = evidence_report._schema_invalid_event_errors(entry, tmp_path)
+    errors = evidence_artifacts.schema_invalid_event_errors(entry, tmp_path)
 
     assert errors == [
         "schema_invalid_event s10_trace_full.jsonl line=1",

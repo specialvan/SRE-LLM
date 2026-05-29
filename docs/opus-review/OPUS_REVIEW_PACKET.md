@@ -82,7 +82,7 @@ python -u -m scripts.quality_gate_counts
 Observed outputs from the current workspace:
 
 ```text
-quality gate pytest count: 607
+quality gate pytest count: 610
 artifact_check ok studies=3 files=8
 ```
 
@@ -182,7 +182,7 @@ packet unless Opus wants the scope expanded.
 | Finding / Backlog | Current stance |
 |---|---|
 | F24/F28/F36/F38/F40 | maintainability/refactor advisories remain non-blocking |
-| B1/B2 | B1 has started: stack-contract and trace-routing checks now live in `analysis/evidence_contracts.py` with direct tests. Remaining refactor budget is the broader `analysis/evidence_report.py` split and B2's `tests/test_evidence_manifest.py` split. |
+| B1/B2 | B1 is underway: stack-contract/trace-routing checks now live in `analysis/evidence_contracts.py`, and artifact path/identity/parse/schema checks now live in `analysis/evidence_artifacts.py`, both with direct tests. Remaining refactor budget is the broader study-consistency/manifest-shape split and B2's `tests/test_evidence_manifest.py` split. |
 
 Recommended Opus focus for this re-review:
 

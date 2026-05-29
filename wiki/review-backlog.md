@@ -6,7 +6,7 @@ with older review packets.
 
 ## Current Verified Baseline
 
-- Full test suite: `python -m pytest tests -q` passes with 607 tests in the
+- Full test suite: `python -m pytest tests -q` passes with 610 tests in the
   current workspace.
 - Analysis suite: `python -m analysis.run_all` completes all 12 studies and
   refreshes `analysis/artifacts/SUMMARY.txt`.
@@ -197,6 +197,13 @@ Evidence:
 - The manifest also references `sre_stack_data_contract.json`, and the report
   rejects contract payloads that claim production status or drift from the
   expected research stack stage ordering.
+- `analysis.evidence_artifacts` now owns artifact path portability, missing
+  artifact, byte-identity, JSON/JSONL/PNG parseability, and runtime event schema
+  checks that used to sit inside `analysis.evidence_report`; the report CLI
+  still calls that module and keeps the same reviewer-facing output.
+- `tests/test_evidence_artifacts.py` directly covers stale artifact metadata,
+  malformed replay fixture shape, and runtime event schema drift in the
+  extracted artifact validator.
 - `scripts.quality_gate_counts` now treats `analysis.evidence_manifest` and
   `analysis.evidence_report` as required current quality-gate commands, so the
   count updater fails if either drops out of the PR requirements or V2 HTML

@@ -35,7 +35,7 @@ and `QUALITY_GATES.md` control live execution order.
 | Item | Current value |
 |---|---|
 | Branch context | `spacex-session` |
-| Unit/integration tests | `607 passed` |
+| Unit/integration tests | `610 passed` |
 | Analysis studies | `12 studies` |
 | Runtime event kinds | `11` |
 | Canonical HTML entry | `docs/V2_Knowledge/knowledge-base.html` |
