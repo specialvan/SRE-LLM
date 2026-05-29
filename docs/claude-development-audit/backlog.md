@@ -33,7 +33,7 @@ Status values:
 | RES-009 | Quality-gate count generation | `scripts.quality_gate_counts` derives current pytest counts from a real test run plus collection parity and installed-wheel smoke before updating current-facing docs. |
 | RES-010 | Canonical HTML entry | README, wiki, and review docs identify `docs/V2_Knowledge/knowledge-base.html` as current and `docs/knowledge-base.html` as a V1 archive snapshot. |
 | RES-011 | Control-center exposure policy | `scripts/control_center_server.py` serves fixed localhost HTML/API routes with Host checks; `tests/test_control_center.py` covers allow/deny behavior. |
-| RES-012 | Adapter exception taxonomy | `adapter_exception` events include stage, exception type, cause type, adapter family, fault family, fallback action, and recoverable fields. |
+| RES-012 | Adapter exception taxonomy | `adapter_exception` events include stage, exception type, cause type, adapter family, fault family, fallback action, fallback mode, and recoverable fields. |
 | RES-013 | StabilityGuard latch semantics | `StabilityMonitor.triggered` remains latched until explicit reset, and runtime/docs distinguish Lyapunov red-line events from recoverable adapter exceptions. |
 | RES-014 | Section 10 continuous-stack evidence | `analysis.s10_failure_trace` uses one continuous stack, exports full/sample JSONL traces, bounds background events, and checks injected-window expected-kind coverage. |
 | RES-015 | Section 10 trace feedback and metrics | The scenario records stack-returned replica counts directly, uses vacuous visibility for empty injected sets, writes sorted JSONL keys, and validates tick-time drift with tolerance. |

@@ -139,6 +139,7 @@ EVENT_FIELD_SCHEMA: dict[str, dict[str, Callable[[object], bool]]] = {
         "adapter_family": _is_nonempty_string,
         "fault_family": _is_nonempty_string,
         "fallback_action": _is_nonempty_string,
+        "fallback_mode": _is_nonempty_string,
         "recoverable": _is_bool,
     },
 }

@@ -80,7 +80,7 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
 | `982469e` | 增加 installed-wheel package smoke gate。 | wheel 安装后 import surface 是否真实验证。 |
 | `e90125c` | 加固 package smoke 质量门, 缺失命令和失败输出更明确。 | 失败时是否能定位缺口, `--check` 是否只读。 |
 | `0e82c1f` | 锁定 control-center 本地暴露边界。 | 默认 bind/Host 策略是否只允许本地回环。 |
-| `0ae5740` | 拆分 adapter exception cause taxonomy。 | `adapter_exception` 是否能区分 stage、fault family 和 fallback action。 |
+| `0ae5740` | 拆分 adapter exception cause taxonomy。 | `adapter_exception` 是否能区分 stage、fault family、fallback action 和 fallback mode。 |
 | `1b23897` | 增加 synthetic evidence boundary guard。 | 公开文档是否被 lint, 是否拒绝未限定的过界表述。 |
 | `8d8e064` | 增加 release hygiene 测试。 | 未发布项目是否避免误导性的 release/spec 口径。 |
 
@@ -205,7 +205,7 @@ python -m examples.demo_catch_phase
 当前文档同步目标中的关键输出摘要应包含:
 
 ```text
-quality gate pytest count: 589
+quality gate pytest count: 590
 artifact_check ok studies=3 files=8
 manifest_replay=normal+backend_error+frontend_error
 control-center integration audit ok

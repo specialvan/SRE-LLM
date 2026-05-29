@@ -175,9 +175,14 @@ def test_sre_stack_data_contract_exports_stage_boundaries():
         "unsafe_proposal_projected",
         "adapter_exception",
     ]
+    assert stages["guard"]["fallback_modes"] == ["zero_action"]
     assert stages["allocate"]["event_kinds"] == [
         "bounded_ls_residual",
         "adapter_exception",
+    ]
+    assert stages["allocate"]["fallback_modes"] == [
+        "reuse_last_good_cache",
+        "zero_action",
     ]
     for stage in contract["stages"]:
         assert set(stage["event_kinds"]).issubset(EVENT_COUNTEREXAMPLES)
@@ -418,6 +423,19 @@ def test_adapter_exception_family_matches_stack_contract_routes():
         )
 
         assert event["adapter_family"] == expected_family
+
+
+def test_adapter_exception_exposes_routeable_fallback_mode():
+    from sre_control import RecoverableControlError, SREControlStack
+
+    event = SREControlStack._adapter_exception_event(
+        'SLOGuardrail',
+        RecoverableControlError('guard unavailable'),
+        'zero_guardrail_action',
+    )
+
+    assert event['fallback_action'] == 'zero_guardrail_action'
+    assert event['fallback_mode'] == 'zero_action'
 
 
 def test_stability_monitor_skips_observe_fallback_state():

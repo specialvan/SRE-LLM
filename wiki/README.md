@@ -42,7 +42,7 @@ backlog and current tests to decide what is actually open.
 - Branch context: `spacex-session`.
 - Project boundary: public-material learning and engineering reproduction, not
   SpaceX official implementation.
-- Current verified local gates: `python -m pytest tests -q` passes with 589
+- Current verified local gates: `python -m pytest tests -q` passes with 590
   tests; `python -m analysis.run_all` completes 12 studies. Historical review
   packets mention smaller pytest counts; treat those as packet-time snapshots.
 - Control-center entry: `python -m scripts.control_center_server`, then open

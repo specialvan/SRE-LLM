@@ -6,7 +6,7 @@ with older review packets.
 
 ## Current Verified Baseline
 
-- Full test suite: `python -m pytest tests -q` passes with 589 tests in the
+- Full test suite: `python -m pytest tests -q` passes with 590 tests in the
   current workspace.
 - Analysis suite: `python -m analysis.run_all` completes all 12 studies and
   refreshes `analysis/artifacts/SUMMARY.txt`.
@@ -45,9 +45,9 @@ Evidence:
   separate control-domain failures from programmer errors.
 - `SREControlStack.step()` catches recoverable control errors without swallowing
   programmer errors such as `AttributeError` or `TypeError`.
-- `adapter_exception` events include machine-readable cause fields:
+- `adapter_exception` events include machine-readable cause and fallback fields:
   `stage`, `exception_type`, `cause_type`, `adapter_family`, `fault_family`,
-  `fallback_action`, and `recoverable`.
+  `fallback_action`, `fallback_mode`, and `recoverable`.
 
 ### PR-C: Lock StabilityGuard Semantics
 

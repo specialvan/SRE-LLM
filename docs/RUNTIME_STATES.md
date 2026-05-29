@@ -272,9 +272,9 @@ Recoverable fallback policy is explicit:
 - `ControlDomainError` marks expected control-domain failures.
 - `RecoverableControlError` means a validated fallback can safely complete the tick.
 - `AdapterInputError` is a recoverable invalid/missing adapter input case.
-- `adapter_exception` payloads include `adapter_family`, `fault_family`, and
-  `fallback_action` so a reviewer can route the event by control stage and
-  concrete fallback path.
+- `adapter_exception` payloads include `adapter_family`, `fault_family`,
+  `fallback_action`, and `fallback_mode` so a reviewer can route the event by
+  control stage, concrete fallback path, and coarse replacement strategy.
 - programmer errors such as `AttributeError` and `TypeError` are not swallowed; they propagate to the caller.
 
 The exact schema and counter-examples are pinned in `docs/EVENT_SCHEMA.md`.

@@ -259,6 +259,7 @@ def test_all_runtime_events_carry_kind_specific_fields():
             "adapter_family",
             "fault_family",
             "fallback_action",
+            "fallback_mode",
             "recoverable",
         },
     }
@@ -301,6 +302,7 @@ def test_adapter_exception_event_includes_machine_readable_cause_fields(
         adapter_family="observe",
         fault_family="adapter_input" if cause_type == "adapter_input" else "control_domain",
         fallback_action="use_forecast_rps_for_observed_load",
+        fallback_mode="substitute_observed_rps",
         recoverable=True,
     )
 
@@ -309,6 +311,7 @@ def test_adapter_exception_event_includes_machine_readable_cause_fields(
     assert event["cause_type"] == cause_type
     assert event["adapter_family"] == "observe"
     assert event["fallback_action"] == "use_forecast_rps_for_observed_load"
+    assert event["fallback_mode"] == "substitute_observed_rps"
     assert event["recoverable"] is True
 
 

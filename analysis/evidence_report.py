@@ -1283,7 +1283,7 @@ def _contract_consistency_errors(entry: dict, root: Path) -> list[str]:
                     f"stage_interface_invalid={stage_name}.producer"
                 )
                 break
-            for field in ("inputs", "outputs"):
+            for field in ("inputs", "outputs", "fallback_modes"):
                 values = stage.get(field)
                 if not isinstance(values, list) or not all(
                     isinstance(value, str) for value in values

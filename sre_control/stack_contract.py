@@ -32,6 +32,7 @@ def stack_data_contract() -> dict[str, object]:
                     "outlier_rejected",
                     "adapter_exception",
                 ],
+                "fallback_modes": ["substitute_observed_rps"],
             },
             {
                 "stage": "stability",
@@ -39,6 +40,7 @@ def stack_data_contract() -> dict[str, object]:
                 "inputs": ["state", "tick_time"],
                 "outputs": ["stability", "runtime.events"],
                 "event_kinds": ["stability_violation", "adapter_exception"],
+                "fallback_modes": ["skip_optional_stage"],
             },
             {
                 "stage": "plan",
@@ -50,6 +52,7 @@ def stack_data_contract() -> dict[str, object]:
                     "rollout_rejected",
                     "adapter_exception",
                 ],
+                "fallback_modes": ["keep_current_value", "skip_optional_stage"],
             },
             {
                 "stage": "guard",
@@ -60,6 +63,7 @@ def stack_data_contract() -> dict[str, object]:
                     "unsafe_proposal_projected",
                     "adapter_exception",
                 ],
+                "fallback_modes": ["zero_action"],
             },
             {
                 "stage": "allocate",
@@ -67,6 +71,7 @@ def stack_data_contract() -> dict[str, object]:
                 "inputs": ["safe_action", "zone_target"],
                 "outputs": ["alloc_shares", "alloc_info", "runtime.events"],
                 "event_kinds": ["bounded_ls_residual", "adapter_exception"],
+                "fallback_modes": ["reuse_last_good_cache", "zero_action"],
             },
             {
                 "stage": "execute",
@@ -80,6 +85,7 @@ def stack_data_contract() -> dict[str, object]:
                 ],
                 "outputs": ["runtime.states", "runtime.events", "runtime.degraded"],
                 "event_kinds": [],
+                "fallback_modes": [],
             },
         ],
         "split_ready_boundaries": [

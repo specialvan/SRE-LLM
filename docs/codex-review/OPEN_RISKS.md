@@ -78,9 +78,10 @@ and tests now cover them:
   `demand_satisfied` and `rps_residual_fraction`, and propagate those fields in
   `bounded_ls_residual` events so safe projection cannot be mistaken for fully
   satisfied demand.
-- `adapter_exception` events now include `adapter_family`, `fault_family`, and
-  `fallback_action`, so recoverable failures can be routed by stage family and
-  concrete fallback path rather than by exception class alone.
+- `adapter_exception` events now include `adapter_family`, `fault_family`,
+  `fallback_action`, and `fallback_mode`, so recoverable failures can be routed
+  by stage family, concrete fallback path, and coarse replacement strategy
+  rather than by exception class alone.
 - `scripts.evidence_boundary_lint.PUBLIC_EVIDENCE_BOUNDARY_DOCS` now defines the
   public/review document surface linted by
   `tests/test_synthetic_evidence_boundaries.py`, including README, PR spec, wiki,

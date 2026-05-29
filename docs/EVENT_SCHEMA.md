@@ -46,6 +46,7 @@
 | `adapter_family` | 阶段族：`observe` / `plan` / `rollout` / `guard` / `allocate` |
 | `fault_family` | remediation 使用的故障族；当前与 `cause_type` 同步 |
 | `fallback_action` | 具体 fallback，例如 `keep_current_replicas` 或 `reuse_last_good_shares` |
+| `fallback_mode` | 粗粒度替代策略，例如 `keep_current_value`、`zero_action`、`reuse_last_good_cache`，供 dashboard/report 分桶 |
 | `recoverable` | 是否可用 validated fallback 安全完成本 tick |
 
 `CatchController` 属于 `starship/` 物理层，仍通过 `info["alloc_residual"]` 暴露分配残差，但不反向 import `sre_control/events.py`。SRE 侧捕获/负载 wrapper 由 `CatchLoadAdapter` 生成 runtime event，避免 `starship/` 对迁移层产生倒置依赖。
@@ -68,7 +69,7 @@ are rejected so typoed payload keys cannot silently enter review artifacts.
 | `topology_state_repaired` | `input_norm_valid`, `quaternion_norm`, `repair_action` |
 | `outlier_rejected` | `signal`, `innovation_mahalanobis`, `threshold_used`, `consecutive_rejections` |
 | `stability_violation` | `label`, `V`, `dV_dt`, `consecutive_violations`, `tolerance` |
-| `adapter_exception` | `exception_type`, `cause_type`, `adapter_family`, `fault_family`, `fallback_action`, `recoverable` |
+| `adapter_exception` | `exception_type`, `cause_type`, `adapter_family`, `fault_family`, `fallback_action`, `fallback_mode`, `recoverable` |
 
 `bounded_ls_residual` makes the distinction between safe bounded projection and
 fully satisfied demand machine-checkable in evidence artifacts.
@@ -77,6 +78,9 @@ fully satisfied demand machine-checkable in evidence artifacts.
 fallback from programmer errors and route remediation by stage family. Its
 `adapter_family` value is derived from `stack_data_contract().event_stage_routes`
 so trace payloads and the exported stack contract cannot drift independently.
+`fallback_mode` is intentionally coarser than `fallback_action`: the action keeps
+the exact code path, while the mode lets reviewers group events by replacement
+strategy without minting new event kinds.
 
 ## 4. Stack Aggregation
 

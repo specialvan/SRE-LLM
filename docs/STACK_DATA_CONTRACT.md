@@ -29,6 +29,7 @@ Each stage entry must be an object containing:
 | `inputs` | Data the stage consumes; must be a list of strings. |
 | `outputs` | Data the stage emits; must be a list of strings. |
 | `event_kinds` | Runtime event kinds the stage may emit directly. Values must exist in `sre_control.events.EVENT_COUNTEREXAMPLES`. |
+| `fallback_modes` | Coarse validated fallback strategies the stage may use when emitting `adapter_exception`; must be a list of strings. |
 
 Current stage order:
 
@@ -58,8 +59,9 @@ cumulative elapsed time.
 `observed_rps`/`forecast_rps`, and rejects boolean, fractional, or negative
 `current_replicas`. Through `SREControlStack.step(...)`, those plan-stage
 adapter-input failures become `adapter_exception` events with
-`fallback_action=keep_current_replicas`, rather than letting invalid metrics
-flow into the MPC solve or downstream allocation stage.
+`fallback_action=keep_current_replicas` and
+`fallback_mode=keep_current_value`, rather than letting invalid metrics flow
+into the MPC solve or downstream allocation stage.
 
 ## Action And Placement Semantics
 
@@ -81,6 +83,17 @@ Current direct event-kind bindings:
 | `allocate` | `bounded_ls_residual`, `adapter_exception` |
 | `execute` | none; aggregates `runtime.events` emitted by earlier stages |
 
+Current adapter-exception fallback modes:
+
+| Stage | Fallback modes |
+|---|---|
+| `observe` | `substitute_observed_rps` |
+| `stability` | `skip_optional_stage` |
+| `plan` | `keep_current_value`, `skip_optional_stage` |
+| `guard` | `zero_action` |
+| `allocate` | `reuse_last_good_cache`, `zero_action` |
+| `execute` | none |
+
 Runtime event `stage` labels can include suffixes such as
 `StabilityGuard/replay_error_budget`. The route key is the prefix before `/`.
 Current routes:
@@ -100,7 +113,7 @@ Current routes:
 checks that the contract is JSON-serializable, keeps the non-production scope,
 exposes the current stage boundaries, and binds every stage event kind to the
 runtime event registry. `analysis.evidence_report` also rejects stack-contract
-artifacts that contain malformed stage entries, malformed stage interface
-fields, missing or unexpected split-ready boundaries, malformed event-stage
+artifacts that contain malformed stage entries, malformed stage interface or
+fallback-mode fields, missing or unexpected split-ready boundaries, malformed event-stage
 routes, missing or unexpected event-stage route keys, unknown stage event
 kinds, or disallow an event observed in generated trace artifacts.

@@ -118,6 +118,20 @@ class SREControlStack:
 
     # ------------------------------------------------------------------
     @staticmethod
+    def _fallback_mode(fallback_action: str) -> str:
+        modes = {
+            'use_forecast_rps_for_observed_load': 'substitute_observed_rps',
+            'skip_stability_monitor_this_tick': 'skip_optional_stage',
+            'keep_current_replicas': 'keep_current_value',
+            'skip_canary_step': 'skip_optional_stage',
+            'zero_guardrail_action': 'zero_action',
+            'reuse_last_good_shares': 'reuse_last_good_cache',
+            'bootstrap_zero_fallback': 'zero_action',
+        }
+        return modes.get(fallback_action, 'custom_fallback')
+
+    # ------------------------------------------------------------------
+    @staticmethod
     def _adapter_exception_event(
         stage_label: str, exc: RecoverableControlError, fallback_action: str
     ) -> dict:
@@ -140,6 +154,7 @@ class SREControlStack:
             adapter_family=adapter_family,
             fault_family=cause_type,
             fallback_action=fallback_action,
+            fallback_mode=SREControlStack._fallback_mode(fallback_action),
             recoverable=True,
         )
 
