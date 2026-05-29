@@ -25,6 +25,7 @@ import numpy as np
 
 from starship.stability_monitor import StabilityMonitor, StabilityVerdict
 
+from .exceptions import AdapterInputError
 from .events import make_event
 
 
@@ -45,9 +46,17 @@ def sre_error_budget_V(
 
     ``V = max(0, latency-target)^2/scale^2 + max(0, err-target)^2/scale^2``.
     """
-    if latency_scale_ms <= 0:
+    latency_target_ms = float(latency_target_ms)
+    if not np.isfinite(latency_target_ms):
+        raise ValueError('latency_target_ms must be finite')
+    latency_scale_ms = float(latency_scale_ms)
+    if not np.isfinite(latency_scale_ms) or latency_scale_ms <= 0:
         raise ValueError("latency_scale_ms must be positive")
-    if error_rate_scale <= 0:
+    error_rate_target = float(error_rate_target)
+    if not np.isfinite(error_rate_target):
+        raise ValueError("error_rate_target must be finite")
+    error_rate_scale = float(error_rate_scale)
+    if not np.isfinite(error_rate_scale) or error_rate_scale <= 0:
         raise ValueError("error_rate_scale must be positive")
 
     def _V(x: np.ndarray) -> float:
@@ -86,6 +95,24 @@ class StabilityGuard:
     _monitor: StabilityMonitor = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
+        self.tolerance = float(self.tolerance)
+        if not np.isfinite(self.tolerance) or self.tolerance < 0.0:
+            raise ValueError('tolerance must be non-negative and finite')
+        k_violations = float(self.k_violations)
+        if not np.isfinite(k_violations) or not k_violations.is_integer():
+            raise ValueError('k_violations must be a positive integer')
+        self.k_violations = int(k_violations)
+        if self.k_violations <= 0:
+            raise ValueError('k_violations must be positive')
+        window = float(self.window)
+        if not np.isfinite(window) or not window.is_integer():
+            raise ValueError('window must be a positive integer')
+        self.window = int(window)
+        if self.window <= 0:
+            raise ValueError('window must be positive')
+        if not isinstance(self.label, str) or not self.label.strip():
+            raise ValueError('label must be a non-empty string')
+        self.label = self.label.strip()
         self._monitor = StabilityMonitor(
             V_fn=self.V_fn,
             tolerance=self.tolerance,
@@ -108,8 +135,14 @@ class StabilityGuard:
         and a local ``sustained`` state, but it does not emit duplicate
         events until an explicit :meth:`reset`.
         """
+        state = np.asarray(x, dtype=float)
+        if not np.isfinite(state).all():
+            raise AdapterInputError('non-finite stability state')
+        t = float(t)
+        if not np.isfinite(t):
+            raise AdapterInputError('stability time must be finite')
         was_triggered_before = self._monitor.triggered
-        verdict: StabilityVerdict = self._monitor.step(x, t)
+        verdict: StabilityVerdict = self._monitor.step(state, t)
 
         events = []
         local_states = ["observe_V"]

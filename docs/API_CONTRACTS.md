@@ -319,7 +319,39 @@ Counter-example:
 
 - 如果没有多个执行器，只存在单个 actuator，这个最小二乘分配器就没有意义。
 
-### 2.10 `SREControlStack`
+### 2.10 `StabilityGuard`
+
+Public surface:
+
+- `step(x, t) -> dict`
+- `reset() -> None`
+- `triggered -> bool`
+- `sre_error_budget_V(...) -> Callable[[np.ndarray], float]`
+
+Contract:
+
+- Constructor `tolerance` must be finite and non-negative.
+- Constructor `k_violations` and `window` must be positive integers.
+- Constructor `label` must be a non-empty string; surrounding whitespace is trimmed.
+- Runtime `x` must contain only finite values, and runtime `t` must be finite; invalid runtime input raises `AdapterInputError` before the underlying monitor state changes.
+- `step` translates sustained Lyapunov / error-budget violations into `stability_violation` events with `stage=StabilityGuard/<label>`.
+- `sre_error_budget_V` requires finite latency/error-rate targets and positive finite scales.
+
+State:
+
+- Wrapped `StabilityMonitor` latch state.
+- Manual-reset `triggered` flag; duplicate events are suppressed until `reset()`.
+
+Failure modes:
+
+- Invalid configuration fails at construction instead of producing ambiguous monitor behavior.
+- Non-finite runtime state/time is treated as adapter input failure, not as a stability violation.
+
+Counter-example:
+
+- `StabilityGuard` is not an automatic recovery controller. It reports a red-line condition so `SREControlStack` can degrade visibly and route the event through the runtime trace.
+
+### 2.11 `SREControlStack`
 
 Public surface:
 
@@ -361,6 +393,7 @@ Counter-example:
 | `FastTrafficSwitcher` | `tests/test_sre_control.py` | target share is reached and deadline misses are visible |
 | `WeightedLoadBalancer` | `tests/test_sre_control.py` | demand is matched without false saturation events |
 | `CatchLoadAdapter` | `tests/test_catch_adapter.py` | SRE wrapper trace keeps residuals visible and validates wrapper vocabulary |
+| `StabilityGuard` | `tests/test_contracts.py`, `tests/test_stability_monitor.py` | stability events stay latched, invalid guard configuration/input is rejected, and SRE error-budget energy parameters are bounded |
 | `SREControlStack` | `tests/test_contracts.py` | trace stays JSON-serializable and runtime degradation states are visible |
 | Runtime events | `tests/test_event_schema.py` | every event follows schema and has a counter-example |
 

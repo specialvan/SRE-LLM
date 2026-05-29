@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from starship.stability_monitor import (StabilityMonitor,
                                          kinetic_plus_potential_V,
@@ -171,6 +172,30 @@ def test_sre_error_budget_V_ignores_under_budget_headroom():
     )
 
     assert V_fn(np.array([1200.0, 70.0, 0.0])) == 0.0
+
+
+@pytest.mark.parametrize(
+    ('kwargs', 'match'),
+    [
+        ({'latency_target_ms': np.nan}, 'latency_target_ms'),
+        ({'latency_scale_ms': np.inf}, 'latency_scale_ms'),
+        ({'latency_scale_ms': 0.0}, 'latency_scale_ms'),
+        ({'error_rate_target': np.nan}, 'error_rate_target'),
+        ({'error_rate_scale': np.inf}, 'error_rate_scale'),
+        ({'error_rate_scale': 0.0}, 'error_rate_scale'),
+    ],
+)
+def test_sre_error_budget_V_rejects_invalid_parameters(kwargs, match):
+    params = {
+        'latency_target_ms': 100.0,
+        'latency_scale_ms': 50.0,
+        'error_rate_target': 0.01,
+        'error_rate_scale': 0.02,
+    }
+    params.update(kwargs)
+
+    with pytest.raises(ValueError, match=match):
+        sre_error_budget_V(**params)
 
 
 def test_sre_error_budget_energy_improvement_does_not_trigger():

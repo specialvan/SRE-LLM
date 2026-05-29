@@ -1026,6 +1026,46 @@ def test_stability_guard_sre_error_budget_example_triggers_stack_event():
     )
 
 
+@pytest.mark.parametrize(
+    ('kwargs', 'match'),
+    [
+        ({'tolerance': np.nan}, 'tolerance'),
+        ({'tolerance': -1e-6}, 'tolerance'),
+        ({'k_violations': 0}, 'k_violations'),
+        ({'k_violations': 1.5}, 'k_violations'),
+        ({'window': 0}, 'window'),
+        ({'window': 1.5}, 'window'),
+        ({'label': ''}, 'label'),
+        ({'label': '   '}, 'label'),
+        ({'label': 123}, 'label'),
+    ],
+)
+def test_stability_guard_rejects_invalid_configuration(kwargs, match):
+    from sre_control import StabilityGuard
+
+    with pytest.raises(ValueError, match=match):
+        StabilityGuard(V_fn=lambda x: float(x[0]), **kwargs)
+
+
+@pytest.mark.parametrize(
+    ('x', 't', 'match'),
+    [
+        (np.array([np.nan]), 0.0, 'non-finite stability state'),
+        (np.array([1.0]), np.nan, 'stability time'),
+        (np.array([1.0]), np.inf, 'stability time'),
+    ],
+)
+def test_stability_guard_rejects_invalid_step_inputs(x, t, match):
+    from sre_control import AdapterInputError, StabilityGuard
+
+    guard = StabilityGuard(V_fn=lambda state: float(state[0]))
+
+    with pytest.raises(AdapterInputError, match=match):
+        guard.step(x, t=t)
+
+    assert guard.triggered is False
+
+
 def test_stability_guard_reports_sustained_trigger_without_new_event():
     from sre_control import (
         Instance,
