@@ -132,7 +132,10 @@ Current routes:
 `tests/test_contracts.py::test_sre_stack_data_contract_exports_stage_boundaries`
 checks that the contract is JSON-serializable, keeps the non-production scope,
 exposes the current stage boundaries, and binds every stage event kind to the
-runtime event registry. `analysis.evidence_report` also rejects stack-contract
+runtime event registry. `tests/test_contracts.py::test_stack_contract_fallback_action_modes_match_runtime_mapping`
+also asserts that every declared `fallback_action_modes` pair matches
+`SREControlStack._fallback_mode()`, so the exported review contract cannot drift
+from the runtime event factory. `analysis.evidence_report` also rejects stack-contract
 artifacts that contain malformed stage entries, malformed stage interface,
 fallback-action, fallback-action-mode, or fallback-mode fields, missing or unexpected split-ready boundaries, malformed event-stage
 routes, missing or unexpected event-stage route keys, unknown stage event

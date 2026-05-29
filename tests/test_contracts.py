@@ -221,6 +221,27 @@ def test_sre_stack_data_contract_exports_stage_boundaries():
     json.dumps(contract)
 
 
+def test_stack_contract_fallback_action_modes_match_runtime_mapping():
+    from sre_control import stack_data_contract
+    from sre_control.stack import SREControlStack
+
+    contract = stack_data_contract()
+    action_modes = {
+        action: mode
+        for stage in contract["stages"]
+        for action, mode in stage["fallback_action_modes"].items()
+    }
+
+    assert action_modes
+    assert set(action_modes) == {
+        action
+        for stage in contract["stages"]
+        for action in stage["fallback_actions"]
+    }
+    for action, expected_mode in action_modes.items():
+        assert SREControlStack._fallback_mode(action) == expected_mode
+
+
 def test_sre_stack_survives_missing_sensor_readings():
     stack, metrics = _make_stack()
 
