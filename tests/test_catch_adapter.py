@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 
 import numpy as np
+import pytest
 
-from sre_control import CatchLoadAdapter, Instance
+from sre_control import AdapterInputError, CatchLoadAdapter, Instance
 
 
 def _adapter() -> CatchLoadAdapter:
@@ -37,6 +38,48 @@ def test_catch_load_adapter_reports_bounded_residual_without_hiding_it():
     assert event["demand_satisfied"] is False
     assert event["rps_residual_fraction"] == trace["rps_residual_fraction"]
     json.dumps(trace)
+
+
+@pytest.mark.parametrize('source', ['', '   ', 123, None])
+def test_catch_load_adapter_rejects_invalid_source_label(source):
+    with pytest.raises(ValueError, match='source'):
+        CatchLoadAdapter(
+            instances=[
+                Instance('east-a', np.array([1.0]), rps_min=0.0, rps_max=10.0),
+            ],
+            source=source,
+        )
+
+
+@pytest.mark.parametrize(
+    ('request_demand', 'match'),
+    [
+        (np.nan, 'request_demand'),
+        (np.inf, 'request_demand'),
+        (-1.0, 'request_demand'),
+    ],
+)
+def test_catch_load_adapter_rejects_invalid_request_demand(request_demand, match):
+    adapter = _adapter()
+
+    with pytest.raises(AdapterInputError, match=match):
+        adapter.allocate(request_demand=request_demand, placement_target=[1.0, 1.0])
+
+
+@pytest.mark.parametrize(
+    ('placement_target', 'match'),
+    [
+        ([1.0], 'placement_target dimension'),
+        ([1.0, np.nan], 'placement_target'),
+    ],
+)
+def test_catch_load_adapter_rejects_invalid_placement_target(
+    placement_target, match
+):
+    adapter = _adapter()
+
+    with pytest.raises(AdapterInputError, match=match):
+        adapter.allocate(request_demand=10.0, placement_target=placement_target)
 
 
 def test_catch_load_adapter_keeps_exact_solution_quiet_when_feasible():
