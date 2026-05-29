@@ -105,6 +105,7 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
 | `102fbad` | 收敛连接池规划输入边界。 | `PoolCapacityPlanner` 是否拒绝非法容量/成本/预测数据, 并保持容量缺口事件语义。 |
 | `d5fd942` / `03cfa4f` | 收敛 catch adapter 输入边界并补齐 API 合同。 | `CatchLoadAdapter` 是否在进入 bounded-LS 前拒绝非法需求和 placement target, 且不越过 `starship/` 与 `sre_control/` 依赖边界。 |
 | `c1b4846` | 收敛 StabilityGuard 输入边界。 | `StabilityGuard` 是否在构造阶段拒绝非法 tolerance/window/k/label, 在 step 阶段拒绝非有限 state/time, 且 `sre_error_budget_V` 只接受有限 target 和正有限 scale。 |
+| `48ae7fb` | 拒绝布尔型稳定守卫计数配置。 | `k_violations` 和 `window` 是否显式排除 `True/False`, 避免 Python bool-as-int 语义把布尔值当作窗口计数。 |
 
 ### E. 事件证据链、S10/S11/S12 和分析报告
 

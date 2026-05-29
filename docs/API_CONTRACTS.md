@@ -331,7 +331,7 @@ Public surface:
 Contract:
 
 - Constructor `tolerance` must be finite and non-negative.
-- Constructor `k_violations` and `window` must be positive integers.
+- Constructor `k_violations` and `window` must be positive integers; Python `bool` values are rejected even though `bool` is an `int` subclass.
 - Constructor `label` must be a non-empty string; surrounding whitespace is trimmed.
 - Runtime `x` must contain only finite values, and runtime `t` must be finite; invalid runtime input raises `AdapterInputError` before the underlying monitor state changes.
 - `step` translates sustained Lyapunov / error-budget violations into `stability_violation` events with `stage=StabilityGuard/<label>`.
