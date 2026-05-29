@@ -59,6 +59,10 @@ Public surface:
 
 Contract:
 
+- Constructor inputs `slo_error_budget`, `eta_init`, `eta_min`, and `eta_max` must be positive finite values, with `eta_min <= eta_init <= eta_max`.
+- Constructor inputs `rho_shrink` and `rho_grow` must be non-negative finite values, with `rho_shrink <= rho_grow`.
+- Runtime share inputs must be finite values in `[0, 1]`; `observed_error_rate` must be finite and non-negative.
+
 - 输入的 share 在 `[0, 1]` 里解释。
 - `propose` 给出下一步灰度幅度。
 - `observe` 返回 trust region、是否接受、预测误差与观测误差。

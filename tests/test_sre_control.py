@@ -167,6 +167,77 @@ def test_canary_rejected_warm_start_shrinks_instead_of_expanding():
     assert second.events[0]["trust_region"] == pytest.approx(second.trust_region)
 
 
+@pytest.mark.parametrize(
+    ('kwargs', 'match'),
+    [
+        ({'slo_error_budget': np.nan}, 'slo_error_budget'),
+        ({'slo_error_budget': 0.0}, 'slo_error_budget'),
+        ({'eta_init': np.inf}, 'eta_init'),
+        ({'eta_init': 0.0}, 'eta_init'),
+        ({'eta_min': 0.0}, 'eta_min'),
+        ({'eta_max': -0.1}, 'eta_max'),
+        ({'eta_min': 0.2, 'eta_init': 0.1}, 'eta_min <= eta_init <= eta_max'),
+        ({'eta_init': 0.3, 'eta_max': 0.2}, 'eta_min <= eta_init <= eta_max'),
+        ({'rho_shrink': np.nan}, 'rho_shrink'),
+        ({'rho_shrink': -0.1}, 'rho_shrink'),
+        ({'rho_grow': np.inf}, 'rho_grow'),
+        ({'rho_grow': -0.1}, 'rho_grow'),
+        ({'rho_shrink': 0.8, 'rho_grow': 0.2}, 'rho_shrink <= rho_grow'),
+    ],
+)
+def test_canary_rejects_invalid_constructor_inputs(kwargs, match):
+    with pytest.raises(ValueError, match=match):
+        CanaryScheduler(**kwargs)
+
+
+@pytest.mark.parametrize(
+    ('field', 'value', 'match'),
+    [
+        ('current_share', np.nan, 'current_share must be finite'),
+        ('current_share', -0.1, 'current_share must be within'),
+        ('proposed_share', np.inf, 'proposed_share must be finite'),
+        ('proposed_share', 1.1, 'proposed_share must be within'),
+        ('observed_error_rate', np.nan, 'observed_error_rate must be finite'),
+        ('observed_error_rate', -0.01, 'observed_error_rate must be non-negative'),
+    ],
+)
+def test_canary_rejects_invalid_observation_inputs_without_mutation(
+    field, value, match
+):
+    sched = CanaryScheduler(slo_error_budget=0.01, eta_init=0.05)
+    kwargs = {
+        'current_share': 0.0,
+        'proposed_share': 0.05,
+        'observed_error_rate': 0.002,
+    }
+    kwargs[field] = value
+
+    with pytest.raises(AdapterInputError, match=match):
+        sched.observe(**kwargs)
+
+    assert sched._b_est == 0.0
+    assert sched._last_share == 0.0
+    assert sched._last_err == 0.0
+    assert sched._eta == pytest.approx(0.05)
+    assert sched._initialised is False
+
+
+@pytest.mark.parametrize(
+    ('current_share', 'match'),
+    [
+        (np.nan, 'current_share must be finite'),
+        (np.inf, 'current_share must be finite'),
+        (-0.1, 'current_share must be within'),
+        (1.1, 'current_share must be within'),
+    ],
+)
+def test_canary_rejects_invalid_proposal_input(current_share, match):
+    sched = CanaryScheduler(slo_error_budget=0.01, eta_init=0.05)
+
+    with pytest.raises(AdapterInputError, match=match):
+        sched.propose(current_share)
+
+
 # ---------------------------------------------------------------------------
 # §3 TopologyState
 # ---------------------------------------------------------------------------

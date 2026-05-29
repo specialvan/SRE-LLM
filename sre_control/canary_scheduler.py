@@ -14,6 +14,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+import numpy as np
+
+from .exceptions import AdapterInputError
 from .events import make_event
 
 
@@ -52,14 +55,55 @@ class CanaryScheduler:
     _initialised: bool = field(default=False, init=False)
 
     def __post_init__(self) -> None:
+        self.slo_error_budget = float(self.slo_error_budget)
+        if not np.isfinite(self.slo_error_budget) or self.slo_error_budget <= 0:
+            raise ValueError('slo_error_budget must be positive')
+        self.eta_init = float(self.eta_init)
+        if not np.isfinite(self.eta_init) or self.eta_init <= 0:
+            raise ValueError('eta_init must be positive')
+        self.eta_min = float(self.eta_min)
+        if not np.isfinite(self.eta_min) or self.eta_min <= 0:
+            raise ValueError('eta_min must be positive')
+        self.eta_max = float(self.eta_max)
+        if not np.isfinite(self.eta_max) or self.eta_max <= 0:
+            raise ValueError('eta_max must be positive')
+        if not self.eta_min <= self.eta_init <= self.eta_max:
+            raise ValueError('eta_min <= eta_init <= eta_max required')
+        self.rho_shrink = float(self.rho_shrink)
+        if not np.isfinite(self.rho_shrink) or self.rho_shrink < 0.0:
+            raise ValueError('rho_shrink must be non-negative and finite')
+        self.rho_grow = float(self.rho_grow)
+        if not np.isfinite(self.rho_grow) or self.rho_grow < 0.0:
+            raise ValueError('rho_grow must be non-negative and finite')
+        if self.rho_shrink > self.rho_grow:
+            raise ValueError('rho_shrink <= rho_grow required')
         self._eta = self.eta_init
 
     def _shrink_eta(self) -> None:
         self._eta = max(self.eta_min, self._eta * 0.5)
 
+    @staticmethod
+    def _validate_share(value: float, name: str) -> float:
+        value = float(value)
+        if not np.isfinite(value):
+            raise AdapterInputError(f'{name} must be finite')
+        if value < 0.0 or value > 1.0:
+            raise AdapterInputError(f'{name} must be within [0, 1]')
+        return value
+
+    @staticmethod
+    def _validate_error_rate(value: float) -> float:
+        value = float(value)
+        if not np.isfinite(value):
+            raise AdapterInputError('observed_error_rate must be finite')
+        if value < 0.0:
+            raise AdapterInputError('observed_error_rate must be non-negative')
+        return value
+
     # ------------------------------------------------------------------
     def propose(self, current_share: float) -> float:
         """Return the next share to try (bounded by trust region)."""
+        current_share = self._validate_share(current_share, 'current_share')
         next_share = current_share + self._eta
         return min(1.0, next_share)
 
@@ -72,6 +116,9 @@ class CanaryScheduler:
         This is the SCP update: compute the "improvement ratio" between
         the predicted drop in SLO margin and the observed one.
         """
+        current_share = self._validate_share(current_share, 'current_share')
+        proposed_share = self._validate_share(proposed_share, 'proposed_share')
+        observed_error_rate = self._validate_error_rate(observed_error_rate)
         if not self._initialised and abs(current_share - self._last_share) > 1e-9:
             self._initialised = True
             self._last_share = proposed_share
