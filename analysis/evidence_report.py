@@ -1531,6 +1531,20 @@ def _contract_event_errors(manifest: dict, root: Path) -> list[str]:
                 return errors
             if (
                 event['kind'] == 'adapter_exception'
+                and event['exception_type'] == 'AdapterInputError'
+                and event['cause_type'] != 'adapter_input'
+            ):
+                errors.append(
+                    f'contract_exception_cause_mismatch {path_text} '
+                    f'stage={event_stage} '
+                    + 'exception_type='
+                    + str(event['exception_type'])
+                    + ' cause_type='
+                    + str(event['cause_type'])
+                )
+                return errors
+            if (
+                event['kind'] == 'adapter_exception'
                 and event['fault_family'] != event['cause_type']
             ):
                 errors.append(
