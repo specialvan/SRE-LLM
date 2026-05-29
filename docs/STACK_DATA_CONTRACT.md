@@ -30,6 +30,7 @@ Each stage entry must be an object containing:
 | `outputs` | Data the stage emits; must be a list of strings. |
 | `event_kinds` | Runtime event kinds the stage may emit directly. Values must exist in `sre_control.events.EVENT_COUNTEREXAMPLES`. |
 | `fallback_actions` | Concrete fallback actions the stage may use when emitting `adapter_exception`; must be a list of strings. |
+| `fallback_action_modes` | Map from each concrete fallback action to its expected coarse fallback mode; keys must exactly match `fallback_actions` and values must be declared in `fallback_modes`. |
 | `fallback_modes` | Coarse validated fallback strategies the stage may use when emitting `adapter_exception`; must be a list of strings. |
 
 Current stage order:
@@ -109,7 +110,9 @@ Current adapter-exception fallback actions:
 `fallback_action` is intentionally more specific than `fallback_mode`. The
 action identifies the concrete stage replacement path, while the mode groups
 those actions for dashboards and evidence reports. Both fields are routed by
-the same contract stage.
+the same contract stage, and `fallback_action_modes` records the exact expected
+pairing so traces cannot mix one valid action with another valid mode from the
+same stage.
 
 Runtime event `stage` labels can include suffixes such as
 `StabilityGuard/replay_error_budget`. The route key is the prefix before `/`.
@@ -131,7 +134,7 @@ checks that the contract is JSON-serializable, keeps the non-production scope,
 exposes the current stage boundaries, and binds every stage event kind to the
 runtime event registry. `analysis.evidence_report` also rejects stack-contract
 artifacts that contain malformed stage entries, malformed stage interface,
-fallback-action, or fallback-mode fields, missing or unexpected split-ready boundaries, malformed event-stage
+fallback-action, fallback-action-mode, or fallback-mode fields, missing or unexpected split-ready boundaries, malformed event-stage
 routes, missing or unexpected event-stage route keys, unknown stage event
 kinds, events disallowed by the routed contract stage, `adapter_exception`
 payloads not marked `recoverable=true`, payloads whose `adapter_family` does
@@ -139,4 +142,6 @@ not match that routed stage, payloads whose exception type drifts from the docum
 (`AdapterInputError -> adapter_input`, `RecoverableControlError -> control_domain`),
 payloads whose `fault_family` drifts from the documented `cause_type`, or
 fallback actions/modes that are not declared in that stage's `fallback_actions`
-or `fallback_modes` list.
+or `fallback_modes` list. It also rejects traces whose concrete fallback action
+is paired with a different mode than the stage's `fallback_action_modes` map
+declares.

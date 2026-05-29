@@ -2948,6 +2948,40 @@ def test_event_evidence_report_rejects_trace_fallback_action_not_allowed_by_stag
     assert 'artifact_check failed studies=3 contract_events=1' in output
 
 
+def test_event_evidence_report_rejects_trace_fallback_action_mode_mismatch(
+    tmp_path, capsys
+) -> None:
+    result = evidence_manifest.main(artifacts_dir=tmp_path)
+    _replace_first_s10_trace_event(result, tmp_path, {
+        'adapter_family': 'plan',
+        'cause_type': 'adapter_input',
+        'detail': 'plan adapter mixed two valid fallback fields',
+        'exception_type': 'AdapterInputError',
+        'fallback_action': 'keep_current_replicas',
+        'fallback_mode': 'skip_optional_stage',
+        'fault_family': 'adapter_input',
+        'kind': 'adapter_exception',
+        'recoverable': True,
+        'safe_action': 'use validated fallback',
+        'stage': 'PredictiveAutoscaler',
+    })
+
+    ok = evidence_report.main(
+        manifest_path=result['manifest_path'],
+        repo_root=tmp_path,
+    )
+    output = capsys.readouterr().out
+
+    assert ok is False
+    assert (
+        'contract_fallback_mode_mismatch s10_trace_full.jsonl '
+        'stage=PredictiveAutoscaler contract_stage=plan '
+        'fallback_action=keep_current_replicas '
+        'fallback_mode=skip_optional_stage expected_mode=keep_current_value'
+    ) in output
+    assert 'artifact_check failed studies=3 contract_events=1' in output
+
+
 def test_event_evidence_report_rejects_trace_adapter_family_not_matching_stage_route(
     tmp_path, capsys
 ) -> None:

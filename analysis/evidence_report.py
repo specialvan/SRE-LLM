@@ -1293,6 +1293,30 @@ def _contract_consistency_errors(entry: dict, root: Path) -> list[str]:
                         f"stage_interface_invalid={stage_name}.{field}"
                     )
                     break
+            fallback_action_modes = stage.get("fallback_action_modes")
+            if not isinstance(fallback_action_modes, dict) or not all(
+                isinstance(action, str) and isinstance(mode, str)
+                for action, mode in fallback_action_modes.items()
+            ):
+                errors.append(
+                    f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
+                    f"stage_interface_invalid={stage_name}.fallback_action_modes"
+                )
+                break
+            if set(fallback_action_modes) != set(stage.get("fallback_actions", [])):
+                errors.append(
+                    f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
+                    f"stage_fallback_action_modes_mismatch={stage_name}"
+                )
+                break
+            if not set(fallback_action_modes.values()).issubset(
+                set(stage.get("fallback_modes", []))
+            ):
+                errors.append(
+                    f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
+                    f"stage_fallback_action_mode_unknown={stage_name}"
+                )
+                break
             if errors and errors[-1].endswith((".inputs", ".outputs", ".producer")):
                 break
             if "event_kinds" not in stage:
@@ -1506,6 +1530,13 @@ def _contract_event_errors(manifest: dict, root: Path) -> list[str]:
         and isinstance(stage.get('stage'), str)
         and isinstance(stage.get('fallback_actions'), list)
     }
+    fallback_action_modes_by_stage = {
+        stage['stage']: dict(stage['fallback_action_modes'])
+        for stage in stages
+        if isinstance(stage, dict)
+        and isinstance(stage.get('stage'), str)
+        and isinstance(stage.get('fallback_action_modes'), dict)
+    }
     errors: list[str] = []
     for entry in manifest["studies"]:
         for path_text, event in _iter_entry_events(entry, root):
@@ -1596,6 +1627,24 @@ def _contract_event_errors(manifest: dict, root: Path) -> list[str]:
                     f'stage={event_stage} contract_stage={contract_stage} '
                     + 'fallback_action='
                     + str(event['fallback_action'])
+                )
+                return errors
+            if event['kind'] == 'adapter_exception':
+                expected_mode = fallback_action_modes_by_stage.get(
+                    contract_stage, {}
+                ).get(event['fallback_action'])
+            else:
+                expected_mode = None
+            if expected_mode is not None and event['fallback_mode'] != expected_mode:
+                errors.append(
+                    f'contract_fallback_mode_mismatch {path_text} '
+                    f'stage={event_stage} contract_stage={contract_stage} '
+                    + 'fallback_action='
+                    + str(event['fallback_action'])
+                    + ' fallback_mode='
+                    + str(event['fallback_mode'])
+                    + ' expected_mode='
+                    + str(expected_mode)
                 )
                 return errors
     return errors

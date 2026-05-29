@@ -176,6 +176,9 @@ def test_sre_stack_data_contract_exports_stage_boundaries():
         "adapter_exception",
     ]
     assert stages["guard"]["fallback_actions"] == ["zero_guardrail_action"]
+    assert stages["guard"]["fallback_action_modes"] == {
+        "zero_guardrail_action": "zero_action",
+    }
     assert stages["guard"]["fallback_modes"] == ["zero_action"]
     assert stages["allocate"]["event_kinds"] == [
         "bounded_ls_residual",
@@ -185,10 +188,19 @@ def test_sre_stack_data_contract_exports_stage_boundaries():
         "reuse_last_good_shares",
         "bootstrap_zero_fallback",
     ]
+    assert stages["allocate"]["fallback_action_modes"] == {
+        "reuse_last_good_shares": "reuse_last_good_cache",
+        "bootstrap_zero_fallback": "zero_action",
+    }
     assert stages["allocate"]["fallback_modes"] == [
         "reuse_last_good_cache",
         "zero_action",
     ]
+    for stage in contract["stages"]:
+        assert set(stage["fallback_action_modes"]) == set(stage["fallback_actions"])
+        assert set(stage["fallback_action_modes"].values()).issubset(
+            set(stage["fallback_modes"])
+        )
     for stage in contract["stages"]:
         assert set(stage["event_kinds"]).issubset(EVENT_COUNTEREXAMPLES)
     assert contract["event_stage_routes"] == {

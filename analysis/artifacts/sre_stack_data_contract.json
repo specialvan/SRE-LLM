@@ -23,6 +23,9 @@
         "outlier_rejected",
         "adapter_exception"
       ],
+      "fallback_action_modes": {
+        "use_forecast_rps_for_observed_load": "substitute_observed_rps"
+      },
       "fallback_actions": [
         "use_forecast_rps_for_observed_load"
       ],
@@ -46,6 +49,9 @@
         "stability_violation",
         "adapter_exception"
       ],
+      "fallback_action_modes": {
+        "skip_stability_monitor_this_tick": "skip_optional_stage"
+      },
       "fallback_actions": [
         "skip_stability_monitor_this_tick"
       ],
@@ -69,6 +75,10 @@
         "rollout_rejected",
         "adapter_exception"
       ],
+      "fallback_action_modes": {
+        "keep_current_replicas": "keep_current_value",
+        "skip_canary_step": "skip_optional_stage"
+      },
       "fallback_actions": [
         "keep_current_replicas",
         "skip_canary_step"
@@ -95,6 +105,9 @@
         "unsafe_proposal_projected",
         "adapter_exception"
       ],
+      "fallback_action_modes": {
+        "zero_guardrail_action": "zero_action"
+      },
       "fallback_actions": [
         "zero_guardrail_action"
       ],
@@ -117,6 +130,10 @@
         "bounded_ls_residual",
         "adapter_exception"
       ],
+      "fallback_action_modes": {
+        "bootstrap_zero_fallback": "zero_action",
+        "reuse_last_good_shares": "reuse_last_good_cache"
+      },
       "fallback_actions": [
         "reuse_last_good_shares",
         "bootstrap_zero_fallback"
@@ -139,6 +156,7 @@
     },
     {
       "event_kinds": [],
+      "fallback_action_modes": {},
       "fallback_actions": [],
       "fallback_modes": [],
       "inputs": [

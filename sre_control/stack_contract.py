@@ -33,6 +33,9 @@ def stack_data_contract() -> dict[str, object]:
                     "adapter_exception",
                 ],
                 "fallback_actions": ["use_forecast_rps_for_observed_load"],
+                "fallback_action_modes": {
+                    "use_forecast_rps_for_observed_load": "substitute_observed_rps",
+                },
                 "fallback_modes": ["substitute_observed_rps"],
             },
             {
@@ -42,6 +45,9 @@ def stack_data_contract() -> dict[str, object]:
                 "outputs": ["stability", "runtime.events"],
                 "event_kinds": ["stability_violation", "adapter_exception"],
                 "fallback_actions": ["skip_stability_monitor_this_tick"],
+                "fallback_action_modes": {
+                    "skip_stability_monitor_this_tick": "skip_optional_stage",
+                },
                 "fallback_modes": ["skip_optional_stage"],
             },
             {
@@ -55,6 +61,10 @@ def stack_data_contract() -> dict[str, object]:
                     "adapter_exception",
                 ],
                 "fallback_actions": ["keep_current_replicas", "skip_canary_step"],
+                "fallback_action_modes": {
+                    "keep_current_replicas": "keep_current_value",
+                    "skip_canary_step": "skip_optional_stage",
+                },
                 "fallback_modes": ["keep_current_value", "skip_optional_stage"],
             },
             {
@@ -67,6 +77,9 @@ def stack_data_contract() -> dict[str, object]:
                     "adapter_exception",
                 ],
                 "fallback_actions": ["zero_guardrail_action"],
+                "fallback_action_modes": {
+                    "zero_guardrail_action": "zero_action",
+                },
                 "fallback_modes": ["zero_action"],
             },
             {
@@ -79,6 +92,10 @@ def stack_data_contract() -> dict[str, object]:
                     "reuse_last_good_shares",
                     "bootstrap_zero_fallback",
                 ],
+                "fallback_action_modes": {
+                    "reuse_last_good_shares": "reuse_last_good_cache",
+                    "bootstrap_zero_fallback": "zero_action",
+                },
                 "fallback_modes": ["reuse_last_good_cache", "zero_action"],
             },
             {
@@ -94,6 +111,7 @@ def stack_data_contract() -> dict[str, object]:
                 "outputs": ["runtime.states", "runtime.events", "runtime.degraded"],
                 "event_kinds": [],
                 "fallback_actions": [],
+                "fallback_action_modes": {},
                 "fallback_modes": [],
             },
         ],
