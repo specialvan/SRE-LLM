@@ -19,6 +19,7 @@ latch** in this pass: once triggered, it stays triggered until
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from numbers import Integral
 from typing import Callable, Optional
 
 import numpy as np
@@ -98,16 +99,14 @@ class StabilityGuard:
         self.tolerance = float(self.tolerance)
         if not np.isfinite(self.tolerance) or self.tolerance < 0.0:
             raise ValueError('tolerance must be non-negative and finite')
-        k_violations = float(self.k_violations)
-        if not np.isfinite(k_violations) or not k_violations.is_integer():
+        if isinstance(self.k_violations, bool) or not isinstance(self.k_violations, Integral):
             raise ValueError('k_violations must be a positive integer')
-        self.k_violations = int(k_violations)
+        self.k_violations = int(self.k_violations)
         if self.k_violations <= 0:
             raise ValueError('k_violations must be positive')
-        window = float(self.window)
-        if not np.isfinite(window) or not window.is_integer():
+        if isinstance(self.window, bool) or not isinstance(self.window, Integral):
             raise ValueError('window must be a positive integer')
-        self.window = int(window)
+        self.window = int(self.window)
         if self.window <= 0:
             raise ValueError('window must be positive')
         if not isinstance(self.label, str) or not self.label.strip():
