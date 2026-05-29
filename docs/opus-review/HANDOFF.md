@@ -205,7 +205,7 @@ python -m examples.demo_catch_phase
 当前文档同步目标中的关键输出摘要应包含:
 
 ```text
-quality gate pytest count: 594
+quality gate pytest count: 595
 artifact_check ok studies=3 files=8
 manifest_replay=normal+backend_error+frontend_error
 control-center integration audit ok

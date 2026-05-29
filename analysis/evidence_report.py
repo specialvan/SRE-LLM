@@ -1529,11 +1529,14 @@ def _contract_event_errors(manifest: dict, root: Path) -> list[str]:
                     + str(event['adapter_family'])
                 )
                 return errors
-            if (
-                event['kind'] == 'adapter_exception'
-                and event['exception_type'] == 'AdapterInputError'
-                and event['cause_type'] != 'adapter_input'
-            ):
+            if event['kind'] == 'adapter_exception':
+                expected_cause_type = {
+                    'AdapterInputError': 'adapter_input',
+                    'RecoverableControlError': 'control_domain',
+                }.get(event['exception_type'])
+            else:
+                expected_cause_type = None
+            if expected_cause_type is not None and event['cause_type'] != expected_cause_type:
                 errors.append(
                     f'contract_exception_cause_mismatch {path_text} '
                     f'stage={event_stage} '

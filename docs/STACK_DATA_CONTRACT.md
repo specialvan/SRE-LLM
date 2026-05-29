@@ -118,7 +118,7 @@ fallback-mode fields, missing or unexpected split-ready boundaries, malformed ev
 routes, missing or unexpected event-stage route keys, unknown stage event
 kinds, events disallowed by the routed contract stage, `adapter_exception`
 payloads whose `adapter_family` does not match that routed stage, payloads
-whose `AdapterInputError` exception type drifts from the documented
-`cause_type=adapter_input` mapping, payloads whose `fault_family` drifts from
-the documented `cause_type`, or fallback modes that are not declared in that
-stage's `fallback_modes` list.
+whose exception type drifts from the documented `cause_type` mapping
+(`AdapterInputError -> adapter_input`, `RecoverableControlError -> control_domain`),
+payloads whose `fault_family` drifts from the documented `cause_type`, or
+fallback modes that are not declared in that stage's `fallback_modes` list.
