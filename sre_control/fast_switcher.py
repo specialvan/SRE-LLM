@@ -27,6 +27,7 @@ from typing import Tuple
 
 import numpy as np
 
+from .exceptions import AdapterInputError
 from .events import make_event
 
 
@@ -44,7 +45,8 @@ class FastTrafficSwitcher:
 
     # ------------------------------------------------------------------
     def __post_init__(self) -> None:
-        if self.rate_max <= 0:
+        self.rate_max = float(self.rate_max)
+        if not np.isfinite(self.rate_max) or self.rate_max <= 0:
             raise ValueError("rate_max must be positive")
 
     # ------------------------------------------------------------------
@@ -59,6 +61,23 @@ class FastTrafficSwitcher:
         change* to +r_max, holding it, then decelerating to 0 at the
         target.
         """
+        share_from = float(share_from)
+        if not np.isfinite(share_from):
+            raise AdapterInputError('share_from must be finite')
+        share_to = float(share_to)
+        if not np.isfinite(share_to):
+            raise AdapterInputError('share_to must be finite')
+        if isinstance(dt, bool):
+            raise AdapterInputError('dt must be positive and finite')
+        dt = float(dt)
+        if not np.isfinite(dt) or dt <= 0.0:
+            raise AdapterInputError('dt must be positive and finite')
+        if deadline_s is not None:
+            if isinstance(deadline_s, bool):
+                raise AdapterInputError('deadline_s must be positive and finite')
+            deadline_s = float(deadline_s)
+            if not np.isfinite(deadline_s) or deadline_s <= 0.0:
+                raise AdapterInputError('deadline_s must be positive and finite')
         dx = share_to - share_from
         sign = 1 if dx >= 0 else -1
         mag = abs(dx)

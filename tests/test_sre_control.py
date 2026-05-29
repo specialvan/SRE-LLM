@@ -807,6 +807,44 @@ def test_switcher_rejects_nonpositive_rate_max(rate_max):
 # §8 WeightedLoadBalancer
 # ---------------------------------------------------------------------------
 
+@pytest.mark.parametrize(
+    ('kwargs', 'match'),
+    [
+        ({'share_from': np.nan}, 'share_from must be finite'),
+        ({'share_to': np.inf}, 'share_to must be finite'),
+        ({'dt': 0.0}, 'dt must be positive and finite'),
+        ({'dt': -0.1}, 'dt must be positive and finite'),
+        ({'dt': np.nan}, 'dt must be positive and finite'),
+        ({'deadline_s': np.nan}, 'deadline_s must be positive and finite'),
+        ({'deadline_s': 0.0}, 'deadline_s must be positive and finite'),
+    ],
+)
+def test_switcher_rejects_invalid_plan_inputs(kwargs, match):
+    sw = FastTrafficSwitcher(rate_max=0.4)
+    call = {
+        'share_from': 0.0,
+        'share_to': 1.0,
+        'dt': 0.1,
+        'deadline_s': None,
+    }
+    call.update(kwargs)
+
+    with pytest.raises(AdapterInputError, match=match):
+        sw.plan(**call)
+
+
+@pytest.mark.parametrize('rate_max', [np.nan, np.inf])
+def test_switcher_rejects_nonfinite_rate_max(rate_max):
+    with pytest.raises(ValueError, match='rate_max'):
+        FastTrafficSwitcher(rate_max=rate_max)
+
+
+@pytest.mark.parametrize('safety_margin', [0.0, -1.0, np.nan, np.inf])
+def test_switcher_rejects_invalid_safety_margin(safety_margin):
+    with pytest.raises(ValueError, match='safety_margin'):
+        FastTrafficSwitcher(rate_max=0.4, safety_margin=safety_margin)
+
+
 def test_balancer_matches_demand_without_saturating():
     lb = WeightedLoadBalancer(instances=[
         Instance("east-a", np.array([1.0, 0.0]), rps_min=10, rps_max=500),
