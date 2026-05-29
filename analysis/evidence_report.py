@@ -1492,6 +1492,13 @@ def _contract_event_errors(manifest: dict, root: Path) -> list[str]:
         and isinstance(stage.get("stage"), str)
         and isinstance(stage.get("event_kinds"), list)
     }
+    fallback_modes_by_stage = {
+        stage['stage']: set(stage['fallback_modes'])
+        for stage in stages
+        if isinstance(stage, dict)
+        and isinstance(stage.get('stage'), str)
+        and isinstance(stage.get('fallback_modes'), list)
+    }
     errors: list[str] = []
     for entry in manifest["studies"]:
         for path_text, event in _iter_entry_events(entry, root):
@@ -1509,6 +1516,18 @@ def _contract_event_errors(manifest: dict, root: Path) -> list[str]:
                     f"contract_unrouted_event {path_text} "
                     f"stage={event_stage} kind={event['kind']} "
                     f"contract_stage={contract_stage}"
+                )
+                return errors
+            if (
+                event['kind'] == 'adapter_exception'
+                and event['fallback_mode']
+                not in fallback_modes_by_stage.get(contract_stage, set())
+            ):
+                errors.append(
+                    f'contract_unrouted_fallback_mode {path_text} '
+                    f'stage={event_stage} contract_stage={contract_stage} '
+                    + 'fallback_mode='
+                    + str(event['fallback_mode'])
                 )
                 return errors
     return errors
