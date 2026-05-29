@@ -29,6 +29,7 @@ Each stage entry must be an object containing:
 | `inputs` | Data the stage consumes; must be a list of strings. |
 | `outputs` | Data the stage emits; must be a list of strings. |
 | `event_kinds` | Runtime event kinds the stage may emit directly. Values must exist in `sre_control.events.EVENT_COUNTEREXAMPLES`. |
+| `fallback_actions` | Concrete fallback actions the stage may use when emitting `adapter_exception`; must be a list of strings. |
 | `fallback_modes` | Coarse validated fallback strategies the stage may use when emitting `adapter_exception`; must be a list of strings. |
 
 Current stage order:
@@ -94,6 +95,22 @@ Current adapter-exception fallback modes:
 | `allocate` | `reuse_last_good_cache`, `zero_action` |
 | `execute` | none |
 
+Current adapter-exception fallback actions:
+
+| Stage | Fallback actions |
+|---|---|
+| `observe` | `use_forecast_rps_for_observed_load` |
+| `stability` | `skip_stability_monitor_this_tick` |
+| `plan` | `keep_current_replicas`, `skip_canary_step` |
+| `guard` | `zero_guardrail_action` |
+| `allocate` | `reuse_last_good_shares`, `bootstrap_zero_fallback` |
+| `execute` | none |
+
+`fallback_action` is intentionally more specific than `fallback_mode`. The
+action identifies the concrete stage replacement path, while the mode groups
+those actions for dashboards and evidence reports. Both fields are routed by
+the same contract stage.
+
 Runtime event `stage` labels can include suffixes such as
 `StabilityGuard/replay_error_budget`. The route key is the prefix before `/`.
 Current routes:
@@ -113,12 +130,13 @@ Current routes:
 checks that the contract is JSON-serializable, keeps the non-production scope,
 exposes the current stage boundaries, and binds every stage event kind to the
 runtime event registry. `analysis.evidence_report` also rejects stack-contract
-artifacts that contain malformed stage entries, malformed stage interface or
-fallback-mode fields, missing or unexpected split-ready boundaries, malformed event-stage
+artifacts that contain malformed stage entries, malformed stage interface,
+fallback-action, or fallback-mode fields, missing or unexpected split-ready boundaries, malformed event-stage
 routes, missing or unexpected event-stage route keys, unknown stage event
 kinds, events disallowed by the routed contract stage, `adapter_exception`
 payloads not marked `recoverable=true`, payloads whose `adapter_family` does
 not match that routed stage, payloads whose exception type drifts from the documented `cause_type` mapping
 (`AdapterInputError -> adapter_input`, `RecoverableControlError -> control_domain`),
 payloads whose `fault_family` drifts from the documented `cause_type`, or
-fallback modes that are not declared in that stage's `fallback_modes` list.
+fallback actions/modes that are not declared in that stage's `fallback_actions`
+or `fallback_modes` list.

@@ -1283,7 +1283,7 @@ def _contract_consistency_errors(entry: dict, root: Path) -> list[str]:
                     f"stage_interface_invalid={stage_name}.producer"
                 )
                 break
-            for field in ("inputs", "outputs", "fallback_modes"):
+            for field in ("inputs", "outputs", "fallback_actions", "fallback_modes"):
                 values = stage.get(field)
                 if not isinstance(values, list) or not all(
                     isinstance(value, str) for value in values
@@ -1499,6 +1499,13 @@ def _contract_event_errors(manifest: dict, root: Path) -> list[str]:
         and isinstance(stage.get('stage'), str)
         and isinstance(stage.get('fallback_modes'), list)
     }
+    fallback_actions_by_stage = {
+        stage['stage']: set(stage['fallback_actions'])
+        for stage in stages
+        if isinstance(stage, dict)
+        and isinstance(stage.get('stage'), str)
+        and isinstance(stage.get('fallback_actions'), list)
+    }
     errors: list[str] = []
     for entry in manifest["studies"]:
         for path_text, event in _iter_entry_events(entry, root):
@@ -1577,6 +1584,18 @@ def _contract_event_errors(manifest: dict, root: Path) -> list[str]:
                     f'stage={event_stage} contract_stage={contract_stage} '
                     + 'fallback_mode='
                     + str(event['fallback_mode'])
+                )
+                return errors
+            if (
+                event['kind'] == 'adapter_exception'
+                and event['fallback_action']
+                not in fallback_actions_by_stage.get(contract_stage, set())
+            ):
+                errors.append(
+                    f'contract_unrouted_fallback_action {path_text} '
+                    f'stage={event_stage} contract_stage={contract_stage} '
+                    + 'fallback_action='
+                    + str(event['fallback_action'])
                 )
                 return errors
     return errors

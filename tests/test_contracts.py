@@ -175,10 +175,15 @@ def test_sre_stack_data_contract_exports_stage_boundaries():
         "unsafe_proposal_projected",
         "adapter_exception",
     ]
+    assert stages["guard"]["fallback_actions"] == ["zero_guardrail_action"]
     assert stages["guard"]["fallback_modes"] == ["zero_action"]
     assert stages["allocate"]["event_kinds"] == [
         "bounded_ls_residual",
         "adapter_exception",
+    ]
+    assert stages["allocate"]["fallback_actions"] == [
+        "reuse_last_good_shares",
+        "bootstrap_zero_fallback",
     ]
     assert stages["allocate"]["fallback_modes"] == [
         "reuse_last_good_cache",

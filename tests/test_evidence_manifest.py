@@ -2915,6 +2915,39 @@ def test_event_evidence_report_rejects_trace_fallback_mode_not_allowed_by_stage(
     assert 'artifact_check failed studies=3 contract_events=1' in output
 
 
+def test_event_evidence_report_rejects_trace_fallback_action_not_allowed_by_stage(
+    tmp_path, capsys
+) -> None:
+    result = evidence_manifest.main(artifacts_dir=tmp_path)
+    _replace_first_s10_trace_event(result, tmp_path, {
+        'adapter_family': 'observe',
+        'cause_type': 'adapter_input',
+        'detail': 'observe adapter used a fallback action from another stage',
+        'exception_type': 'AdapterInputError',
+        'fallback_action': 'zero_guardrail_action',
+        'fallback_mode': 'substitute_observed_rps',
+        'fault_family': 'adapter_input',
+        'kind': 'adapter_exception',
+        'recoverable': True,
+        'safe_action': 'use validated fallback',
+        'stage': 'SignalFusion',
+    })
+
+    ok = evidence_report.main(
+        manifest_path=result['manifest_path'],
+        repo_root=tmp_path,
+    )
+    output = capsys.readouterr().out
+
+    assert ok is False
+    assert (
+        'contract_unrouted_fallback_action s10_trace_full.jsonl '
+        'stage=SignalFusion contract_stage=observe '
+        'fallback_action=zero_guardrail_action'
+    ) in output
+    assert 'artifact_check failed studies=3 contract_events=1' in output
+
+
 def test_event_evidence_report_rejects_trace_adapter_family_not_matching_stage_route(
     tmp_path, capsys
 ) -> None:

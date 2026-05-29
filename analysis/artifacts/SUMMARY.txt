@@ -2,29 +2,29 @@
   cone_margin_min           before=2.351e+05  after=5.27e+04  (x0.224)
   fuel                      before=1.279e+04  after=1.051e+04  (x0.822)
   pos_err                   before=148.3  after=2.125e-06  (x1.43e-08)
-  solve_ms                  before=0.9944  after=308  (x310)
+  solve_ms                  before=1.002  after=348.2  (x348)
   vel_err                   before=30.92  after=3.799e-07  (x1.23e-08)
-    (elapsed 0.83s)
+    (elapsed 0.93s)
 
 === §2 Successive Convex Programming ===
   control_effort            before=19.61  after=19.78  (x1.01)
   final_pos_err             before=8.08  after=2.87  (x0.355)
   final_speed               before=0.1185  after=2.826  (x23.8)
   iters                     before=1  after=6
-    (elapsed 0.67s)
+    (elapsed 0.72s)
 
 === §3 6-DoF Rigid-Body Dynamics ===
   angle_rmse_rad            before=0.05576  after=5.715e-07  (x1.02e-05)
   final_body_z_err          before=0.04464  after=1.384e-12  (x3.1e-11)
   quat_norm_drift           before=0  after=1e-12  (ratio=undefined; zero baseline)
-    (elapsed 0.11s)
+    (elapsed 0.08s)
 
 === §4 Thrust Pointing Cone ===
   cone_violations           before=0.974  after=0  (x0)
   mag_violations            before=0.7825  after=0  (x0)
   mean_magnitude            before=3.17e+06  after=1.5e+06  (x0.473)
   mean_projection_cost      before=0  after=2.168e+06  (ratio=undefined; zero baseline)
-    (elapsed 0.20s)
+    (elapsed 0.21s)
 
 === §5 EKF multi-sensor fusion ===
   fiducial_updates          before=-  after=31.0
@@ -34,7 +34,7 @@
   pos_p95                   before=88.14  after=23.61  (x0.268)
   pos_rmse                  before=42.19  after=11.27  (x0.267)
   vel_rmse                  before=629.4  after=9.374  (x0.0149)
-    (elapsed 0.25s)
+    (elapsed 0.24s)
 
 === §6 Receding-Horizon MPC ===
   control_var               before=0.2791  after=0.411  (x1.47)
@@ -47,20 +47,20 @@
   final_omega_degs          before=33  after=-0  (x-0)
   final_pitch_deg           before=36.37  after=0  (x0)
   torque_margin             before=0.7  after=0  (x0)
-    (elapsed 0.17s)
+    (elapsed 0.15s)
 
 === §8 Catch-phase thrust allocation ===
   max_residual              before=6.236e+06  after=6.236e+06  (x1)
   mean_residual             before=1.809e+06  after=1.875e+06  (x1.04)
   mean_saturation_excess    before=7.928e+04  after=0  (x0)
   saturation_violation_pct  before=33.75  after=0  (x0)
-    (elapsed 0.60s)
+    (elapsed 0.48s)
 
 === §SRE · end-to-end stack ===
   mean_replicas             before=18.43  after=39.23  (x2.13)
   peak_replicas             before=24  after=50  (x2.08)
   slo_violation_pct         before=25  after=8.333  (x0.333)
-    (elapsed 0.63s)
+    (elapsed 0.51s)
 
 === §10 · Failure trace (event-level evidence) ===
   background_event_fraction  before=-  after=0.0
@@ -71,14 +71,14 @@
   injected_window_coverage  before=-  after={'missing_sensor': {'expected_kind': 'missing_sensor', 'event_visible_fraction': 1.0, 'expected_kind_fraction': 1.0}, 'replica_bound_active': {'expected_kind': 'replica_bound_active', 'event_visible_fraction': 1.0, 'expected_kind_fraction': 1.0}, 'unsafe_proposal_projected': {'expected_kind': 'unsafe_proposal_projected', 'event_visible_fraction': 1.0, 'expected_kind_fraction': 1.0}}
   mttr_seconds              before=0  after=15  (ratio=undefined; zero baseline)
   true_degraded_fraction    before=-  after=0.21666666666666667
-    (elapsed 0.51s)
+    (elapsed 0.38s)
 
 === §11 Catch/SRE wrapper boundary ===
   capacity_violation_pct    before=66.67  after=0  (x0)
   event_visible_fraction    before=-  after=1.0
   mean_capacity_excess      before=37.05  after=0  (x0)
   reported_residual_mean    before=0  after=42.68  (ratio=undefined; zero baseline)
-    (elapsed 0.23s)
+    (elapsed 0.21s)
 
 === §12 SRE replay fixture ===
   background_event_fraction  before=0  after=0  (ratio=undefined; zero baseline)

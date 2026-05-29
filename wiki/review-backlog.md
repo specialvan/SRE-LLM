@@ -6,7 +6,7 @@ with older review packets.
 
 ## Current Verified Baseline
 
-- Full test suite: `python -m pytest tests -q` passes with 596 tests in the
+- Full test suite: `python -m pytest tests -q` passes with 597 tests in the
   current workspace.
 - Analysis suite: `python -m analysis.run_all` completes all 12 studies and
   refreshes `analysis/artifacts/SUMMARY.txt`.
@@ -225,7 +225,7 @@ Evidence:
   not match that stage, payloads whose exception type drifts from the documented `cause_type` mapping
   (`AdapterInputError -> adapter_input`, `RecoverableControlError -> control_domain`),
   payloads whose `fault_family` drifts from the documented `cause_type`, or
-  fallback modes not declared for that stage.
+  fallback actions/modes not declared for that stage.
 - `docs/STACK_DATA_CONTRACT.md` documents the contract shape and explicitly
   says it is research metadata, not a production distributed-control-plane
   contract.
