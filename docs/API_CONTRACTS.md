@@ -205,6 +205,9 @@ Public surface:
 
 Contract:
 
+- Constructor inputs `rate_max` and `safety_margin` must be positive finite values.
+- Runtime inputs `share_from` and `share_to` must be finite; `dt` and optional `deadline_s` must be positive finite values.
+
 - 产出的轨迹应是两阶段 bang-bang 形态。
 - 最终 share 应接近目标 share。
 - 时间长度应反映 rate cap。

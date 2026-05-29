@@ -48,6 +48,9 @@ class FastTrafficSwitcher:
         self.rate_max = float(self.rate_max)
         if not np.isfinite(self.rate_max) or self.rate_max <= 0:
             raise ValueError("rate_max must be positive")
+        self.safety_margin = float(self.safety_margin)
+        if not np.isfinite(self.safety_margin) or self.safety_margin <= 0:
+            raise ValueError("safety_margin must be positive")
 
     # ------------------------------------------------------------------
     def plan(self, share_from: float, share_to: float,
