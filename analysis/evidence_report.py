@@ -9,9 +9,12 @@ from pathlib import Path
 from typing import Iterable
 
 from analysis.evidence_manifest import REPO_ROOT
+from analysis.evidence_contracts import (
+    contract_consistency_errors,
+    contract_event_errors,
+)
 from analysis import s10_failure_trace
 from sre_control.events import EVENT_COUNTEREXAMPLES, validate_event
-from sre_control.stack_contract import stack_data_contract
 
 
 def _resolve_artifact(path_text: str, repo_root: Path) -> Path:
@@ -1191,189 +1194,6 @@ def _consistency_errors(entry: dict, root: Path) -> list[str]:
     return errors
 
 
-def _contract_consistency_errors(entry: dict, root: Path) -> list[str]:
-    artifacts = {
-        key: _resolve_artifact(path_text, root)
-        for key, path_text in entry["artifact_paths"].items()
-    }
-    errors: list[str] = []
-    if entry["contract"] != "sre_stack_data_contract":
-        return errors
-    contract_path = artifacts["contract_json"]
-    contract = json.loads(contract_path.read_text(encoding="utf-8"))
-    if contract.get("evidence_scope") != "research_stack_data_contract":
-        errors.append(
-            f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-            "evidence_scope_mismatch"
-        )
-    if contract.get("production_claim") is not False:
-        errors.append(
-            f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-            "production_claim_must_be_false"
-        )
-    if contract.get("orchestration_model") != "single_process_research_loop":
-        errors.append(
-            f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-            "orchestration_model_mismatch"
-        )
-    split_ready_boundaries = contract.get("split_ready_boundaries")
-    if not isinstance(split_ready_boundaries, list) or not all(
-        isinstance(boundary, str) for boundary in split_ready_boundaries
-    ):
-        errors.append(
-            f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-            "split_ready_boundaries_invalid"
-        )
-    else:
-        expected_split_ready_boundaries = {
-            "observe_to_plan",
-            "plan_to_guard",
-            "guard_to_allocate",
-            "allocate_to_execute",
-        }
-        observed_split_ready_boundaries = set(split_ready_boundaries)
-        for boundary in sorted(
-            expected_split_ready_boundaries - observed_split_ready_boundaries
-        ):
-            errors.append(
-                f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-                f"missing_split_ready_boundary={boundary}"
-            )
-        for boundary in sorted(
-            observed_split_ready_boundaries - expected_split_ready_boundaries
-        ):
-            errors.append(
-                f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-                f"unexpected_split_ready_boundary={boundary}"
-            )
-    stages = contract.get("stages")
-    declared_stage_names: set[str] = set()
-    if isinstance(stages, list):
-        for index, stage in enumerate(stages):
-            if not isinstance(stage, dict):
-                errors.append(
-                    f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-                    f"stage_entry_invalid={index}"
-                )
-                return errors
-    if not isinstance(stages, list) or [stage.get("stage") for stage in stages] != [
-        "observe",
-        "stability",
-        "plan",
-        "guard",
-        "allocate",
-        "execute",
-    ]:
-        errors.append(
-            f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-            "stage_order_mismatch"
-        )
-    else:
-        declared_stage_names = {stage["stage"] for stage in stages}
-        if any("event_kinds" not in stage for stage in stages):
-            errors.append(
-                f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-                "stage_event_kinds_missing"
-            )
-        for stage in stages:
-            stage_name = stage["stage"]
-            if not isinstance(stage.get("producer"), str):
-                errors.append(
-                    f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-                    f"stage_interface_invalid={stage_name}.producer"
-                )
-                break
-            for field in ("inputs", "outputs", "fallback_actions", "fallback_modes"):
-                values = stage.get(field)
-                if not isinstance(values, list) or not all(
-                    isinstance(value, str) for value in values
-                ):
-                    errors.append(
-                        f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-                        f"stage_interface_invalid={stage_name}.{field}"
-                    )
-                    break
-            if errors and f"stage_interface_invalid={stage_name}." in errors[-1]:
-                break
-            fallback_action_modes = stage.get("fallback_action_modes")
-            if not isinstance(fallback_action_modes, dict) or not all(
-                isinstance(action, str) and isinstance(mode, str)
-                for action, mode in fallback_action_modes.items()
-            ):
-                errors.append(
-                    f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-                    f"stage_interface_invalid={stage_name}.fallback_action_modes"
-                )
-                break
-            if set(fallback_action_modes) != set(stage.get("fallback_actions", [])):
-                errors.append(
-                    f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-                    f"stage_fallback_action_modes_mismatch={stage_name}"
-                )
-                break
-            if not set(fallback_action_modes.values()).issubset(
-                set(stage.get("fallback_modes", []))
-            ):
-                errors.append(
-                    f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-                    f"stage_fallback_action_mode_unknown={stage_name}"
-                )
-                break
-            if errors and errors[-1].endswith((".inputs", ".outputs", ".producer")):
-                break
-            if "event_kinds" not in stage:
-                break
-            event_kinds = stage["event_kinds"]
-            if not isinstance(event_kinds, list) or not all(
-                isinstance(kind, str) for kind in event_kinds
-            ):
-                errors.append(
-                    f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-                    f"stage_event_kinds_invalid={stage.get('stage')}"
-                )
-                break
-            unknown = sorted(set(event_kinds) - set(EVENT_COUNTEREXAMPLES))
-            if unknown:
-                errors.append(
-                    f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-                    f"unknown_stage_event_kind={unknown[0]}"
-                )
-                break
-    routes = contract.get("event_stage_routes")
-    if not isinstance(routes, dict):
-        errors.append(
-            f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-            "event_stage_routes_missing"
-        )
-    else:
-        expected_route_keys = set(stack_data_contract()["event_stage_routes"])
-        observed_route_keys = set(routes)
-        for route_key in sorted(expected_route_keys - observed_route_keys):
-            errors.append(
-                f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-                f"missing_event_stage_route={route_key}"
-            )
-        for route_key in sorted(observed_route_keys - expected_route_keys):
-            errors.append(
-                f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-                f"unexpected_event_stage_route={route_key}"
-            )
-        for route_key, contract_stage in routes.items():
-            if not isinstance(route_key, str) or not isinstance(contract_stage, str):
-                errors.append(
-                    f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-                    f"event_stage_route_invalid={route_key}"
-                )
-                break
-            if declared_stage_names and contract_stage not in declared_stage_names:
-                errors.append(
-                    f"inconsistent_artifact {entry['artifact_paths']['contract_json']} "
-                    f"event_stage_route_unknown_stage={route_key}"
-                )
-                break
-    return errors
-
-
 def _invalid_artifact_errors(entry: dict, root: Path) -> list[str]:
     artifacts = {
         key: _resolve_artifact(path_text, root)
@@ -1475,183 +1295,6 @@ def _schema_invalid_event_errors(entry: dict, root: Path) -> list[str]:
     return errors
 
 
-def _iter_entry_events(entry: dict, root: Path) -> Iterable[tuple[str, dict]]:
-    artifacts = {
-        key: _resolve_artifact(path_text, root)
-        for key, path_text in entry["artifact_paths"].items()
-    }
-    path_texts = entry["artifact_paths"]
-    study = entry["study"]
-    if study == "s10_failure_trace":
-        for line in artifacts["full_trace_jsonl"].read_text(encoding="utf-8").splitlines():
-            yield path_texts["full_trace_jsonl"], json.loads(line)
-    elif study == "s12_sre_replay":
-        for line in artifacts["trace_jsonl"].read_text(encoding="utf-8").splitlines():
-            row = json.loads(line)
-            for event in row.get("runtime", {}).get("events", []):
-                yield path_texts["trace_jsonl"], event
-
-
-def _contract_event_errors(manifest: dict, root: Path) -> list[str]:
-    contracts = {
-        entry["contract"]: entry for entry in manifest.get("contracts", [])
-    }
-    contract_entry = contracts.get("sre_stack_data_contract")
-    if contract_entry is None:
-        return []
-
-    contract_path_text = contract_entry["artifact_paths"]["contract_json"]
-    contract_path = _resolve_artifact(contract_path_text, root)
-    contract = json.loads(contract_path.read_text(encoding="utf-8"))
-    routes = contract.get("event_stage_routes")
-    stages = contract.get("stages")
-    if not isinstance(routes, dict) or not isinstance(stages, list):
-        return [
-            f"inconsistent_artifact {contract_path_text} "
-            "event_stage_routes_missing"
-        ]
-
-    allowed_by_stage = {
-        stage["stage"]: set(stage["event_kinds"])
-        for stage in stages
-        if isinstance(stage, dict)
-        and isinstance(stage.get("stage"), str)
-        and isinstance(stage.get("event_kinds"), list)
-    }
-    fallback_modes_by_stage = {
-        stage['stage']: set(stage['fallback_modes'])
-        for stage in stages
-        if isinstance(stage, dict)
-        and isinstance(stage.get('stage'), str)
-        and isinstance(stage.get('fallback_modes'), list)
-    }
-    fallback_actions_by_stage = {
-        stage['stage']: set(stage['fallback_actions'])
-        for stage in stages
-        if isinstance(stage, dict)
-        and isinstance(stage.get('stage'), str)
-        and isinstance(stage.get('fallback_actions'), list)
-    }
-    fallback_action_modes_by_stage = {
-        stage['stage']: dict(stage['fallback_action_modes'])
-        for stage in stages
-        if isinstance(stage, dict)
-        and isinstance(stage.get('stage'), str)
-        and isinstance(stage.get('fallback_action_modes'), dict)
-    }
-    errors: list[str] = []
-    for entry in manifest["studies"]:
-        for path_text, event in _iter_entry_events(entry, root):
-            event_stage = str(event["stage"])
-            route_key = event_stage.split("/", 1)[0]
-            contract_stage = routes.get(route_key)
-            if not isinstance(contract_stage, str):
-                errors.append(
-                    f"contract_unrouted_event {path_text} "
-                    f"stage={event_stage} kind={event['kind']} contract_stage=<missing>"
-                )
-                return errors
-            if event["kind"] not in allowed_by_stage.get(contract_stage, set()):
-                errors.append(
-                    f"contract_unrouted_event {path_text} "
-                    f"stage={event_stage} kind={event['kind']} "
-                    f"contract_stage={contract_stage}"
-                )
-                return errors
-            if (
-                event['kind'] == 'adapter_exception'
-                and event['adapter_family'] != contract_stage
-            ):
-                errors.append(
-                    f'contract_adapter_family_mismatch {path_text} '
-                    f'stage={event_stage} contract_stage={contract_stage} '
-                    + 'adapter_family='
-                    + str(event['adapter_family'])
-                )
-                return errors
-            if event['kind'] == 'adapter_exception' and event['recoverable'] is not True:
-                errors.append(
-                    f'contract_unrecoverable_adapter_exception {path_text} '
-                    f'stage={event_stage} '
-                    + 'recoverable='
-                    + str(event['recoverable'])
-                )
-                return errors
-            if event['kind'] == 'adapter_exception':
-                expected_cause_type = {
-                    'AdapterInputError': 'adapter_input',
-                    'RecoverableControlError': 'control_domain',
-                }.get(event['exception_type'])
-            else:
-                expected_cause_type = None
-            if expected_cause_type is not None and event['cause_type'] != expected_cause_type:
-                errors.append(
-                    f'contract_exception_cause_mismatch {path_text} '
-                    f'stage={event_stage} '
-                    + 'exception_type='
-                    + str(event['exception_type'])
-                    + ' cause_type='
-                    + str(event['cause_type'])
-                )
-                return errors
-            if (
-                event['kind'] == 'adapter_exception'
-                and event['fault_family'] != event['cause_type']
-            ):
-                errors.append(
-                    f'contract_fault_family_mismatch {path_text} '
-                    f'stage={event_stage} '
-                    + 'cause_type='
-                    + str(event['cause_type'])
-                    + ' fault_family='
-                    + str(event['fault_family'])
-                )
-                return errors
-            if (
-                event['kind'] == 'adapter_exception'
-                and event['fallback_mode']
-                not in fallback_modes_by_stage.get(contract_stage, set())
-            ):
-                errors.append(
-                    f'contract_unrouted_fallback_mode {path_text} '
-                    f'stage={event_stage} contract_stage={contract_stage} '
-                    + 'fallback_mode='
-                    + str(event['fallback_mode'])
-                )
-                return errors
-            if (
-                event['kind'] == 'adapter_exception'
-                and event['fallback_action']
-                not in fallback_actions_by_stage.get(contract_stage, set())
-            ):
-                errors.append(
-                    f'contract_unrouted_fallback_action {path_text} '
-                    f'stage={event_stage} contract_stage={contract_stage} '
-                    + 'fallback_action='
-                    + str(event['fallback_action'])
-                )
-                return errors
-            if event['kind'] == 'adapter_exception':
-                expected_mode = fallback_action_modes_by_stage.get(
-                    contract_stage, {}
-                ).get(event['fallback_action'])
-            else:
-                expected_mode = None
-            if expected_mode is not None and event['fallback_mode'] != expected_mode:
-                errors.append(
-                    f'contract_fallback_mode_mismatch {path_text} '
-                    f'stage={event_stage} contract_stage={contract_stage} '
-                    + 'fallback_action='
-                    + str(event['fallback_action'])
-                    + ' fallback_mode='
-                    + str(event['fallback_mode'])
-                    + ' expected_mode='
-                    + str(expected_mode)
-                )
-                return errors
-    return errors
-
-
 def main(
     manifest_path: Path | str | None = None,
     repo_root: Path | str | None = None,
@@ -1746,7 +1389,7 @@ def main(
     inconsistent.extend(
         error
         for entry in manifest.get("contracts", [])
-        for error in _contract_consistency_errors(entry, root)
+        for error in contract_consistency_errors(entry, root)
     )
     if inconsistent:
         for error in inconsistent:
@@ -1771,7 +1414,7 @@ def main(
         )
         return False
 
-    contract_events = _contract_event_errors(manifest, root)
+    contract_events = contract_event_errors(manifest, root)
     if contract_events:
         for error in contract_events:
             print(error)
