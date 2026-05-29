@@ -116,5 +116,6 @@ runtime event registry. `analysis.evidence_report` also rejects stack-contract
 artifacts that contain malformed stage entries, malformed stage interface or
 fallback-mode fields, missing or unexpected split-ready boundaries, malformed event-stage
 routes, missing or unexpected event-stage route keys, unknown stage event
-kinds, events disallowed by the routed contract stage, or `adapter_exception`
-fallback modes that are not declared in that stage's `fallback_modes` list.
+kinds, events disallowed by the routed contract stage, `adapter_exception`
+payloads whose `adapter_family` does not match that routed stage, or fallback
+modes that are not declared in that stage's `fallback_modes` list.

@@ -1520,6 +1520,17 @@ def _contract_event_errors(manifest: dict, root: Path) -> list[str]:
                 return errors
             if (
                 event['kind'] == 'adapter_exception'
+                and event['adapter_family'] != contract_stage
+            ):
+                errors.append(
+                    f'contract_adapter_family_mismatch {path_text} '
+                    f'stage={event_stage} contract_stage={contract_stage} '
+                    + 'adapter_family='
+                    + str(event['adapter_family'])
+                )
+                return errors
+            if (
+                event['kind'] == 'adapter_exception'
                 and event['fallback_mode']
                 not in fallback_modes_by_stage.get(contract_stage, set())
             ):

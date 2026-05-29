@@ -29,6 +29,50 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _replace_first_s10_trace_event(result: dict, tmp_path: Path, event: dict) -> None:
+    manifest_path = result['manifest_path']
+    full_path = tmp_path / 's10_trace_full.jsonl'
+    sample_path = tmp_path / 's10_trace_sample.jsonl'
+    full_rows = [
+        json.loads(line)
+        for line in full_path.read_text(encoding='utf-8').splitlines()
+        if line.strip()
+    ]
+    sample_rows = [
+        json.loads(line)
+        for line in sample_path.read_text(encoding='utf-8').splitlines()
+        if line.strip()
+    ]
+    replacement = {
+        **event,
+        't_seconds': full_rows[0]['t_seconds'],
+        'tick': full_rows[0]['tick'],
+    }
+    full_rows[0] = replacement
+    sample_rows[0] = replacement
+    for path, rows in [(full_path, full_rows), (sample_path, sample_rows)]:
+        path.write_text(
+            '\n'.join(json.dumps(row, sort_keys=True) for row in rows) + '\n',
+            encoding='utf-8',
+        )
+
+    manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+    for entry in manifest['studies']:
+        if entry['study'] == 's10_failure_trace':
+            for key, path in {
+                'full_trace_jsonl': full_path,
+                'sample_trace_jsonl': sample_path,
+            }.items():
+                entry['artifact_metadata'][key] = {
+                    'sha256': _sha256(path),
+                    'size_bytes': path.stat().st_size,
+                }
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + '\n',
+        encoding='utf-8',
+    )
+
+
 def _fake_artifact_metadata(entry: dict) -> dict:
     return {
         key: {"sha256": "0" * 64, "size_bytes": 0}
@@ -2842,20 +2886,7 @@ def test_event_evidence_report_rejects_trace_fallback_mode_not_allowed_by_stage(
     tmp_path, capsys
 ) -> None:
     result = evidence_manifest.main(artifacts_dir=tmp_path)
-    manifest_path = result['manifest_path']
-    full_path = tmp_path / 's10_trace_full.jsonl'
-    sample_path = tmp_path / 's10_trace_sample.jsonl'
-    full_rows = [
-        json.loads(line)
-        for line in full_path.read_text(encoding='utf-8').splitlines()
-        if line.strip()
-    ]
-    sample_rows = [
-        json.loads(line)
-        for line in sample_path.read_text(encoding='utf-8').splitlines()
-        if line.strip()
-    ]
-    observe_fallback_event = {
+    _replace_first_s10_trace_event(result, tmp_path, {
         'adapter_family': 'observe',
         'cause_type': 'adapter_input',
         'detail': 'observe adapter used an undeclared fallback mode',
@@ -2867,35 +2898,10 @@ def test_event_evidence_report_rejects_trace_fallback_mode_not_allowed_by_stage(
         'recoverable': True,
         'safe_action': 'use validated fallback',
         'stage': 'SignalFusion',
-        't_seconds': full_rows[0]['t_seconds'],
-        'tick': full_rows[0]['tick'],
-    }
-    full_rows[0] = observe_fallback_event
-    sample_rows[0] = observe_fallback_event
-    for path, rows in [(full_path, full_rows), (sample_path, sample_rows)]:
-        path.write_text(
-            '\n'.join(json.dumps(row, sort_keys=True) for row in rows) + '\n',
-            encoding='utf-8',
-        )
-
-    manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
-    for entry in manifest['studies']:
-        if entry['study'] == 's10_failure_trace':
-            for key, path in {
-                'full_trace_jsonl': full_path,
-                'sample_trace_jsonl': sample_path,
-            }.items():
-                entry['artifact_metadata'][key] = {
-                    'sha256': _sha256(path),
-                    'size_bytes': path.stat().st_size,
-                }
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + '\n',
-        encoding='utf-8',
-    )
+    })
 
     ok = evidence_report.main(
-        manifest_path=manifest_path,
+        manifest_path=result['manifest_path'],
         repo_root=tmp_path,
     )
     output = capsys.readouterr().out
@@ -2905,6 +2911,38 @@ def test_event_evidence_report_rejects_trace_fallback_mode_not_allowed_by_stage(
         'contract_unrouted_fallback_mode s10_trace_full.jsonl '
         'stage=SignalFusion contract_stage=observe '
         'fallback_mode=zero_action'
+    ) in output
+    assert 'artifact_check failed studies=3 contract_events=1' in output
+
+
+def test_event_evidence_report_rejects_trace_adapter_family_not_matching_stage_route(
+    tmp_path, capsys
+) -> None:
+    result = evidence_manifest.main(artifacts_dir=tmp_path)
+    _replace_first_s10_trace_event(result, tmp_path, {
+        'adapter_family': 'guard',
+        'cause_type': 'adapter_input',
+        'detail': 'observe adapter reported the wrong adapter family',
+        'exception_type': 'AdapterInputError',
+        'fallback_action': 'use_forecast_rps_for_observed_load',
+        'fallback_mode': 'substitute_observed_rps',
+        'fault_family': 'adapter_input',
+        'kind': 'adapter_exception',
+        'recoverable': True,
+        'safe_action': 'use validated fallback',
+        'stage': 'SignalFusion',
+    })
+
+    ok = evidence_report.main(
+        manifest_path=result['manifest_path'],
+        repo_root=tmp_path,
+    )
+    output = capsys.readouterr().out
+
+    assert ok is False
+    assert (
+        'contract_adapter_family_mismatch s10_trace_full.jsonl '
+        'stage=SignalFusion contract_stage=observe adapter_family=guard'
     ) in output
     assert 'artifact_check failed studies=3 contract_events=1' in output
 
