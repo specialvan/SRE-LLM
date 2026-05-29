@@ -1293,6 +1293,8 @@ def _contract_consistency_errors(entry: dict, root: Path) -> list[str]:
                         f"stage_interface_invalid={stage_name}.{field}"
                     )
                     break
+            if errors and f"stage_interface_invalid={stage_name}." in errors[-1]:
+                break
             fallback_action_modes = stage.get("fallback_action_modes")
             if not isinstance(fallback_action_modes, dict) or not all(
                 isinstance(action, str) and isinstance(mode, str)
