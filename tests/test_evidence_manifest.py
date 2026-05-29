@@ -2947,6 +2947,39 @@ def test_event_evidence_report_rejects_trace_adapter_family_not_matching_stage_r
     assert 'artifact_check failed studies=3 contract_events=1' in output
 
 
+def test_event_evidence_report_rejects_trace_fault_family_not_matching_cause_type(
+    tmp_path, capsys
+) -> None:
+    result = evidence_manifest.main(artifacts_dir=tmp_path)
+    _replace_first_s10_trace_event(result, tmp_path, {
+        'adapter_family': 'observe',
+        'cause_type': 'adapter_input',
+        'detail': 'observe adapter reported the wrong fault family',
+        'exception_type': 'AdapterInputError',
+        'fallback_action': 'use_forecast_rps_for_observed_load',
+        'fallback_mode': 'substitute_observed_rps',
+        'fault_family': 'control_domain',
+        'kind': 'adapter_exception',
+        'recoverable': True,
+        'safe_action': 'use validated fallback',
+        'stage': 'SignalFusion',
+    })
+
+    ok = evidence_report.main(
+        manifest_path=result['manifest_path'],
+        repo_root=tmp_path,
+    )
+    output = capsys.readouterr().out
+
+    assert ok is False
+    assert (
+        'contract_fault_family_mismatch s10_trace_full.jsonl '
+        'stage=SignalFusion cause_type=adapter_input '
+        'fault_family=control_domain'
+    ) in output
+    assert 'artifact_check failed studies=3 contract_events=1' in output
+
+
 def test_event_evidence_report_rejects_invalid_stack_contract_split_boundaries(
     tmp_path, capsys
 ) -> None:

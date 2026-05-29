@@ -6,7 +6,7 @@ with older review packets.
 
 ## Current Verified Baseline
 
-- Full test suite: `python -m pytest tests -q` passes with 592 tests in the
+- Full test suite: `python -m pytest tests -q` passes with 593 tests in the
   current workspace.
 - Analysis suite: `python -m analysis.run_all` completes all 12 studies and
   refreshes `analysis/artifacts/SUMMARY.txt`.
@@ -221,8 +221,9 @@ Evidence:
   logical stages. `analysis.evidence_report` rejects stack-contract artifacts
   with event kinds outside the shared runtime registry, generated trace events
   that are not allowed by the routed contract stage, `adapter_exception`
-  payloads whose `adapter_family` does not match that stage, or fallback modes
-  not declared for that stage.
+  payloads whose `adapter_family` does not match that stage, payloads whose
+  `fault_family` drifts from the documented `cause_type`, or fallback modes not
+  declared for that stage.
 - `docs/STACK_DATA_CONTRACT.md` documents the contract shape and explicitly
   says it is research metadata, not a production distributed-control-plane
   contract.

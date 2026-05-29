@@ -14,7 +14,7 @@ controlled by `wiki/review-backlog.md`, `OPEN_RISKS.md`, and
   failure traces, Section 11 Catch/SRE wrapper evidence, and Section 12
   synthetic replay-fixture evidence. `analysis.evidence_manifest` indexes the
   S10/S11/S12 machine-readable review artifacts.
-- `tests/`: current full suite passes with 592 tests.
+- `tests/`: current full suite passes with 593 tests.
 - `docs/`: V2 knowledge base is the canonical current HTML entry; V1 is an
   archive snapshot.
 
