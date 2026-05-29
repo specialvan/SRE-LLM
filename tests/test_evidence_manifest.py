@@ -3046,6 +3046,38 @@ def test_event_evidence_report_rejects_trace_recoverable_error_marked_adapter_in
     assert 'artifact_check failed studies=3 contract_events=1' in output
 
 
+def test_event_evidence_report_rejects_adapter_exception_marked_unrecoverable(
+    tmp_path, capsys
+) -> None:
+    result = evidence_manifest.main(artifacts_dir=tmp_path)
+    _replace_first_s10_trace_event(result, tmp_path, {
+        'adapter_family': 'observe',
+        'cause_type': 'adapter_input',
+        'detail': 'adapter exception was marked unrecoverable',
+        'exception_type': 'AdapterInputError',
+        'fallback_action': 'use_forecast_rps_for_observed_load',
+        'fallback_mode': 'substitute_observed_rps',
+        'fault_family': 'adapter_input',
+        'kind': 'adapter_exception',
+        'recoverable': False,
+        'safe_action': 'use validated fallback',
+        'stage': 'SignalFusion',
+    })
+
+    ok = evidence_report.main(
+        manifest_path=result['manifest_path'],
+        repo_root=tmp_path,
+    )
+    output = capsys.readouterr().out
+
+    assert ok is False
+    assert (
+        'contract_unrecoverable_adapter_exception s10_trace_full.jsonl '
+        'stage=SignalFusion recoverable=False'
+    ) in output
+    assert 'artifact_check failed studies=3 contract_events=1' in output
+
+
 def test_event_evidence_report_rejects_invalid_stack_contract_split_boundaries(
     tmp_path, capsys
 ) -> None:

@@ -1529,6 +1529,14 @@ def _contract_event_errors(manifest: dict, root: Path) -> list[str]:
                     + str(event['adapter_family'])
                 )
                 return errors
+            if event['kind'] == 'adapter_exception' and event['recoverable'] is not True:
+                errors.append(
+                    f'contract_unrecoverable_adapter_exception {path_text} '
+                    f'stage={event_stage} '
+                    + 'recoverable='
+                    + str(event['recoverable'])
+                )
+                return errors
             if event['kind'] == 'adapter_exception':
                 expected_cause_type = {
                     'AdapterInputError': 'adapter_input',
