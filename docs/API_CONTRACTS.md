@@ -260,7 +260,33 @@ Counter-example:
 
 - 如果实例之间没有任何可区分的 zone 权重，这个分配器会退化得很难看。
 
-### 2.9 `CatchController`
+### 2.9a `CatchLoadAdapter`
+
+Public surface:
+
+- `allocate(request_demand: float, placement_target: Sequence[float]) -> dict[str, object]`
+
+Contract:
+
+- Constructor `source` must be a non-empty string and identifies the SRE wrapper boundary.
+- Runtime `request_demand` must be finite and non-negative; invalid values raise `AdapterInputError` before the bounded-LS solver.
+- Runtime `placement_target` must be a finite vector with the same dimension as the wrapped instance `zone_vector` values.
+- The returned trace uses SRE names (`request_demand`, `placement_target`) and reuses `bounded_ls_residual` events from the load-balancer contract.
+
+State:
+
+- Wrapped `WeightedLoadBalancer` instance.
+
+Failure modes:
+
+- Wrapper input errors are reported in SRE vocabulary before delegating to the physical-allocation analogue.
+- Feasible exact solves remain quiet; residual or saturation evidence stays visible.
+
+Counter-example:
+
+- This wrapper is not a SpaceX implementation claim; it is the SRE migration-layer adapter around bounded allocation semantics.
+
+### 2.9b `CatchController`
 
 > **注意 · 属 `starship/` 物理层**：本小节列出 `CatchController` 的契约是为了让 future
 > wrapper 开发者参考；它本身**不是** SRE adapter，不依赖 `sre_control/events.py`。残差
@@ -272,6 +298,8 @@ Public surface:
 - `step(state, target_position, target_velocity, target_axis_body=...) -> (thrusts, info)`
 
 Contract:
+
+- Current SRE residual events are emitted by `CatchLoadAdapter`; `CatchController` remains a `starship/` physical-layer primitive and must not import `sre_control/events.py`.
 
 - 输出是每个 thruster 的 magnitudes。
 - 先算 PD/wrench，再做有界分配。
@@ -332,6 +360,7 @@ Counter-example:
 | `PredictiveAutoscaler` | `tests/test_sre_control.py` | forecast growth triggers scaling and bound events are visible |
 | `FastTrafficSwitcher` | `tests/test_sre_control.py` | target share is reached and deadline misses are visible |
 | `WeightedLoadBalancer` | `tests/test_sre_control.py` | demand is matched without false saturation events |
+| `CatchLoadAdapter` | `tests/test_catch_adapter.py` | SRE wrapper trace keeps residuals visible and validates wrapper vocabulary |
 | `SREControlStack` | `tests/test_contracts.py` | trace stays JSON-serializable and runtime degradation states are visible |
 | Runtime events | `tests/test_event_schema.py` | every event follows schema and has a counter-example |
 
