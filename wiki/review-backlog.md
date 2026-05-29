@@ -6,7 +6,7 @@ with older review packets.
 
 ## Current Verified Baseline
 
-- Full test suite: `python -m pytest tests -q` passes with 605 tests in the
+- Full test suite: `python -m pytest tests -q` passes with 607 tests in the
   current workspace.
 - Analysis suite: `python -m analysis.run_all` completes all 12 studies and
   refreshes `analysis/artifacts/SUMMARY.txt`.
@@ -218,11 +218,14 @@ Evidence:
   observe, stability, plan, guard, allocate, and execute.
 - Each stage contract lists the direct runtime `event_kinds` it may emit, and
   `event_stage_routes` maps runtime event `stage` prefixes back to those
-  logical stages. `analysis.evidence_report` rejects stack-contract artifacts
-  with event kinds outside the shared runtime registry, generated trace events
-  that are not allowed by the routed contract stage, `adapter_exception`
-  payloads not marked `recoverable=true`, payloads whose `adapter_family` does
-  not match that stage, payloads whose exception type drifts from the documented `cause_type` mapping
+  logical stages. `analysis.evidence_contracts` now owns the stack-contract
+  artifact checks and trace-routing checks that used to sit inside
+  `analysis.evidence_report`; the report CLI still calls that module and keeps
+  the same reviewer-facing output. The checks reject contract artifacts with
+  event kinds outside the shared runtime registry, generated trace events that
+  are not allowed by the routed contract stage, `adapter_exception` payloads not
+  marked `recoverable=true`, payloads whose `adapter_family` does not match
+  that stage, payloads whose exception type drifts from the documented `cause_type` mapping
   (`AdapterInputError -> adapter_input`, `RecoverableControlError -> control_domain`),
   payloads whose `fault_family` drifts from the documented `cause_type`,
   fallback actions/modes not declared for that stage, or fallback action/mode
@@ -233,6 +236,9 @@ Evidence:
 - `tests/test_contracts.py` checks JSON serializability, stage ordering,
   representative inputs/outputs, event-kind registry membership, runtime-stage
   routing, and split-ready boundary names.
+- `tests/test_evidence_contracts.py` directly covers the extracted validator's
+  fallback mode-map drift and adapter-family drift branches, so future B1
+  refactors are not only covered through the full report CLI.
 
 ### Opus v1.0 P0/P1 Remediation
 

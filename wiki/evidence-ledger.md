@@ -8,7 +8,7 @@ tests, and generated artifacts remain authoritative.
 Current local baseline from this continuation pass:
 
 ```bash
-python -m pytest tests -q      # 605 passed
+python -m pytest tests -q      # 607 passed
 python -m analysis.run_all     # All 12 studies finished
 python -m analysis.evidence_manifest  # S10/S11/S12 + stack-contract artifacts exported
 python -m analysis.evidence_report    # Manifest artifact byte identity, parse/schema/count validated
