@@ -6,7 +6,7 @@ with older review packets.
 
 ## Current Verified Baseline
 
-- Full test suite: `python -m pytest tests -q` passes with 610 tests in the
+- Full test suite: `python -m pytest tests -q` passes with 613 tests in the
   current workspace.
 - Analysis suite: `python -m analysis.run_all` completes all 12 studies and
   refreshes `analysis/artifacts/SUMMARY.txt`.
@@ -204,6 +204,13 @@ Evidence:
 - `tests/test_evidence_artifacts.py` directly covers stale artifact metadata,
   malformed replay fixture shape, and runtime event schema drift in the
   extracted artifact validator.
+- `analysis.evidence_manifest_checks` now owns manifest top-level shape,
+  study/contract field shape, artifact path key/extension shape, and artifact
+  metadata shape checks that used to sit inside `analysis.evidence_report`; the
+  report CLI still calls `manifest_shape_errors()` before artifact validation.
+- `tests/test_evidence_manifest_checks.py` directly covers generated manifest
+  acceptance, duplicate/missing study detection, and contract metadata-shape
+  rejection in the extracted manifest validator.
 - `scripts.quality_gate_counts` now treats `analysis.evidence_manifest` and
   `analysis.evidence_report` as required current quality-gate commands, so the
   count updater fails if either drops out of the PR requirements or V2 HTML

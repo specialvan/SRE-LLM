@@ -35,7 +35,7 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
   Opus/Codex 评审入口硬化、SRE runtime 输入边界加固、`adapter_exception` fallback
   模式路由和 evidence report 合同收敛提交。
 - 最新提交: 不在本文中写死具体 SHA; 用 `git log -1 --oneline` 现场确认。
-- 当前文档同步目标中的 pytest 数量为 610; 规范输出行只在下方复核摘要中保留一次。
+- 当前文档同步目标中的 pytest 数量为 613; 规范输出行只在下方复核摘要中保留一次。
 - 当前质量门已覆盖 review authority lint、浏览器证据 replay、包烟测、控制中心集成审计、
   三个 demo smoke、S10/S11/S12 证据链, 以及 `adapter_exception` 的 stage/family/cause/
   fallback/recoverable 合同漂移检查。最近新增的 2 条测试专门覆盖 `fallback_action_modes`
@@ -158,7 +158,7 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
 | `b6073c8` | 扩展 live 评审台账命令校验, 覆盖 handoff 和 wiki backlog。 | `QUALITY_GATE_COMMAND_DOCS` 是否包含 live ledger。 |
 | `0a0252f` | 固化 Opus README 权威顺序, 支持 README 相对路径 alias。 | Opus README 的首读表是否和 live ledger 顺序一致。 |
 | `dd3d2a7` / `71b2c0a` / `cdbe01c` / `0c8f624` / `a61c446` / `3c54105` / `94ddb83` / `20dbb59` | 伴随运行时输入边界加固持续同步质量门计数。 | 每次新增回归测试后, PR/V2/Codex/Opus/wiki 的 pytest count 是否由 `scripts.quality_gate_counts` 同步。 |
-| `92fab09` | 将 StabilityGuard 布尔边界新增测试后的质量门目标同步到 589。 | 这是最近一轮前置基线, 不是当前最终 count; 当前 count 以 610 和现场 `quality_gate_counts` 输出为准。 |
+| `92fab09` | 将 StabilityGuard 布尔边界新增测试后的质量门目标同步到 589。 | 这是最近一轮前置基线, 不是当前最终 count; 当前 count 以 613 和现场 `quality_gate_counts` 输出为准。 |
 
 ### H. Adapter exception fallback 路由和证据合同加固
 
@@ -177,14 +177,16 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
 | `28483f` | 拒绝未知 fallback action, 移除隐式 `custom_fallback` 兜底。 | 新增降级动作是否必须先进入合同, 不能靠默认 mode 悄悄通过。 |
 | `cba363c` | 收敛 `fallback_actions`、`fallback_modes`、`fallback_action_modes` 字段畸形校验。 | 合同字段类型错误是否在 evidence report 中以 stage interface 错误失败。 |
 | `7aa7d4d` | 拆分 `analysis.evidence_contracts`, 将 stack contract 一致性和 trace 路由校验从 evidence report 主模块移出。 | 拆分是否保持 `analysis.evidence_report` 的 artifact/report 行为不变, 且 `tests/test_evidence_contracts.py` 直接覆盖新模块的 fallback/action-family 漂移分支。 |
-| 待现场 SHA | 拆分 `analysis.evidence_artifacts`, 将 artifact path、missing、byte identity、JSON/JSONL/PNG parse 和 event schema 校验从 evidence report 主模块移出。 | 拆分是否保持 `analysis.evidence_report` 的 CLI 输出不变, 且 `tests/test_evidence_artifacts.py` 直接覆盖 stale metadata、fixture shape 和 runtime event schema 分支。 |
+| `ca36e09` | 拆分 `analysis.evidence_artifacts`, 将 artifact path、missing、byte identity、JSON/JSONL/PNG parse 和 event schema 校验从 evidence report 主模块移出。 | 拆分是否保持 `analysis.evidence_report` 的 CLI 输出不变, 且 `tests/test_evidence_artifacts.py` 直接覆盖 stale metadata、fixture shape 和 runtime event schema 分支。 |
+| 待现场 SHA | 拆分 `analysis.evidence_manifest_checks`, 将 manifest top-level、study/contract shape、artifact path key/extension 和 metadata shape 校验从 evidence report 主模块移出。 | `analysis.evidence_report` 是否只调用 `manifest_shape_errors`, 且 `tests/test_evidence_manifest_checks.py` 直接覆盖 generated manifest、duplicate/missing study 和 contract metadata shape 分支。 |
 
 Opus 抽查这一组时, 优先看 `analysis/evidence_contracts.py` 的 `contract_event_errors`,
-`analysis/evidence_artifacts.py` 的 artifact/schema 入口, `analysis/evidence_report.py` 对新模块的调用点,
+`analysis/evidence_artifacts.py` 的 artifact/schema 入口, `analysis/evidence_manifest_checks.py` 的 manifest shape 入口,
+`analysis/evidence_report.py` 对新模块的调用点,
 `tests/test_evidence_manifest.py` 中注入 S10 trace 语义漂移的用例, 以及
 `docs/STACK_DATA_CONTRACT.md` 对 `fallback_actions`、`fallback_action_modes`、`fallback_modes`
 和异常分类的边界说明。最新模块级测试还覆盖 `stage_fallback_action_mode_unknown`、
-`contract_adapter_family_mismatch`、stale artifact metadata 和 runtime event schema 漂移分支,
+`contract_adapter_family_mismatch`、stale artifact metadata、runtime event schema 和 manifest shape 漂移分支,
 以现场 `git log -1 --oneline` 为准。
 
 ### I. Opus 交接、live ledger 和 authority-order 硬化
@@ -256,7 +258,7 @@ python -m examples.demo_catch_phase
 当前文档同步目标中的关键输出摘要应包含:
 
 ```text
-quality gate pytest count: 610
+quality gate pytest count: 613
 artifact_check ok studies=3 files=8
 manifest_replay=normal+backend_error+frontend_error
 control-center integration audit ok

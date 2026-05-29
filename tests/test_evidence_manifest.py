@@ -11,6 +11,7 @@ from analysis import (
     _common,
     evidence_artifacts,
     evidence_manifest,
+    evidence_manifest_checks,
     evidence_report,
     s10_failure_trace,
 )
@@ -141,8 +142,8 @@ def test_evidence_manifest_json_writers_reject_non_standard_floats(tmp_path) -> 
 
 
 def test_evidence_report_accepts_uppercase_sha256_shape() -> None:
-    assert evidence_report._is_sha256("A" * 64) is True
-    assert evidence_report._is_sha256("F" * 64) is True
+    assert evidence_manifest_checks.is_sha256("A" * 64) is True
+    assert evidence_manifest_checks.is_sha256("F" * 64) is True
 
 
 def _parse_markdown_table_rows(text: str, header: str) -> list[list[str]]:
