@@ -80,7 +80,10 @@ fallback from programmer errors and route remediation by stage family. Its
 so trace payloads and the exported stack contract cannot drift independently.
 `fallback_mode` is intentionally coarser than `fallback_action`: the action keeps
 the exact code path, while the mode lets reviewers group events by replacement
-strategy without minting new event kinds.
+strategy without minting new event kinds. `SREControlStack._adapter_exception_event()`
+rejects fallback actions that are not declared in `stack_data_contract()`, so a
+typo or new fallback path must update the exported contract before it can enter
+runtime evidence.
 
 ## 4. Stack Aggregation
 

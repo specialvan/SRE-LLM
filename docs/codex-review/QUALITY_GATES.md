@@ -26,7 +26,7 @@ Current local result from this continuation pass:
 
 ```text
 python -m pytest tests -q
-599 passed
+600 passed
 
 python -m analysis.s10_failure_trace
 Section 10 full/sample trace exported

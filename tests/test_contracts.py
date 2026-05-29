@@ -452,15 +452,32 @@ def test_stability_recoverable_error_uses_adapter_exception():
 def test_adapter_exception_family_matches_stack_contract_routes():
     from sre_control import RecoverableControlError, SREControlStack, stack_data_contract
 
-    routes = stack_data_contract()["event_stage_routes"]
+    contract = stack_data_contract()
+    routes = contract["event_stage_routes"]
+    fallback_by_stage = {
+        stage["stage"]: stage["fallback_actions"][0]
+        for stage in contract["stages"]
+        if stage["fallback_actions"]
+    }
     for stage_label, expected_family in routes.items():
         event = SREControlStack._adapter_exception_event(
             stage_label,
             RecoverableControlError("temporary adapter outage"),
-            "use_test_fallback",
+            fallback_by_stage[expected_family],
         )
 
         assert event["adapter_family"] == expected_family
+
+
+def test_adapter_exception_rejects_unknown_fallback_action():
+    from sre_control import RecoverableControlError, SREControlStack
+
+    with pytest.raises(ValueError, match="unknown fallback_action"):
+        SREControlStack._adapter_exception_event(
+            "SignalFusion",
+            RecoverableControlError("temporary adapter outage"),
+            "use_test_fallback",
+        )
 
 
 def test_adapter_exception_exposes_routeable_fallback_mode():

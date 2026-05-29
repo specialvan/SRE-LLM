@@ -120,15 +120,16 @@ class SREControlStack:
     @staticmethod
     def _fallback_mode(fallback_action: str) -> str:
         modes = {
-            'use_forecast_rps_for_observed_load': 'substitute_observed_rps',
-            'skip_stability_monitor_this_tick': 'skip_optional_stage',
-            'keep_current_replicas': 'keep_current_value',
-            'skip_canary_step': 'skip_optional_stage',
-            'zero_guardrail_action': 'zero_action',
-            'reuse_last_good_shares': 'reuse_last_good_cache',
-            'bootstrap_zero_fallback': 'zero_action',
+            action: mode
+            for stage in stack_data_contract()["stages"]
+            for action, mode in stage["fallback_action_modes"].items()
         }
-        return modes.get(fallback_action, 'custom_fallback')
+        try:
+            return modes[fallback_action]
+        except KeyError as exc:
+            raise ValueError(
+                f"unknown fallback_action for adapter_exception: {fallback_action}"
+            ) from exc
 
     # ------------------------------------------------------------------
     @staticmethod

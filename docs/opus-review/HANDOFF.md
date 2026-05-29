@@ -35,7 +35,7 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
   Opus/Codex 评审入口硬化、SRE runtime 输入边界加固、`adapter_exception` fallback
   模式路由和 evidence report 合同收敛提交。
 - 最新提交: 不在本文中写死具体 SHA; 用 `git log -1 --oneline` 现场确认。
-- 当前文档同步目标中的 pytest 数量为 599; 规范输出行只在下方复核摘要中保留一次。
+- 当前文档同步目标中的 pytest 数量为 600; 规范输出行只在下方复核摘要中保留一次。
 - 当前质量门已覆盖 review authority lint、浏览器证据 replay、包烟测、控制中心集成审计、
   三个 demo smoke、S10/S11/S12 证据链, 以及 `adapter_exception` 的 stage/family/cause/
   fallback/recoverable 合同漂移检查。
@@ -140,7 +140,7 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
 | `b6073c8` | 扩展 live 评审台账命令校验, 覆盖 handoff 和 wiki backlog。 | `QUALITY_GATE_COMMAND_DOCS` 是否包含 live ledger。 |
 | `0a0252f` | 固化 Opus README 权威顺序, 支持 README 相对路径 alias。 | Opus README 的首读表是否和 live ledger 顺序一致。 |
 | `dd3d2a7` / `71b2c0a` / `cdbe01c` / `0c8f624` / `a61c446` / `3c54105` / `94ddb83` / `20dbb59` | 伴随运行时输入边界加固持续同步质量门计数。 | 每次新增回归测试后, PR/V2/Codex/Opus/wiki 的 pytest count 是否由 `scripts.quality_gate_counts` 同步。 |
-| `92fab09` | 将 StabilityGuard 布尔边界新增测试后的质量门目标同步到 589。 | 这是最近一轮前置基线, 不是当前最终 count; 当前 count 以 599 和现场 `quality_gate_counts` 输出为准。 |
+| `92fab09` | 将 StabilityGuard 布尔边界新增测试后的质量门目标同步到 589。 | 这是最近一轮前置基线, 不是当前最终 count; 当前 count 以 600 和现场 `quality_gate_counts` 输出为准。 |
 
 ### H. Adapter exception fallback 路由和证据合同加固
 
@@ -227,7 +227,7 @@ python -m examples.demo_catch_phase
 当前文档同步目标中的关键输出摘要应包含:
 
 ```text
-quality gate pytest count: 599
+quality gate pytest count: 600
 artifact_check ok studies=3 files=8
 manifest_replay=normal+backend_error+frontend_error
 control-center integration audit ok
