@@ -79,6 +79,54 @@ def test_pool_planner_marks_exact_capacity_as_advisory_event():
     assert event["capacity_shortfall_rps"] == 0.0
 
 
+@pytest.mark.parametrize(
+    ('kwargs', 'match'),
+    [
+        ({'min_keep_alive': -1}, 'min_keep_alive'),
+        ({'min_keep_alive': 1.5}, 'min_keep_alive'),
+        ({'max_capacity': 0}, 'max_capacity'),
+        ({'max_capacity': 5.5}, 'max_capacity'),
+        ({'min_keep_alive': 6, 'max_capacity': 5}, 'min_keep_alive <= max_capacity'),
+        ({'unit_cost': np.nan}, 'unit_cost'),
+        ({'unit_cost': -1.0}, 'unit_cost'),
+        ({'horizon_seconds': np.inf}, 'horizon_seconds'),
+        ({'horizon_seconds': 0.0}, 'horizon_seconds'),
+        ({'rps_per_conn': np.nan}, 'rps_per_conn'),
+        ({'rps_per_conn': 0.0}, 'rps_per_conn'),
+    ],
+)
+def test_pool_planner_rejects_invalid_constructor_inputs(kwargs, match):
+    with pytest.raises(ValueError, match=match):
+        PoolCapacityPlanner(**kwargs)
+
+
+@pytest.mark.parametrize(
+    ('forecast', 'match'),
+    [
+        ([100.0, np.nan], 'non-finite demand_rps_forecast'),
+        ([np.inf], 'non-finite demand_rps_forecast'),
+        ([100.0, -1.0], 'negative demand_rps_forecast'),
+    ],
+)
+def test_pool_planner_rejects_invalid_forecast_inputs(forecast, match):
+    planner = PoolCapacityPlanner(min_keep_alive=1, max_capacity=5)
+
+    with pytest.raises(AdapterInputError, match=match):
+        planner.plan(demand_rps_forecast=forecast)
+
+
+def test_pool_planner_allows_empty_forecast_without_events():
+    planner = PoolCapacityPlanner(min_keep_alive=1, max_capacity=5)
+
+    plan, info = planner.plan(demand_rps_forecast=[])
+
+    assert plan == []
+    assert info['total_cost'] == 0.0
+    assert info['baseline_cost'] == 0.0
+    assert info['cost_saving_pct'] == 0.0
+    assert info['events'] == []
+
+
 # ---------------------------------------------------------------------------
 # §2 CanaryScheduler
 # ---------------------------------------------------------------------------

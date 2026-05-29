@@ -20,6 +20,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 import math
 
+import numpy as np
+
+from .exceptions import AdapterInputError
 from .events import make_event
 
 
@@ -41,6 +44,43 @@ class PoolCapacityPlanner:
     horizon_seconds: float = 10.0
     rps_per_conn: float = 100.0
 
+    def __post_init__(self) -> None:
+        min_keep_alive = float(self.min_keep_alive)
+        if not np.isfinite(min_keep_alive) or not min_keep_alive.is_integer():
+            raise ValueError('min_keep_alive must be an integer')
+        self.min_keep_alive = int(min_keep_alive)
+        if self.min_keep_alive < 0:
+            raise ValueError('min_keep_alive must be non-negative')
+        max_capacity = float(self.max_capacity)
+        if not np.isfinite(max_capacity) or not max_capacity.is_integer():
+            raise ValueError('max_capacity must be an integer')
+        self.max_capacity = int(max_capacity)
+        if self.max_capacity <= 0:
+            raise ValueError('max_capacity must be positive')
+        if self.min_keep_alive > self.max_capacity:
+            raise ValueError('min_keep_alive <= max_capacity required')
+        self.unit_cost = float(self.unit_cost)
+        if not np.isfinite(self.unit_cost) or self.unit_cost < 0.0:
+            raise ValueError('unit_cost must be non-negative and finite')
+        self.horizon_seconds = float(self.horizon_seconds)
+        if not np.isfinite(self.horizon_seconds) or self.horizon_seconds <= 0.0:
+            raise ValueError('horizon_seconds must be positive and finite')
+        self.rps_per_conn = float(self.rps_per_conn)
+        if not np.isfinite(self.rps_per_conn) or self.rps_per_conn <= 0.0:
+            raise ValueError('rps_per_conn must be positive and finite')
+
+    @staticmethod
+    def _validate_forecast(demand_rps_forecast: list[float]) -> list[float]:
+        forecast = []
+        for rps in demand_rps_forecast:
+            rps = float(rps)
+            if not np.isfinite(rps):
+                raise AdapterInputError('non-finite demand_rps_forecast')
+            if rps < 0.0:
+                raise AdapterInputError('negative demand_rps_forecast')
+            forecast.append(rps)
+        return forecast
+
     def plan(self, demand_rps_forecast: list[float]
              ) -> tuple[list[int], dict]:
         """Given a per-second RPS forecast, return optimal pool sizes.
@@ -55,6 +95,7 @@ class PoolCapacityPlanner:
         For the simple scalar case this has a closed form:
         ``sigma_k = clip(ceil(forecast_k / rps_per_conn), min, max)``.
         """
+        demand_rps_forecast = self._validate_forecast(demand_rps_forecast)
         pool_plan = []
         total_cost = 0.0
         violations_baseline = 0

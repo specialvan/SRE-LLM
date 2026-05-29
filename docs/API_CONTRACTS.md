@@ -29,6 +29,10 @@ Public surface:
 
 Contract:
 
+- Constructor inputs `min_keep_alive` and `max_capacity` must be integers satisfying `0 <= min_keep_alive <= max_capacity`, with `max_capacity > 0`.
+- Constructor inputs `unit_cost` must be non-negative and finite; `horizon_seconds` and `rps_per_conn` must be positive finite values.
+- Runtime `demand_rps_forecast` values must be finite and non-negative; invalid forecast data raises `AdapterInputError` before planning.
+
 - 输入是每秒 RPS 预测。
 - 输出是每秒池大小计划、成本信息和本地运行态 trace。
 - `min_keep_alive <= pool <= max_capacity` 必须成立。
