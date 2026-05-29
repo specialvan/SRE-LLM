@@ -5,9 +5,10 @@
 分支: `spacex-session`
 范围: 给 Opus 重新介入评审的首读 handoff, 按当前工作区 git 内容域梳理。
 
-当前 HEAD 不在本文里钉死到某个 SHA。Opus 介入时请以 `git log -1 --oneline` 和
-`git log --reverse --oneline origin/spacex-session..HEAD` 为准。本文整理时本地分支相对
-`origin/spacex-session` ahead 49 个提交。
+当前 HEAD 和 ahead 数不在本文里钉死到某个 SHA 或固定数字。Opus 介入时请以
+`git status --short --branch`、`git log -1 --oneline` 和
+`git log --reverse --oneline origin/spacex-session..HEAD` 为准。本文只按内容域梳理近期
+提交序列, 不替代现场 git 输出。
 
 本文只承担评审交接职责: 解释入口、提交分组、证据资产和复核命令。它不新增运行时语义,
 也不把 synthetic scenario evidence 升级为线上安全结论。本仓库仍是公开材料研究复现,
@@ -30,11 +31,10 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
 
 ## 当前基线
 
-- 工作区: 本文改写前 `git status --short --branch` 显示
-  `## spacex-session...origin/spacex-session [ahead 49]`。
-- 最新提交: 本文改写前 `git log -1 --oneline` 为
-  `0a0252f test(review): 固化Opus README权威顺序`。
-- 当前文档同步目标中的 pytest 数量为 487; 规范输出行只在下方复核摘要中保留一次。
+- 工作区: 以 `git status --short --branch` 为准; 本轮 handoff 更新时, 本地分支已包含
+  Opus/Codex 评审入口硬化、SRE runtime 输入边界加固和质量门同步提交。
+- 最新提交: 不在本文中写死具体 SHA; 用 `git log -1 --oneline` 现场确认。
+- 当前文档同步目标中的 pytest 数量为 589; 规范输出行只在下方复核摘要中保留一次。
 - 当前质量门已覆盖 review authority lint、浏览器证据 replay、包烟测、控制中心集成审计、
   三个 demo smoke 和 S10/S11/S12 证据链。
 - 当前唯一 live 风险仍以 `docs/codex-review/OPEN_RISKS.md` 为准: 场景内证据不能被写成
@@ -54,7 +54,8 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
 
 ## 按内容域拆分的提交索引
 
-以下按 `origin/spacex-session..HEAD` 的 49 个提交整理。每行给出 Opus 建议优先看的复核点。
+以下按 `origin/spacex-session..HEAD` 的近期提交内容域整理。每行给出 Opus 建议优先看的复核点;
+完整顺序和是否又有新增提交以 `git log --reverse --oneline origin/spacex-session..HEAD` 为准。
 
 ### A. 历史审计包和 Codex/Claude 台账基线
 
@@ -96,6 +97,14 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
 | Commit | 中文说明 | Opus 复核点 |
 | --- | --- | --- |
 | `f679e6d` | 按 Opus 反馈收敛 SRE 控制边界: non-finite 输入、EKF/Joseph、fallback、事件 schema、稳定性和负载分配等。 | `sre_control/`, `starship/ekf.py`, `starship/stability_monitor.py` 与 `tests/test_sre_control.py`、`tests/test_contracts.py`、`tests/test_ekf.py` 是否形成回归网。 |
+| `553be48` | 拒绝非法控制周期 `dt`, 避免 stack tick 在非正或非有限时间步下继续推进。 | `SREControlStack.step()` 是否在入口失败并保持 trace 状态可解释。 |
+| `9b51dd9` | 收敛 autoscaler 运行时输入边界。 | `PredictiveAutoscaler.step()` 是否拒绝非有限/负值 RPS 与非法副本数, 且不污染 warm-start trace。 |
+| `cc197fe` | 收敛 topology 状态积分输入边界。 | `TopologyState.step()` 是否在 mutation 前拒绝非法 dt、速度和角速度。 |
+| `6e8105b` / `ecfe511` | 加固流量切换计划输入并校验安全余量。 | `FastTrafficSwitcher` 是否拒绝非法 rate、deadline、share 和 margin, terminal share 是否仍受保护。 |
+| `bb90ab7` | 收敛灰度调度输入边界。 | `CanaryScheduler` 构造、proposal、observation 三类输入是否都有测试覆盖。 |
+| `102fbad` | 收敛连接池规划输入边界。 | `PoolCapacityPlanner` 是否拒绝非法容量/成本/预测数据, 并保持容量缺口事件语义。 |
+| `d5fd942` / `03cfa4f` | 收敛 catch adapter 输入边界并补齐 API 合同。 | `CatchLoadAdapter` 是否在进入 bounded-LS 前拒绝非法需求和 placement target, 且不越过 `starship/` 与 `sre_control/` 依赖边界。 |
+| `c1b4846` | 收敛 StabilityGuard 输入边界。 | `StabilityGuard` 是否在构造阶段拒绝非法 tolerance/window/k/label, 在 step 阶段拒绝非有限 state/time, 且 `sre_error_budget_V` 只接受有限 target 和正有限 scale。 |
 
 ### E. 事件证据链、S10/S11/S12 和分析报告
 
@@ -127,6 +136,8 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
 | `896a333` | 同步质量门 485 count。 | gate 增量后所有文档 target 是否一致。 |
 | `b6073c8` | 扩展 live 评审台账命令校验, 覆盖 handoff 和 wiki backlog。 | `QUALITY_GATE_COMMAND_DOCS` 是否包含 live ledger。 |
 | `0a0252f` | 固化 Opus README 权威顺序, 支持 README 相对路径 alias。 | Opus README 的首读表是否和 live ledger 顺序一致。 |
+| `dd3d2a7` / `71b2c0a` / `cdbe01c` / `0c8f624` / `a61c446` / `3c54105` / `94ddb83` / `20dbb59` | 伴随运行时输入边界加固持续同步质量门计数。 | 每次新增回归测试后, PR/V2/Codex/Opus/wiki 的 pytest count 是否由 `scripts.quality_gate_counts` 同步。 |
+| 本轮质量门同步 | 将 StabilityGuard 新增测试后的质量门目标同步到 589。 | Opus 介入时应重新运行 `python -u -m scripts.quality_gate_counts` 和只读 `--check --skip-expensive`。 |
 
 ### H. Opus 交接、live ledger 和 authority-order 硬化
 
@@ -144,6 +155,8 @@ Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
 | `41dcc01` | 固化 Opus handoff 的当前 ledger 优先顺序。 | `OPEN_RISKS` 和 `review-backlog` 是否排在历史 packet 前。 |
 | `cc2008a` | 固化 wiki 推荐入口的当前 ledger 优先顺序。 | wiki 当前入口是否不会先导向历史包。 |
 | `f992531` | 抽象 review authority lint, 统一入口顺序检查。 | 新增评审入口时是否只需扩展一个 lint 配置。 |
+| `987a280` | 梳理当前评审交接稿。 | handoff 是否按内容域说明 git 进展, 而不是只列命令。 |
+| `a2722de` / `38cc4fe` | 覆盖 Codex 和 Opus 评审入口权威顺序。 | README、packet、handoff 的 current ledger 优先级是否被测试固定。 |
 
 ## 按内容域复核路径
 
@@ -191,7 +204,7 @@ python -m examples.demo_catch_phase
 当前文档同步目标中的关键输出摘要应包含:
 
 ```text
-quality gate pytest count: 569
+quality gate pytest count: 589
 artifact_check ok studies=3 files=8
 manifest_replay=normal+backend_error+frontend_error
 control-center integration audit ok
