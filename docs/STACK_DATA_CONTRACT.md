@@ -129,22 +129,23 @@ Current routes:
 
 ## Test Coverage
 
-`tests/test_contracts.py::test_sre_stack_data_contract_exports_stage_boundaries`
-checks that the contract is JSON-serializable, keeps the non-production scope,
-exposes the current stage boundaries, and binds every stage event kind to the
-runtime event registry. `tests/test_contracts.py::test_stack_contract_fallback_action_modes_match_runtime_mapping`
-also asserts that every declared `fallback_action_modes` pair matches
-`SREControlStack._fallback_mode()`, so the exported review contract cannot drift
-from the runtime event factory. `analysis.evidence_report` also rejects stack-contract
-artifacts that contain malformed stage entries, malformed stage interface,
-fallback-action, fallback-action-mode, or fallback-mode fields, missing or unexpected split-ready boundaries, malformed event-stage
-routes, missing or unexpected event-stage route keys, unknown stage event
-kinds, events disallowed by the routed contract stage, `adapter_exception`
-payloads not marked `recoverable=true`, payloads whose `adapter_family` does
-not match that routed stage, payloads whose exception type drifts from the documented `cause_type` mapping
-(`AdapterInputError -> adapter_input`, `RecoverableControlError -> control_domain`),
-payloads whose `fault_family` drifts from the documented `cause_type`, or
-fallback actions/modes that are not declared in that stage's `fallback_actions`
-or `fallback_modes` list. It also rejects traces whose concrete fallback action
-is paired with a different mode than the stage's `fallback_action_modes` map
-declares.
+Split test ownership is intentional:
+
+- `tests/test_contracts.py` checks that the exported contract is
+  JSON-serializable, keeps the non-production scope, exposes the current stage
+  boundaries, binds every stage event kind to the runtime event registry, and
+  keeps `fallback_action_modes` aligned with `SREControlStack._fallback_mode()`.
+- `analysis.evidence_contracts` owns stack-contract artifact and trace-route
+  validation for the reviewer report pipeline. `tests/test_evidence_contracts.py`
+  covers its direct validator branches, including fallback mode-map drift and
+  adapter-family drift.
+- `tests/test_evidence_contract_report.py` covers reviewer-facing
+  stack-contract artifact scope, route-map, event-kind, stage-entry, and
+  stage-interface rejection paths.
+- `tests/test_evidence_contract_fallback_report.py` covers stack-contract
+  fallback field and fallback action/mode map rejection paths.
+- `tests/test_evidence_contract_trace_report.py` covers stack-contract
+  trace-route fallback, adapter-family, fault-family, exception-cause, and
+  recoverability rejection paths.
+- `tests/test_evidence_contract_boundary_report.py` covers stack-contract
+  split-boundary and trace-event routing rejection paths.

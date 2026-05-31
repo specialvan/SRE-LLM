@@ -17,6 +17,11 @@ def test_manifest_shape_errors_accepts_generated_manifest(tmp_path):
     assert evidence_manifest_checks.manifest_shape_errors(manifest) == []
 
 
+def test_is_sha256_accepts_uppercase_hex():
+    assert evidence_manifest_checks.is_sha256("A" * 64) is True
+    assert evidence_manifest_checks.is_sha256("F" * 64) is True
+
+
 def test_manifest_shape_errors_reports_missing_and_duplicate_studies(tmp_path):
     manifest = _generated_manifest(tmp_path)
     manifest["studies"] = [

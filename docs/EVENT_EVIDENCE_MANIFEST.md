@@ -142,26 +142,43 @@ match the current closed set: `observe_to_plan`, `plan_to_guard`,
 
 ## 7. Test Coverage
 
-`tests/test_evidence_manifest.py` verifies that generated manifest entries match
-the study/contract IDs, required fields, artifact keys documented above, and
-that `analysis.evidence_report` fails when the manifest file is missing with
-`missing_manifest`, the manifest JSON is malformed, the top-level manifest shape
-is invalid, a study/contract ID is unknown, a
-study/contract entry is missing or duplicated, a study/contract entry is
-missing generic or entry-specific required fields, a study/contract field has
-the wrong value type, artifact path keys or artifact metadata keys are missing
-or unexpected, artifact metadata digest/size fields are malformed or stale, fixed
-study/contract values drift from the documented contract, bounded numeric
-fields are booleans or out of range, integer counters are booleans or negative,
-an artifact path value is not a string, an artifact path has the wrong
-extension for its documented key, a referenced artifact is missing, uses an
-absolute or parent-directory-escaping path, is malformed as JSON/JSONL/PNG, uses a
-non-object JSON artifact where a diagnostic/contract object is required, uses a
-non-object JSONL row where a trace/fixture row object is required, has malformed
-S11 manifest or diagnostics case counters, has malformed S12 diagnostics fields
-or replay trace/fixture nested fields, carries a
-schema-invalid runtime event, omits required kind-specific event fields, has a
-count mismatch, or lets the stack data contract claim production status, define
-malformed stage entries, stage interface fields, or event-stage routes,
-malformed, missing, or unexpected split-ready boundaries, reference an unknown
-runtime event kind, or disallow an event observed in the generated traces.
+Test ownership is intentionally split so reviewers can inspect the failure class
+they care about without reopening one oversized manifest test file.
+
+- `tests/test_evidence_manifest_generation.py` verifies generated manifest
+  entries against the study/contract IDs, required fields, artifact keys, and
+  markdown tables documented above. It also checks manifest/docs sync,
+  repo-relative paths, byte-identity documentation, and that manifest
+  generation passes artifact directories explicitly rather than patching global
+  artifact paths.
+- `tests/test_evidence_manifest.py` keeps the reviewer-facing report smoke path
+  plus artifact presence, metadata key parity, malformed metadata, and stale
+  byte-identity rejection paths. It also preserves the `missing_manifest`
+  reviewer error when the manifest file is absent.
+- `tests/test_evidence_artifacts.py` directly covers artifact path portability,
+  missing files, byte identity, JSON/JSONL/PNG parseability, S10/S12 trace and
+  fixture shape, collect-all row errors, and runtime event schema validation.
+- `tests/test_evidence_manifest_checks.py` directly covers manifest top-level,
+  study, contract, artifact key/extension, metadata shape, fixed-value, numeric
+  range, integer counter, boolean-rejection, and SHA-256-shape checks.
+- `tests/test_evidence_consistency.py` directly covers S10/S11/S12
+  study-consistency diagnostics, including trace counts, background leakage,
+  sample-prefix checks, wrapper diagnostics, replay recovery, operator actions,
+  strict-JSON null recovery fields, and multi-signal metrics.
+- `tests/test_evidence_contracts.py` directly covers stack-contract artifact
+  consistency, stage event-kind bindings, trace routing, adapter family,
+  exception cause/fault family, recoverability, and fallback action/mode drift.
+
+Reviewer report-path tests preserve CLI-facing failures for the same contracts:
+`tests/test_evidence_report_manifest_shape.py`,
+`tests/test_evidence_report_study_shape.py`,
+`tests/test_evidence_report_contract_shape.py`,
+`tests/test_evidence_report_artifact_paths.py`,
+`tests/test_evidence_trace_report.py`, `tests/test_evidence_wrapper_report.py`,
+`tests/test_evidence_replay_report.py`,
+`tests/test_evidence_replay_consistency_report.py`,
+`tests/test_evidence_replay_artifacts_report.py`,
+`tests/test_evidence_contract_report.py`,
+`tests/test_evidence_contract_fallback_report.py`,
+`tests/test_evidence_contract_trace_report.py`, and
+`tests/test_evidence_contract_boundary_report.py`.
