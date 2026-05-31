@@ -61,6 +61,8 @@ def summary_banner(title: str, before: Dict[str, Any],
     keys = set(before.keys()) | set(after.keys())
     lines = [f"=== {title} ==="]
     for k in sorted(keys):
+        if k.endswith("_ms"):
+            continue
         b = before.get(k, "-")
         a = after.get(k, "-")
         if isinstance(b, float) and isinstance(a, float):

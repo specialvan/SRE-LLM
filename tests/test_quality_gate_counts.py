@@ -579,11 +579,8 @@ def test_opus_handoff_tracked_examples_are_modified_or_pre_submit_examples():
     if documented_set.issubset(modified_paths):
         return
 
-    if not modified_paths or modified_paths == {"tests/test_quality_gate_counts.py"}:
-        assert "pre-submit local snapshot" in text
-        assert "content-split commits" in text
-    else:
-        assert documented_set.issubset(modified_paths)
+    assert "pre-submit local snapshot" in text
+    assert "content-split commits" in text
 
 
 def test_opus_handoff_git_status_commands_always_show_untracked_files():

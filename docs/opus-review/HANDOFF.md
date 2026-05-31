@@ -134,7 +134,7 @@ Suggested commit order:
 
 - Worktree and ahead count: inspect live with
   `git status --short --branch --untracked-files=all`.
-- Current synchronized pytest count: `943`.
+- Current synchronized pytest count: `945`.
 - Fresh local verification from this continuation pass:
   - `python -m pytest tests -q` passed.
   - `python -m analysis.run_all` completed all 12 studies.
@@ -142,7 +142,7 @@ Suggested commit order:
   - `python -m analysis.evidence_report` reported `artifact_check ok studies=3 files=8`.
   - `python -m scripts.review_authority_lint` reported `review authority order ok`.
   - `python -m scripts.evidence_boundary_lint` reported `evidence boundary lint ok`.
-  - `python -u -m scripts.quality_gate_counts` reported `quality gate pytest count: 943`.
+  - `python -u -m scripts.quality_gate_counts` reported `quality gate pytest count: 945`.
   - `python -m scripts.quality_gate_counts --check --skip-expensive` reported `quality gate docs check passed`.
   - The v2026-05-31 returned-review M1/M2 count-sync findings are resolved for
     the current handoff surface by these synchronized current-count checks.
@@ -174,7 +174,7 @@ context:
 
 - Fresh `git status --short --branch --untracked-files=all` has been captured
   by the reviewer.
-- `python -m pytest --collect-only -q tests` still totals 943 collected tests.
+- `python -m pytest --collect-only -q tests` still totals 945 collected tests.
 - `analysis.evidence_report` is run after `analysis.evidence_manifest` when
   generated evidence may have changed.
 - Browser evidence includes normal, backend-error, and frontend-error manifest
@@ -319,7 +319,7 @@ python -m scripts.quality_gate_counts --check --skip-expensive
 Expected key output snippets in the current docs:
 
 ```text
-quality gate pytest count: 943
+quality gate pytest count: 945
 artifact_check ok studies=3 files=8
 manifest_replay=normal+backend_error+frontend_error
 control-center integration audit ok

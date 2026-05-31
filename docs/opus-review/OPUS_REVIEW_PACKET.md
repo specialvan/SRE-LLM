@@ -28,7 +28,7 @@ evidence map:
    `claude-review/docs/v2026-05-28/`, `claude-review/docs/v2026-05-31/`, and
    `docs/opus-review/v1.0/` as historical review inputs for traceability only.
 
-Current synchronized pytest count: `943`.
+Current synchronized pytest count: `945`.
 
 Boundary statement:
 
@@ -127,7 +127,7 @@ python -m scripts.quality_gate_counts --check --skip-expensive
 Observed outputs from the current workspace:
 
 ```text
-quality gate pytest count: 943
+quality gate pytest count: 945
 artifact_check ok studies=3 files=8
 ```
 

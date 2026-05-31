@@ -52,7 +52,7 @@ Core mappings:
 
 ## Current Verification
 
-Current synchronized pytest count: `943`.
+Current synchronized pytest count: `945`.
 
 ```bash
 python -m pytest tests -q

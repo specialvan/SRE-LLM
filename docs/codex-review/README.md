@@ -46,7 +46,7 @@ the review surface.
 | Item | Current value |
 |---|---|
 | Branch context | `spacex-session` |
-| Unit/integration tests | `943 passed` |
+| Unit/integration tests | `945 passed` |
 | Analysis studies | `12 studies` |
 | Runtime event kinds | `11` |
 | Canonical HTML entry | `docs/V2_Knowledge/knowledge-base.html` |

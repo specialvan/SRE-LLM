@@ -6,7 +6,7 @@ with older review packets.
 
 ## Current Verified Baseline
 
-- Full test suite: `python -m pytest tests -q` passes with 943 tests in the
+- Full test suite: `python -m pytest tests -q` passes with 945 tests in the
   current workspace.
 - Analysis suite: `python -m analysis.run_all` completes all 12 studies and
   refreshes `analysis/artifacts/SUMMARY.txt`.
@@ -941,7 +941,7 @@ Evidence:
   offline package-smoke posture.
 - Fresh verification for this slice:
   `python -u -m scripts.quality_gate_counts` reports
-  `quality gate pytest count: 943`; `python -m pytest tests -q` passes in the
+  `quality gate pytest count: 945`; `python -m pytest tests -q` passes in the
   intentionally dirty review workspace; `python -m scripts.quality_gate_counts
   --check --skip-expensive` reports `quality gate docs check passed`; and
   `python -m analysis.evidence_report` reports

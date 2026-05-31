@@ -76,3 +76,26 @@ def test_run_all_does_not_pass_artifacts_dir_to_legacy_studies(tmp_path, monkeyp
     assert "analysis.legacy ok" in (tmp_path / "SUMMARY.txt").read_text(
         encoding="utf-8"
     )
+
+
+def test_run_all_summary_omits_elapsed_timings_for_stable_artifacts(
+    tmp_path, monkeypatch, capsys
+):
+    times = iter([10.0, 11.0, 12.25, 13.0])
+
+    def import_module(name: str):
+        def main():
+            return {"banner": f"{name} ok"}
+
+        return types.SimpleNamespace(main=main)
+
+    monkeypatch.setattr(run_all.importlib, "import_module", import_module)
+    monkeypatch.setattr(run_all.time, "time", lambda: next(times))
+
+    run_all.main(studies=["analysis.stable"], artifacts_dir=tmp_path)
+
+    output = capsys.readouterr().out
+    summary = (tmp_path / "SUMMARY.txt").read_text(encoding="utf-8")
+    assert "analysis.stable ok" in summary
+    assert "(elapsed" not in summary
+    assert "analysis.stable ok\n    (elapsed 1.25s)" in output

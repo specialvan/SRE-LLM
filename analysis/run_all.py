@@ -34,6 +34,7 @@ def main(
     artifacts_dir: Path | None = None,
 ) -> None:
     banners = []
+    summary_banners = []
     failures = []
     total_start = time.time()
     selected_studies = list(STUDIES if studies is None else studies)
@@ -53,10 +54,12 @@ def main(
             failure = f"FAILED {name}: {type(exc).__name__}: {exc}"
             print(failure, file=sys.stderr)
             banners.append(f"{failure}\n    (elapsed {took:.2f}s)")
+            summary_banners.append(failure)
             failures.append(failure)
             continue
         took = time.time() - t0
         banners.append(f"{result['banner']}\n    (elapsed {took:.2f}s)")
+        summary_banners.append(result["banner"])
     total = time.time() - total_start
     print("\n\n========= FULL REPORT =========")
     for b in banners:
@@ -77,7 +80,7 @@ def main(
     out_dir = Path(__file__).parent / "artifacts" if artifacts_dir is None else artifacts_dir
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / "SUMMARY.txt"
-    out.write_text("\n\n".join(banners), encoding="utf-8")
+    out.write_text("\n\n".join(summary_banners), encoding="utf-8")
     if failures:
         raise SystemExit(1)
 
