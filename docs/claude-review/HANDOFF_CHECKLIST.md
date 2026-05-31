@@ -1,4 +1,10 @@
-# Handoff Checklist · Codex 接手前逐项核查
+# Handoff Checklist · Historical Checklist
+
+> Historical checklist from the 2026-05-12 Claude review packet; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`,
+> then verify live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
 
 > 目标：让下一个 Codex session 在开始写代码前 15 分钟内完成环境确认与评审预览。
 
@@ -13,8 +19,8 @@
 
 | 命令 | 预期 | 大致耗时 |
 |---|---|---|
-| `python -m pytest tests -q` | `51 passed` | ~1 s |
-| `python -m analysis.run_all` | `All 10 studies finished in ~3s` | ~3 s |
+| `python -m pytest tests -q` | historical snapshot; current count lives in `docs/codex-review/QUALITY_GATES.md` | ~1 s |
+| `python -m analysis.run_all` | historical snapshot; current study set lives in `docs/codex-review/QUALITY_GATES.md` | ~3 s |
 | `python -m examples.demo_sre_loop` | 打印 12 行 tick trace，无异常 | <1 s |
 | `python -m examples.demo_powered_descent` | PDG 末态位置 ~2e-6 m | ~0.5 s |
 | `python -m examples.demo_catch_phase` | 末态 lateral_error 稳定在窗口内 | ~1 s |
@@ -123,8 +129,5 @@ d9cecb7 补齐静态 SRE 原语事件追踪
 当你读完本包、跑通所有质量门、理解了 3 个 invariants，请在你**第一个 commit** 的
 message 末尾加一行：
 
-```
-Acknowledged: docs/claude-review/README.md
-```
-
-用来证明你是认真接过的手，而不是跳过了前一 session 的评审报告。
+旧的 commit-message acknowledgment 已废弃；当前接手确认以
+`docs/opus-review/HANDOFF.md` 和 live ledgers 为准。

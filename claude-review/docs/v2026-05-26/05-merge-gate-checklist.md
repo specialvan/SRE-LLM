@@ -1,5 +1,11 @@
 # 合并门禁清单 — Opus v2.0
 
+> Historical subreport from a prior Opus review packet; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 > 基于本轮评审结论，对 `spacex-session` 是否可以并入主线给出门禁判断与建议
 > 路径。
 

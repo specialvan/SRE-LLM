@@ -1,5 +1,11 @@
 # 03 — 安全与文档一致性审计
 
+> Historical subreport from a prior Opus review packet; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 ## 1. DOM XSS 风险：share hash 状态未白名单化
 
 **相关位置**：

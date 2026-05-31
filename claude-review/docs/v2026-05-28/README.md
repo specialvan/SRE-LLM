@@ -1,4 +1,10 @@
-# Opus v2.1 继续深挖评审报告（2026-05-28）
+# Opus v2.1 继续深挖评审报告（2026-05-28） · Historical Opus v2.1 Review Packet
+
+> Historical packet from the 2026-05-28 Opus continuation review; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
 
 > 本目录是对 codex 当前工作树的继续深挖 review，评审对象为 `docs/opus-review/OPUS_REVIEW_PACKET.md` 声称的 F50–F60 修复包、control-center browser evidence、manifest/report 证据链与质量门。用户要求“颗粒度不够，继续深挖”，因此本轮报告按最小复现输入、实际输出、行级根因、影响链路和验收标准展开。
 

@@ -1,4 +1,10 @@
-# Opus v2.0 深度评审报告（2026-05-26）
+# Opus v2.0 深度评审报告（2026-05-26） · Historical Opus v2.0 Review Packet
+
+> Historical packet from the 2026-05-26 Opus deep review; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
 
 > 本目录是对 codex 工程包的第二轮深度评审产出。入口契约为
 > `docs/opus-review/OPUS_REVIEW_PACKET.md`；本轮基于该 packet 重跑 quality

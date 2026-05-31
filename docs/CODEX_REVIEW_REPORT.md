@@ -1,8 +1,18 @@
-# Codex Review Report
+# Codex Review Report · Historical Codex Review Report
+
+> Historical report from the 2026-05-12 Codex/Claude review cycle; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`. For git review scope, use the
+> `Git Review Scope Snapshot` in `docs/opus-review/HANDOFF.md`, then refresh
+> `git status --short --branch --untracked-files=all` and
+> `git ls-files --others --exclude-standard` so dirty/untracked files stay in
+> the review surface.
 
 本轮目标：把 `DOC/spacex/` 的 8 个数学支柱继续抽象成 SRE 控制原语，补强知识库图像 / GIF / HTML，并给出可审查的证据链。
 
-## 当前状态
+## Historical Snapshot Status
 
 - `spacex/starship/`：8 个星舰支柱均已落成可运行模块。
 - `spacex/sre_control/`：8 个 SRE 原生适配层 + `SREControlStack.step()` 已串联完成。

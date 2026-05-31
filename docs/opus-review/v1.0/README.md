@@ -1,4 +1,10 @@
-# Opus 评审工程包 · v1.0
+# Opus 评审工程包 · v1.0 · Historical Opus v1.0 Review Packet
+
+> Historical packet from the Opus v1.0 review; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
 
 本目录是 Claude Opus 4.7 对当前 codex 开发进度（`spacex-session` 分支）的深度评审落地包。
 按版本切片归档，便于后续多轮迭代复盘。

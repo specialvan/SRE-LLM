@@ -1,4 +1,10 @@
-# Review of Codex's Session (branch `spacex-session`)
+# Review of Codex's Session · Historical Session Review
+
+> Historical review leaf from the 2026-05-12 Claude package; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
 
 > Reviewer 视角：带着 PR-REQUIREMENTS 与上一轮 HANDOFF 去评审 Codex 的 6 个提交。
 > 结论先行：**P0 通过**。建议合并，附 3 条后续改进（不阻塞）。

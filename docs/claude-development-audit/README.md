@@ -52,10 +52,21 @@ It does not claim any SpaceX internal implementation detail. All review claims a
 5. New event kinds, runtime states, formulas, and package surfaces must update code, docs, tests, and review packet together.
 6. Each pass appends a new dated report and updates `backlog.md`; do not overwrite old review conclusions in place.
 
-## Current Snapshot
+## Current Status Routing
 
-- Date: 2026-05-16
-- Branch: `spacex-session`
-- HEAD: `0ae5740` (`audit: split adapter exception causes`)
-- Verification: 107 tests pass in the current continuation after adding Section 10 coverage hardening; `analysis.run_all` completes 10 studies.
-- Top active risks: none in the current audit backlog; no watch items remain after the release-hygiene pass.
+This directory preserves the dated Claude development-audit history. It is not
+the live source for current branch status, open risks, or reviewer command
+gates. For Opus handoff work, read the live ledgers first:
+
+- `wiki/review-backlog.md` for current completed/open review state.
+- `docs/codex-review/OPEN_RISKS.md` for the current risk register.
+- `docs/codex-review/QUALITY_GATES.md` for canonical re-run commands and the
+  current synchronized pytest count.
+- `docs/opus-review/HANDOFF.md` for the current Opus first-read runbook and
+  `Git Review Scope Snapshot`; refresh
+  `git status --short --branch --untracked-files=all` and
+  `git ls-files --others --exclude-standard` before reviewing dirty/untracked
+  files from this audit surface.
+
+Use the reports and evidence snapshots in this directory only as historical
+context when tracing why a resolved item exists.

@@ -1,5 +1,11 @@
 # 证据制品 / Manifest / 报告 CLI 一致性审计
 
+> Historical subreport from a prior Opus review packet; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 > 评审 `analysis/evidence_manifest.py` + `analysis/evidence_report.py` +
 > `analysis/artifacts/event_evidence_manifest.json` + `analysis/artifacts/
 > sre_stack_data_contract.json` + `docs/EVENT_EVIDENCE_MANIFEST.md` + `docs/
@@ -70,7 +76,7 @@
    - `test_evidence_report_unrecovered_window_uses_strict_json_null` 与
      multi-signal 变体用 `json.dumps(..., allow_nan=False)` 复证。
 
-8. **无"production proof"误导文案**
+8. **无 production-claim 误导文案**
    - `s12_sre_replay.py:3, 301` 显式标 `synthetic_replay_fixture` 与
      "synthetic replay fixture, not a production trace"。
    - `SUMMARY.txt` 无 "production" token。

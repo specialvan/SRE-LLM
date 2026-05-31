@@ -1,5 +1,11 @@
 # 质量门复跑验证 · v1.0
 
+> Historical subreport from a prior Opus review packet; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 本文档记录 Opus 评审在本地 Windows 工作区对 codex 声明的全部质量门做的复跑，用于证明评审结论建立在可重现的事实之上而非纸面声明。
 
 ## 环境

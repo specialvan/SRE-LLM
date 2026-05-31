@@ -1,5 +1,11 @@
 # 2026-05-16 Control-Center Exposure Review
 
+> Historical audit artifact; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 ## Verdict
 
 `WATCH-003` is resolved in the working tree. The control-center server now has an explicit route policy instead of relying on implicit branch checks inside `do_GET`.

@@ -1,3 +1,8 @@
+﻿> Historical Opus v2026-05-31 returned review artifact; it is not the current handoff.
+> For live status, read `docs/opus-review/HANDOFF.md`, `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and `docs/codex-review/QUALITY_GATES.md`.
+> Packet-time pytest-count findings such as 871/873 are historical observations;
+> verify current counts with fresh quality-gate output.
 # Agent 评审指南 - 快速上手手册
 
 **目标受众**: 后续介入评审的 AI Agent  

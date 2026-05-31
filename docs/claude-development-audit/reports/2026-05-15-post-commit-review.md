@@ -1,5 +1,11 @@
 # 2026-05-15 Post-Commit Review
 
+> Historical audit artifact; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 ## Verdict
 
 The audit engineering package is now durable: it is committed on `spacex-session` and the working tree was clean at the start of this pass. The branch is ahead of `origin/spacex-session` by six commits, so remote publication remains a separate delivery step if needed.

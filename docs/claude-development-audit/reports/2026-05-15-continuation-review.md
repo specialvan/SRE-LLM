@@ -1,5 +1,11 @@
 # 2026-05-15 Continuation Review
 
+> Historical audit artifact; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 > Correction note: some doc-fix status claims in this report were later narrowed by `2026-05-15-encoding-repair-note.md` after unsafe bulk edits were reverted. Use `backlog.md` as the current active/resolved ledger.
 
 ## Verdict

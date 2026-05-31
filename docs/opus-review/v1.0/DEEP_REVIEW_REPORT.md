@@ -1,5 +1,11 @@
 # Opus 深度评审 · v1.0 主报告
 
+> Historical subreport from a prior Opus review packet; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 **评审范围**：`spacex-session` 分支下截至 commit `8d8e064` 的全部 codex 交付。
 **评审角度**：架构一致性、模块实现质量、证据边界纪律、可维护性、可演化性。
 **结论先行**：当前工程态已稳定收敛到一个可复核的研究级 SRE/控制栈，249 个测试与 12 个分析研究全绿，证据边界经多轮自审与产出，整体可作为后续研究迭代的稳态基线。无 P1 阻塞，仅有少量 P2 改进建议。
@@ -200,7 +206,7 @@ analysis/evidence_report/
 
 1. **命名**：所有合成研究输出带 `synthetic_*` 标签；
 2. **代码**：`stack_data_contract.production_claim=False`；`evidence_report` 拒绝 contract 中出现 production 关键字；
-3. **文档 lint**：`scripts/evidence_boundary_lint.py` 用正则匹配过度宣称短语（如 `proves production readiness`、`official SpaceX implementation`），并支持否定上下文 8 行回看；`tests/test_synthetic_evidence_boundaries.py` 把 7 份 live review 文档加入 lint 集合。
+3. **文档 lint**：`scripts/evidence_boundary_lint.py` 用正则匹配过度宣称短语（如 production-readiness proof、official implementation provenance claims），并支持否定上下文 8 行回看；`tests/test_synthetic_evidence_boundaries.py` 把 7 份 live review 文档加入 lint 集合。
 
 **评估**：这种"显式拒绝表演性宣称"的纪律在研究项目里极为难得。值得作为模板沉淀。
 

@@ -1,4 +1,10 @@
-# Codex Triage of Claude Review
+# Codex Triage of Claude Review · Historical Triage Note
+
+> Historical triage note from the 2026-05-12 Claude review follow-up; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
 
 > 本文是 Codex 对 `docs/claude-review/` 评审包的二次梳理。
 > 目标不是复述 Claude 的结论，而是把“打回点 / 已修事实 / 仍需行动”拆成可执行队列。
@@ -7,12 +13,12 @@
 
 Claude 这次不是 P0 打回。它的明确结论是 **P0 通过，建议合并**，但指出了一条中等一致性问题和若干非阻塞改进。
 
-当前仓库事实：
+Historical snapshot facts from that triage pass:
 
 - 当前分支：`spacex-session`
 - triage 基线：`e2658f6 docs: refresh CODEX_HANDOFF and ship V2_Knowledge snapshot` 及其后的本地 follow-up
 - 本地分支是否领先 `origin/spacex-session` 以 `git status -sb` 为准，不再在文档里固定写死
-- `python -m pytest tests -q`：51 passed
+- `python -m pytest tests -q`: historical snapshot; current count lives in `docs/codex-review/QUALITY_GATES.md`
 - Claude 主问题 `DEGRADED_GUARD` 已由 `41cdea8` 修复，并已有 contract 测试覆盖
 
 因此，下一轮不应再把 `DEGRADED_GUARD` 当成未修 blocker；真正要接的是“把评审包中的剩余建议工程化”。
@@ -135,7 +141,7 @@ observe -> fuse -> predict/plan -> guard -> allocate -> execute
 
 下一轮如果要声称“处理完 Claude 打回”，至少应该满足：
 
-- `python -m pytest tests -q` 继续 51+ passed
+- `python -m pytest tests -q` continues to pass under the current count recorded in `docs/codex-review/QUALITY_GATES.md`
 - import graph 测试通过
 - `DEGRADED_*` 与 `runtime.events` 的同步规则有测试守护
 - Claude 包里的过期 commit 口径被消除或明确标注为快照

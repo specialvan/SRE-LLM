@@ -1,5 +1,11 @@
 # 04 — 继续深挖追加报告（F73–F81）
 
+> Historical subreport from a prior Opus review packet; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 > 本文件是在用户再次反馈“颗粒度不够，继续深挖”后追加的逐函数/逐断言审计。相比 `00-blocker-summary.md` 的第一轮结论，本轮复跑发现状态更细：`tests/test_control_center_browser_smoke.py` 单独已经通过，但 `scripts.quality_gate_counts` 仍因 saved browser manifest DOM 缺 token 失败。也就是说，问题从“测试 fixture 与断言漂移”进一步收敛为“测试替身已同步，但真实证据制品未刷新，质量门同步器无法自愈”。
 
 ## 最新复跑差异

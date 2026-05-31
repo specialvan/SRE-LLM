@@ -1,5 +1,11 @@
 # 后续 Backlog 建议 · v1.0
 
+> Historical subreport from a prior Opus review packet; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 Opus 评审给出的下一轮 codex 处理建议，按优先级排序。每条都包含：动机、变更面、验证方式、风险。
 
 ## P1 · 必做（阻止后续可维护性塌方）

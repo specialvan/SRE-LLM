@@ -1,5 +1,11 @@
 # v1.0 Resolved 项 line-level 复核
 
+> Historical subreport from a prior Opus review packet; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 > 本文档对应 `OPUS_REVIEW_PACKET.md` 第 3 节"Opus v1.0 Findings Resolved In
 > This Packet"中宣称 resolved 的全部 findings 做源码级回读，给出 HOLDS /
 > PARTIAL / BROKEN 判定。

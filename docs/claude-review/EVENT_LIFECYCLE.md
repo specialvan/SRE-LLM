@@ -1,4 +1,10 @@
-# Event Lifecycle
+# Event Lifecycle · Historical Event Lifecycle Note
+
+> Historical event-lifecycle leaf from the 2026-05-12 Claude package; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
 
 > 配合 `sre_control/events.py` + `SREControlStack.step()` 一起看。本文档用**逐帧追踪**
 > 的形式展示"一个 tick 如何产生事件"以及"3 种典型场景下事件密度随时间的演化"。

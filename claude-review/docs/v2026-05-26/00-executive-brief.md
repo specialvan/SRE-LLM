@@ -1,5 +1,11 @@
 # 执行摘要 — Opus v2.0 深度评审
 
+> Historical subreport from a prior Opus review packet; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 **评审对象**：spacex 仓库中 codex 工程包当前快照
 **评审入口**：`docs/opus-review/OPUS_REVIEW_PACKET.md`
 **评审日期**：2026-05-26

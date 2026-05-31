@@ -1,5 +1,11 @@
 # 2026-05-16 Package Smoke Review
 
+> Historical audit artifact; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 ## Verdict
 
 `WATCH-000` is resolved in the working tree. The repository now has an installed-wheel smoke path instead of only source-tree import checks.

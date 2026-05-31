@@ -1,4 +1,10 @@
-# Claude Review · v1.0 (Opus) 指针
+# Claude Review · v1.0 (Opus) 指针 · Historical Opus v1.0 Pointer
+
+> Historical pointer to the Opus v1.0 review package; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
 
 本目录是 Claude Opus 评审包按版本归档的入口。完整内容位于 `docs/opus-review/v1.0/`。
 

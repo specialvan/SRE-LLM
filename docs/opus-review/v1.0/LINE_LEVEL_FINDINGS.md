@@ -1,5 +1,11 @@
 # Opus 深度评审 · v1.0 · 行级隐患审计
 
+> Historical subreport from a prior Opus review packet; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 本文档把 v1.0 主报告里"P2/P3 风险"的颗粒度拉到行级别 — 每条都给出文件路径、行号、复现条件、影响和最小修复建议。
 共 42 项发现，按"严重程度 × 触发概率"排序。
 

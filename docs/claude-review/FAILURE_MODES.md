@@ -1,4 +1,10 @@
-# Failure Modes & Recovery
+# Failure Modes & Recovery · Historical Failure Modes Note
+
+> Historical failure-modes leaf from the 2026-05-12 Claude package; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
 
 > 本文档从"会怎么坏"的角度重写架构视角。每个模块有三件东西：**症状（如何检测）、
 > 根因（为什么坏）、降级（坏了怎么办）**。

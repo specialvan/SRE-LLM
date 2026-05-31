@@ -1,7 +1,19 @@
-# Claude Review · 移交包
+# Claude Review · Historical Review Package
 
-> 本文件夹是 Claude Reviewer 将工程包移交给 Codex 下一轮 session 的**一份独立、可
-> 离线阅读**的评审包，不依赖 `docs/` 根目录任何其他文档。
+> Historical package from the earlier Claude Reviewer handoff.
+>
+> This is not the current handoff and should not be used for current
+> completed/open status, risks, or command gates.
+>
+> Current Opus review entry: `docs/opus-review/HANDOFF.md`.
+>
+> current completed/open state, risks, and command gates live in
+> `wiki/review-backlog.md`, `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
+本文件夹保留早期 Claude Reviewer 将工程包移交给 Codex 下一轮 session 的离线评审包。
+旧质量门和阅读顺序仅作 historical context；当前 completed/open 状态以 Opus handoff
+和 live ledgers 为准。
 
 ## 内容清单
 
@@ -30,7 +42,7 @@
 
 | 维度 | 状态 |
 | --- | --- |
-| 质量门 | 51 passed / 10 studies / HTML well-formed / JSON OK |
+| 质量门 | Historical snapshot only; use `docs/codex-review/QUALITY_GATES.md` for current commands and counts |
 | 架构方向 | ✅ 依赖方向正确，starship 不反向依赖 sre_control |
 | 可观测性 | ✅ 10 种 runtime event 已覆盖 8 个核心 adapter + gating / stability |
 | 评审发现 | 1 中等（已修）+ 3 非阻塞建议 |

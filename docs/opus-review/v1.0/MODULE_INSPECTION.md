@@ -1,5 +1,11 @@
 # 重点模块逐文件笔记 · v1.0
 
+> Historical subreport from a prior Opus review packet; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 按层级整理每个被本轮新增或重写的关键模块的实现要点、亮点与观察。
 所有引用都附上文件路径 + 行号锚点，便于直接跳转。
 

@@ -1,5 +1,11 @@
 # Opus 深度评审 · v1.0 · 隐患复现实证
 
+> Historical subreport from a prior Opus review packet; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 本文档把 `LINE_LEVEL_FINDINGS.md` 中 7 项最关键的发现用**可粘贴运行**的 Python 片段复现，把"理论分析"坐实为"实测证据"。每条都附完整命令、实测输出、期望分析。
 
 环境：`python` 在 `D:\workspace\SRE-LLM\spacex`、HEAD=`8d8e064`。

@@ -1,5 +1,11 @@
 # 评审范围与基线
 
+> Historical subreport from a prior Opus review packet; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 ## 1. 评审范围（in scope）
 
 本轮 Opus 评审覆盖 codex 工程包当前主线 + 当前 worktree 已修改文件，
@@ -27,7 +33,7 @@
 ### 1.3 不在评审范围
 
 - 性能基准（packet 已声明此仓库不做 production 性能宣称）
-- 实际 SpaceX 内部实现细节（packet 已声明这是公开材料复现）
+- 不覆盖 SpaceX 专有细节（packet 已声明这是公开材料复现）
 - 制品在第三方 CI/CD 中的可移植性（packet 已自带 byte identity / SHA-256 校验）
 
 ---
@@ -59,7 +65,7 @@
 - 单进程 `SREControlStack` 是研究 stack，不等同于生产分布式 control plane；
   `sre_control.stack_data_contract()` 已显式 `production_claim=false`。
 
-任何把这些证据扩大解读为"生产就绪"或"等同官方实现"的下游表述，都应被
+任何把这些证据扩大解读为"可上线证明"或"等同官方实现"的下游表述，都应被
 `scripts/evidence_boundary_lint.py` 拦截。
 
 ---

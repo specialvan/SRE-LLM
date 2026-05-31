@@ -1,5 +1,11 @@
 # 本轮独立审计新发现（F50–F60）
 
+> Historical subreport from a prior Opus review packet; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 > 编号自 F50 起，避免与 v1.0 的 F01–F42 编号冲突。所有 finding 都在 v2.0 评审
 > 期间由 line-level 源码审计 + 行为重现得出，与 v1.0 packet 中既有条目无重叠。
 

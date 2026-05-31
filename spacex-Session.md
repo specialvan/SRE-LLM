@@ -1,3 +1,13 @@
+# Historical session export
+
+This root-level file is an early exported conversation transcript. It is not
+the current handoff or review authority. Opus review should start from
+`docs/opus-review/HANDOFF.md`, then verify live status in
+`wiki/review-backlog.md`, `docs/codex-review/OPEN_RISKS.md`, and
+`docs/codex-review/QUALITY_GATES.md`.
+
+---
+
 # New Session
 
 Exported: 5/10/2026, 3:58:18 AM

@@ -1,5 +1,11 @@
 # 2026-05-16 Adapter Cause Taxonomy Review
 
+> Historical audit artifact; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 ## Verdict
 
 `WATCH-002` is resolved in the working tree. `adapter_exception.cause_type` now has one real non-speculative split: invalid or missing adapter input is routed as `adapter_input`, while other recoverable control-domain failures remain `control_domain`.

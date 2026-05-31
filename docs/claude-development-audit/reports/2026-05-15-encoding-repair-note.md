@@ -1,5 +1,11 @@
 # 2026-05-15 Encoding Repair Note
 
+> Historical audit artifact; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 ## What Changed
 
 During the continuation pass, a bulk PowerShell replacement path risked corrupting non-ASCII Chinese documentation. To avoid committing mojibake, the affected pre-existing docs were restored from `HEAD`, and the audit backlog was corrected back to the actual current state.

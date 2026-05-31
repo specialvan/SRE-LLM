@@ -1,5 +1,11 @@
 # 重跑命令实测输出 — 2026-05-26
 
+> Historical subreport from a prior Opus review packet; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 > 本文件记录 Opus v2.0 评审在本机重跑 `OPUS_REVIEW_PACKET.md` 第 1 / 5 节
 > 所列命令的实测输出，与文档声明逐条比对。
 

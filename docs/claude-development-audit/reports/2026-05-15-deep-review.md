@@ -1,5 +1,11 @@
 # 2026-05-15 Deep Review
 
+> Historical audit artifact; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 ## Verdict
 
 No P0 blocker found. The current branch runs: 77 collected tests pass and all 10 analysis studies complete. The main risk has shifted from "does the code work?" to "will the next reviewer or installed package see the same system the source tree currently has?"

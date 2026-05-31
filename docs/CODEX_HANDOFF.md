@@ -4,6 +4,14 @@
 > current cross-session entry is `wiki/README.md`, and the current engineering
 > packet is `docs/codex-review/ENGINEERING_PACKET.md`. Counts and next steps
 > below are historical unless explicitly called out by those current ledgers.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify live
+> status in `wiki/review-backlog.md`, `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`; do not use this file as the live
+> handoff. For git review scope, use the `Git Review Scope Snapshot` in
+> `docs/opus-review/HANDOFF.md`, then refresh
+> `git status --short --branch --untracked-files=all` and
+> `git ls-files --others --exclude-standard` so dirty/untracked files are not
+> omitted from review.
 
 - 分支: `spacex-session`
 - 更新时间: 2026-05-12
@@ -21,7 +29,7 @@
 - `docs/claude-review/` 新增 Reviewer 移交包，并补了 Codex 二次 triage
 - `docs/codex-review/` 新增 Codex 侧汇总包，专门提交给 Claude 继续评审
 - `docs/V2_Knowledge/` 新增一版面向跨 agent 协同的知识库快照（本轮新增）
-- `tests/` 里已经补了模块级合同测试、堆栈级 trace 测试、event schema 测试、failure-trace 测试、stability monitor 测试和 import graph 护栏，共 51 passed
+- `tests/` 里已经补了模块级合同测试、堆栈级 trace 测试、event schema 测试、failure-trace 测试、stability monitor 测试和 import graph 护栏；本页计数为历史快照，当前计数以 `docs/codex-review/QUALITY_GATES.md` 为准
 
 ## 先读哪些
 
@@ -126,8 +134,8 @@
 ## 已验证
 
 ```bash
-python -m pytest tests -q          # 51 passed
-python -m analysis.run_all         # 10 studies finished in ~3s
+python -m pytest tests -q          # historical snapshot; current count lives in docs/codex-review/QUALITY_GATES.md
+python -m analysis.run_all         # historical snapshot; current study set lives in docs/codex-review/QUALITY_GATES.md
 python -m examples.demo_sre_loop   # 12-tick trace printed
 python -m examples.demo_powered_descent
 python -m examples.demo_catch_phase
@@ -167,5 +175,5 @@ python -m scripts.build_kb         # 16 assets rebuilt (~60s)
 - 哪些地方最容易出坑
 - 哪些约束绝不能破坏
 
-请在接手的第一个 commit 的 message 末尾写一行 `Acknowledged: docs/claude-review/README.md`，
-证明你是正式接过的手，而不是跳过了前一 session 的评审报告。
+旧的接手确认要求已废弃；当前 Opus/Codex 交接以 `docs/opus-review/HANDOFF.md`
+和 live ledgers 为准，不再要求在 commit message 里写旧 `docs/claude-review/README.md` acknowledgment。

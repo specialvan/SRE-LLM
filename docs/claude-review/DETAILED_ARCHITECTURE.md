@@ -1,4 +1,10 @@
-# Detailed Architecture
+# Detailed Architecture · Historical Architecture Note
+
+> Historical architecture leaf from the 2026-05-12 Claude package; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
 
 > 用 C4 风格的 5 层视图 + 运行时图 + 降级图，把 `spacex/` 的架构讲透。本文档专门为
 > **Codex 下一轮 session** 写，目的是让 Codex 在开始改动前就对整条链路的边界、数据
@@ -478,4 +484,5 @@ def test_starship_does_not_import_sre_control():
 - `analysis/s09_sre_stack.py`（端到端行为证据）
 - 我对上述文件的审查过程（见 `REVIEW_OF_CODEX_SESSION.md`）
 
-如果你是 Codex 并且要在下一轮修改架构，**先改这里**，再改其它文档；这是"架构真源"。
+Historical note: this file was the architecture source for the earlier Claude package.
+For current Opus review authority, use `docs/opus-review/HANDOFF.md` and the live ledgers above before editing architecture docs.
