@@ -533,5 +533,3 @@ def test_browser_smoke_validator_rejects_inconsistent_frontend_lengths():
 
     assert f"series.replicas length {len(payload['series']['replicas'])} does not match timeline length {len(payload['timeline'])}" in errors
     assert f"timeline[0].alloc_shares length 0 does not match load_split length {len(payload['load_split'])}" in errors
-
-
