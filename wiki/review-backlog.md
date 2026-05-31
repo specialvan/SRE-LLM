@@ -6,7 +6,7 @@ with older review packets.
 
 ## Current Verified Baseline
 
-- Full test suite: `python -m pytest tests -q` passes with 613 tests in the
+- Full test suite: `python -m pytest tests -q` passes with 943 tests in the
   current workspace.
 - Analysis suite: `python -m analysis.run_all` completes all 12 studies and
   refreshes `analysis/artifacts/SUMMARY.txt`.
@@ -173,7 +173,7 @@ Evidence:
   `_common.ARTIFACTS` or `s10_failure_trace.ARTIFACTS`; it passes
   `artifacts_dir` explicitly into Section 10/11 generators, and
   `analysis._common.save_fig()` accepts an explicit artifact directory.
-- `tests/test_evidence_manifest.py::test_event_evidence_manifest_does_not_patch_artifact_globals`
+- `tests/test_evidence_manifest_generation.py::test_event_evidence_manifest_does_not_patch_artifact_globals`
   stubs the study runners and asserts those module-level artifact paths remain
   unchanged while the manifest is generated.
 - The manifest references portable repo-relative paths for Section 10
@@ -202,23 +202,75 @@ Evidence:
   checks that used to sit inside `analysis.evidence_report`; the report CLI
   still calls that module and keeps the same reviewer-facing output.
 - `tests/test_evidence_artifacts.py` directly covers stale artifact metadata,
-  malformed replay fixture shape, and runtime event schema drift in the
-  extracted artifact validator.
+  malformed replay fixture shape, runtime event schema drift, S10 trace-shape
+  drift, JSONL row validation, and S12 replay-fixture shape validation in the
+  extracted artifact validator. This advances the B2 split of direct helper
+  tests out of the oversized `tests/test_evidence_manifest.py` file while
+  preserving report-path coverage there.
 - `analysis.evidence_manifest_checks` now owns manifest top-level shape,
   study/contract field shape, artifact path key/extension shape, and artifact
   metadata shape checks that used to sit inside `analysis.evidence_report`; the
   report CLI still calls `manifest_shape_errors()` before artifact validation.
 - `tests/test_evidence_manifest_checks.py` directly covers generated manifest
-  acceptance, duplicate/missing study detection, and contract metadata-shape
-  rejection in the extracted manifest validator.
+  acceptance, uppercase SHA-256 shape tolerance, duplicate/missing study
+  detection, and contract metadata-shape rejection in the extracted manifest
+  validator.
+- `analysis.evidence_consistency` now owns S10/S11/S12 study-level consistency
+  checks that used to sit inside `analysis.evidence_report`: S10 trace counts,
+  background fraction, and sample-prefix checks; S11 diagnostics consistency;
+  and S12 fixture/trace/diagnostics consistency for replay, recovery,
+  operator-action, visibility, and multi-signal metrics. The report CLI still
+  calls `study_consistency_errors()` and keeps the same reviewer-facing output.
+- `tests/test_evidence_consistency.py` directly covers generated-study
+  acceptance, strict-JSON null diagnostics for unrecovered windows, S10
+  sample-prefix drift, and S12 operator-action coverage drift in the extracted
+  study-consistency validator.
 - `scripts.quality_gate_counts` now treats `analysis.evidence_manifest` and
   `analysis.evidence_report` as required current quality-gate commands, so the
   count updater fails if either drops out of the PR requirements or V2 HTML
   gate list.
-- `tests/test_evidence_manifest.py` asserts the manifest shape, relative paths,
-  Section 10/11/12 metrics, S12 trace line count, sync with
-  `docs/EVENT_EVIDENCE_MANIFEST.md`, and report behavior for present/missing
-  artifacts, malformed metadata, and stale artifact byte identity.
+- `tests/test_evidence_manifest_generation.py` asserts generated manifest
+  shape, relative paths, Section 10/11/12 metrics, S12 trace line count, and
+  sync with `docs/EVENT_EVIDENCE_MANIFEST.md`; `tests/test_evidence_manifest.py`
+  stays focused on the successful report smoke path plus missing artifact,
+  malformed metadata, metadata key drift, and stale artifact byte identity
+  rejection paths.
+- `tests/test_evidence_report_manifest_shape.py` now covers reviewer-facing
+  top-level manifest JSON/file failures.
+- `tests/test_evidence_report_study_shape.py` now covers reviewer-facing
+  study-entry manifest field, value, range, and case-count failures.
+- `tests/test_evidence_report_contract_shape.py` now covers reviewer-facing
+  contract-entry manifest field, value, and identity failures.
+- `tests/test_evidence_report_artifact_paths.py` now covers reviewer-facing
+  artifact path portability, artifact key parity, and extension validation.
+- `tests/test_evidence_trace_report.py` now covers the reviewer-facing S10
+  trace consistency, sample-prefix, empty-sample, time-field, time-mismatch,
+  and runtime-event schema rejection paths, further reducing the generic
+  manifest report file while preserving CLI-output coverage.
+- `tests/test_evidence_wrapper_report.py` now covers the reviewer-facing S11
+  catch-wrapper PNG parseability, diagnostics shape, case-count, fraction, and
+  event-visible consistency report paths, further reducing the generic manifest
+  report file while preserving CLI-output coverage.
+- `tests/test_evidence_replay_report.py` now covers the reviewer-facing S12
+  replay diagnostics artifact-field report paths for descriptor/type, fraction,
+  count, observed-kind, action, and window-action validation.
+- `tests/test_evidence_replay_consistency_report.py` now covers reviewer-facing
+  S12 replay diagnostics consistency paths for observed kinds, replay ticks,
+  recovery, operator-action, multi-signal, and visibility validation.
+- `tests/test_evidence_replay_artifacts_report.py` now covers reviewer-facing
+  S12 replay trace/fixture JSONL artifact validation and bounded-residual
+  schema rejection paths, further reducing the residual S12 report test surface
+  while preserving CLI-output coverage.
+- `docs/EVENT_EVIDENCE_MANIFEST.md` Test Coverage now documents split test ownership
+  instead of implying `tests/test_evidence_manifest.py` covers every
+  manifest/report branch: generation/docs sync lives in
+  `tests/test_evidence_manifest_generation.py`, direct artifact checks in
+  `tests/test_evidence_artifacts.py`, manifest-shape checks in
+  `tests/test_evidence_manifest_checks.py`, study consistency checks in
+  `tests/test_evidence_consistency.py`, stack-contract direct checks in
+  `tests/test_evidence_contracts.py`, and reviewer report-path checks include
+  `tests/test_evidence_report_manifest_shape.py` through
+  `tests/test_evidence_contract_boundary_report.py`.
 
 ### SRE Stack Data Contract
 
@@ -253,6 +305,24 @@ Evidence:
 - `tests/test_evidence_contracts.py` directly covers the extracted validator's
   fallback mode-map drift and adapter-family drift branches, so future B1
   refactors are not only covered through the full report CLI.
+- `tests/test_evidence_contract_report.py` covers reviewer-facing
+  stack-contract artifact scope, route-map, and stage-interface drift output.
+- `tests/test_evidence_contract_fallback_report.py` covers stack-contract
+  fallback field and fallback action/mode map report output.
+- `tests/test_evidence_contract_trace_report.py` covers stack-contract
+  trace-route fallback, adapter-family, fault-family, exception-cause, and
+  recoverability report output.
+- `tests/test_evidence_contract_boundary_report.py` covers stack-contract
+  split-boundary and trace-event routing output, keeping those report-path
+  tests out of the oversized generic manifest report file.
+- `docs/STACK_DATA_CONTRACT.md` Test Coverage now documents split test ownership
+  explicitly: base contract/export checks live in
+  `tests/test_contracts.py`, direct extracted-validator checks live in
+  `tests/test_evidence_contracts.py`, and reviewer-facing report-path checks
+  are split across `tests/test_evidence_contract_report.py`,
+  `tests/test_evidence_contract_fallback_report.py`,
+  `tests/test_evidence_contract_trace_report.py`, and
+  `tests/test_evidence_contract_boundary_report.py`.
 
 ### Opus v1.0 P0/P1 Remediation
 
@@ -324,19 +394,19 @@ Evidence:
   covers the target table, and
   `test_update_quality_gate_docs_does_not_partially_write_on_replacement_failure`
   asserts missing replacement errors include the affected file path.
-- F23: `analysis.evidence_report._s10_trace_shape_errors()` now uses a
+- F23: `analysis.evidence_artifacts._s10_trace_shape_errors()` now uses a
   tick-scaled tolerance when comparing `t_seconds` to `tick * DT`, so future
   non-binary-exact `DT` values are not rejected for harmless floating-point
   accumulation drift.
-- `tests/test_evidence_manifest.py::test_s10_trace_shape_allows_float_accumulation_drift`
+- `tests/test_evidence_artifacts.py::test_s10_trace_shape_allows_float_accumulation_drift`
   covers the accepted drift case, while
-  `test_event_evidence_report_rejects_s10_trace_time_mismatch` keeps large
-  trace-time mismatches red.
+  `tests/test_evidence_trace_report.py::test_event_evidence_report_rejects_s10_trace_time_mismatch`
+  keeps large trace-time mismatches red.
 - Fresh focused verification for this slice:
   `python -m pytest tests/test_failure_trace.py -q`,
-  `python -m pytest tests/test_failure_trace.py::test_s10_empty_injection_set_uses_vacuous_visibility tests/test_failure_trace.py::test_s10_each_injected_window_has_kind_coverage tests/test_failure_trace.py::test_s10_background_event_fraction_is_bounded tests/test_evidence_manifest.py::test_s10_trace_shape_allows_float_accumulation_drift -q`,
+  `python -m pytest tests/test_failure_trace.py::test_s10_empty_injection_set_uses_vacuous_visibility tests/test_failure_trace.py::test_s10_each_injected_window_has_kind_coverage tests/test_failure_trace.py::test_s10_background_event_fraction_is_bounded tests/test_evidence_artifacts.py::test_s10_trace_shape_allows_float_accumulation_drift -q`,
   `python -m pytest tests/test_failure_trace.py::test_s10_jsonl_artifacts_use_sorted_keys tests/test_failure_trace.py::test_s10_full_trace_jsonl_contains_all_events -q`,
-  `python -m pytest tests/test_evidence_manifest.py::test_s10_trace_shape_allows_float_accumulation_drift tests/test_evidence_manifest.py::test_event_evidence_report_rejects_s10_trace_time_mismatch -q`,
+  `python -m pytest tests/test_evidence_artifacts.py::test_s10_trace_shape_allows_float_accumulation_drift tests/test_evidence_trace_report.py::test_event_evidence_report_rejects_s10_trace_time_mismatch -q`,
   `python -m pytest tests/test_quality_gate_counts.py -q`,
   `python -m analysis.s10_failure_trace`, `python -m analysis.evidence_manifest`,
   and `python -m analysis.evidence_report`.
@@ -503,7 +573,7 @@ Evidence:
 - Tests cover generator-side and report-side unrecovered windows with
   `json.dumps(..., allow_nan=False)`.
 - Fresh focused verification:
-  `python -m pytest tests/test_synthetic_evidence_boundaries.py::test_sre_replay_unrecovered_window_uses_strict_json_null tests/test_synthetic_evidence_boundaries.py::test_sre_replay_unrecovered_multi_signal_window_uses_strict_json_null tests/test_evidence_manifest.py::test_evidence_report_unrecovered_window_uses_strict_json_null tests/test_evidence_manifest.py::test_evidence_report_unrecovered_multi_signal_window_uses_strict_json_null -q`.
+  `python -m pytest tests/test_synthetic_evidence_boundaries.py::test_sre_replay_unrecovered_window_uses_strict_json_null tests/test_synthetic_evidence_boundaries.py::test_sre_replay_unrecovered_multi_signal_window_uses_strict_json_null tests/test_evidence_consistency.py::test_recovery_diagnostics_uses_strict_json_null_for_unrecovered_window tests/test_evidence_consistency.py::test_multi_signal_diagnostics_uses_strict_json_null_for_unrecovered_window -q`.
 
 ### Opus v1.0 P3 Replay Operator-Action Test Robustness
 
@@ -526,15 +596,15 @@ Status: implemented and verified for F39.
 
 Evidence:
 
-- F39: `analysis.evidence_report._is_sha256()` now accepts uppercase
+- F39: `analysis.evidence_manifest_checks._is_sha256()` now accepts uppercase
   hexadecimal characters in manual manifest metadata shape checks.
 - Byte-identity comparison remains strict because actual metadata still comes
   from `hashlib.sha256(...).hexdigest()` and stale metadata is compared by exact
   digest string later in the report.
-- `tests/test_evidence_manifest.py::test_evidence_report_accepts_uppercase_sha256_shape`
+- `tests/test_evidence_manifest_checks.py::test_is_sha256_accepts_uppercase_hex`
   covers uppercase `A` and `F` digests.
 - Fresh focused verification:
-  `python -m pytest tests/test_evidence_manifest.py::test_evidence_report_accepts_uppercase_sha256_shape -q`.
+  `python -m pytest tests/test_evidence_manifest_checks.py::test_is_sha256_accepts_uppercase_hex -q`.
 
 ### Opus v1.0 P3 Pool Capacity Unit Parameter
 
@@ -558,16 +628,16 @@ Status: implemented and verified for F31.
 
 Evidence:
 
-- F31: `analysis.evidence_report` now keeps scanning after row-level failures
+- F31: `analysis.evidence_artifacts` now keeps scanning after row-level failures
   in JSONL parsing, Section 10 trace-shape validation, Section 12 fixture-shape
   validation, and S10/S12 runtime-event schema validation.
 - This preserves the existing error strings while returning multiple actionable
   failures from one report run.
-- `tests/test_evidence_manifest.py` covers collect-all behavior for malformed
+- `tests/test_evidence_artifacts.py` covers collect-all behavior for malformed
   JSONL rows, invalid S10 trace rows, invalid S12 fixture rows, and invalid S10
   event-schema rows.
 - Fresh focused verification:
-  `python -m pytest tests/test_evidence_manifest.py -q`.
+  `python -m pytest tests/test_evidence_artifacts.py tests/test_evidence_trace_report.py -q`.
 
 ### Opus v1.0 P3 Analysis Runner Failure Reporting
 
@@ -608,6 +678,14 @@ Evidence:
   integration audit, and demo gates; it also has a read-only `--check` mode.
 - Browser manifest replay failures now include manifest, viewport, DOM artifact
   path, and the regeneration command.
+- `tests/test_control_center_browser_smoke.py` now keeps browser launch, live
+  fetch, system-browser execution, CLI, and error-path smoke coverage, while
+  `tests/test_control_center_browser_dom.py` owns frontend DOM assertions,
+  payload validators, interaction probes, and rendered error-state checks, and
+  `tests/test_control_center_browser_manifest.py`,
+  `tests/test_control_center_browser_error_manifest.py`, and
+  `tests/test_control_center_browser_report.py` carry the normal/error
+  evidence manifest and replay/report checks.
 
 ### Opus Handoff / Gate Hardening
 
@@ -618,26 +696,96 @@ Evidence:
 - `docs/opus-review/HANDOFF.md` is the current Opus first-read entry and now
   lists the post-v2.1 hardening commits, review focus, expected replay outputs,
   and evidence assets without pinning HEAD to a single commit SHA.
-- `docs/opus-review/HANDOFF.md` now puts `docs/codex-review/OPEN_RISKS.md` and
-  `wiki/review-backlog.md` before `docs/opus-review/OPUS_REVIEW_PACKET.md` and
-  older Claude/Opus packets in its reviewer flow, and the order is covered by a
-  regression test so historical packets do not become the first authority again.
-- `wiki/README.md` now lists `docs/codex-review/OPEN_RISKS.md` and
-  `wiki/review-backlog.md` before historical Claude/Opus review packets in the
-  current recommended entries table, with a regression test covering that wiki
-  entry order.
+- `docs/opus-review/HANDOFF.md` now puts the current completion, risk, and
+  command-gate anchors, `wiki/review-backlog.md`,
+  `docs/codex-review/OPEN_RISKS.md`, and
+  `docs/codex-review/QUALITY_GATES.md`, before
+  `docs/opus-review/OPUS_REVIEW_PACKET.md` and older Claude/Opus packets in its
+  reviewer flow, and the order is covered by regression tests so historical
+  packets do not become the first authority again.
+- `wiki/README.md` now lists `wiki/review-backlog.md`,
+  `docs/codex-review/OPEN_RISKS.md`, and
+  `docs/codex-review/QUALITY_GATES.md`, before
+  historical Claude/Opus review packets in the current recommended entries
+  table, with a regression test covering that wiki entry order.
 - `scripts.review_authority_lint` centralizes the current-ledger-before-history
-  ordering rule for Opus handoff and wiki entrypoints, so future review packet
-  additions can extend one lint surface instead of duplicating one-off string
-  assertions.
+  ordering rule for Opus handoff, wiki entrypoints, and the Superpowers
+  plan/spec inventory READMEs (`docs/superpowers/plans/README.md` and
+  `docs/superpowers/specs/README.md`), so future review packet or artifact
+  inventory additions can extend one lint surface instead of duplicating
+  one-off string assertions.
+- The same authority lint now also covers additional clickable handoff and
+  review entrypoints that Opus may open directly:
+  `docs/CODEX_HANDOFF.md`, `docs/CODEX_REVIEW_REPORT.md`,
+  `docs/codex-review/CODEX_SUMMARY.md`,
+  `docs/codex-review/CLAUDE_DEEP_REVIEW.md`,
+  `docs/codex-review/CLAUDE_REFINED_SPEC.md`,
+  `docs/codex-review/CLAUDE_REVIEW_REQUEST.md`,
+  `docs/codex-review/ENGINEERING_PACKET.md`,
+  `docs/CONTROL_CENTER_HANDOFF.md`, and
+  `docs/claude-development-audit/README.md`. The engineering packet entry table
+  now keeps `OPEN_RISKS.md` before `QUALITY_GATES.md`, matching the current
+  handoff order, and the control-center handoff now routes reviewers back to
+  the live ledgers before historical packets.
 - `scripts.evidence_boundary_lint.PUBLIC_EVIDENCE_BOUNDARY_DOCS` includes
   `docs/opus-review/README.md` and `docs/opus-review/HANDOFF.md`, so the Opus
   first-read surface is linted for unqualified production-readiness, production
   proof, and SpaceX-internals claims.
+- The same boundary lint surface now includes `docs/CONTROL_CENTER_HANDOFF.md`,
+  `docs/EVENT_EVIDENCE_MANIFEST.md`, and `docs/STACK_DATA_CONTRACT.md`, so the
+  control-center and evidence/contract documents called out in the Opus runbook
+  cannot introduce unqualified production-proof or SpaceX-internals wording.
 - The evidence-boundary lint now also recognizes Chinese review-prose
   overclaims around synthetic evidence, production readiness, and SpaceX
   implementation provenance, while preserving explicit Chinese boundary
   negations in review statements.
+- The English evidence-boundary lint now also catches ready-for/safe-for-
+  production phrasing while preserving explicit negated boundary statements, so
+  common prose variants remain covered under R1.
+- The same lint now covers equivalence-adjective variants in both hyphenated
+  and space-separated prose, while preserving explicit negated boundary
+  statements.
+- The same English lint surface now covers level/caliber/quality adjective
+  variants, again keeping explicit negations allowed so boundary statements can
+  remain readable.
+- The same R1 lint now covers likeness, representativeness, and comparability
+  adjective variants around synthetic replay evidence, while preserving explicit
+  negated boundary statements.
+- The same R1 lint now covers scale/realism variants and representative-of
+  wording around synthetic replay evidence, while preserving explicit negated
+  boundary statements.
+- The same R1 lint now covers compact prod-abbreviation and parity wording
+  categories around synthetic replay evidence, while preserving explicit
+  negated boundary statements.
+- The same R1 lint now covers broader SpaceX-provenance wording categories and
+  treats wrapped negations plus Markdown "does-not-support" table cells as
+  boundary-scoped, so evidence-ledger tables can remain readable without
+  weakening unqualified-claim detection.
+- The same R1 lint now catches possessive SpaceX provenance and
+  control-software/control-algorithm wording in unqualified claims, while
+  keeping explicit negated boundary prose allowed.
+- The same R1 lint now also catches hyphenated SpaceX provenance variants in
+  unqualified official/internal/flight implementation and control-software
+  claims, preserving the existing negation handling for boundary statements.
+- The same R1 lint now catches proprietary/private/confidential SpaceX
+  provenance adjectives in unqualified implementation, controller, and
+  control-algorithm claims, while preserving the existing negation handling for
+  boundary statements.
+- The same R1 lint now catches source-provenance variants for SpaceX-side data,
+  telemetry, trace, and log wording in unqualified claims, while preserving the
+  existing negation handling for boundary statements.
+- The same R1 lint now catches generic real/actual/live/field
+  source-provenance variants in unqualified claims, with the `live` branch
+  narrowed to flight/sensor/incident sources so operational debug-trace prose
+  remains allowed.
+- The same R1 lint now catches production/prod/customer-traffic
+  source-provenance variants in unqualified claims, while preserving
+  non-production data-contract and explicitly negated incident-trace boundary
+  wording.
+- `scripts.evidence_boundary_lint` now has a reviewer-facing CLI and a dynamic
+  `docs/` / `claude-review/` / `wiki/` prose-surface coverage guard, so adding
+  a new markdown or HTML review document without boundary-lint coverage fails
+  before it can become an unreviewed Opus entrypoint.
 - `scripts.quality_gate_counts.QUALITY_GATE_TARGETS` includes
   `docs/opus-review/HANDOFF.md`, so its `quality gate pytest count` line is
   updated with the same real pytest count as PR, V2 HTML, Codex review, Opus
@@ -646,15 +794,169 @@ Evidence:
   the canonical `analysis/artifacts/s11_catch_sre_wrapper.png` hash is not
   changed, so a full pytest run no longer dirties committed evidence art.
 - `scripts.quality_gate_counts` now gives full-suite pytest and collect-only
-  parity checks a 300 s timeout budget. The current local full suite takes about
-  174 s, so Opus has practical headroom for review-machine jitter.
+  parity checks a 300 s timeout budget. Treat full-suite pytest as a
+  minutes-level runtime variance gate rather than a one-second smoke command;
+  Opus has practical headroom for review-machine jitter when the command stays
+  within that budget.
+- `docs/opus-review/HANDOFF.md` now includes a reviewer runbook, handoff sanity
+  checklist, quality-gate synchronized test-count lines maintained by
+  `scripts.quality_gate_counts`, and explicit questions for Opus covering
+  open-risk blockers, evidence-report split behavior, stack contract
+  routeability, control-center browser replay coverage, and dirty/untracked
+  review scope.
+- `docs/opus-review/OPUS_REVIEW_PACKET.md` now leads as the current Opus
+  re-entry packet instead of the old v2.0 submission snapshot, isolates v1/v2
+  history under historical context, removes the duplicate boundary section, and
+  points review-authority lint at the current first-read section.
+- `docs/opus-review/README.md` now has its `Authority Order` section covered by
+  `scripts.review_authority_lint`, so the Opus first-read handoff cannot drift
+  behind the live ledger anchors in that secondary entrypoint.
+- `docs/CONTROL_CENTER_HANDOFF.md` now lists the split control-center browser,
+  DOM, manifest, report, and integration-audit test bundle in both entrypoints
+  and verification commands, and the Opus packet's targeted evidence command
+  includes `tests/test_control_center_integration_audit.py`.
+- `docs/opus-review/HANDOFF.md` now includes a Git Review Scope Snapshot with
+  `git status --short --branch --untracked-files=all`, recent/ahead commit log,
+  tracked diff, untracked file, and `git diff --check` commands, plus explicit
+  guidance that zero-exit line-ending warnings are not blockers and unexpected
+  files are review questions. `docs/opus-review/OPUS_REVIEW_PACKET.md` routes
+  direct packet readers back to those git-scope commands.
+- `docs/opus-review/HANDOFF.md` now uses
+  `git status --short --branch --untracked-files=all` consistently in its
+  baseline, first-15-minute runbook, sanity checklist, and Opus questions, so
+  reviewers do not accidentally fall back to a less explicit untracked-file
+  view after reading the Git Review Scope Snapshot.
+- The Git Review Scope Snapshot now keeps tracked test examples and untracked
+  test examples separate: `tests/test_control_center_integration_audit.py` is
+  documented under the tracked modified surface, while untracked examples are
+  checked against `git ls-files --others --exclude-standard`.
+- `docs/opus-review/HANDOFF.md` now carries the exact current untracked
+  review-scope inventory, and `tests/test_quality_gate_counts.py` checks that
+  list against `git ls-files --others --exclude-standard`, so new untracked
+  split files cannot silently fall outside the Opus review surface.
+- `docs/opus-review/README.md`, `wiki/README.md`, and
+  `docs/codex-review/ENGINEERING_PACKET.md` now route any direct reviewer entry
+  back to `docs/opus-review/HANDOFF.md`'s `Git Review Scope Snapshot`, including
+  `git status --short --branch --untracked-files=all`, dirty/untracked scope,
+  and the `exact current untracked inventory`, so Opus cannot enter through a
+  secondary document and miss the git-scope contract.
+- `wiki/README.md` Current Baseline no longer calls
+  `claude-review/docs/v2026-05-28/` the latest review packet; it points to the
+  current Opus handoff and demotes v2.1/v2.0 packets to historical context.
+- `docs/V2_Knowledge/knowledge-base.html` no longer advertises full-suite
+  pytest as a one-second smoke command; the synchronized quality gate row now
+  uses the `300 s budget` wording maintained by
+  `scripts.quality_gate_counts.py`, matching the actual full-suite timeout
+  budget reviewers should expect.
+- `docs/V2_Knowledge/knowledge-base.html` hero metadata now points its handoff
+  target to `spacex/docs/opus-review/HANDOFF.md`, and
+  `tests/test_quality_gate_counts.py::test_v2_knowledge_base_hero_handoff_points_to_opus_handoff`
+  prevents the canonical HTML first viewport from drifting back to the
+  historical Claude review package.
+- `scripts.review_authority_lint` now covers
+  `docs/V2_Knowledge/knowledge-base.html` as a canonical current review
+  entrypoint, checks its handoff-section ledger ordering, and requires it to
+  route readers back to `docs/opus-review/HANDOFF.md`'s
+  `Git Review Scope Snapshot`, including
+  `git status --short --branch --untracked-files=all`,
+  `git ls-files --others --exclude-standard`, and dirty/untracked scope.
+- `scripts.review_authority_lint` now checks git-scope routing inside each
+  configured current authority section instead of accepting whole-file mentions,
+  so footer or historical-context references to `Git Review Scope Snapshot` do
+  not satisfy the handoff guard. Current direct entrypoints now carry
+  `docs/opus-review/HANDOFF.md`, the snapshot label, the explicit git status
+  and untracked-file commands, and dirty/untracked scope in their active
+  routing sections.
+- `scripts.review_authority_lint` now fails closed when a configured authority
+  section's start or end marker disappears, instead of falling back to whole-file
+  scanning. `wiki/project-overview.md` now has an explicit trailing
+  `Maintenance Notes` section so its `Current Execution Authority` slice has a
+  real end delimiter.
+- The direct `find_git_scope_routing_errors()` helper now uses the same
+  configured-section marker guard before checking git-scope anchors, so both the
+  aggregate CLI and direct regression tests reject marker drift instead of
+  accepting whole-file git-scope mentions.
+- Section 5 EKF metric prose is aligned to the current generated evidence:
+  `vel_rmse 629.4 -> 9.374` now appears consistently in the control-center
+  payload, root README, PR requirements table, and canonical V2 knowledge-base
+  metric card instead of the older `481 -> 51` scenario. The regression tests
+  are
+  `tests/test_control_center.py::test_control_center_ekf_benefit_matches_current_section5_evidence`
+  and
+  `tests/test_quality_gate_counts.py::test_current_public_section5_metric_docs_match_generated_evidence`.
+- `docs/codex-review/ENGINEERING_PACKET.md` now lists
+  `scripts/review_authority_lint.py` and `docs/opus-review/HANDOFF.md` in the
+  merge-scope checklist, so the review-authority guard and Opus first-read
+  entrypoint cannot be omitted from a future review or merge bundle.
+- `docs/codex-review/ENGINEERING_PACKET.md` is also included in
+  `scripts.quality_gate_counts.QUALITY_GATE_COMMAND_DOCS`, and its Current
+  Verification section now carries the full Opus handoff rerun command block,
+  so a reviewer who starts from the offline engineering packet sees the same
+  command authority as the Opus handoff and packet.
+- `scripts.quality_gate_counts.QUALITY_GATE_TARGETS` now also updates the Opus
+  handoff's `Current synchronized pytest count` and collect-only checklist line,
+  not just its `quality gate pytest count` output snippet, so the first-read
+  handoff cannot silently keep stale baseline counts after a future test-count
+  change.
+- `scripts.quality_gate_counts.QUALITY_GATE_TARGETS` now also updates
+  `docs/opus-review/OPUS_REVIEW_PACKET.md`'s first-read
+  `Current synchronized pytest count` line, so the packet lead and observed
+  output snippet stay in lockstep when the synchronized pytest count changes.
+- `scripts.quality_gate_counts.CURRENT_QUALITY_GATE_COMMANDS` now includes
+  `python -m scripts.evidence_boundary_lint`, so Opus re-runs cover both review
+  authority ordering and evidence-boundary prose coverage.
+- `scripts.quality_gate_counts.collect_pytest_count()` now runs the full suite
+  through compact pytest output for pass/fail and uses collect-only output as
+  the synchronized count source when quiet pytest omits an `N passed` summary;
+  it still rejects explicit passed/collected mismatches when a summary is
+  present. This prevents the self-sync gate from failing on output-format drift
+  after the suite itself passes, and the current reviewer command surfaces now
+  publish `python -m pytest tests -q` as the canonical full-suite gate.
+- `scripts.quality_gate_counts.require_quality_gate_commands()` now rejects
+  stale non-quiet full-suite pytest command text in current command docs, so a
+  document cannot carry both the compact canonical gate and the old command
+  form without failing the self-check. The detector still allows explicit
+  collect-only parity checks such as `python -m pytest tests --collect-only -q`
+  so reviewer checklist prose can describe count validation without being
+  mistaken for the old full-suite gate.
+- `scripts.quality_gate_counts.require_quality_gate_commands()` also enforces
+  updater-before-read-only-check ordering for the quality-gate count commands,
+  matching the manifest-before-report ordering rule and preventing a reviewer
+  handoff from checking stale synchronized docs before running the updater.
+- `scripts.quality_gate_counts.require_quality_gate_commands()` now checks the
+  full `FINAL_REVIEW_GATE_COMMANDS` sequence, so current command surfaces cannot
+  pass by merely containing every required command while moving the updater/check
+  pair ahead of the demo gates. The regression coverage includes a deliberately
+  drifted full-sequence fixture, and the V2 command table follows the same order.
+- The same command guard now requires a contiguous reviewer-facing command
+  surface. Scattered inline mentions of every command no longer satisfy the
+  self-check unless a single raw/fenced, bullet-list, or HTML table surface
+  carries the canonical run in order.
+- `scripts.package_smoke` now builds the installed-wheel smoke artifact with
+  `--no-index --no-build-isolation`, `PIP_DISABLE_PIP_VERSION_CHECK=1`, and
+  `PIP_USE_DEPRECATED=legacy-certs`, preventing the package gate from failing
+  before the local wheel build because pip tries to create a network/version
+  check SSL session. `tests/test_package_smoke.py` covers the pip command and
+  environment contract, and `docs/codex-review/QUALITY_GATES.md` documents the
+  offline package-smoke posture.
 - Fresh verification for this slice:
   `python -u -m scripts.quality_gate_counts` reports
-  `quality gate pytest count: 477`; `python -m pytest tests -q` passes and
-  leaves the worktree clean; `python -m scripts.quality_gate_counts --check
-  --skip-expensive` reports `quality gate docs check passed`; and
+  `quality gate pytest count: 943`; `python -m pytest tests -q` passes in the
+  intentionally dirty review workspace; `python -m scripts.quality_gate_counts
+  --check --skip-expensive` reports `quality gate docs check passed`; and
   `python -m analysis.evidence_report` reports
   `artifact_check ok studies=3 files=8`.
+- The returned `claude-review/docs/v2026-05-31/` packet is now preserved as
+  historical review input. Its M1 pytest-count documentation drift and M2
+  incomplete reviewer-side `quality_gate_counts` capture are resolved for the
+  current handoff surface by the synchronized current-count docs and fresh
+  `quality_gate_counts` / `--check --skip-expensive` gates. Treat any 871/873
+  snippets inside that returned packet as packet-time findings, not live
+  baseline facts.
+- `scripts.evidence_boundary_lint.PUBLIC_EVIDENCE_BOUNDARY_DOCS` now includes
+  the full v2026-05-31 returned-review packet, including the agent guide and
+  handoff knowledge base, so future returned-review prose must pass the same
+  production-claim boundary lint before handoff.
 
 ## Active Research Landing Candidates
 
@@ -684,9 +986,11 @@ python -m scripts.control_center_browser_smoke --report-manifests --report-json 
 python -m scripts.package_smoke
 python -m scripts.control_center_integration_audit
 python -m scripts.review_authority_lint
+python -m scripts.evidence_boundary_lint
 python -m examples.demo_sre_loop
 python -m examples.demo_powered_descent
 python -m examples.demo_catch_phase
+python -u -m scripts.quality_gate_counts
 python -m scripts.quality_gate_counts --check --skip-expensive
 ```
 

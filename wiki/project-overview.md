@@ -40,6 +40,24 @@ OBSERVE -> STABILITY -> PLAN -> GUARD -> ALLOCATE -> EXECUTE
 5. `WeightedLoadBalancer` 做有界最小二乘分配。
 6. `SREControlStack.step()` 汇总 runtime states、events 和 stage trace。
 
-## 当前执行规格
+## Current Execution Authority
 
-下一轮工程实现以 [`docs/codex-review/CLAUDE_REFINED_SPEC.md`](../docs/codex-review/CLAUDE_REFINED_SPEC.md) 为准。不要在 PR-A 至 PR-D 完成前宣称“event lifecycle fully proven”或“production-ready control stack”。
+For the Opus handoff, use [`wiki/review-backlog.md`](./review-backlog.md),
+[`docs/codex-review/OPEN_RISKS.md`](../docs/codex-review/OPEN_RISKS.md), and
+[`docs/codex-review/QUALITY_GATES.md`](../docs/codex-review/QUALITY_GATES.md)
+as the current completed/open-status, risk, and command-gate authorities. Start
+from [`docs/opus-review/HANDOFF.md`](../docs/opus-review/HANDOFF.md), including
+its `Git Review Scope Snapshot`, and refresh
+`git status --short --branch --untracked-files=all` plus
+`git ls-files --others --exclude-standard` so dirty/untracked files stay in the
+review surface.
+[`docs/codex-review/CLAUDE_REFINED_SPEC.md`](../docs/codex-review/CLAUDE_REFINED_SPEC.md)
+is historical PR-A through PR-D execution rationale, not the current
+implementation authority. Do not describe the branch as an official SpaceX
+implementation or production-ready control stack.
+
+## Maintenance Notes
+
+Keep this overview aligned with `wiki/review-backlog.md`,
+`docs/codex-review/OPEN_RISKS.md`, and `docs/codex-review/QUALITY_GATES.md`
+when the current review handoff changes.

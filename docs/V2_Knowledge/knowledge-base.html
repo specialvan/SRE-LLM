@@ -189,10 +189,10 @@
     原文：《星舰自动回收背后的数学》（黄大年茶思屋·结构智能） ·
     代码：<code>spacex/starship/</code> + <code>sre_control/</code> ·
     分析：<code>spacex/analysis/</code> ·
-    移交：<code>spacex/docs/claude-review/</code>
+    移交：<code>spacex/docs/opus-review/HANDOFF.md</code>
   </div>
   <div class="banner-row">
-    <div class="chip"><b>tests</b> 613 passed</div>
+    <div class="chip"><b>tests</b> 943 passed</div>
     <div class="chip"><b>studies</b> 12 finished</div>
     <div class="chip"><b>HTML</b> well-formed</div>
     <div class="chip"><b>events</b> 11 kinds</div>
@@ -266,11 +266,11 @@
   <div class="info">
     <b>任何 agent 接手前必读清单</b>：
     <ol>
-      <li><a href="../claude-review/README.md"><code>docs/claude-review/README.md</code></a> — reviewer 移交包导航</li>
-      <li><a href="../claude-review/HANDOFF_CHECKLIST.md"><code>claude-review/HANDOFF_CHECKLIST.md</code></a> — 15 分钟环境核查</li>
+      <li><a href="../opus-review/HANDOFF.md"><code>docs/opus-review/HANDOFF.md</code></a> — current Opus first-read handoff</li>
+      <li><a href="../../wiki/review-backlog.md"><code>wiki/review-backlog.md</code></a>、<a href="../codex-review/OPEN_RISKS.md"><code>docs/codex-review/OPEN_RISKS.md</code></a>、<a href="../codex-review/QUALITY_GATES.md"><code>docs/codex-review/QUALITY_GATES.md</code></a> — current status, risk, and command authority</li>
       <li>本 HTML 的 <a href="#invariants">§三大不变量</a> 和 <a href="#handoff">§接手清单</a></li>
     </ol>
-    接手的第一个 commit message 末尾写一行 <code>Acknowledged: docs/claude-review/README.md</code>，表示认真接过手。
+    旧 <code>docs/claude-review/</code> 包只作为 historical review context；当前 Opus 评审入口以 live handoff 和 ledgers 为准。
   </div>
 
   <h3>本文档的信息密度</h3>
@@ -419,12 +419,12 @@ n̂ᵀu ≥ ‖u‖·cos θ_max               (指向)
   <p class="lead">predict + sequential update，把 radar/IMU/fiducial（或 metrics/traces/RUM）融合到统一 posterior。</p>
 
   <figure><img src="assets/s05_mechanism.png" alt="§5 mechanism"><figcaption>三源观测 → predict/update → 融合态 → 回环到下拍 predict。</figcaption></figure>
-  <figure><img src="assets/s05_benefit.gif" alt="§5 benefit"><figcaption>位置误差接近（被雷达噪声主导）；速度误差差 9.4×——EKF 懂 v̇=g。</figcaption></figure>
+  <figure><img src="assets/s05_benefit.gif" alt="§5 benefit"><figcaption>位置误差接近（被雷达噪声主导）；速度误差差约 67×——EKF 懂 v̇=g。</figcaption></figure>
 
   <div>
-    <span class="metric before"><span class="m-label">速度 RMSE 原始</span><span class="m-val">481 m/s</span></span>
-    <span class="metric after"><span class="m-label">EKF</span><span class="m-val">51 m/s</span></span>
-    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">×9.4</span></span>
+    <span class="metric before"><span class="m-label">速度 RMSE 原始</span><span class="m-val">629.4 m/s</span></span>
+    <span class="metric after"><span class="m-label">EKF</span><span class="m-val">9.374 m/s</span></span>
+    <span class="metric gain"><span class="m-label">Gain</span><span class="m-val">×67</span></span>
   </div>
 
   <div class="formula">Predict: x̂_{k|k−1} = f(x̂_{k−1}),  P_{k|k−1} = F P Fᵀ + Q
@@ -906,7 +906,7 @@ disallowed: docs/*        ← 无运行时代码</div>
   <table>
     <thead><tr><th>命令</th><th>预期</th><th>耗时</th></tr></thead>
     <tbody>
-      <tr><td><code>python -m pytest tests</code></td><td><b>613 passed</b></td><td>~1 s</td></tr>
+      <tr><td><code>python -m pytest tests -q</code></td><td><b>943 passed</b></td><td>300 s budget</td></tr>
       <tr><td><code>python -m analysis.s10_failure_trace</code></td><td>Section 10 full/sample trace exported</td><td>~1 s</td></tr>
       <tr><td><code>python -m analysis.run_all</code></td><td>All 12 studies finished</td><td>~3 s</td></tr>
       <tr><td><code>python -m analysis.evidence_manifest</code></td><td>S10/S11/S12 JSON/JSONL evidence + stack contract exported</td><td>~2 s</td></tr>
@@ -915,9 +915,12 @@ disallowed: docs/*        ← 无运行时代码</div>
       <tr><td><code>python -m scripts.package_smoke</code></td><td>Installed wheel imports plus control-center evidence report validation</td><td>~5 s</td></tr>
       <tr><td><code>python -m scripts.control_center_integration_audit</code></td><td>Control-center browser evidence and backend payload fingerprint match</td><td>&lt;1 s</td></tr>
       <tr><td><code>python -m scripts.review_authority_lint</code></td><td>Current review ledgers stay before historical packets in handoff entrypoints</td><td>&lt;1 s</td></tr>
+      <tr><td><code>python -m scripts.evidence_boundary_lint</code></td><td>Public/review prose stays covered and boundary-scoped</td><td>&lt;1 s</td></tr>
       <tr><td><code>python -m examples.demo_sre_loop</code></td><td>12 行 tick trace</td><td>&lt;1 s</td></tr>
       <tr><td><code>python -m examples.demo_powered_descent</code></td><td>PDG 末态 ~2e-6 m</td><td>~0.5 s</td></tr>
       <tr><td><code>python -m examples.demo_catch_phase</code></td><td>末态 lateral_error 稳定</td><td>~1 s</td></tr>
+      <tr><td><code>python -u -m scripts.quality_gate_counts</code></td><td>Count-bearing review docs sync to the current pytest count</td><td>300 s budget</td></tr>
+      <tr><td><code>python -m scripts.quality_gate_counts --check --skip-expensive</code></td><td>Quality-gate command docs stay in sync without rewriting files</td><td>&lt;1 s</td></tr>
     </tbody>
   </table>
 
@@ -925,17 +928,21 @@ disallowed: docs/*        ← 无运行时代码</div>
 
   <h3>阅读顺序（20 分钟预算）</h3>
   <ol>
-    <li>2 min — <a href="../claude-review/HANDOFF_CHECKLIST.md"><code>claude-review/HANDOFF_CHECKLIST.md</code></a></li>
-    <li>5 min — <a href="../claude-review/REVIEW_OF_CODEX_SESSION.md"><code>REVIEW_OF_CODEX_SESSION.md</code></a> §6 发现 + §8 结论</li>
-    <li>8 min — <a href="../claude-review/DETAILED_ARCHITECTURE.md"><code>DETAILED_ARCHITECTURE.md</code></a> §2 container + §4 runtime + §6 依赖护栏</li>
-    <li>5 min — <a href="../claude-review/EVENT_LIFECYCLE.md"><code>EVENT_LIFECYCLE.md</code></a> §3 三场景</li>
+    <li>2 min — <a href="../opus-review/HANDOFF.md"><code>docs/opus-review/HANDOFF.md</code></a></li>
+    <li>5 min — <a href="../../wiki/review-backlog.md"><code>wiki/review-backlog.md</code></a> + <a href="../codex-review/OPEN_RISKS.md"><code>docs/codex-review/OPEN_RISKS.md</code></a></li>
+    <li>8 min — <a href="../codex-review/QUALITY_GATES.md"><code>docs/codex-review/QUALITY_GATES.md</code></a> + <a href="../opus-review/OPUS_REVIEW_PACKET.md"><code>docs/opus-review/OPUS_REVIEW_PACKET.md</code></a></li>
+    <li>5 min — historical context only if needed: <a href="../claude-review/README.md"><code>docs/claude-review/README.md</code></a></li>
   </ol>
 
-  <h3>第一个 commit 的约定</h3>
+  <h3>当前评审入口约定</h3>
   <div class="info">
-    在你接手后的 <b>第一个 commit message 末尾写一行</b>：
-    <pre>Acknowledged: docs/claude-review/README.md</pre>
-    这是一个轻量级的"接手仪式"，防止 agent 跳过前一轮评审直接改代码。
+    不要把旧 <code>docs/claude-review/</code> 或 <code>docs/CODEX_HANDOFF.md</code> 当作当前 truth source。
+    当前状态、风险和命令以 Opus handoff、review backlog、open risks、quality gates 为准。
+    Git review scope is delegated to <code>docs/opus-review/HANDOFF.md</code>'s
+    <code>Git Review Scope Snapshot</code>: run
+    <code>git status --short --branch --untracked-files=all</code> and
+    <code>git ls-files --others --exclude-standard</code> before treating
+    <code>dirty/untracked</code> files as review scope.
   </div>
 </section>
 
@@ -980,7 +987,7 @@ disallowed: docs/*        ← 无运行时代码</div>
 
 <footer>
   <p>starship-recovery · knowledge base <b>v2 · 2026-05-12</b> · generated at commit <code>59389ee</code></p>
-  <p>本 HTML 与 <a href="../claude-review/README.md"><code>docs/claude-review/</code></a> 是一对接手包：可视化入口在这里，详尽细节在 claude-review/。</p>
+  <p>Current review handoff: <a href="../opus-review/HANDOFF.md"><code>docs/opus-review/HANDOFF.md</code></a>. Historical package: <a href="../claude-review/README.md"><code>docs/claude-review/</code></a>.</p>
 </footer>
 
 </body>

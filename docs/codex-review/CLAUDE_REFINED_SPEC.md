@@ -1,11 +1,16 @@
 # Claude Refined Spec for Next Codex Pass
 
-> Current status (2026-05-24): this file is historical execution rationale, not
-> the live backlog. PR-A through PR-D, allocator fallback semantics, EKF Joseph
+> Current status (2026-05-24): this file is historical execution rationale; it
+> is not the live backlog. PR-A through PR-D, allocator fallback semantics, EKF Joseph
 > hardening, docs/schema sync, package smoke, control-center exposure policy,
 > and release hygiene are implemented and covered by tests. Use
-> `wiki/review-backlog.md` and `docs/codex-review/OPEN_RISKS.md` for the current
-> next-work candidates.
+> `docs/opus-review/HANDOFF.md`, `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and `docs/codex-review/QUALITY_GATES.md`
+> for current completed/open status, next-work candidates, and command
+> authority. Use the handoff's `Git Review Scope Snapshot`, then refresh
+> `git status --short --branch --untracked-files=all` and
+> `git ls-files --others --exclude-standard` so dirty/untracked files remain in
+> review scope.
 
 > Scope: refine the `spacex-session` Codex review packet into executable engineering work. This spec is based on Claude's follow-up review of `docs/codex-review/*`, current code, and current tests.
 
@@ -21,8 +26,11 @@ Quality gates pass, and the remaining P1 semantic risks are now narrower than th
 
 This file is historical execution rationale for the pass that implemented the
 listed PR-A through PR-D work. Earlier review packets remain evidence and
-rationale; where priority wording differs, current source, tests, and
-`wiki/review-backlog.md` control implementation order.
+rationale; where priority wording differs, current source, tests,
+`docs/opus-review/HANDOFF.md`, `wiki/review-backlog.md`,
+`docs/codex-review/OPEN_RISKS.md`, and
+`docs/codex-review/QUALITY_GATES.md` control implementation order and command
+authority.
 
 Do not describe the current branch as "production-ready control stack". PR-A through PR-D are materially complete in the current workspace. The follow-on hardening items below remain open.
 

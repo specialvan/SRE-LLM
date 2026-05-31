@@ -3,6 +3,16 @@
 This is the current review request template for the project. It supersedes older
 requests that asked reviewers to re-check work now covered by tests.
 
+## Current Status Routing
+
+Before applying this request template, read `docs/opus-review/HANDOFF.md`, then
+`wiki/review-backlog.md`, then `OPEN_RISKS.md`, then `QUALITY_GATES.md`. Those
+live ledgers define the current completed/open state, risk register, and command
+authority. Use the handoff's `Git Review Scope Snapshot`, then refresh
+`git status --short --branch --untracked-files=all` and
+`git ls-files --others --exclude-standard` so dirty/untracked files remain in
+review scope.
+
 ## Expected Output
 
 Return findings first, not a feature summary.

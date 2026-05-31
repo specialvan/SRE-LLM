@@ -4,6 +4,16 @@ This file is retained as historical review context. Earlier findings drove the
 PR-A through PR-D hardening work and later audit passes. Current live risks are
 tracked in `OPEN_RISKS.md`.
 
+## Current Status Routing
+
+This is not the live review backlog. For current completed/open status, read
+`docs/opus-review/HANDOFF.md`, `wiki/review-backlog.md`, `OPEN_RISKS.md`, and
+`QUALITY_GATES.md` before using this historical review note as rationale. Use
+the handoff's `Git Review Scope Snapshot`, then refresh
+`git status --short --branch --untracked-files=all` and
+`git ls-files --others --exclude-standard` so dirty/untracked files remain in
+review scope.
+
 ## Historical Findings Now Resolved
 
 | Historical area | Current status |

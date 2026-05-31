@@ -1,247 +1,305 @@
-# Opus 评审交接
+# Opus Review Handoff
 
-日期: 2026-05-29
-仓库: `D:\workspace\SRE-LLM\spacex`
-分支: `spacex-session`
-范围: 给 Opus 重新介入评审的首读 handoff, 按当前工作区 git 内容域梳理。
+Date: 2026-05-31
+Repository: `D:\workspace\SRE-LLM\spacex`
+Branch: `spacex-session`
 
-当前 HEAD 和 ahead 数不在本文里钉死到某个 SHA 或固定数字。Opus 介入时请以
-`git status --short --branch`、`git log -1 --oneline` 和
-`git log --reverse --oneline origin/spacex-session..HEAD` 为准。本文只按内容域梳理近期
-提交序列, 不替代现场 git 输出。
+This is the current Opus re-review handoff. It is written as the first file an
+external reviewer should read before inspecting the larger packet. Treat the
+live ledgers as the source of truth before reading historical packets:
 
-本文只承担评审交接职责: 解释入口、提交分组、证据资产和复核命令。它不新增运行时语义,
-也不把 synthetic scenario evidence 升级为线上安全结论。本仓库仍是公开材料研究复现,
-不代表 SpaceX 官方实现。
+1. `wiki/review-backlog.md`
+2. `docs/codex-review/OPEN_RISKS.md`
+3. `docs/codex-review/QUALITY_GATES.md`
+4. `docs/opus-review/OPUS_REVIEW_PACKET.md`
+5. Historical packets under `claude-review/docs/` and `docs/opus-review/v1.0/`
 
-## 当前权威锚点
+The repository remains a public-material research reproduction. Synthetic
+scenario evidence is review evidence, not a production or SpaceX-official
+claim.
 
-Opus 先按当前 live ledger 判断状态, 再回看历史评审包。
+The returned `claude-review/docs/v2026-05-31/` packet is now historical review
+input. It found M1 pytest-count documentation drift and M2 an incomplete
+reviewer-side `quality_gate_counts` capture; the live status is the current
+handoff, `QUALITY_GATES.md`, `wiki/review-backlog.md`, and fresh command output.
 
-1. `docs/codex-review/OPEN_RISKS.md`: 当前开放风险入口。现在仍保留的核心风险是 R1
-   synthetic evidence boundary, 即新摘要和外部转述不能把场景内结果泛化。
-2. `wiki/review-backlog.md`: 跨会话完成状态和证据索引, 用来判断历史 finding 是否已经被
-   代码、测试或文档边界收敛。
-3. `docs/opus-review/OPUS_REVIEW_PACKET.md`: Opus 当前工程包, 用于命令复跑和 finding
-   对照, 但不能覆盖上面两个 live ledger。
-4. `claude-review/docs/v2026-05-28/README.md` 和
-   `claude-review/docs/v2026-05-26/README.md`: 外部历史评审上下文, 只作为复核输入。
+## Git Review Scope Snapshot
 
-这条顺序已由 `scripts.review_authority_lint` 约束, 并接入 `scripts.quality_gate_counts`。
+Opus should refresh this with
+`git status --short --branch --untracked-files=all` before making a review
+decision. The pre-submit local snapshot captured for this handoff was
+`spacex-session...origin/spacex-session [ahead 93]` with a large intentionally
+dirty review surface. If this handoff has already been committed, review the
+new content-split commits in `origin/spacex-session..HEAD` and treat the
+snapshot below as the pre-commit inventory that explains why those files belong
+in scope.
 
-## 当前基线
+Recommended git commands for the review setup:
 
-- 工作区: 以 `git status --short --branch` 为准; 本轮 handoff 更新时, 本地分支已包含
-  Opus/Codex 评审入口硬化、SRE runtime 输入边界加固、`adapter_exception` fallback
-  模式路由和 evidence report 合同收敛提交。
-- 最新提交: 不在本文中写死具体 SHA; 用 `git log -1 --oneline` 现场确认。
-- 当前文档同步目标中的 pytest 数量为 613; 规范输出行只在下方复核摘要中保留一次。
-- 当前质量门已覆盖 review authority lint、浏览器证据 replay、包烟测、控制中心集成审计、
-  三个 demo smoke、S10/S11/S12 证据链, 以及 `adapter_exception` 的 stage/family/cause/
-  fallback/recoverable 合同漂移检查。最近新增的 2 条测试专门覆盖 `fallback_action_modes`
-  映射键漂移和 mode 值未声明两类 stack contract 漂移。
-- 当前唯一 live 风险仍以 `docs/codex-review/OPEN_RISKS.md` 为准: 场景内证据不能被写成
-  泛化结论或官方算法说明。
+```bash
+git status --short --branch --untracked-files=all
+git log --oneline --decorate -5
+git log --reverse --oneline origin/spacex-session..HEAD
+git diff --name-status
+git ls-files --others --exclude-standard
+git diff --check
+```
 
-## 最近一轮交接重点
+- The tracked modified surface spans review docs, quality-gate scripts,
+  evidence-report split helpers, generated evidence summaries, historical
+  packet demotions, and targeted tests such as
+  `tests/test_synthetic_evidence_boundaries.py` and
+  `tests/test_quality_gate_counts.py`. Treat this as the current
+  review packet scope, not as unrelated churn.
+- Treat the dirty/untracked surface as review scope until a fresh reviewer
+  export or merge deliberately includes or excludes each item.
+- The untracked files are intentional review scope. They include the split
+  evidence consistency helper `analysis/evidence_consistency.py`, Superpowers
+  inventories `docs/superpowers/plans/README.md` and
+  `docs/superpowers/specs/README.md`, dated plan/spec artifacts, split
+  control-center tests such as `tests/test_control_center_browser_dom.py`, and
+  split evidence report tests such as `tests/test_evidence_report_manifest_shape.py` and
+  `tests/test_evidence_contract_boundary_report.py`.
+- For any merge or external packet export, do not omit untracked split files;
+  the synchronized quality gates and handoff claims depend on them.
+- `git diff --check` may print LF-to-CRLF warnings on this Windows checkout;
+  line-ending warnings are not review blockers when the command exits zero.
+- unexpected files outside these categories should be treated as review questions,
+  not silently ignored or reverted.
 
-本轮 Claude/Opus 复审前的新增工作集中在 `adapter_exception` fallback 语义闭环, 不是新增
-控制算法能力。Opus 抽查时应把它当成证据合同和运行时降级路径的一致性问题来看。
+Current untracked review-scope inventory:
 
-- `sre_control/stack_contract.py` 现在同时导出 `fallback_actions`、`fallback_action_modes` 和
-  `fallback_modes`; 具体 action 必须被 routed stage 声明, action 到 mode 的映射也必须被该
-  stage 声明。
-- `sre_control/stack.py::_fallback_mode()` 从 stack contract 派生映射, 未知 action 直接拒绝,
-  不再落到隐式 `custom_fallback`。
-- `analysis/evidence_report.py` 同时校验合同字段形态、action/mode 集合、trace 里的 routed
-  stage、`adapter_family`、`fault_family`、`cause_type`、`fallback_action`、`fallback_mode` 和
-  `recoverable=True`。
-- `tests/test_evidence_manifest.py` 现在覆盖字段畸形、action 集合漂移、mode 集合漂移、
-  action/mode 配对错误、映射键不匹配和 mode 值未声明; `tests/test_contracts.py` 覆盖运行时
-  `_fallback_mode()` 与导出合同的一致性。
+- `analysis/evidence_consistency.py`
+- `docs/superpowers/plans/2026-05-29-evidence-artifact-test-split.md`
+- `docs/superpowers/plans/2026-05-29-evidence-consistency-split.md`
+- `docs/superpowers/plans/2026-05-29-evidence-contract-report-test-split.md`
+- `docs/superpowers/plans/2026-05-29-evidence-manifest-check-test-split.md`
+- `docs/superpowers/plans/2026-05-29-evidence-manifest-generation-test-split.md`
+- `docs/superpowers/plans/2026-05-29-evidence-replay-artifact-report-test-split.md`
+- `docs/superpowers/plans/2026-05-29-evidence-report-manifest-shape-test-split.md`
+- `docs/superpowers/plans/2026-05-29-evidence-s10-trace-report-test-split.md`
+- `docs/superpowers/plans/2026-05-30-control-center-browser-dom-test-split.md`
+- `docs/superpowers/plans/2026-05-30-control-center-browser-manifest-test-split.md`
+- `docs/superpowers/plans/2026-05-30-evidence-contract-report-follow-on-split.md`
+- `docs/superpowers/plans/2026-05-30-evidence-report-orchestrator-cleanup.md`
+- `docs/superpowers/plans/README.md`
+- `docs/superpowers/specs/2026-05-29-evidence-artifact-test-split-design.md`
+- `docs/superpowers/specs/2026-05-29-evidence-consistency-split-design.md`
+- `docs/superpowers/specs/README.md`
+- `tests/test_control_center_browser_dom.py`
+- `tests/test_control_center_browser_error_manifest.py`
+- `tests/test_control_center_browser_manifest.py`
+- `tests/test_control_center_browser_report.py`
+- `tests/test_evidence_consistency.py`
+- `tests/test_evidence_contract_boundary_report.py`
+- `tests/test_evidence_contract_fallback_report.py`
+- `tests/test_evidence_contract_report.py`
+- `tests/test_evidence_contract_trace_report.py`
+- `tests/test_evidence_manifest_generation.py`
+- `tests/test_evidence_replay_artifacts_report.py`
+- `tests/test_evidence_replay_consistency_report.py`
+- `tests/test_evidence_replay_report.py`
+- `tests/test_evidence_report_artifact_paths.py`
+- `tests/test_evidence_report_contract_shape.py`
+- `tests/test_evidence_report_manifest_shape.py`
+- `tests/test_evidence_report_study_shape.py`
+- `tests/test_evidence_trace_report.py`
+- `tests/test_evidence_wrapper_report.py`
 
-## Opus 首读顺序
+## Content Partitions For Commit And Review
 
-1. `docs/opus-review/HANDOFF.md`: 这份交接, 先拿到范围、提交分组和复核命令。
-2. `docs/opus-review/README.md`: Opus 包入口和首读表, 重点看 live ledger 是否排在历史包前。
-3. `docs/codex-review/OPEN_RISKS.md`: 判断是否仍有 blocker 或只剩边界提醒。
-4. `wiki/review-backlog.md`: 对照完成状态、证据索引和下一步候选。
-5. `docs/opus-review/OPUS_REVIEW_PACKET.md`: 复核命令、证据资产和历史 finding 对照。
-6. `docs/EVENT_EVIDENCE_MANIFEST.md` 与 `docs/STACK_DATA_CONTRACT.md`: 机器可验的证据和
-   stack 边界。
-7. `docs/CONTROL_CENTER_HANDOFF.md`: 控制中心浏览器证据、本地暴露边界和前端契约。
-8. `claude-review/docs/v2026-05-28/README.md`: 上一轮外部评审上下文。
+Use these partitions when reading the new commits or when exporting the review
+packet. A file should appear in exactly one dominant partition even when it also
+supports a quality-gate count or documentation sync.
 
-## 按内容域拆分的提交索引
+| Partition | Primary paths | Review intent |
+|---|---|---|
+| Evidence report split | `analysis/evidence_report.py`, `analysis/evidence_consistency.py`, `tests/test_evidence_*.py`, `docs/EVENT_EVIDENCE_MANIFEST.md`, `docs/STACK_DATA_CONTRACT.md` | Confirm the reviewer CLI remains a thin orchestrator while manifest, artifact, study-consistency, and stack-contract checks have clear module/test ownership. |
+| Control-center browser evidence | `analysis/control_center_data.py`, `scripts/package_smoke.py`, `tests/test_control_center*.py`, `analysis/artifacts/control-center-*`, `docs/CONTROL_CENTER_HANDOFF.md` | Confirm normal, backend-error, and frontend-contract-error browser replay paths are covered by saved manifests, report replay, package smoke, and integration audit evidence. |
+| Review authority and quality gates | `scripts/review_authority_lint.py`, `scripts/evidence_boundary_lint.py`, `scripts/quality_gate_counts.py`, `tests/test_quality_gate_counts.py`, `tests/test_synthetic_evidence_boundaries.py`, current quality-gate docs | Confirm current ledgers precede historical packets, public prose stays inside the synthetic-evidence boundary, and the `943` pytest count plus canonical command block remain synchronized. |
+| Opus/Codex handoff and historical packets | `docs/opus-review/`, `docs/codex-review/`, `docs/claude-review/`, `claude-review/docs/`, `docs/claude-development-audit/`, `wiki/`, `spacex-Session.md` | Confirm historical review packets are trace inputs only, not current open-risk authority, and that Opus starts from this handoff plus live ledgers. |
+| Superpowers plan/spec inventory | `docs/superpowers/plans/`, `docs/superpowers/specs/` | Confirm dated execution traces and design notes are audit artifacts; open checkboxes in old prose are not treated as live risk unless the current ledgers agree. |
+| Generated metric and public-summary sync | `README.md`, `PR-REQUIREMENTS.md`, `analysis/artifacts/SUMMARY.txt`, `docs/V2_Knowledge/knowledge-base.html`, `docs/knowledge-base.html` | Confirm public summaries match current generated evidence and keep the research/synthetic boundary explicit. |
 
-以下按 `origin/spacex-session..HEAD` 的近期提交内容域整理。每行给出 Opus 建议优先看的复核点;
-完整顺序和是否又有新增提交以 `git log --reverse --oneline origin/spacex-session..HEAD` 为准。
+Suggested commit order:
 
-### A. 历史审计包和 Codex/Claude 台账基线
+1. Evidence report split and tests.
+2. Control-center browser evidence and generated browser artifacts.
+3. Review authority, evidence-boundary lint, and quality-gate synchronization.
+4. Superpowers plan/spec inventories.
+5. Opus/Codex handoff, historical-packet routing, wiki ledger, and public-summary
+   sync.
 
-| Commit | 中文说明 | Opus 复核点 |
-| --- | --- | --- |
-| `72e960c` | 落地 Claude development audit 包, 增加审计证据、报告、计划和初始 schema/contract 测试。 | 历史审计材料是否被标成上下文, 不应覆盖当前 live ledger。 |
-| `93e85ab` | 收尾审计包状态, 把完成/待办口径改成可交接版本。 | 状态词是否和实际代码、测试结果一致。 |
-| `6000034` | 澄清历史事件计数, 避免旧统计被误读为当前生成结果。 | 旧数字是否被降级为历史记录。 |
-| `2fc5b5e` | 对齐审计文档里的质量门计数。 | 计数是否由脚本同步, 而不是散落手写。 |
-| `0785d9e` | 刷新审计后的 `analysis/artifacts/SUMMARY.txt`。 | SUMMARY 变化是否来自生成器当前输出。 |
-| `0b2292f` | 同步最终分析证据, 修正 audit completion 报告引用。 | 文档引用是否指向存在的当前产物。 |
-| `5664d73` | 增加 post-commit review pass 和对应 snapshot/report。 | post-commit 结论是否只作为当时快照。 |
-| `c1dc48d` | 对齐 adapter exception taxonomy 相关文档。 | runtime 事件字段和文档术语是否一致。 |
-| `32913d0` | 记录 version policy 后续项。 | 版本策略是否仍只是 release hygiene, 没有伪造发布流程。 |
-| `66e55d7` | 收敛 Joseph form 文档漂移, 同步推导说明和控制中心 escaping 测试。 | EKF 文档、代码和测试是否仍一致。 |
+## Current Baseline
 
-### B. 基础质量门、包烟测、发布卫生和公开边界
+- Worktree and ahead count: inspect live with
+  `git status --short --branch --untracked-files=all`.
+- Current synchronized pytest count: `943`.
+- Fresh local verification from this continuation pass:
+  - `python -m pytest tests -q` passed.
+  - `python -m analysis.run_all` completed all 12 studies.
+  - `python -m analysis.evidence_manifest` regenerated the event evidence manifest.
+  - `python -m analysis.evidence_report` reported `artifact_check ok studies=3 files=8`.
+  - `python -m scripts.review_authority_lint` reported `review authority order ok`.
+  - `python -m scripts.evidence_boundary_lint` reported `evidence boundary lint ok`.
+  - `python -u -m scripts.quality_gate_counts` reported `quality gate pytest count: 943`.
+  - `python -m scripts.quality_gate_counts --check --skip-expensive` reported `quality gate docs check passed`.
+  - The v2026-05-31 returned-review M1/M2 count-sync findings are resolved for
+    the current handoff surface by these synchronized current-count checks.
 
-| Commit | 中文说明 | Opus 复核点 |
-| --- | --- | --- |
-| `056fd12` | 新增 `scripts.quality_gate_counts`, 自动同步 pytest count 和 canonical V2 HTML 入口。 | count target 是否覆盖 PR/V2/Codex/wiki/Opus 当前入口。 |
-| `982469e` | 增加 installed-wheel package smoke gate。 | wheel 安装后 import surface 是否真实验证。 |
-| `e90125c` | 加固 package smoke 质量门, 缺失命令和失败输出更明确。 | 失败时是否能定位缺口, `--check` 是否只读。 |
-| `0e82c1f` | 锁定 control-center 本地暴露边界。 | 默认 bind/Host 策略是否只允许本地回环。 |
-| `0ae5740` | 拆分 adapter exception cause taxonomy。 | `adapter_exception` 是否能区分 stage、fault family、fallback action 和 fallback mode。 |
-| `1b23897` | 增加 synthetic evidence boundary guard。 | 公开文档是否被 lint, 是否拒绝未限定的过界表述。 |
-| `8d8e064` | 增加 release hygiene 测试。 | 未发布项目是否避免误导性的 release/spec 口径。 |
+## Reviewer Runbook
 
-### C. Opus 历史评审输入
+Use this order so the review starts from current state instead of old packet
+context:
 
-| Commit | 中文说明 | Opus 复核点 |
-| --- | --- | --- |
-| `4cc2032` | 沉淀 Opus v1.0 深度评审包。 | v1.0 只作为历史 finding 来源。 |
-| `31e6ba9` | 补充 Opus v1.0 第二轮行级隐患和复现实证。 | 行级 finding 是否都能映射到当前测试或台账。 |
-| `925f62c` | 增加 Opus v2.0 Codex 工程包评审产出。 | F50-F60/G1 是否已转入当前 backlog 的 resolved/live 状态。 |
+1. First 15 minutes: run
+   `git status --short --branch --untracked-files=all`, inspect this handoff,
+   then read `wiki/review-backlog.md`, `docs/codex-review/OPEN_RISKS.md`, and
+   `docs/codex-review/QUALITY_GATES.md`.
+   Confirm whether the dirty/untracked set is intentional and whether any new
+   files are missing from the review surface.
+2. Evidence replay: use `docs/codex-review/QUALITY_GATES.md` as the canonical
+   command list, then run the minimum evidence commands in Section 5 of
+   `docs/opus-review/OPUS_REVIEW_PACKET.md`, especially
+   `analysis.evidence_manifest` before `analysis.evidence_report`. Expected
+   snippets are listed below, but the live command output is authoritative.
+3. Targeted code review: inspect the split evidence-report modules, stack
+   contract routing, adapter exception payloads, control-center browser
+   evidence, and quality-gate updater tests named in the Review Focus section.
+4. Risk decision: decide whether the remaining items in
+   `docs/codex-review/OPEN_RISKS.md` are acceptable research follow-ups or
+   blockers for the next merge/handoff.
 
-### D. SRE 运行时边界和数值安全收敛
+## Handoff Sanity Checklist
 
-| Commit | 中文说明 | Opus 复核点 |
-| --- | --- | --- |
-| `f679e6d` | 按 Opus 反馈收敛 SRE 控制边界: non-finite 输入、EKF/Joseph、fallback、事件 schema、稳定性和负载分配等。 | `sre_control/`, `starship/ekf.py`, `starship/stability_monitor.py` 与 `tests/test_sre_control.py`、`tests/test_contracts.py`、`tests/test_ekf.py` 是否形成回归网。 |
-| `553be48` | 拒绝非法控制周期 `dt`, 避免 stack tick 在非正或非有限时间步下继续推进。 | `SREControlStack.step()` 是否在入口失败并保持 trace 状态可解释。 |
-| `9b51dd9` | 收敛 autoscaler 运行时输入边界。 | `PredictiveAutoscaler.step()` 是否拒绝非有限/负值 RPS 与非法副本数, 且不污染 warm-start trace。 |
-| `cc197fe` | 收敛 topology 状态积分输入边界。 | `TopologyState.step()` 是否在 mutation 前拒绝非法 dt、速度和角速度。 |
-| `6e8105b` / `ecfe511` | 加固流量切换计划输入并校验安全余量。 | `FastTrafficSwitcher` 是否拒绝非法 rate、deadline、share 和 margin, terminal share 是否仍受保护。 |
-| `bb90ab7` | 收敛灰度调度输入边界。 | `CanaryScheduler` 构造、proposal、observation 三类输入是否都有测试覆盖。 |
-| `102fbad` | 收敛连接池规划输入边界。 | `PoolCapacityPlanner` 是否拒绝非法容量/成本/预测数据, 并保持容量缺口事件语义。 |
-| `d5fd942` / `03cfa4f` | 收敛 catch adapter 输入边界并补齐 API 合同。 | `CatchLoadAdapter` 是否在进入 bounded-LS 前拒绝非法需求和 placement target, 且不越过 `starship/` 与 `sre_control/` 依赖边界。 |
-| `c1b4846` | 收敛 StabilityGuard 输入边界。 | `StabilityGuard` 是否在构造阶段拒绝非法 tolerance/window/k/label, 在 step 阶段拒绝非有限 state/time, 且 `sre_error_budget_V` 只接受有限 target 和正有限 scale。 |
-| `48ae7fb` | 拒绝布尔型稳定守卫计数配置。 | `k_violations` 和 `window` 是否显式排除 `True/False`, 避免 Python bool-as-int 语义把布尔值当作窗口计数。 |
+- Fresh `git status --short --branch --untracked-files=all` has been captured
+  by the reviewer.
+- `python -m pytest --collect-only -q tests` still totals 943 collected tests.
+- `analysis.evidence_report` is run after `analysis.evidence_manifest` when
+  generated evidence may have changed.
+- Browser evidence includes normal, backend-error, and frontend-error manifest
+  replay paths.
+- New untracked split files are included in the review and not silently omitted
+  from any handoff or merge scope.
+- Root `spacex-Session.md` is treated as a historical session export, not a
+  current review authority; use this handoff and the live ledgers instead.
+- `docs/superpowers/plans/README.md` and
+  `docs/superpowers/specs/README.md` have been checked before using any dated
+  plan or design note as evidence; those files are execution trace artifacts
+  and design note artifacts, not the live review backlog.
+- Do not promote synthetic scenario evidence to production proof, and do not
+  describe the repository as a SpaceX-official implementation.
 
-### E. 事件证据链、S10/S11/S12 和分析报告
+## Evidence Report Split State
 
-| Commit | 中文说明 | Opus 复核点 |
-| --- | --- | --- |
-| `fa73ac0` | 建立 S10/S11/S12 事件证据清单、manifest、report、fixed replay fixture 和 stack contract 校验。 | repo-relative path、SHA/bytes、strict JSON/JSONL/PNG parse、事件 schema 校验是否都在 report 中失败可见。 |
-| `b6ee79b` | 刷新分析和浏览器审计产物。 | 产物是否由当前命令重放生成, manifest byte identity 是否匹配。 |
-| `9b70909` | 稳定控制中心 DOM 证据哈希, 降低 Windows 行尾/HTML 大块漂移。 | manifest sha/bytes 是否不再因不必要 HTML snapshot 漂移。 |
-| `3fb5464` | 让控制中心集成审计可复现, 避免 `generated_at` 污染。 | 连续运行 audit 是否保持稳定输出。 |
-| `1da8e3f` | 刷新 S11 catch/SRE wrapper 图像。 | 图像是否和当前生成器输出一致。 |
+`analysis.evidence_report` is now the thin reviewer CLI/orchestrator. Validation
+ownership is split as follows:
 
-### F. 控制中心前端契约和本地浏览器证据
+- `analysis.evidence_artifacts`: artifact paths, missing files, byte identity,
+  JSON/JSONL/PNG parseability, trace and runtime-event schema checks.
+- `analysis.evidence_manifest_checks`: manifest top-level, study, contract,
+  artifact key/extension, metadata, and SHA-256 shape checks.
+- `analysis.evidence_consistency`: S10/S11/S12 study-level consistency checks.
+- `analysis.evidence_contracts`: stack-contract artifact consistency and
+  trace-route contract-event checks.
 
-| Commit | 中文说明 | Opus 复核点 |
-| --- | --- | --- |
-| `64b8dd9` | 加固 control-center 前端契约、本地服务暴露边界、浏览器 smoke 和 integration audit。 | share-state 白名单、动态文本 escaping、normal/backend_error/frontend_error 三类 manifest replay 是否都被测试和质量门覆盖。 |
+Report-path test ownership is also split:
 
-### G. 质量门扩展和命令同步
+- `tests/test_evidence_manifest.py`: report smoke plus artifact presence,
+  metadata, and byte-identity failures.
+- `tests/test_evidence_report_manifest_shape.py`: top-level manifest JSON/file
+  rejection paths.
+- `tests/test_evidence_report_study_shape.py`: study-entry manifest-shape
+  rejection paths.
+- `tests/test_evidence_report_contract_shape.py`: contract-entry
+  manifest-shape rejection paths.
+- `tests/test_evidence_report_artifact_paths.py`: artifact path portability,
+  key parity, and extension rejection paths.
+- `tests/test_evidence_contract_report.py`: stack-contract artifact scope,
+  route-map, and stage-interface report paths.
+- `tests/test_evidence_contract_fallback_report.py`: stack-contract fallback
+  field and fallback action/mode map report paths.
+- `tests/test_evidence_contract_trace_report.py`: stack-contract trace-route
+  fallback, adapter-family, fault-family, exception-cause, and recoverability
+  report paths.
+- `tests/test_evidence_contract_boundary_report.py`: stack-contract
+  split-boundary and trace-event routing report paths.
+- `tests/test_evidence_trace_report.py`: S10 trace consistency, time-field, and
+  runtime-event schema report paths.
+- `tests/test_evidence_wrapper_report.py`: S11 catch-wrapper PNG and diagnostics
+  report paths.
+- `tests/test_evidence_replay_report.py`: S12 diagnostics artifact-field report
+  paths.
+- `tests/test_evidence_replay_consistency_report.py`: S12 replay diagnostics
+  consistency report paths.
+- `tests/test_evidence_replay_artifacts_report.py`: S12 replay
+  trace/fixture/schema report paths.
 
-| Commit | 中文说明 | Opus 复核点 |
-| --- | --- | --- |
-| `d00dc8b` | 扩展评审质量门和包烟测, 将 browser/package/integration 等命令纳入同步。 | 必跑命令是否同时出现在 PR/V2/Codex/Opus/wiki 文档。 |
-| `3198d8e` | 让 Opus handoff 中的 pytest count 进入 `QUALITY_GATE_TARGETS`。 | 修改测试数后 handoff 是否会被同一脚本更新。 |
-| `b5c950d` | 将 full pytest 和 collect-only 质量门 timeout 提高到 300 秒。 | Opus 复跑机器抖动是否有足够余量。 |
-| `a8444fa` | 同步完整质量门 477 count。 | 旧 count 是否只通过脚本写入。 |
-| `3e062d1` | 同步质量门 481 count。 | 新增 authority-order 测试后的 count 是否全入口一致。 |
-| `934e650` | 同步质量门 483 count。 | 抽象 lint 后的 count 是否全入口一致。 |
-| `014df0a` | 将 `scripts.review_authority_lint` 接入质量门命令集合。 | 当前 ledger 优先顺序是否成为必跑 gate。 |
-| `896a333` | 同步质量门 485 count。 | gate 增量后所有文档 target 是否一致。 |
-| `b6073c8` | 扩展 live 评审台账命令校验, 覆盖 handoff 和 wiki backlog。 | `QUALITY_GATE_COMMAND_DOCS` 是否包含 live ledger。 |
-| `0a0252f` | 固化 Opus README 权威顺序, 支持 README 相对路径 alias。 | Opus README 的首读表是否和 live ledger 顺序一致。 |
-| `dd3d2a7` / `71b2c0a` / `cdbe01c` / `0c8f624` / `a61c446` / `3c54105` / `94ddb83` / `20dbb59` | 伴随运行时输入边界加固持续同步质量门计数。 | 每次新增回归测试后, PR/V2/Codex/Opus/wiki 的 pytest count 是否由 `scripts.quality_gate_counts` 同步。 |
-| `92fab09` | 将 StabilityGuard 布尔边界新增测试后的质量门目标同步到 589。 | 这是最近一轮前置基线, 不是当前最终 count; 当前 count 以 613 和现场 `quality_gate_counts` 输出为准。 |
+Direct helper tests live in `tests/test_evidence_artifacts.py`,
+`tests/test_evidence_manifest_checks.py`, `tests/test_evidence_consistency.py`,
+`tests/test_evidence_contracts.py`, and
+`tests/test_evidence_manifest_generation.py`.
 
-### H. Adapter exception fallback 路由和证据合同加固
+## Review Focus
 
-| Commit | 中文说明 | Opus 复核点 |
-| --- | --- | --- |
-| `77524e7` | 增加 `adapter_exception.fallback_mode`, 将具体 fallback action 映射为粗粒度替代策略, 并同步 stack data contract。 | `sre_control/events.py`、`sre_control/stack.py`、`sre_control/stack_contract.py` 是否对 schema、event factory 和导出合同保持一致。 |
-| `8f7237c` | 让 `analysis.evidence_report` 校验 trace 中的 `fallback_mode` 必须被 routed stage 的 `fallback_modes` 声明。 | 篡改 S10 trace 的 `fallback_mode` 时, report 是否给出 `contract_unrouted_fallback_mode`。 |
-| `ab63733` | 校验 `adapter_exception.adapter_family` 与 stack contract 中由 `event.stage` 路由出的 contract stage 一致。 | trace 不能把 `SignalFusion` 事件伪装成 `guard`/`allocate` 等其他 adapter family。 |
-| `637df4c` | 校验 `fault_family` 与 `cause_type` 同步, 避免相同异常被两个字段表达成不同故障族。 | `fault_family` 是否仍只作为可路由维度, 不制造和 `cause_type` 冲突的第二套真相。 |
-| `a8bc91b` | 校验 `exception_type` 到 `cause_type` 的映射: `AdapterInputError -> adapter_input`。 | 输入边界错误是否被报告为 adapter 输入问题, 而不是泛化成控制域异常。 |
-| `b38e1bb` | 校验 `RecoverableControlError -> control_domain` 的原因映射。 | 控制域可恢复异常是否和 adapter 输入异常保持可区分。 |
-| `6e2efdd` | 拒绝 `adapter_exception.recoverable != True` 的证据 trace。 | evidence report 是否阻止不可恢复或 programmer-error 路径被伪装成 recoverable fallback 证据。 |
-| `051898f` | 校验 `fallback_action` 必须由 routed stage 的 `fallback_actions` 声明。 | trace 里的具体降级动作是否不能跨 stage 借用或伪造。 |
-| `be7ec40` | 校验 `fallback_action` 与 `fallback_mode` 必须按合同成对出现。 | `keep_current_replicas` 这类 action 是否不能错误标成 `skip_optional_stage`。 |
-| `9fa84af` | 固化 stack contract 与运行时 `_fallback_mode()` 映射一致性。 | 导出合同和实际事件生成路径是否不会各自维护一套 fallback truth。 |
-| `28483f` | 拒绝未知 fallback action, 移除隐式 `custom_fallback` 兜底。 | 新增降级动作是否必须先进入合同, 不能靠默认 mode 悄悄通过。 |
-| `cba363c` | 收敛 `fallback_actions`、`fallback_modes`、`fallback_action_modes` 字段畸形校验。 | 合同字段类型错误是否在 evidence report 中以 stage interface 错误失败。 |
-| `7aa7d4d` | 拆分 `analysis.evidence_contracts`, 将 stack contract 一致性和 trace 路由校验从 evidence report 主模块移出。 | 拆分是否保持 `analysis.evidence_report` 的 artifact/report 行为不变, 且 `tests/test_evidence_contracts.py` 直接覆盖新模块的 fallback/action-family 漂移分支。 |
-| `ca36e09` | 拆分 `analysis.evidence_artifacts`, 将 artifact path、missing、byte identity、JSON/JSONL/PNG parse 和 event schema 校验从 evidence report 主模块移出。 | 拆分是否保持 `analysis.evidence_report` 的 CLI 输出不变, 且 `tests/test_evidence_artifacts.py` 直接覆盖 stale metadata、fixture shape 和 runtime event schema 分支。 |
-| 待现场 SHA | 拆分 `analysis.evidence_manifest_checks`, 将 manifest top-level、study/contract shape、artifact path key/extension 和 metadata shape 校验从 evidence report 主模块移出。 | `analysis.evidence_report` 是否只调用 `manifest_shape_errors`, 且 `tests/test_evidence_manifest_checks.py` 直接覆盖 generated manifest、duplicate/missing study 和 contract metadata shape 分支。 |
+Start with these areas when re-reviewing the current workspace:
 
-Opus 抽查这一组时, 优先看 `analysis/evidence_contracts.py` 的 `contract_event_errors`,
-`analysis/evidence_artifacts.py` 的 artifact/schema 入口, `analysis/evidence_manifest_checks.py` 的 manifest shape 入口,
-`analysis/evidence_report.py` 对新模块的调用点,
-`tests/test_evidence_manifest.py` 中注入 S10 trace 语义漂移的用例, 以及
-`docs/STACK_DATA_CONTRACT.md` 对 `fallback_actions`、`fallback_action_modes`、`fallback_modes`
-和异常分类的边界说明。最新模块级测试还覆盖 `stage_fallback_action_mode_unknown`、
-`contract_adapter_family_mismatch`、stale artifact metadata、runtime event schema 和 manifest shape 漂移分支,
-以现场 `git log -1 --oneline` 为准。
+1. Review authority order: `scripts.review_authority_lint`,
+   `wiki/review-backlog.md`, `OPEN_RISKS.md`, `QUALITY_GATES.md`, and
+   `OPUS_REVIEW_PACKET.md`.
+2. Evidence boundary wording: synthetic evidence must remain scoped as
+   scenario/replay/research evidence. Check `scripts/evidence_boundary_lint.py`
+   and `tests/test_synthetic_evidence_boundaries.py` for both overclaim wording
+   and dynamic public prose coverage.
+3. Evidence report modularization: confirm the split modules preserve
+   reviewer-facing CLI output and phase ordering.
+4. Stack contract and adapter exception routing: check `sre_control/stack.py`,
+   `sre_control/events.py`, `sre_control/stack_contract.py`,
+   `analysis/evidence_contracts.py`, `tests/test_contracts.py`,
+   `tests/test_evidence_contract_report.py`,
+   `tests/test_evidence_contract_fallback_report.py`,
+   `tests/test_evidence_contract_trace_report.py`, and
+   `tests/test_evidence_contract_boundary_report.py`.
+5. Control-center browser evidence: check
+   `scripts.control_center_browser_smoke`,
+   `tests/test_control_center_browser_dom.py`,
+   `tests/test_control_center_browser_smoke.py`,
+   `tests/test_control_center_browser_manifest.py`,
+   `tests/test_control_center_browser_error_manifest.py`,
+   `tests/test_control_center_browser_report.py`,
+   `tests/test_control_center_integration_audit.py`,
+   `analysis/artifacts/control-center-browser-evidence-report.json`, and
+   `docs/CONTROL_CENTER_HANDOFF.md`.
+6. Quality-gate updater coverage: check `scripts/quality_gate_counts.py` and
+   `tests/test_quality_gate_counts.py` for synchronized count updates,
+   required command coverage, Opus authority ordering, evidence-boundary CLI
+   coverage, stale non-quiet full-suite command rejection, update-before-check
+   command ordering, full canonical command-sequence enforcement, contiguous
+   command-surface enforcement, and Superpowers plan/spec inventory guards.
 
-### I. Opus 交接、live ledger 和 authority-order 硬化
+## Questions For Opus
 
-| Commit | 中文说明 | Opus 复核点 |
-| --- | --- | --- |
-| `8fd9b84` | 同步 Opus/Codex 评审包和证据边界台账, 新增 `OPUS_REVIEW_PACKET.md`。 | 当前风险、历史 finding 和证据资产是否没有互相冲突。 |
-| `bf63c43` | 增加 Opus 复审 handoff 并同步质量门计数。 | handoff 是否列出复核命令、证据资产和边界。 |
-| `7a99411` | 中文化 Opus 复审交接入口。 | 中文入口是否方便 Opus 直接阅读。 |
-| `77540c3` | 隔离 Section 11 测试产物写入到 pytest `tmp_path`。 | 全量 pytest 后 canonical S11 图像是否不被测试污染。 |
-| `9b0c88d` | 将 Opus handoff/README 纳入 evidence-boundary lint。 | 新交接文案是否会被过界表述测试拦截。 |
-| `52b629a` | 补齐 handoff 中的 review hardening 提交。 | handoff 是否覆盖 S11 隔离、lint/count sync、timeout 余量。 |
-| `9b050e5` | 在 wiki backlog 记录 Opus 入口硬化台账。 | 长期 ledger 是否能追踪这轮入口加固。 |
-| `50ac77b` | 强化复审首读交接入口和 Opus README。 | 首读顺序、边界和命令入口是否明确。 |
-| `fd39d89` | 扩展中文 evidence-boundary lint。 | 中文评审文案里的 synthetic evidence 过界是否可被测试发现。 |
-| `41dcc01` | 固化 Opus handoff 的当前 ledger 优先顺序。 | `OPEN_RISKS` 和 `review-backlog` 是否排在历史 packet 前。 |
-| `cc2008a` | 固化 wiki 推荐入口的当前 ledger 优先顺序。 | wiki 当前入口是否不会先导向历史包。 |
-| `f992531` | 抽象 review authority lint, 统一入口顺序检查。 | 新增评审入口时是否只需扩展一个 lint 配置。 |
-| `987a280` | 梳理当前评审交接稿。 | handoff 是否按内容域说明 git 进展, 而不是只列命令。 |
-| `a2722de` / `38cc4fe` | 覆盖 Codex 和 Opus 评审入口权威顺序。 | README、packet、handoff 的 current ledger 优先级是否被测试固定。 |
+Please make the re-review decision against these concrete questions:
 
-## 按内容域复核路径
+1. Are any current `docs/codex-review/OPEN_RISKS.md` items blockers, or are
+   they acceptable follow-up research slices?
+2. Does the evidence-report split preserve the same reviewer-facing CLI
+   behavior while improving test/module ownership?
+3. Do the stack data contract and adapter exception payloads provide enough
+   routeability for the current single-process research stack boundary?
+4. Does the control-center browser evidence sufficiently cover normal,
+   backend-error, and frontend-contract-error replay paths for this research
+   handoff?
+5. Are any dirty or untracked files outside the intentional merge/review scope
+   shown by the live `git status --short --branch --untracked-files=all`
+   output?
+6. Does `scripts.evidence_boundary_lint` fail closed when new public prose docs
+   are added without boundary-lint coverage?
 
-1. **入口/台账一致性**: 对照 `docs/opus-review/README.md`、本文件、
-   `docs/codex-review/OPEN_RISKS.md`、`wiki/review-backlog.md` 和
-   `scripts/review_authority_lint.py`。重点确认当前 ledger 先于历史 packet。
-2. **质量门可复跑性**: 从 `scripts/quality_gate_counts.py` 的
-   `CURRENT_QUALITY_GATE_COMMANDS`、`QUALITY_GATE_COMMAND_DOCS`、`QUALITY_GATE_TARGETS` 开始,
-   核对 `tests/test_quality_gate_counts.py` 对命令存在性、manifest-report 顺序、只读 `--check`、
-   Opus handoff count sync 的覆盖。
-3. **证据边界与文案 lint**: 从 `scripts/evidence_boundary_lint.py` 和
-   `tests/test_synthetic_evidence_boundaries.py` 开始, 核对 README、PR、wiki、V2、Codex、Opus
-   review 入口是否都在 lint 面内。
-4. **机器证据链**: 从 `analysis.evidence_manifest`、`analysis.evidence_report`、
-   `docs/EVENT_EVIDENCE_MANIFEST.md`、`docs/STACK_DATA_CONTRACT.md` 开始, 核对 repo-relative
-   path、SHA-256/bytes、strict JSON/JSONL/PNG parse、runtime event schema 和 stack contract。
-5. **Adapter exception 语义路由**: 从 `sre_control/stack.py`、`sre_control/events.py`、
-   `sre_control/stack_contract.py`、`analysis/evidence_report.py`、`tests/test_contracts.py` 和
-   `tests/test_evidence_manifest.py` 开始, 核对 `event.stage` 路由出的 contract stage 是否同时约束
-   `adapter_family`、`fallback_mode`、异常原因映射、`fault_family` 和 `recoverable=True`。
-6. **控制中心浏览器证据**: 从 `scripts.control_center_browser_smoke`、
-   `analysis/artifacts/control-center-browser-evidence-report.json`、`docs/CONTROL_CENTER_HANDOFF.md`
-   开始, 核对 normal/backend_error/frontend_error 三类 replay 和 DOM/contract 错误信息。
-7. **运行时 hardening 抽查**: 从 `sre_control/`、`starship/ekf.py`、
-   `starship/stability_monitor.py`、`tests/test_sre_control.py`、`tests/test_contracts.py`、
-   `tests/test_ekf.py` 开始, 抽查 F50-F81 与 v1.0 P0/P1 finding 的回归测试是否还在。
+## Recommended Re-Run Commands
 
-## 复核命令
-
-建议 Opus 从干净工作区或清晰暂存范围运行。下面命令同时也是当前质量门文档必须保留的命令集合。
-
-```powershell
+```bash
 python -m pytest tests -q
-python -u -m scripts.quality_gate_counts
-python -m scripts.quality_gate_counts --check --skip-expensive
 python -m analysis.s10_failure_trace
 python -m analysis.run_all
 python -m analysis.evidence_manifest
@@ -250,81 +308,26 @@ python -m scripts.control_center_browser_smoke --report-manifests --report-json 
 python -m scripts.package_smoke
 python -m scripts.control_center_integration_audit
 python -m scripts.review_authority_lint
+python -m scripts.evidence_boundary_lint
 python -m examples.demo_sre_loop
 python -m examples.demo_powered_descent
 python -m examples.demo_catch_phase
+python -u -m scripts.quality_gate_counts
+python -m scripts.quality_gate_counts --check --skip-expensive
 ```
 
-当前文档同步目标中的关键输出摘要应包含:
+Expected key output snippets in the current docs:
 
 ```text
-quality gate pytest count: 613
+quality gate pytest count: 943
 artifact_check ok studies=3 files=8
 manifest_replay=normal+backend_error+frontend_error
 control-center integration audit ok
 review authority order ok
+evidence boundary lint ok
 ```
 
-浏览器证据命令的摘要还应包含 normal desktop+mobile、backend contract error、frontend contract
-error 三类 replay。若 DOM hash 或 bytes 变化, 先判断是否是当前生成器输出差异, 不要直接当成
-源码回归。
-
-## 证据资产
-
-机器可读重点:
-
-- `analysis/artifacts/event_evidence_manifest.json`
-- `analysis/artifacts/s10_trace_full.jsonl`
-- `analysis/artifacts/s10_trace_sample.jsonl`
-- `analysis/artifacts/s11_catch_sre_wrapper_diagnostics.json`
-- `analysis/artifacts/s12_replay_trace.jsonl`
-- `analysis/artifacts/s12_replay_diagnostics.json`
-- `analysis/artifacts/sre_stack_data_contract.json`
-- `analysis/artifacts/control-center-browser-*-manifest.json`
-- `analysis/artifacts/control-center-browser-evidence-report.json`
-- `analysis/artifacts/control-center-integration-audit.json`
-
-视觉和 HTML 重点:
-
-- `analysis/artifacts/s10_event_density.png`
-- `analysis/artifacts/s11_catch_sre_wrapper.png`
-- `analysis/artifacts/s09_sre_stack.png`
-- `docs/V2_Knowledge/knowledge-base.html`
-
-## 建议审查问题
-
-1. SRE runtime guard 是否在入口拒绝 non-finite 值, 而不是依赖下游偶然失败。
-2. `adapter_exception`、`bounded_ls_residual`、`stability_violation` 等事件 payload 是否满足
-   `sre_control.events.EVENT_FIELD_SCHEMA`; 尤其是 `adapter_exception` 的 `adapter_family`、
-   `fault_family`、`fallback_action`、`fallback_mode` 和 `recoverable` 是否不能和 routed contract
-   stage 漂移。
-3. `analysis.evidence_report` 是否严格校验 repo-relative path、bytes、sha256、JSON/JSONL/PNG
-   可解析性和 stack contract 边界。
-4. control-center 前端是否只通过白名单恢复 share-state, 动态文本是否走 text/escape 路径,
-   错误路径是否不能注入 DOM。
-5. 浏览器 smoke 的 manifest replay 错误信息是否给出 manifest、viewport、DOM path 和 regeneration
-   command。
-6. `scripts.quality_gate_counts` 是否真正保持 PR、V2 HTML、Codex quality gates、Opus packet、
-   Opus handoff、wiki ledger 中的命令和计数同步。
-7. `scripts.review_authority_lint` 是否覆盖所有当前评审入口, 且当前 ledger 永远先于历史 packet。
-
-## 边界
-
-- 当前开放风险以 `docs/codex-review/OPEN_RISKS.md` 为准。场景内 synthetic evidence 不能被写成
-  泛化结论。
-- 本仓库是公开材料研究复现, 不代表 SpaceX 官方实现。
-- `analysis.run_all`、`scripts.quality_gate_counts` 和 evidence manifest 命令可能刷新产物时间、
-  图像或摘要。复跑后先判断差异是否来自当前生成器输出。
-- `docs/opus-review/v1.0/`、`claude-review/docs/v2026-05-26/`、
-  `claude-review/docs/v2026-05-28/` 是历史输入, 不是当前 open-risk ledger。
-- 浏览器 smoke 的三类生成模式不要并行运行; 系统浏览器可能共享临时 profile。
-
-## 交付判定
-
-本轮 handoff 的目标是让 Opus 快速复审当前工作区, 不是合并到主干。Opus 应能做到:
-
-- 按内容域定位代码、测试、证据和文档。
-- 用固定命令重放证据链。
-- 从当前风险台账判断是否仍有 blocker。
-- 把历史 finding 与当前代码、测试、产物对应起来。
-- 发现新问题时, 优先写成可复现 finding, 再进入下一轮小步修复。
+Browser evidence summaries should include normal desktop/mobile replay, backend
+contract error replay, and frontend contract error replay. If DOM hashes or
+artifact bytes change after rerunning generators, first decide whether the diff
+comes from current generator output before treating it as a source regression.

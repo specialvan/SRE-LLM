@@ -17,7 +17,7 @@ invariants:
   - I-4 文档不钉死 HEAD：不得在文档里写"最新 commit = <具体 SHA>"，用"近期日志包含 <关键 commit>"表达
   - I-5 adapter 异常不崩栈：任何 SREControlStack 阶段抛出 `RecoverableControlError` 必须转为 `adapter_exception` event + `DEGRADED_<stage>`；`stability_violation` 仅保留给 Lyapunov / 稳定性红线
 quality-gates:
-  - python -m pytest tests          # 613 passed
+  - python -m pytest tests -q       # 943 passed
   - python -m analysis.s10_failure_trace
   - python -m analysis.run_all      # 12 studies finish <4s
   - python -m analysis.evidence_manifest
@@ -26,9 +26,12 @@ quality-gates:
   - python -m scripts.package_smoke
   - python -m scripts.control_center_integration_audit
   - python -m scripts.review_authority_lint
+  - python -m scripts.evidence_boundary_lint
   - python -m examples.demo_sre_loop
   - python -m examples.demo_powered_descent
   - python -m examples.demo_catch_phase
+  - python -u -m scripts.quality_gate_counts
+  - python -m scripts.quality_gate_counts --check --skip-expensive
 event-kinds-total: 11
 ---
 
@@ -75,7 +78,7 @@ event-kinds-total: 11
 
 | Gate | 命令 | 预期 |
 |---|---|---|
-| 单元测试 | `python -m pytest tests` | **613 passed** |
+| 单元测试 | `python -m pytest tests -q` | **943 passed** |
 | Section 10 trace | `python -m analysis.s10_failure_trace` | full/sample JSONL trace artifacts exported |
 | 基准证据 | `python -m analysis.run_all` | All 12 studies finish in ~3 s |
 | 事件证据 manifest | `python -m analysis.evidence_manifest` | S10/S11/S12 JSON/JSONL evidence + stack contract exported |
@@ -84,6 +87,7 @@ event-kinds-total: 11
 | Package smoke | `python -m scripts.package_smoke` | installed wheel imports plus control-center evidence report validation |
 | 控制中心联调审计 | `python -m scripts.control_center_integration_audit` | Browser evidence report + current backend payload fingerprint match |
 | Review authority lint | `python -m scripts.review_authority_lint` | Current ledgers remain before historical review packets in handoff entrypoints |
+| Evidence boundary lint | `python -m scripts.evidence_boundary_lint` | Public/review prose remains covered and avoids unqualified production or SpaceX-internal claims |
 | 端到端 Demo | `python -m examples.demo_sre_loop` | 12 行 trace 无异常 |
 | PDG Demo | `python -m examples.demo_powered_descent` | 末态位置 ~2e-6 m |
 | Catch Demo | `python -m examples.demo_catch_phase` | lateral_error 稳定在窗口内 |
@@ -671,7 +675,10 @@ disallowed: docs/*        ← no runtime code
   - `HANDOFF_CHECKLIST.md` · 15 分钟环境核查
 - **DoD**：
   - 任何 agent 只读这 6 份文档即可决定是否接手
-  - 第一个 commit message 末尾必须含 `Acknowledged: docs/claude-review/README.md`
+  - Historical snapshot: the old first-commit `Acknowledged: docs/claude-review/README.md`
+    ritual belonged to this 2026-05-12 packet only. 旧 Claude acknowledgment 要求已废弃；
+    current Opus review starts from `docs/opus-review/HANDOFF.md`, then checks
+    `wiki/review-backlog.md` for live completed/open status.
 - **Evidence**：`docs/claude-review/`
 
 ### PR-13-02 · V2 Knowledge Base
@@ -907,7 +914,7 @@ disallowed: docs/*        ← no runtime code
 | PR-4-02 | image-18 | Cone + ball 闭式投影 | 同上 `ConeQPFilter` | 同上 | s04 `cone_viol 97.4%→0%` | `cf9c8dc` |
 | PR-5-01 | image-1 | EKF predict/update | `starship/ekf.py :: EKF` | `test_ekf.py` | s05 | `cf9c8dc` |
 | PR-5-02 | image-10 | Radar h/H | `ekf.py :: RadarMeasurement` | 同上 | s05 | `cf9c8dc` |
-| PR-5-03 | image-19 | IMU + Fiducial + MultiSensor | `ekf.py` | 同上 | s05 `vel_rmse 481→51` | `cf9c8dc` |
+| PR-5-03 | image-19 | IMU + Fiducial + MultiSensor | `ekf.py` | 同上 | s05 `vel_rmse 629.4→9.374` | `cf9c8dc` |
 | PR-6-01 | image-2 | ZOH 离散 | `starship/mpc.py :: LinearDiscretizer` | `test_mpc.py` | s06 | `cf9c8dc` |
 | PR-6-02 | image-3 | `J=ΣxᵀQx+uᵀRu+x_NᵀPx_N` | `mpc.py :: QuadraticMPC` | 同上 | s06 `final_err 0.012→3e-7` | `cf9c8dc` |
 | PR-6-03 | image-4 | Warm-start shift | 同上 `.step()` | 同上 | s06 | `cf9c8dc` |

@@ -2,32 +2,43 @@
 
 This directory is a review handoff packet. It preserves historical review
 context, but current source, tests, `wiki/review-backlog.md`, `OPEN_RISKS.md`,
-and `QUALITY_GATES.md` control live execution order.
+and `QUALITY_GATES.md` control live execution order. For Opus review, start at
+`docs/opus-review/HANDOFF.md` and its `Git Review Scope Snapshot`; refresh
+`git status --short --branch --untracked-files=all` and
+`git ls-files --others --exclude-standard` so dirty/untracked files remain in
+the review surface.
 
 ## Contents
 
 | File | Purpose |
 |---|---|
-| [`CODEX_SUMMARY.md`](./CODEX_SUMMARY.md) | Historical architecture/evidence summary for Claude review |
+| [`CODEX_SUMMARY.md`](./CODEX_SUMMARY.md) | Current architecture/evidence summary for handoff context |
 | [`ENGINEERING_PACKET.md`](./ENGINEERING_PACKET.md) | Offline engineering packet and review context |
+| [`../../wiki/README.md`](../../wiki/README.md) | Cross-session project wiki entry |
+| [`OPEN_RISKS.md`](./OPEN_RISKS.md) | Current useful risk register and suggested next research slices |
+| [`QUALITY_GATES.md`](./QUALITY_GATES.md) | Current reproducible command gates and evidence boundaries |
 | [`CLAUDE_DEEP_REVIEW.md`](./CLAUDE_DEEP_REVIEW.md) | Historical deep review packet; now marked with current-status caveats |
 | [`CLAUDE_REFINED_SPEC.md`](./CLAUDE_REFINED_SPEC.md) | Historical PR-A through PR-D execution spec and acceptance rationale |
 | [`CLAUDE_REVIEW_REQUEST.md`](./CLAUDE_REVIEW_REQUEST.md) | Original review request and checklist |
-| [`QUALITY_GATES.md`](./QUALITY_GATES.md) | Current reproducible command gates and evidence boundaries |
-| [`OPEN_RISKS.md`](./OPEN_RISKS.md) | Current useful risk register and suggested next research slices |
-| [`../../wiki/README.md`](../../wiki/README.md) | Cross-session project wiki entry |
+| [`../../claude-review/docs/v2026-05-31/README.md`](../../claude-review/docs/v2026-05-31/README.md) | Historical Opus v2026-05-31 returned review context; M1/M2 count-sync findings are tracked through current handoff/gates |
 | [`../../claude-review/docs/v2026-05-28/README.md`](../../claude-review/docs/v2026-05-28/README.md) | **Opus v2.1 continuation review (2026-05-28)** - F61-F81 and browser evidence / quality-gate follow-up |
 | [`../../claude-review/docs/v2026-05-26/README.md`](../../claude-review/docs/v2026-05-26/README.md) | **Opus v2.0 深度评审报告（2026-05-26）** — quality gates 复跑、v1.0 resolved 项 spot-check、新发现 F50–F60、合并门禁判定 |
 
 ## Reading Order
 
-1. Read [`../../wiki/review-backlog.md`](../../wiki/review-backlog.md) for the
+1. Read [`../opus-review/HANDOFF.md`](../opus-review/HANDOFF.md)
+   (`docs/opus-review/HANDOFF.md`), including `Git Review Scope Snapshot`, for
+   current Opus handoff and git review scope. Refresh
+   `git status --short --branch --untracked-files=all` and
+   `git ls-files --others --exclude-standard`, then treat dirty/untracked files
+   as current review scope.
+2. Read [`../../wiki/review-backlog.md`](../../wiki/review-backlog.md) for the
    current completed/open state.
-2. Read [`OPEN_RISKS.md`](./OPEN_RISKS.md) to choose the next research landing
+3. Read [`OPEN_RISKS.md`](./OPEN_RISKS.md) to choose the next research landing
    slice.
-3. Run commands from [`QUALITY_GATES.md`](./QUALITY_GATES.md) before claiming a
+4. Run commands from [`QUALITY_GATES.md`](./QUALITY_GATES.md) before claiming a
    pass is complete.
-4. Use the older review packets only as historical rationale and acceptance
+5. Use the older review packets only as historical rationale and acceptance
    history.
 
 ## Current Baseline
@@ -35,7 +46,7 @@ and `QUALITY_GATES.md` control live execution order.
 | Item | Current value |
 |---|---|
 | Branch context | `spacex-session` |
-| Unit/integration tests | `613 passed` |
+| Unit/integration tests | `943 passed` |
 | Analysis studies | `12 studies` |
 | Runtime event kinds | `11` |
 | Canonical HTML entry | `docs/V2_Knowledge/knowledge-base.html` |

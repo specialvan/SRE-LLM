@@ -2,8 +2,12 @@
 
 This summary reflects the current handoff posture. Older review packets in this
 directory are preserved as historical rationale, but live execution order is
-controlled by `wiki/review-backlog.md`, `OPEN_RISKS.md`, and
-`QUALITY_GATES.md`.
+controlled by `docs/opus-review/HANDOFF.md`, `wiki/review-backlog.md`,
+`OPEN_RISKS.md`, and `QUALITY_GATES.md`. For git review scope, use the
+handoff's `Git Review Scope Snapshot`, then refresh
+`git status --short --branch --untracked-files=all` and
+`git ls-files --others --exclude-standard` so dirty/untracked files remain in
+scope.
 
 ## Current State
 
@@ -14,7 +18,7 @@ controlled by `wiki/review-backlog.md`, `OPEN_RISKS.md`, and
   failure traces, Section 11 Catch/SRE wrapper evidence, and Section 12
   synthetic replay-fixture evidence. `analysis.evidence_manifest` indexes the
   S10/S11/S12 machine-readable review artifacts.
-- `tests/`: current full suite passes with 613 tests.
+- `tests/`: current full suite passes with 943 tests.
 - `docs/`: V2 knowledge base is the canonical current HTML entry; V1 is an
   archive snapshot.
 
@@ -64,10 +68,12 @@ are not production benchmarks.
 
 ## Recommended Review Order
 
-1. Read `wiki/review-backlog.md` for the completed/open state.
-2. Read `OPEN_RISKS.md` for the current risk register.
-3. Run the gates in `QUALITY_GATES.md`.
-4. Use `CLAUDE_DEEP_REVIEW.md` and `CLAUDE_REFINED_SPEC.md` only as historical
+1. Read `docs/opus-review/HANDOFF.md`, including `Git Review Scope Snapshot`,
+   for the current Opus handoff and git review scope.
+2. Read `wiki/review-backlog.md` for the completed/open state.
+3. Read `OPEN_RISKS.md` for the current risk register.
+4. Run the gates in `QUALITY_GATES.md`.
+5. Use `CLAUDE_DEEP_REVIEW.md` and `CLAUDE_REFINED_SPEC.md` only as historical
    acceptance rationale.
 
 ## Suggested Next Research Slice

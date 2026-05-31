@@ -25,6 +25,7 @@ BROWSER_EVIDENCE_GATE_COMMANDS = (
 PACKAGE_SMOKE_GATE_MODULES = ("scripts.package_smoke",)
 INTEGRATION_AUDIT_GATE_MODULES = ("scripts.control_center_integration_audit",)
 REVIEW_AUTHORITY_GATE_MODULES = ("scripts.review_authority_lint",)
+EVIDENCE_BOUNDARY_GATE_MODULES = ('scripts.evidence_boundary_lint',)
 DEMO_SMOKE_GATE_MODULES = (
     "examples.demo_sre_loop",
     "examples.demo_powered_descent",
@@ -37,6 +38,14 @@ EXPECTED_CONTROL_CENTER_CONTRACT_DEPTH_KEYS = (
     "array_item_groups",
     "array_item_fields",
     "timeline_fields",
+)
+PYTEST_FULL_SUITE_PREFIX = "python -m pytest tests"
+PYTEST_COMPACT_FULL_SUITE_COMMAND = "python -m pytest tests -q"
+PYTEST_ALLOWED_SUFFIX_PREFIXES = (
+    " -q",
+    " --collect-only",
+    "/",
+    "\\",
 )
 
 
@@ -53,18 +62,25 @@ def _summary_has_field_prefix(summary: str, prefix: str) -> bool:
 
 
 CURRENT_QUALITY_GATE_COMMANDS = (
-    "python -m pytest tests",
+    "python -m pytest tests -q",
     *(command_for_module(module) for module in ANALYSIS_SUITE_GATE_MODULES),
     *(command_for_module(module) for module in EVIDENCE_ARTIFACT_GATE_MODULES),
     *BROWSER_EVIDENCE_GATE_COMMANDS,
     *(command_for_module(module) for module in PACKAGE_SMOKE_GATE_MODULES),
     *(command_for_module(module) for module in INTEGRATION_AUDIT_GATE_MODULES),
     *(command_for_module(module) for module in REVIEW_AUTHORITY_GATE_MODULES),
+    *(command_for_module(module) for module in EVIDENCE_BOUNDARY_GATE_MODULES),
     *(command_for_module(module) for module in DEMO_SMOKE_GATE_MODULES),
+)
+FINAL_REVIEW_GATE_COMMANDS = (
+    *CURRENT_QUALITY_GATE_COMMANDS,
+    "python -u -m scripts.quality_gate_counts",
+    "python -m scripts.quality_gate_counts --check --skip-expensive",
 )
 QUALITY_GATE_COMMAND_DOCS = (
     "PR-REQUIREMENTS.md",
     "docs/V2_Knowledge/knowledge-base.html",
+    "docs/codex-review/ENGINEERING_PACKET.md",
     "docs/codex-review/QUALITY_GATES.md",
     "docs/claude-development-audit/backlog.md",
     "docs/opus-review/HANDOFF.md",
@@ -87,14 +103,17 @@ class QualityGateTarget:
 QUALITY_GATE_TARGETS = (
     QualityGateTarget(
         "PR-REQUIREMENTS.md",
-        r"python -m pytest tests\s+# \d+ passed",
-        "python -m pytest tests          # {label}",
+        r"python -m pytest tests(?: -q)?\s+# \d+ passed",
+        "python -m pytest tests -q       # {label}",
         "PR front-matter pytest quality gate",
     ),
     QualityGateTarget(
         "PR-REQUIREMENTS.md",
-        r"\| 单元测试 \| `python -m pytest tests` \| \*\*\d+ passed\*\* \|",
-        "| 单元测试 | `python -m pytest tests` | **{label}** |",
+        (
+            r"\| (?:单元测试|鍗曞厓娴嬭瘯) \| "
+            r"`python -m pytest tests(?: -q)?` \| \*\*\d+ passed\*\* \|"
+        ),
+        "| 单元测试 | `python -m pytest tests -q` | **{label}** |",
         "PR NFR pytest quality gate",
     ),
     QualityGateTarget(
@@ -106,12 +125,12 @@ QUALITY_GATE_TARGETS = (
     QualityGateTarget(
         "docs/V2_Knowledge/knowledge-base.html",
         (
-            r"<tr><td><code>python -m pytest tests</code></td><td><b>"
-            r"\d+ passed</b></td><td>~1 s</td></tr>"
+            r"<tr><td><code>python -m pytest tests(?: -q)?</code></td><td><b>"
+            r"\d+ passed</b></td><td>(?:~1 s|300 s budget)</td></tr>"
         ),
         (
-            "<tr><td><code>python -m pytest tests</code></td><td><b>"
-            "{label}</b></td><td>~1 s</td></tr>"
+            "<tr><td><code>python -m pytest tests -q</code></td><td><b>"
+            "{label}</b></td><td>300 s budget</td></tr>"
         ),
         "V2 quality gate row",
     ),
@@ -120,6 +139,12 @@ QUALITY_GATE_TARGETS = (
         r"Full test suite: `python -m pytest tests -q` passes with \d+ tests",
         "Full test suite: `python -m pytest tests -q` passes with {count} tests",
         "wiki review backlog pytest baseline",
+    ),
+    QualityGateTarget(
+        "wiki/review-backlog.md",
+        r"quality gate pytest count: \d+",
+        "quality gate pytest count: {count}",
+        "wiki review backlog quality-gate count line",
     ),
     QualityGateTarget(
         "wiki/README.md",
@@ -158,9 +183,15 @@ QUALITY_GATE_TARGETS = (
         "Codex quality gates pytest baseline",
     ),
     QualityGateTarget(
+        "docs/codex-review/QUALITY_GATES.md",
+        r"(?m)^quality gate pytest count: \d+$",
+        "quality gate pytest count: {count}",
+        "Codex quality gates self-sync pytest baseline",
+    ),
+    QualityGateTarget(
         "docs/codex-review/ENGINEERING_PACKET.md",
-        r"python -m pytest tests -q\s+# \d+ passed in this continuation pass",
-        "python -m pytest tests -q      # {label} in this continuation pass",
+        r"Current synchronized pytest count: `\d+`",
+        "Current synchronized pytest count: `{count}`",
         "Codex engineering packet pytest baseline",
     ),
     QualityGateTarget(
@@ -170,10 +201,40 @@ QUALITY_GATE_TARGETS = (
         "Opus packet pytest baseline",
     ),
     QualityGateTarget(
+        "docs/opus-review/OPUS_REVIEW_PACKET.md",
+        r"Current synchronized pytest count: `\d+`",
+        "Current synchronized pytest count: `{count}`",
+        "Opus packet synchronized pytest count",
+    ),
+    QualityGateTarget(
         "docs/opus-review/HANDOFF.md",
-        r"quality gate pytest count: \d+",
+        (
+            r"`python -u -m scripts\.quality_gate_counts` reported "
+            r"`quality gate pytest count: \d+`\."
+        ),
+        (
+            "`python -u -m scripts.quality_gate_counts` reported "
+            "`quality gate pytest count: {count}`."
+        ),
+        "Opus handoff full quality-gate run baseline",
+    ),
+    QualityGateTarget(
+        "docs/opus-review/HANDOFF.md",
+        r"(?m)^quality gate pytest count: \d+$",
         "quality gate pytest count: {count}",
-        "Opus handoff pytest baseline",
+        "Opus handoff expected-snippet pytest baseline",
+    ),
+    QualityGateTarget(
+        "docs/opus-review/HANDOFF.md",
+        r"Current synchronized pytest count: `\d+`",
+        "Current synchronized pytest count: `{count}`",
+        "Opus handoff synchronized pytest count",
+    ),
+    QualityGateTarget(
+        "docs/opus-review/HANDOFF.md",
+        r"still totals \d+ collected tests",
+        "still totals {count} collected tests",
+        "Opus handoff collect-only pytest count",
     ),
 )
 
@@ -224,18 +285,92 @@ def replace_once(text: str, pattern: str, replacement: str, label: str) -> str:
 
 def require_quality_gate_commands(docs: list[tuple[str, str]]) -> None:
     for relative_path, text in docs:
-        for command in CURRENT_QUALITY_GATE_COMMANDS:
+        for command in FINAL_REVIEW_GATE_COMMANDS:
             if command not in text:
                 raise RuntimeError(
                     f"{relative_path}: missing quality gate command: {command}"
                 )
-        manifest_command = "python -m analysis.evidence_manifest"
-        report_command = "python -m analysis.evidence_report"
-        if text.index(manifest_command) > text.index(report_command):
+        stale_pytest_line = _first_stale_nonquiet_pytest_gate_line(text)
+        if stale_pytest_line is not None:
             raise RuntimeError(
-                f"{relative_path}: {manifest_command} must appear before "
-                f"{report_command}"
+                f"{relative_path}: stale non-quiet pytest gate on line "
+                f"{stale_pytest_line}; use {PYTEST_COMPACT_FULL_SUITE_COMMAND}"
             )
+        ordered_command_pairs = (
+            (
+                "python -m analysis.evidence_manifest",
+                "python -m analysis.evidence_report",
+            ),
+            (
+                "python -u -m scripts.quality_gate_counts",
+                "python -m scripts.quality_gate_counts --check --skip-expensive",
+            ),
+        )
+        for earlier_command, later_command in ordered_command_pairs:
+            if text.index(earlier_command) > text.index(later_command):
+                raise RuntimeError(
+                    f"{relative_path}: {earlier_command} must appear before "
+                    f"{later_command}"
+                )
+        out_of_sequence_command = _first_out_of_sequence_quality_gate_command(text)
+        if out_of_sequence_command is not None:
+            raise RuntimeError(
+                f"{relative_path}: contiguous canonical quality gate command "
+                f"surface missing; canonical quality gate command order missing "
+                f"at {out_of_sequence_command}"
+            )
+
+
+def _first_stale_nonquiet_pytest_gate_line(text: str) -> int | None:
+    search_start = 0
+    while True:
+        index = text.find(PYTEST_FULL_SUITE_PREFIX, search_start)
+        if index == -1:
+            return None
+        suffix = text[index + len(PYTEST_FULL_SUITE_PREFIX) :]
+        if not suffix.startswith(PYTEST_ALLOWED_SUFFIX_PREFIXES):
+            return text.count("\n", 0, index) + 1
+        search_start = index + len(PYTEST_FULL_SUITE_PREFIX)
+
+
+def _first_out_of_sequence_quality_gate_command(text: str) -> str | None:
+    normalized_lines = [
+        _quality_gate_command_from_surface_line(line) for line in text.splitlines()
+    ]
+    first_mismatch: str | None = None
+    for start, command in enumerate(normalized_lines):
+        if command != FINAL_REVIEW_GATE_COMMANDS[0]:
+            continue
+        for offset, expected_command in enumerate(FINAL_REVIEW_GATE_COMMANDS):
+            line_index = start + offset
+            actual_command = (
+                normalized_lines[line_index]
+                if line_index < len(normalized_lines)
+                else None
+            )
+            if actual_command != expected_command:
+                if first_mismatch is None:
+                    first_mismatch = actual_command or expected_command
+                break
+        else:
+            return None
+    return first_mismatch or FINAL_REVIEW_GATE_COMMANDS[0]
+
+
+def _quality_gate_command_from_surface_line(line: str) -> str | None:
+    stripped = line.strip()
+    html_match = re.search(r"<code>(?P<command>[^<]+)</code>", stripped)
+    if html_match is not None:
+        command = html_match.group("command").strip()
+        return command if command in FINAL_REVIEW_GATE_COMMANDS else None
+
+    if stripped.startswith("- "):
+        stripped = stripped[2:].strip()
+    if stripped.startswith("`") and stripped.endswith("`"):
+        stripped = stripped[1:-1].strip()
+    if "#" in stripped:
+        stripped = stripped.split("#", 1)[0].rstrip()
+    return stripped if stripped in FINAL_REVIEW_GATE_COMMANDS else None
 
 
 def run_evidence_artifact_gates(repo_root: Path = REPO_ROOT) -> None:
@@ -327,6 +462,22 @@ def run_review_authority_gate(repo_root: Path = REPO_ROOT) -> None:
             raise RuntimeError(f"{module} failed:\n{output}")
 
 
+def run_evidence_boundary_gate(repo_root: Path = REPO_ROOT) -> None:
+    for module in EVIDENCE_BOUNDARY_GATE_MODULES:
+        result = subprocess.run(
+            [sys.executable, '-m', module],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            errors='replace',
+            check=False,
+        )
+        if result.returncode != 0:
+            output = f'{result.stdout}\n{result.stderr}'.strip()
+            raise RuntimeError(f'{module} failed:\n{output}')
+
+
 def run_analysis_suite_gate(repo_root: Path = REPO_ROOT) -> None:
     for module in ANALYSIS_SUITE_GATE_MODULES:
         result = subprocess.run(
@@ -362,7 +513,7 @@ def run_demo_smoke_gate(repo_root: Path = REPO_ROOT) -> None:
 def collect_pytest_count(repo_root: Path = REPO_ROOT) -> int:
     try:
         test_result = subprocess.run(
-            [sys.executable, "-m", "pytest", "tests"],
+            [sys.executable, "-m", "pytest", "tests", "-q"],
             cwd=repo_root,
             capture_output=True,
             text=True,
@@ -378,7 +529,10 @@ def collect_pytest_count(repo_root: Path = REPO_ROOT) -> int:
     test_output = f"{test_result.stdout}\n{test_result.stderr}"
     if test_result.returncode != 0:
         raise RuntimeError("pytest quality gate failed:\n" + test_output.strip())
-    passed_count = parse_pytest_passed_count(test_output)
+    try:
+        passed_count: int | None = parse_pytest_passed_count(test_output)
+    except RuntimeError:
+        passed_count = None
 
     with tempfile.TemporaryDirectory(prefix="package-smoke-") as temp_dir:
         package_smoke.build_wheel_and_smoke_imports(Path(temp_dir), repo_root)
@@ -451,12 +605,12 @@ def collect_pytest_count(repo_root: Path = REPO_ROOT) -> int:
     if collect_result.returncode != 0:
         raise RuntimeError("pytest collection failed:\n" + collect_output.strip())
     collected_count = parse_collected_count(collect_output)
-    if passed_count != collected_count:
+    if passed_count is not None and passed_count != collected_count:
         raise RuntimeError(
             f"pytest quality gate count mismatch: {passed_count} passed, "
             f"{collected_count} collected"
         )
-    return passed_count
+    return collected_count
 
 
 def _write_updated(path: Path, text: str) -> None:
@@ -499,6 +653,7 @@ def update_quality_gate_docs(
         run_package_smoke_gate(repo_root)
         run_integration_audit_gate(repo_root)
         run_review_authority_gate(repo_root)
+        run_evidence_boundary_gate(repo_root)
         run_demo_smoke_gate(repo_root)
     else:
         current_count = count
@@ -536,6 +691,7 @@ def check_quality_gate_docs(
         run_package_smoke_gate(repo_root)
         run_integration_audit_gate(repo_root)
         run_review_authority_gate(repo_root)
+        run_evidence_boundary_gate(repo_root)
         run_demo_smoke_gate(repo_root)
     else:
         current_count = count

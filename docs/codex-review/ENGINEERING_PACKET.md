@@ -23,8 +23,15 @@ summarizes the state a reviewer should trust first.
 | `docs/API_CONTRACTS.md` | Adapter contracts |
 | `docs/EVENT_SCHEMA.md` | Runtime event schema |
 | `docs/RUNTIME_STATES.md` | Runtime state propagation |
-| `docs/codex-review/QUALITY_GATES.md` | Current verification gates |
 | `docs/codex-review/OPEN_RISKS.md` | Current risk register |
+| `docs/codex-review/QUALITY_GATES.md` | Current verification gates |
+| `docs/opus-review/HANDOFF.md` | Current Opus first-read handoff and reviewer runbook |
+
+Git review scope is delegated to `docs/opus-review/HANDOFF.md` ->
+`Git Review Scope Snapshot`: refresh
+`git status --short --branch --untracked-files=all` and
+`git ls-files --others --exclude-standard`, then treat the dirty/untracked
+surface as current review scope.
 
 ## Runtime Chain
 
@@ -45,14 +52,28 @@ Core mappings:
 
 ## Current Verification
 
+Current synchronized pytest count: `943`.
+
 ```bash
-python -m pytest tests -q      # 613 passed in this continuation pass
-python -m analysis.run_all     # all 12 studies finished
+python -m pytest tests -q
+python -m analysis.s10_failure_trace
+python -m analysis.run_all
 python -m analysis.evidence_manifest
 python -m analysis.evidence_report
+python -m scripts.control_center_browser_smoke --report-manifests --report-json analysis/artifacts/control-center-browser-evidence-report.json
+python -m scripts.package_smoke
+python -m scripts.control_center_integration_audit
+python -m scripts.review_authority_lint
+python -m scripts.evidence_boundary_lint
+python -m examples.demo_sre_loop
+python -m examples.demo_powered_descent
+python -m examples.demo_catch_phase
+python -u -m scripts.quality_gate_counts
+python -m scripts.quality_gate_counts --check --skip-expensive
 ```
 
-Targeted gates are listed in `QUALITY_GATES.md`.
+This block mirrors the Opus handoff command set. Targeted gates are listed in
+`QUALITY_GATES.md`.
 
 ## Merge-Scope Checklist
 
@@ -61,8 +82,18 @@ as untracked in `git status`. A handoff or merge must include the core source,
 tests, docs, and canonical generated evidence below; otherwise the verified
 state is not reproducible from the checked-out tree.
 
+For the exact current git review surface, use
+`docs/opus-review/HANDOFF.md` -> `Git Review Scope Snapshot` before exporting
+or merging. Re-run `git status --short --branch --untracked-files=all` and
+`git ls-files --others --exclude-standard`; the `exact current untracked inventory`
+lives in that handoff so split files are not silently omitted.
+
 New source and verifier entry points:
 
+- `analysis/evidence_artifacts.py`
+- `analysis/evidence_manifest_checks.py`
+- `analysis/evidence_consistency.py`
+- `analysis/evidence_contracts.py`
 - `analysis/evidence_manifest.py`
 - `analysis/evidence_report.py`
 - `analysis/s11_catch_sre_wrapper.py`
@@ -71,6 +102,8 @@ New source and verifier entry points:
 - `scripts/control_center_browser_smoke.py`
 - `scripts/control_center_integration_audit.py`
 - `scripts/evidence_boundary_lint.py`
+- `scripts/quality_gate_counts.py`
+- `scripts/review_authority_lint.py`
 - `sre_control/catch_adapter.py`
 - `sre_control/stack_contract.py`
 
@@ -79,17 +112,65 @@ New tests that lock those contracts:
 - `tests/test_analysis_common.py`
 - `tests/test_analysis_run_all.py`
 - `tests/test_catch_adapter.py`
+- `tests/test_control_center_browser_dom.py`
 - `tests/test_control_center_browser_smoke.py`
+- `tests/test_control_center_browser_manifest.py`
+- `tests/test_control_center_browser_error_manifest.py`
+- `tests/test_control_center_browser_report.py`
 - `tests/test_control_center_integration_audit.py`
+- `tests/test_evidence_artifacts.py`
+- `tests/test_evidence_manifest_checks.py`
+- `tests/test_evidence_consistency.py`
+- `tests/test_evidence_contracts.py`
+- `tests/test_evidence_manifest_generation.py`
 - `tests/test_evidence_manifest.py`
+- `tests/test_evidence_report_manifest_shape.py`
+- `tests/test_evidence_report_study_shape.py`
+- `tests/test_evidence_report_contract_shape.py`
+- `tests/test_evidence_report_artifact_paths.py`
+- `tests/test_evidence_contract_report.py`
+- `tests/test_evidence_contract_fallback_report.py`
+- `tests/test_evidence_contract_trace_report.py`
+- `tests/test_evidence_contract_boundary_report.py`
+- `tests/test_evidence_trace_report.py`
+- `tests/test_evidence_wrapper_report.py`
+- `tests/test_evidence_replay_report.py`
+- `tests/test_evidence_replay_consistency_report.py`
+- `tests/test_evidence_replay_artifacts_report.py`
+- `tests/test_quality_gate_counts.py`
 
 New handoff and contract docs:
 
+- `PR-REQUIREMENTS.md`
+- `wiki/README.md`
+- `wiki/review-backlog.md`
+- `wiki/evidence-ledger.md`
+- `docs/codex-review/CODEX_SUMMARY.md`
+- `docs/codex-review/README.md`
+- `docs/codex-review/QUALITY_GATES.md`
+- `docs/codex-review/ENGINEERING_PACKET.md`
+- `docs/claude-development-audit/backlog.md`
 - `docs/CONTROL_CENTER_HANDOFF.md`
 - `docs/EVENT_EVIDENCE_MANIFEST.md`
 - `docs/STACK_DATA_CONTRACT.md`
+- `docs/superpowers/plans/README.md`
+- `docs/superpowers/specs/README.md`
+- `docs/opus-review/HANDOFF.md`
 - `docs/opus-review/OPUS_REVIEW_PACKET.md`
 - `docs/opus-review/README.md`
+
+`scripts.quality_gate_counts.QUALITY_GATE_TARGETS` updates synchronized
+pytest-count lines, and `QUALITY_GATE_COMMAND_DOCS` enforces required command
+coverage plus stale non-quiet full-suite command rejection in the current docs
+above. Carry those docs together with `scripts/quality_gate_counts.py` and
+`tests/test_quality_gate_counts.py`; a partial packet can leave review-facing
+counts or required command lists stale.
+
+Superpowers plan/spec inventories live in `docs/superpowers/plans/README.md`
+and `docs/superpowers/specs/README.md`. Reviewers should use those inventory
+sections to confirm every dated plan or spec artifact in the dirty/untracked
+surface is either carried into the packet or intentionally excluded with a
+separate reason.
 
 Canonical generated evidence to carry with the packet:
 
@@ -135,7 +216,7 @@ should not be treated as authoritative unless a manifest references them.
   `artifact_metadata` byte-identity records containing SHA-256 digests and byte
   size values.
 - `docs/EVENT_EVIDENCE_MANIFEST.md` documents that manifest contract and is
-  checked by `tests/test_evidence_manifest.py`.
+  checked by `tests/test_evidence_manifest_generation.py`.
 - `analysis.evidence_report` prints a compact manifest summary and validates
   the top-level manifest shape, closed study/contract ID sets, required
   study/contract entry sets, required generic and entry-specific fields plus

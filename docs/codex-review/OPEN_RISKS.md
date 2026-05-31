@@ -8,7 +8,7 @@ list. Items already resolved in code and tests are recorded in
 
 | ID | Priority | Area | Risk | Suggested next step |
 |---|---|---|---|---|
-| R1 | P2 | Synthetic evidence boundary | Before/after studies are synthetic scenario evidence and can still be overgeneralized in new prose or external summaries. | Keep reports and summaries explicit that these are scenario-internal results; live review docs now have bilingual overclaim wording lint for English and Chinese review prose. |
+| R1 | P2 | Synthetic evidence boundary | Before/after studies are synthetic scenario evidence and can still be overgeneralized in new prose or external summaries. | Keep reports and summaries explicit that these are scenario-internal results; live review docs now have bilingual overclaim wording lint for English and Chinese review prose, including readiness/safety/equivalence/level/caliber/quality plus likeness/representativeness/comparability/scale/realism, compact prod-abbreviation, parity, broader SpaceX-provenance phrasings, possessive/hyphenated/proprietary/control-software/source-data SpaceX provenance variants, generic real/actual/live/field source-provenance variants, and production/prod/customer-traffic source-provenance variants. |
 
 **说明**：F50-F60 来自 Opus v2.0 评审（2026-05-26），F61-F81 来自 Opus v2.1
 继续评审（2026-05-28），均已在当前工作区修复或收敛为文档/台账边界说明；G1 也已通过
@@ -54,8 +54,8 @@ and tests now cover them:
   now passed explicitly into the Section 10/11 generators instead of
   monkey-patching `_common.ARTIFACTS` or `s10_failure_trace.ARTIFACTS`.
 - `docs/EVENT_EVIDENCE_MANIFEST.md` documents the manifest contract, and
-  `tests/test_evidence_manifest.py` checks generated entries against that
-  markdown table.
+  `tests/test_evidence_manifest_generation.py` checks generated entries
+  against that markdown table.
 - `analysis.evidence_report` provides a reviewer CLI over the manifest and
   fails when a referenced artifact is missing, malformed, has invalid runtime
   events, has key counts that disagree, or has a stale byte-identity record
@@ -85,7 +85,9 @@ and tests now cover them:
 - `scripts.evidence_boundary_lint.PUBLIC_EVIDENCE_BOUNDARY_DOCS` now defines the
   public/review document surface linted by
   `tests/test_synthetic_evidence_boundaries.py`, including README, PR spec, wiki,
-  V2 HTML, Codex review, Opus review, and audit-ledger entry points. It rejects
+  V2 HTML, Codex review, Opus review, audit-ledger entry points,
+  `docs/CONTROL_CENTER_HANDOFF.md`, `docs/EVENT_EVIDENCE_MANIFEST.md`, and
+  `docs/STACK_DATA_CONTRACT.md`. It rejects
   unqualified production-readiness, official SpaceX implementation, and
   production-proof wording while allowing explicit negated boundary statements.
   The same lint now covers Chinese review prose for unqualified claims such as
@@ -160,7 +162,7 @@ and tests now cover them:
 - Opus F39 is resolved in the evidence report: SHA-256 metadata shape checks now
   accept uppercase hexadecimal characters while byte-identity comparison remains
   exact.
-- Opus F31 is resolved in `analysis.evidence_report`: JSONL parsing,
+- Opus F31 is resolved in `analysis.evidence_artifacts`: JSONL parsing,
   Section 10 trace-shape checks, Section 12 fixture-shape checks, and event
   schema validation now collect multiple row-level errors in one report pass
   instead of stopping at the first bad row.
