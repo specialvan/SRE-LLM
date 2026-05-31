@@ -1,5 +1,11 @@
 # Claude Development Audit Implementation Plan
 
+> Historical planning artifact; it is not the current handoff.
+> Opus review should start from `docs/opus-review/HANDOFF.md`, then verify
+> live status in `wiki/review-backlog.md`,
+> `docs/codex-review/OPEN_RISKS.md`, and
+> `docs/codex-review/QUALITY_GATES.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Create a durable engineering package for deep review of Claude/Codex-developed content across code, process docs, wiki, HTML, tests, and git history.
