@@ -18,7 +18,10 @@ evidence map:
    `git diff --name-status`, `git ls-files --others --exclude-standard`, and
    `git diff --check`; keep dirty/untracked files in the review scope, or if
    the packet has already been committed, review the content-split commits in
-   the partition order recorded there.
+   the partition order recorded there. After the branch is pushed,
+   `origin/spacex-session..HEAD may be empty after push`; review the published
+   split range with
+   `git log --reverse --oneline 5df8e0c..origin/spacex-session`.
 2. Read `wiki/review-backlog.md`, `docs/codex-review/OPEN_RISKS.md`, and
    `docs/codex-review/QUALITY_GATES.md` before historical findings. These are
    the current completion, risk, and command-gate sources of truth.

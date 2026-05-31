@@ -2803,6 +2803,8 @@ def test_opus_packet_routes_git_scope_review_to_handoff_commands():
         "git diff --name-status",
         "git ls-files --others --exclude-standard",
         "git diff --check",
+        "origin/spacex-session..HEAD may be empty after push",
+        "git log --reverse --oneline 5df8e0c..origin/spacex-session",
     ]:
         assert phrase in section
 
