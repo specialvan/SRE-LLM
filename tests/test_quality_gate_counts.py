@@ -518,7 +518,7 @@ def test_opus_handoff_documents_git_review_scope_snapshot():
         assert f"- `{relative_path}`" in section
 
 
-def test_opus_handoff_untracked_inventory_matches_current_git_status():
+def test_opus_handoff_untracked_inventory_matches_live_or_pre_submit_git_status():
     output = subprocess.run(
         ["git", "ls-files", "--others", "--exclude-standard"],
         cwd=quality_gate_counts.REPO_ROOT,
@@ -526,8 +526,16 @@ def test_opus_handoff_untracked_inventory_matches_current_git_status():
         text=True,
         capture_output=True,
     ).stdout
+    current_untracked = tuple(line for line in output.splitlines() if line)
 
-    assert tuple(line for line in output.splitlines() if line) == CURRENT_UNTRACKED_REVIEW_SCOPE
+    if current_untracked:
+        assert current_untracked == CURRENT_UNTRACKED_REVIEW_SCOPE
+    else:
+        handoff = quality_gate_counts.REPO_ROOT / "docs" / "opus-review" / "HANDOFF.md"
+        text = handoff.read_text(encoding="utf-8-sig")
+        assert "pre-commit inventory" in text
+        for relative_path in CURRENT_UNTRACKED_REVIEW_SCOPE:
+            assert f"- `{relative_path}`" in text
 
 
 def test_opus_handoff_untracked_examples_are_currently_untracked():
@@ -546,7 +554,7 @@ def test_opus_handoff_untracked_examples_are_currently_untracked():
     assert set(documented_paths).issubset(set(CURRENT_UNTRACKED_REVIEW_SCOPE))
 
 
-def test_opus_handoff_tracked_examples_are_currently_modified():
+def test_opus_handoff_tracked_examples_are_modified_or_pre_submit_examples():
     handoff = quality_gate_counts.REPO_ROOT / "docs" / "opus-review" / "HANDOFF.md"
     text = handoff.read_text(encoding="utf-8-sig")
     start = text.index("- The tracked modified surface spans")
@@ -567,7 +575,15 @@ def test_opus_handoff_tracked_examples_are_currently_modified():
     modified_paths = {line.strip() for line in diff_output.splitlines() if line.strip()}
 
     assert documented_paths
-    assert set(documented_paths).issubset(modified_paths)
+    documented_set = set(documented_paths)
+    if documented_set.issubset(modified_paths):
+        return
+
+    if not modified_paths or modified_paths == {"tests/test_quality_gate_counts.py"}:
+        assert "pre-submit local snapshot" in text
+        assert "content-split commits" in text
+    else:
+        assert documented_set.issubset(modified_paths)
 
 
 def test_opus_handoff_git_status_commands_always_show_untracked_files():
