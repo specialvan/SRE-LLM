@@ -9,7 +9,7 @@
   "api_snapshot": {
     "bytes": 29693,
     "path": "analysis/artifacts/control-center-browser-smoke-api.json",
-    "sha256": "05bb99b274d20badc9c8f75b92f159ccab8735c5753acfd7995770db16f81bd8"
+    "sha256": "341548ff0c076d5837ab4ee7bb0cffd7d1f77b42a2670fc0f6804a93741e3207"
   },
   "contract": {
     "api_path": "/api/control-center",
@@ -46,45 +46,45 @@
     "ticks": 12,
     "timeline_rows": 12
   },
-  "url": "http://127.0.0.1:49530/control-center",
+  "url": "http://127.0.0.1:54305/control-center",
   "viewports": [
     {
       "dom_dump": {
-        "bytes": 148125,
+        "bytes": 148106,
         "path": "analysis/artifacts/control-center-browser-smoke-desktop.html",
-        "sha256": "d46c589034a2b2fb253a4939199d916580fda300751505970bd321152f2df775"
+        "sha256": "9c165d9f8e391b3757dc7d739d68bc9492d6ec37a13f53403ef50880767d74e4"
       },
       "height": 960,
       "name": "desktop",
       "screenshot": {
-        "bytes": 465752,
+        "bytes": 477353,
         "path": "analysis/artifacts/control-center-browser-smoke-desktop.png",
         "png": {
           "blank": false,
           "height": 960,
           "width": 1440
         },
-        "sha256": "e99d296621d0fea49cf3ec3f8e27258ae12245dea6b148a377bb505cbec3d65b"
+        "sha256": "93d8d3956bf2e4e135355a08eedf627b757252403b75863441adad455aa611ef"
       },
       "width": 1440
     },
     {
       "dom_dump": {
-        "bytes": 148125,
+        "bytes": 148106,
         "path": "analysis/artifacts/control-center-browser-smoke-mobile.html",
-        "sha256": "9c37c667277f43783d7b3c1e1a9a2ebac159468fde2a2c63d85e50b2ebe887b3"
+        "sha256": "4ebad49559c326749e5b9733de25db2fbb7b5c71bc0af42360b9b75edcc7597c"
       },
       "height": 844,
       "name": "mobile",
       "screenshot": {
-        "bytes": 117895,
+        "bytes": 103972,
         "path": "analysis/artifacts/control-center-browser-smoke-mobile.png",
         "png": {
           "blank": false,
           "height": 844,
           "width": 390
         },
-        "sha256": "0ca31611e9b5d63fe4332231d81006c7e62fcd77c6b36531c3a677ea8ab0f0ae"
+        "sha256": "e3136648cbda910b2983ae5ba2e2c13663f4fdd876c4ec87e510a48b27d6abcc"
       },
       "width": 390
     }

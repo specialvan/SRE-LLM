@@ -120,9 +120,11 @@ def test_build_wheel_uses_current_environment_without_build_isolation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     commands: list[list[str]] = []
+    envs: list[dict[str, str] | None] = []
 
     def fake_run(command: list[str], cwd: Path, env: dict[str, str] | None = None):
         commands.append(command)
+        envs.append(env)
         wheel_dir = Path(command[command.index("--wheel-dir") + 1])
         wheel_dir.mkdir(parents=True, exist_ok=True)
         (wheel_dir / "starship_recovery-0.1.0-py3-none-any.whl").write_bytes(b"")
@@ -138,12 +140,16 @@ def test_build_wheel_uses_current_environment_without_build_isolation(
             "pip",
             "wheel",
             ".",
+            "--no-index",
             "--no-deps",
             "--no-build-isolation",
             "--wheel-dir",
             str(tmp_path / "wheelhouse"),
         ]
     ]
+    assert envs[0] is not None
+    assert envs[0]["PIP_DISABLE_PIP_VERSION_CHECK"] == "1"
+    assert envs[0]["PIP_USE_DEPRECATED"] == "legacy-certs"
 
 
 def test_package_smoke_verifies_control_center_evidence_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

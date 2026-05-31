@@ -1,9 +1,9 @@
 {
   "api_snapshot_fingerprint": {
-    "current_sha256": "3ab4ab698313d1473434e9f70ea33e5f252f9133fc9a2acb5175c9856c469def",
+    "current_sha256": "db3de167ec62fcbff447c2b9a35469c0da16587380d18e2707b87cfe649042c5",
     "match": true,
     "path": "analysis/artifacts/control-center-browser-smoke-api.json",
-    "snapshot_sha256": "3ab4ab698313d1473434e9f70ea33e5f252f9133fc9a2acb5175c9856c469def",
+    "snapshot_sha256": "db3de167ec62fcbff447c2b9a35469c0da16587380d18e2707b87cfe649042c5",
     "volatile_fields_ignored": [
       "generated_at"
     ]
@@ -35,8 +35,8 @@
     },
     "manifest_records": "normal+backend_error+frontend_error",
     "normal_viewports": [
-      "desktop:1440x960:dom148125",
-      "mobile:390x844:dom148125"
+      "desktop:1440x960:dom148106",
+      "mobile:390x844:dom148106"
     ]
   },
   "contract": {

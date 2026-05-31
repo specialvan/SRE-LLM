@@ -115,6 +115,20 @@ def test_build_control_center_payload_contains_algorithm_customer_benefits():
     assert any("MPC" in item["algorithm"] for item in payload["algorithm_benefits"])
 
 
+def test_control_center_ekf_benefit_matches_current_section5_evidence():
+    payload = build_control_center_payload()
+    ekf = next(
+        item
+        for item in payload["algorithm_benefits"]
+        if item["module"] == "starship/ekf.py"
+    )
+
+    assert ekf["before_value"] == pytest.approx(629.4)
+    assert ekf["after_value"] == pytest.approx(9.374)
+    assert ekf["after_value"] / ekf["before_value"] == pytest.approx(0.0149, rel=1e-2)
+    assert "67" in ekf["improvement"]
+
+
 def test_control_center_payload_supports_tick_level_frontend_drilldown():
     payload = build_control_center_payload()
     tick = payload["timeline"][0]

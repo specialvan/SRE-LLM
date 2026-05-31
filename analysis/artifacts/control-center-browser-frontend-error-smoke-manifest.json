@@ -6,16 +6,16 @@
   },
   "mode": "frontend-contract-error",
   "screenshot": {
-    "bytes": 415071,
+    "bytes": 415110,
     "path": "analysis/artifacts/control-center-browser-frontend-error-smoke-desktop.png",
     "png": {
       "blank": false,
       "height": 960,
       "width": 1440
     },
-    "sha256": "6d53407a9c563ad552dd8e2f65a55ac6aef2cf99afb3bfb95fc68576b19f8383"
+    "sha256": "a7ee0832df815fc61957da9baa05fc3bad94cd7f68b75e205e2db87dc30a2b4b"
   },
-  "url": "http://127.0.0.1:52750/control-center",
+  "url": "http://127.0.0.1:64613/control-center",
   "viewport": {
     "height": 960,
     "name": "desktop",

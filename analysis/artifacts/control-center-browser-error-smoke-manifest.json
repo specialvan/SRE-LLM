@@ -15,7 +15,7 @@
     },
     "sha256": "953e8592f93355d2e98a67a8213847c65e73f9fc424d83a01cdb525a471a52bc"
   },
-  "url": "http://127.0.0.1:50359/control-center",
+  "url": "http://127.0.0.1:52633/control-center",
   "viewport": {
     "height": 960,
     "name": "desktop",

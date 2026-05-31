@@ -2,13 +2,29 @@
 
 > Locked on 2026-05-28 after user approval: the control-center visual direction is **black-gold premium mission control**. Future agents should preserve this style unless the user explicitly asks for a redesign.
 
+## Review Authority
+
+This file is a control-center implementation handoff, not the live completed or
+open review ledger. Before using it for Opus review, read the current review
+state in this order:
+
+1. `docs/opus-review/HANDOFF.md`, especially its `Git Review Scope Snapshot`;
+   refresh `git status --short --branch --untracked-files=all` and
+   `git ls-files --others --exclude-standard` before reviewing dirty/untracked
+   control-center files.
+2. `wiki/review-backlog.md`
+3. `docs/codex-review/OPEN_RISKS.md`
+4. `docs/codex-review/QUALITY_GATES.md`
+5. Historical packets such as `docs/opus-review/OPUS_REVIEW_PACKET.md` and
+   `claude-review/docs/v2026-05-28/README.md` only for traceability.
+
 ## Entry Points
 
 - Frontend: `docs/control-center.html`
 - Data payload: `analysis/control_center_data.py`
 - Local server: `python -m scripts.control_center_server`
 - URL: `http://127.0.0.1:8765/control-center`
-- Regression tests: `python -m pytest tests/test_control_center.py -q`
+- Regression tests: `python -m pytest tests/test_control_center.py tests/test_control_center_browser_smoke.py tests/test_control_center_browser_dom.py tests/test_control_center_browser_manifest.py tests/test_control_center_browser_error_manifest.py tests/test_control_center_browser_report.py tests/test_control_center_integration_audit.py -q`
 
 ## OpenDesign Integration
 
@@ -191,8 +207,7 @@ The UI must stay fully Chinese for visible labels and microcopy.
 Run these before claiming the control center is ready:
 
 ```bash
-python -m pytest tests/test_control_center.py -q
-python -m pytest tests/test_control_center_browser_smoke.py -q
+python -m pytest tests/test_control_center.py tests/test_control_center_browser_smoke.py tests/test_control_center_browser_dom.py tests/test_control_center_browser_manifest.py tests/test_control_center_browser_error_manifest.py tests/test_control_center_browser_report.py tests/test_control_center_integration_audit.py -q
 python -m py_compile analysis/control_center_data.py scripts/control_center_server.py
 ```
 

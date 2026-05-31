@@ -112,12 +112,12 @@
     },
     {
       "after_label": "EKF 速度 RMSE",
-      "after_value": 51.0,
+      "after_value": 9.374,
       "algorithm": "EKF 多源融合",
       "before_label": "裸雷达速度 RMSE",
-      "before_value": 481.0,
+      "before_value": 629.4,
       "customer_value": "融合雷达、IMU 与塔架视觉标志，在遮挡和噪声下保持控制器可用的后验状态。",
-      "improvement": "约 9.4x 精度",
+      "improvement": "约 67x 精度",
       "lower_is_better": true,
       "module": "starship/ekf.py",
       "pillar": "§5",
@@ -374,7 +374,7 @@
     ],
     "version": "control-center.v1"
   },
-  "generated_at": "2026-05-28T19:50:57.020430+00:00",
+  "generated_at": "2026-05-30T20:43:32.551830+00:00",
   "hero": {
     "subtitle": "基于 OpenDesign dashboard 设计系统，把 8 个控制算法、运行时遥测和前后收益打到同一个可交互决策屏。",
     "theme": "OpenDesign 现代任务控制台",

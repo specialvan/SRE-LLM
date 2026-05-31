@@ -69,6 +69,13 @@ def _run(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> No
         raise RuntimeError(f"command failed: {' '.join(command)}\n{output}")
 
 
+def _pip_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
+    env["PIP_USE_DEPRECATED"] = "legacy-certs"
+    return env
+
+
 def _build_wheel(repo_root: Path, work_dir: Path) -> Path:
     wheel_dir = work_dir / "wheelhouse"
     wheel_dir.mkdir(parents=True, exist_ok=True)
@@ -79,12 +86,14 @@ def _build_wheel(repo_root: Path, work_dir: Path) -> Path:
             "pip",
             "wheel",
             ".",
+            "--no-index",
             "--no-deps",
             "--no-build-isolation",
             "--wheel-dir",
             str(wheel_dir),
         ],
         cwd=repo_root,
+        env=_pip_env(),
     )
     wheels = sorted(wheel_dir.glob("*.whl"))
     if len(wheels) != 1:
