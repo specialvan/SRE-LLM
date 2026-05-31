@@ -32,7 +32,9 @@ decision. The pre-submit local snapshot captured for this handoff was
 dirty review surface. If this handoff has already been committed, review the
 new content-split commits in `origin/spacex-session..HEAD` and treat the
 snapshot below as the pre-commit inventory that explains why those files belong
-in scope.
+in scope. After the branch is pushed, `origin/spacex-session..HEAD may be empty after push`;
+review the published split range with
+`git log --reverse --oneline 5df8e0c..origin/spacex-session`.
 
 Recommended git commands for the review setup:
 
@@ -40,6 +42,7 @@ Recommended git commands for the review setup:
 git status --short --branch --untracked-files=all
 git log --oneline --decorate -5
 git log --reverse --oneline origin/spacex-session..HEAD
+git log --reverse --oneline 5df8e0c..origin/spacex-session
 git diff --name-status
 git ls-files --others --exclude-standard
 git diff --check
@@ -116,7 +119,7 @@ supports a quality-gate count or documentation sync.
 |---|---|---|
 | Evidence report split | `analysis/evidence_report.py`, `analysis/evidence_consistency.py`, `tests/test_evidence_*.py`, `docs/EVENT_EVIDENCE_MANIFEST.md`, `docs/STACK_DATA_CONTRACT.md` | Confirm the reviewer CLI remains a thin orchestrator while manifest, artifact, study-consistency, and stack-contract checks have clear module/test ownership. |
 | Control-center browser evidence | `analysis/control_center_data.py`, `scripts/package_smoke.py`, `tests/test_control_center*.py`, `analysis/artifacts/control-center-*`, `docs/CONTROL_CENTER_HANDOFF.md` | Confirm normal, backend-error, and frontend-contract-error browser replay paths are covered by saved manifests, report replay, package smoke, and integration audit evidence. |
-| Review authority and quality gates | `scripts/review_authority_lint.py`, `scripts/evidence_boundary_lint.py`, `scripts/quality_gate_counts.py`, `tests/test_quality_gate_counts.py`, `tests/test_synthetic_evidence_boundaries.py`, current quality-gate docs | Confirm current ledgers precede historical packets, public prose stays inside the synthetic-evidence boundary, and the `943` pytest count plus canonical command block remain synchronized. |
+| Review authority and quality gates | `scripts/review_authority_lint.py`, `scripts/evidence_boundary_lint.py`, `scripts/quality_gate_counts.py`, `tests/test_quality_gate_counts.py`, `tests/test_synthetic_evidence_boundaries.py`, current quality-gate docs | Confirm current ledgers precede historical packets, public prose stays inside the synthetic-evidence boundary, and the `946` pytest count plus canonical command block remain synchronized. |
 | Opus/Codex handoff and historical packets | `docs/opus-review/`, `docs/codex-review/`, `docs/claude-review/`, `claude-review/docs/`, `docs/claude-development-audit/`, `wiki/`, `spacex-Session.md` | Confirm historical review packets are trace inputs only, not current open-risk authority, and that Opus starts from this handoff plus live ledgers. |
 | Superpowers plan/spec inventory | `docs/superpowers/plans/`, `docs/superpowers/specs/` | Confirm dated execution traces and design notes are audit artifacts; open checkboxes in old prose are not treated as live risk unless the current ledgers agree. |
 | Generated metric and public-summary sync | `README.md`, `PR-REQUIREMENTS.md`, `analysis/artifacts/SUMMARY.txt`, `docs/V2_Knowledge/knowledge-base.html`, `docs/knowledge-base.html` | Confirm public summaries match current generated evidence and keep the research/synthetic boundary explicit. |
@@ -134,7 +137,7 @@ Suggested commit order:
 
 - Worktree and ahead count: inspect live with
   `git status --short --branch --untracked-files=all`.
-- Current synchronized pytest count: `945`.
+- Current synchronized pytest count: `946`.
 - Fresh local verification from this continuation pass:
   - `python -m pytest tests -q` passed.
   - `python -m analysis.run_all` completed all 12 studies.
@@ -142,7 +145,7 @@ Suggested commit order:
   - `python -m analysis.evidence_report` reported `artifact_check ok studies=3 files=8`.
   - `python -m scripts.review_authority_lint` reported `review authority order ok`.
   - `python -m scripts.evidence_boundary_lint` reported `evidence boundary lint ok`.
-  - `python -u -m scripts.quality_gate_counts` reported `quality gate pytest count: 945`.
+  - `python -u -m scripts.quality_gate_counts` reported `quality gate pytest count: 946`.
   - `python -m scripts.quality_gate_counts --check --skip-expensive` reported `quality gate docs check passed`.
   - The v2026-05-31 returned-review M1/M2 count-sync findings are resolved for
     the current handoff surface by these synchronized current-count checks.
@@ -174,7 +177,7 @@ context:
 
 - Fresh `git status --short --branch --untracked-files=all` has been captured
   by the reviewer.
-- `python -m pytest --collect-only -q tests` still totals 945 collected tests.
+- `python -m pytest --collect-only -q tests` still totals 946 collected tests.
 - `analysis.evidence_report` is run after `analysis.evidence_manifest` when
   generated evidence may have changed.
 - Browser evidence includes normal, backend-error, and frontend-error manifest
@@ -319,7 +322,7 @@ python -m scripts.quality_gate_counts --check --skip-expensive
 Expected key output snippets in the current docs:
 
 ```text
-quality gate pytest count: 945
+quality gate pytest count: 946
 artifact_check ok studies=3 files=8
 manifest_replay=normal+backend_error+frontend_error
 control-center integration audit ok

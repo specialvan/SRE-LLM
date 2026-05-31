@@ -498,6 +498,8 @@ def test_opus_handoff_documents_git_review_scope_snapshot():
         "git ls-files --others --exclude-standard",
         "git diff --check",
         "spacex-session...origin/spacex-session [ahead 93]",
+        "git log --reverse --oneline 5df8e0c..origin/spacex-session",
+        "origin/spacex-session..HEAD may be empty after push",
         "tracked modified surface",
         "untracked files are intentional review scope",
         "analysis/evidence_consistency.py",
@@ -516,6 +518,20 @@ def test_opus_handoff_documents_git_review_scope_snapshot():
     assert "Current untracked review-scope inventory:" in section
     for relative_path in CURRENT_UNTRACKED_REVIEW_SCOPE:
         assert f"- `{relative_path}`" in section
+
+
+def test_opus_handoff_content_partitions_use_current_synchronized_count():
+    handoff = quality_gate_counts.REPO_ROOT / "docs" / "opus-review" / "HANDOFF.md"
+    text = handoff.read_text(encoding="utf-8-sig")
+    current_count = _current_synchronized_count(text)
+    start = text.index("## Content Partitions For Commit And Review")
+    end = text.index("## Current Baseline", start)
+    section = text[start:end]
+    partition_counts = re.findall(r"`(\d+)` pytest count", section)
+
+    assert partition_counts
+    assert set(partition_counts) == {current_count}
+    assert "`943` pytest count" not in section
 
 
 def test_opus_handoff_untracked_inventory_matches_live_or_pre_submit_git_status():

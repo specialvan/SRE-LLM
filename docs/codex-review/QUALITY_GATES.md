@@ -34,7 +34,7 @@ so captured reviewer logs stay compact and stable.
 
 ```text
 python -m pytest tests -q
-945 passed
+946 passed
 
 python -m analysis.s10_failure_trace
 Section 10 full/sample trace exported
@@ -73,7 +73,7 @@ python -m examples.demo_catch_phase
 catch lateral error prints without error
 
 python -u -m scripts.quality_gate_counts
-quality gate pytest count: 945
+quality gate pytest count: 946
 
 python -m scripts.quality_gate_counts --check --skip-expensive
 quality gate docs check passed
